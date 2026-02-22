@@ -1,0 +1,35 @@
+.target-slots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.slot-gap {
+  width: 1.25rem;
+  height: 4rem;
+  flex: 0 0 1.25rem;
+}
+
+.cdk-drag-preview {
+  border-radius: 0.5rem;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  opacity: 0.8;
+}
+
+.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+.cdk-drag-animating {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drop-list-dragging .cdk-drag {
+  transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drop-list-dragging .cdk-drop-list-dragging .cdk-drag {
+  transition: none;
+}

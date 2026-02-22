@@ -1,0 +1,45 @@
+    <form [formGroup]="settingsForm">
+      <ng-container [ngSwitch]="gameId">
+        <!-- Reveal Game Settings -->
+          <div *ngSwitchCase="'reveal-game'">
+            <label class="block mb-2">Reveal Timer (seconds)</label>
+            <input type="number" formControlName="timer" class="w-full border p-2 rounded" min="1" max="60">
+            
+            <label class="block mt-4 mb-2">Grid Size (cells per side)</label>
+            <input type="number" formControlName="gridSize" class="w-full border p-2 rounded" min="2" max="30">
+            <p class="text-xs text-gray-500 mt-1">Total cells = gridSize × gridSize</p>
+          </div>
+
+        <!-- Watch & Memorize Settings -->
+          <div *ngSwitchCase="'watch-memorize'">
+            <label class="block mb-2">Number of items to show</label>
+            <input type="number" formControlName="count" class="w-full border p-2 rounded" min="1">
+            <p class="text-xs text-gray-500 mt-1">Max is the total items in your topic (capped automatically)</p>
+            <label class="block mt-4 mb-2">Scroll speed (seconds per item)</label>
+            <input type="number" formControlName="speed" class="w-full border p-2 rounded" min="1" max="10">
+          </div>
+
+        <!-- Anagram Settings -->
+          <div *ngSwitchCase="'anagram'">
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" formControlName="showHint" class="h-4 w-4">
+              <span>Show image hint</span>
+            </label>
+            <p class="text-xs text-gray-500 mt-2">Unchecked means no image hint will be shown.</p>
+          </div>
+
+        <!-- Unjumble Settings -->
+          <div *ngSwitchCase="'unjumble'">
+            <label class="inline-flex items-center gap-2">
+              <input type="checkbox" formControlName="showHint" class="h-4 w-4">
+              <span>Show image hint</span>
+            </label>
+            <p class="text-xs text-gray-500 mt-2">Unchecked means no image hint will be shown.</p>
+          </div>
+
+        <!-- Default: no settings -->
+        <div *ngSwitchDefault>
+          <p class="text-gray-500">No settings required.</p>
+        </div>
+      </ng-container>
+    </form>

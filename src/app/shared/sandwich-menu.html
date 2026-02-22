@@ -1,0 +1,19 @@
+<div *ngIf="isOpen" class="menu-backdrop"></div>
+
+<div class="fixed bottom-4 left-4 z-50">
+  <button
+    type="button"
+    (click)="toggleMenu()"
+    class="menu-fab"
+    [attr.aria-label]="isOpen ? 'Resume game' : 'Pause game menu'"
+  >
+    <span *ngIf="isOpen">||</span>
+    <span *ngIf="!isOpen">&#9776;</span>
+  </button>
+
+  <div *ngIf="isOpen" class="menu-panel">
+    <button type="button" (click)="onAction('activity')" class="menu-action">Activity Page</button>
+    <button type="button" (click)="onAction('startover')" class="menu-action">Start Over</button>
+    <button type="button" (click)="onAction('resume')" class="menu-action">Resume</button>
+  </div>
+</div>

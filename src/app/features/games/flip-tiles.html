@@ -1,0 +1,52 @@
+<div class="min-h-screen bg-gradient-to-br from-green-900 to-teal-800 p-4 game-container">
+  <div class="container mx-auto">
+    <h2 class="text-4xl font-bold text-white mb-4 text-center">Flip Tiles</h2>
+
+    <!-- Loading/Empty State -->
+    <div *ngIf="!cards.length" class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+    </div>
+
+    <!-- Game Grid -->
+    <div *ngIf="cards.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      <div *ngFor="let card of cards; let i = index"
+           (click)="flipCard(i)"
+           class="aspect-square cursor-pointer">
+        <div class="relative w-full h-full card-container"
+             [class.flipped]="card.flipped">
+          <!-- Front Face (hidden when flipped) -->
+          <div class="card-face card-front">
+            <span class="text-5xl text-white">{{ i + 1 }}</span>
+          </div>
+          <!-- Back Face (shown when flipped) -->
+          <div class="card-face card-back">
+            <div *ngIf="card.imageSrc" class="w-full h-3/4 flex items-center justify-center">
+              <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+            </div>
+            <p *ngIf="card.item.text" class="text-center font-semibold">{{ card.item.text }}</p>
+            <p *ngIf="!card.item.text && !card.item.image" class="text-center text-gray-400">No content</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Buttons -->
+    <div class="mt-6 flex flex-wrap justify-center gap-3">
+      <button (click)="randomSelect()"
+              class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105">
+        Random Select
+      </button>
+      <button *ngIf="selectedIndex !== null" (click)="eliminate()"
+              class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105">
+        Eliminate
+      </button>
+      <button (click)="shuffleAndReset()"
+              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105">
+        Shuffle
+      </button>
+    </div>
+
+    <!-- Sandwich Menu -->
+    <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+  </div>
+</div>

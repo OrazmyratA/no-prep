@@ -1,0 +1,143 @@
+.scroll-stage {
+  display: flex;
+  justify-content: center;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
+
+.scroll-container {
+  position: relative;
+  width: 100vw;
+  height: 300px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.16);
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-radius: 1.25rem;
+}
+
+.scroll-container.paused {
+  box-shadow: inset 0 0 0 3px rgba(251, 191, 36, 0.55);
+}
+
+.scrolling-item {
+  position: absolute;
+  left: -280px;
+  width: 280px;
+  height: 260px;
+  background: white;
+  border-radius: 1rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.scrolling-item-media {
+  width: 220px;
+  height: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scrolling-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.recall-grid {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.grid-item {
+  aspect-ratio: 1 / 1;
+  background: white;
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.grid-item.selected {
+  background: #4ade80;
+  transform: scale(0.95);
+  box-shadow: 0 0 0 3px gold;
+}
+
+.grid-item.incorrect {
+  animation: shake 0.5s;
+}
+
+.grid-item-media {
+  width: 100%;
+  max-width: 120px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.grid-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.grid-item p {
+  width: 100%;
+  font-size: 0.85rem;
+  text-align: center;
+  margin-top: 0.35rem;
+  line-height: 1.15;
+}
+
+@media (max-width: 768px) {
+  .scroll-container {
+    height: 240px;
+  }
+
+  .scrolling-item {
+    width: 220px;
+    height: 210px;
+    left: -220px;
+  }
+
+  .scrolling-item-media {
+    width: 170px;
+    height: 120px;
+  }
+
+  .grid-item-media {
+    max-width: 90px;
+    height: 70px;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}

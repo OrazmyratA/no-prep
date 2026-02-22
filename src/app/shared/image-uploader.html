@@ -1,0 +1,89 @@
+<div class="border-2 border-gray-300 rounded-lg overflow-hidden">
+  <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" class="hidden">
+
+  <div class="flex border-b border-gray-300">
+    <button type="button"
+            (click)="activateUploadMode(); triggerFilePicker(fileInput)"
+            class="flex-1 py-2 text-sm font-medium"
+            [class.bg-blue-500]="activeTab === 'upload'"
+            [class.text-white]="activeTab === 'upload'"
+            [class.bg-gray-100]="activeTab !== 'upload'">
+      Upload
+    </button>
+    <button type="button"
+            (click)="activateSearchMode()"
+            class="flex-1 py-2 text-sm font-medium"
+            [class.bg-blue-500]="activeTab === 'search'"
+            [class.text-white]="activeTab === 'search'"
+            [class.bg-gray-100]="activeTab !== 'search'">
+      Search
+    </button>
+  </div>
+
+  <div *ngIf="activeTab === 'upload'" class="p-4">
+    <div class="border-2 border-dashed rounded p-4 text-center transition relative"
+         [class.border-blue-500]="isDragOver"
+         [class.bg-blue-50]="isDragOver"
+         [class.border-gray-300]="!isDragOver"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave($event)"
+         (drop)="onFileDrop($event)">
+      <div *ngIf="preview; else uploadPlaceholder" class="relative">
+        <img [src]="preview" class="max-h-32 mx-auto rounded">
+        <button type="button"
+                (click)="removeImage($event)"
+                class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
+          &times;
+        </button>
+      </div>
+      <ng-template #uploadPlaceholder>
+        <p class="text-gray-500">Use Upload button or drag and drop an image here</p>
+      </ng-template>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isSearchFullscreen" class="fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/60" (click)="closeSearchFullscreen()"></div>
+  <div class="relative mx-auto my-4 w-[96vw] h-[92vh] bg-white rounded-lg shadow-xl p-4 flex flex-col">
+    <div class="flex items-center gap-2 mb-3">
+      <input type="text"
+             [formControl]="searchControl"
+             placeholder="Search Pixabay (e.g., cat, cartoon dog)"
+             class="w-full border rounded p-2">
+      <button type="button"
+              (click)="closeSearchFullscreen()"
+              class="px-3 py-2 rounded border border-gray-300 text-sm hover:bg-gray-100">
+        Close
+      </button>
+    </div>
+
+    <div *ngIf="searching" class="text-center py-4 text-sm text-gray-600">
+      Searching...
+    </div>
+
+    <div *ngIf="searchError && !searching" class="text-center py-2 text-sm text-red-500">
+      {{ searchError }}
+    </div>
+
+    <div *ngIf="!searching && searchResults.length === 0 && searchControl.value" class="text-center text-gray-500 py-4">
+      No images found. Try a different keyword.
+    </div>
+
+    <div class="flex-1 overflow-y-auto" (scroll)="onSearchResultsScroll($event)">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div *ngFor="let img of searchResults"
+             (click)="onSearchImageClick(img)"
+             (dblclick)="onSearchImageDoubleClick(img)"
+             class="cursor-pointer border-2 rounded hover:border-blue-500 transition"
+             [class.border-blue-500]="selectedImageId === img.id">
+          <img [src]="img.previewURL" class="w-full h-32 object-cover rounded">
+        </div>
+      </div>
+
+      <div *ngIf="loadingMore" class="text-center text-xs text-gray-500 py-3">
+        Loading more images...
+      </div>
+    </div>
+  </div>
+</div>

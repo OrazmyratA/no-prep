@@ -1,0 +1,60 @@
+<div class="min-h-screen bg-gradient-to-br from-purple-900 to-pink-800 p-4">
+  <div class="container mx-auto">
+    <h2 class="text-4xl font-bold text-white mb-4 text-center">Watch & Memorize</h2>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+    </div>
+
+    <!-- Scrolling Phase -->
+    <div *ngIf="!loading && scrollPhase && scrollingItems.length > 0" class="scroll-stage mb-8">
+      <div class="scroll-container" [class.paused]="isPaused">
+        <div *ngIf="currentScrollIndex >= 0" class="scrolling-item">
+          <div class="scrolling-item-media">
+            <img
+              *ngIf="scrollingItems[currentScrollIndex].image"
+              [src]="imageUrl(scrollingItems[currentScrollIndex].image!, scrollingItems[currentScrollIndex].id!)"
+            >
+          </div>
+          <p class="font-semibold text-center mt-2">{{ scrollingItems[currentScrollIndex].text }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recall Phase Grid -->
+    <div *ngIf="!loading && !scrollPhase && gridItems.length > 0" class="recall-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+      <div *ngFor="let item of gridItems; let i = index"
+           (click)="onGridClick(i)"
+           class="grid-item"
+           [class.selected]="selectedIndices.has(i)">
+        <div class="grid-item-media">
+          <img *ngIf="item.image" [src]="imageUrl(item.image!, item.id!)">
+        </div>
+        <p>{{ item.text }}</p>
+      </div>
+    </div>
+
+    <!-- Empty / Info -->
+    <div *ngIf="!loading && scrollingItems.length === 0" class="text-white text-center p-8">
+      <p class="text-xl">No items to display.</p>
+    </div>
+
+    <!-- Game Finished Overlay -->
+    <div *ngIf="showWinPopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-8 text-center">
+        <p class="text-2xl mb-4">You got them all!</p>
+        <div class="space-x-4">
+          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">Activities</button>
+          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sandwich Menu -->
+    <app-sandwich-menu
+      (action)="onMenuAction($event)"
+      (menuOpenChange)="onMenuOpenChange($event)">
+    </app-sandwich-menu>
+  </div>
+</div>

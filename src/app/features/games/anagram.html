@@ -1,0 +1,81 @@
+<div class="min-h-screen bg-gradient-to-br from-blue-900 to-purple-800 p-4">
+  <div class="container mx-auto">
+    <h2 class="text-4xl font-bold text-white mb-4 text-center">Anagram</h2>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+    </div>
+
+    <div *ngIf="!loading && !gameFinished && currentItem" class="min-h-[70vh] pt-10 flex flex-col justify-center">
+      <!-- Optional image hint -->
+      <div *ngIf="showHint && currentItem.image" class="flex justify-center mb-6">
+        <img [src]="imageUrl(currentItem.image, currentItem.id!)" class="max-h-40 rounded-xl shadow-2xl">
+      </div>
+
+      <!-- Target slots -->
+      <div class="target-slots">
+        <ng-container *ngFor="let displaySlot of displaySlots">
+          <div *ngIf="displaySlot.isSpace; else letterSlot" class="slot-gap" aria-hidden="true"></div>
+          <ng-template #letterSlot>
+            <div [id]="'target-' + displaySlot.targetIndex"
+                cdkDropList
+                [cdkDropListData]="[]"
+                [cdkDropListConnectedTo]="['sourceList']"
+                (cdkDropListDropped)="drop($event)"
+               class="w-16 h-16 border-4 border-dashed border-white bg-white bg-opacity-10 rounded-lg flex items-center justify-center text-3xl font-bold text-white">
+            <div *ngIf="displaySlot.targetIndex !== null && targetLetters[displaySlot.targetIndex]" class="w-full h-full flex items-center justify-center bg-green-500 rounded-lg">
+              {{ targetLetters[displaySlot.targetIndex]!.letter }}
+            </div>
+            </div>
+          </ng-template>
+        </ng-container>
+      </div>
+
+      <!-- Source letters -->
+      <div cdkDropList
+          id="sourceList"
+          [cdkDropListData]="sourceLetters"
+          [cdkDropListConnectedTo]="targetDropListIds"
+          (cdkDropListDropped)="drop($event)"
+           class="flex justify-center flex-wrap gap-3 p-4 bg-white bg-opacity-20 rounded-xl min-h-24 max-w-4xl mx-auto">
+        <div *ngFor="let tile of sourceLetters"
+             cdkDrag
+             class="w-16 h-16 bg-yellow-400 rounded-lg shadow-lg flex items-center justify-center text-3xl font-bold cursor-move">
+          {{ tile.letter }}
+        </div>
+      </div>
+
+      <!-- Control buttons -->
+      <div class="flex justify-center gap-4 mt-8">
+        <button (click)="previousItem()"
+                [disabled]="currentIndex === 0"
+                class="bg-slate-500 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+          Previous
+        </button>
+        <button (click)="shuffle()"
+                class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
+          Shuffle
+        </button>
+        <button (click)="nextItem()"
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
+          Next
+        </button>
+      </div>
+    </div>
+
+    <!-- Game Finished Overlay -->
+    <div *ngIf="gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl p-8 text-center">
+        <p class="text-2xl mb-4">All anagrams solved!</p>
+        <div class="space-x-4">
+          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">Activities</button>
+          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sandwich Menu -->
+    <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+  </div>
+</div>

@@ -1,0 +1,65 @@
+.word-item {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.word-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.word-item-selected {
+  background: rgba(250, 204, 21, 0.9);
+  color: #111827;
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.word-item-found {
+  background: rgba(34, 197, 94, 0.9);
+  color: #f9fafb;
+  cursor: default;
+}
+
+.line-through {
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.grid-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.grid-cell {
+  width: 2rem;
+  height: 2rem;
+  margin: 0.1rem;
+  border-radius: 0.4rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.grid-cell:hover {
+  transform: translateY(-1px);
+}
+
+.grid-cell-selected {
+  background: #facc15;
+  color: #111827;
+}
+
+.grid-cell-found {
+  background: #22c55e;
+  color: #f8fafc;
+}
+
+@media (min-width: 640px) {
+  .grid-cell {
+    width: 2.35rem;
+    height: 2.35rem;
+    font-size: 1rem;
+  }
+}

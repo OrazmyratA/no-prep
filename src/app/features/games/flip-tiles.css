@@ -1,0 +1,40 @@
+   .game-container {
+      perspective: 2000px;
+    }
+    .card-container {
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    .card-container.flipped {
+      transform: rotateY(180deg);
+    }
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 0.75rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-front {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .card-back {
+      background: white;
+      transform: rotateY(180deg);
+      padding: 0.5rem;
+      flex-direction: column;
+    }
+    .card-back img {
+      max-height: 70%;
+      object-fit: contain;
+    }
+    .card-back p {
+      font-weight: 600;
+      text-align: center;
+      margin-top: 0.25rem;
+      font-size: 0.9rem;
+    }

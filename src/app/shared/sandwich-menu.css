@@ -1,0 +1,47 @@
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(15, 23, 42, 0.32);
+  backdrop-filter: blur(6px);
+}
+
+.menu-fab {
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 9999px;
+  background: #111827;
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.menu-panel {
+  position: absolute;
+  bottom: 64px;
+  left: 0;
+  width: 168px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  padding: 8px;
+}
+
+.menu-action {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  cursor: pointer;
+}
+
+.menu-action:hover {
+  background: #f3f4f6;
+}
