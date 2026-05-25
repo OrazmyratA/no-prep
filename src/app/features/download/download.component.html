@@ -1,0 +1,138 @@
+<div class="download-page">
+
+  <!-- Nav Bar -->
+  <nav class="download-nav">
+    <div class="download-nav-inner">
+      <div class="nav-brand">
+        <img src="assets/icons/icon.png" alt="No-Prep icon" class="nav-icon">
+        <span class="nav-title">No-Prep</span>
+      </div>
+      <button class="nav-back-btn" (click)="goToApp()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Open Web App
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="download-hero">
+    <div class="hero-inner">
+      <img src="assets/icons/icon.png" alt="No-Prep" class="hero-icon">
+      <h1 class="hero-title">No-Prep for Windows</h1>
+      <p class="hero-subtitle">
+        All 16 classroom games — running natively on your PC.<br>
+        No browser needed, works fully offline.
+      </p>
+    </div>
+  </header>
+
+  <!-- Download Card -->
+  <main class="download-main">
+    <div class="download-card">
+
+      <!-- Windows badge + version -->
+      <div class="card-header">
+        <div class="windows-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+          </svg>
+          Windows
+        </div>
+        <span class="version-badge">v{{ versions[0].version }}</span>
+        <span class="platform-badge">Windows 10 · 64-bit · Free</span>
+      </div>
+
+      <!-- Download button -->
+      <button class="download-btn" (click)="openUrl(releasesUrl)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Download .exe Installer
+      </button>
+
+      <p class="download-hint">Opens GitHub Releases · Always the latest version</p>
+
+      <!-- Feature bullets -->
+      <ul class="feature-list">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          No browser required
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Works fully offline
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Faster & smoother performance
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Free updates via GitHub
+        </li>
+      </ul>
+    </div>
+
+    <!-- Version History -->
+    <section class="changelog-section">
+      <h2 class="changelog-title">Version History</h2>
+
+      <div class="changelog-list">
+        <div *ngFor="let v of versions" class="changelog-entry">
+          <div class="changelog-entry-header">
+            <span class="changelog-version">v{{ v.version }}</span>
+            <span class="changelog-date">{{ v.date }}</span>
+            <span *ngIf="v === versions[0]" class="latest-badge">Latest</span>
+          </div>
+          <ul class="changelog-notes">
+            <li *ngFor="let note of v.notes">{{ note }}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Also Available On -->
+    <section class="also-section">
+      <h2 class="also-title">Also Available On</h2>
+      <div class="also-links">
+
+        <button class="also-btn web-btn" (click)="goToApp()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <div>
+            <div class="also-btn-label">Web Version</div>
+            <div class="also-btn-sub">noprep.netlify.app</div>
+          </div>
+        </button>
+
+        <button class="also-btn play-btn" (click)="openUrl(playStoreUrl)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3.18 23.76a2 2 0 0 0 2.07-.09l11.67-6.74-3.29-3.28-10.45 10.11zM.5 1.05A2 2 0 0 0 0 2.4v19.2a2 2 0 0 0 .5 1.35L.6 23l10.76-10.76v-.25L.6 1.14l-.1-.09zM20.32 10.37l-2.88-1.66-3.29 3.29 3.29 3.28 2.91-1.68a2.02 2.02 0 0 0 0-3.23zM3.18.24L14.85 6.98l-3.29 3.28L1.11.15a2 2 0 0 0 2.07.09z"/>
+          </svg>
+          <div>
+            <div class="also-btn-label">Android App</div>
+            <div class="also-btn-sub">Google Play</div>
+          </div>
+        </button>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="download-footer">
+    <p>© 2026 No-Prep · Made for teachers, by teachers</p>
+  </footer>
+
+</div>

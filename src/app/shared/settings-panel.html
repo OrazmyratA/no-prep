@@ -1,45 +1,405 @@
-    <form [formGroup]="settingsForm">
-      <ng-container [ngSwitch]="gameId">
-        <!-- Reveal Game Settings -->
-          <div *ngSwitchCase="'reveal-game'">
-            <label class="block mb-2">Reveal Timer (seconds)</label>
-            <input type="number" formControlName="timer" class="w-full border p-2 rounded" min="1" max="60">
-            
-            <label class="block mt-4 mb-2">Grid Size (cells per side)</label>
-            <input type="number" formControlName="gridSize" class="w-full border p-2 rounded" min="2" max="30">
-            <p class="text-xs text-gray-500 mt-1">Total cells = gridSize × gridSize</p>
-          </div>
+<form [formGroup]="settingsForm">
+  <ng-container [ngSwitch]="gameId">
 
-        <!-- Watch & Memorize Settings -->
-          <div *ngSwitchCase="'watch-memorize'">
-            <label class="block mb-2">Number of items to show</label>
-            <input type="number" formControlName="count" class="w-full border p-2 rounded" min="1">
-            <p class="text-xs text-gray-500 mt-1">Max is the total items in your topic (capped automatically)</p>
-            <label class="block mt-4 mb-2">Scroll speed (seconds per item)</label>
-            <input type="number" formControlName="speed" class="w-full border p-2 rounded" min="1" max="10">
-          </div>
+    <!-- Spin-Wheel Game Settings -->
+    <div *ngSwitchCase="'spin-wheel'">
+      <label class="flex items-center">
+        <input type="checkbox" formControlName="textOnWheel" class="mr-2">
+        {{ 'settingsSpinWheelTextOnWheel' | translate }}
+      </label>
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpinWheelTextOnWheelHint' | translate }}</p>
+    </div>
 
-        <!-- Anagram Settings -->
-          <div *ngSwitchCase="'anagram'">
-            <label class="inline-flex items-center gap-2">
-              <input type="checkbox" formControlName="showHint" class="h-4 w-4">
-              <span>Show image hint</span>
-            </label>
-            <p class="text-xs text-gray-500 mt-2">Unchecked means no image hint will be shown.</p>
-          </div>
+    <!-- Reveal Game Settings -->
+    <div *ngSwitchCase="'reveal-game'" class="space-y-6">
 
-        <!-- Unjumble Settings -->
-          <div *ngSwitchCase="'unjumble'">
-            <label class="inline-flex items-center gap-2">
-              <input type="checkbox" formControlName="showHint" class="h-4 w-4">
-              <span>Show image hint</span>
-            </label>
-            <p class="text-xs text-gray-500 mt-2">Unchecked means no image hint will be shown.</p>
-          </div>
-
-        <!-- Default: no settings -->
-        <div *ngSwitchDefault>
-          <p class="text-gray-500">No settings required.</p>
+      <!-- Timer -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsRevealTimer' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('timer')?.value }}s
+          </span>
         </div>
-      </ng-container>
-    </form>
+        <input
+          type="range"
+          formControlName="timer"
+          min="1" max="60" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1s</span>
+          <span>60s</span>
+        </div>
+      </div>
+
+      <!-- Grid size -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsGridSize' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('gridSize')?.value }}×{{ settingsForm.get('gridSize')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="gridSize"
+          min="2" max="30" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>2×2</span>
+          <span>30×30</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsGridSizeHint' | translate }}</p>
+      </div>
+
+      <!-- Team count -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsRevealTeamCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('teamCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="teamCount"
+          min="1" max="6" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>6</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsRevealTeamCountHint' | translate }}</p>
+      </div>
+
+    </div>
+
+    <!-- Watch & Memorize Settings -->
+    <div *ngSwitchCase="'watch-memorize'" class="space-y-6">
+
+      <!-- Items to memorise -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsWatchMemorizeCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2rem] text-center">
+            {{ settingsForm.get('count')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="count"
+          min="1" max="20" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>20</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsWatchMemorizeCountHint' | translate }}</p>
+      </div>
+
+      <!-- Scroll speed -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsWatchMemorizeSpeed' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('speed')?.value }}s
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="speed"
+          min="1" max="15" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>⚡ 1s</span>
+          <span>🐢 15s</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Pop Balloon Settings -->
+    <div *ngSwitchCase="'pop-balloon'" class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsRevealTeamCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('teamCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="teamCount"
+          min="1" max="4" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>4</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsRevealTeamCountHint' | translate }}</p>
+      </div>
+    </div>
+
+    <!-- Spotlight Settings -->
+    <div *ngSwitchCase="'spotlight'" class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsSpotlightSize' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('spotlightSize')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="spotlightSize"
+          min="5" max="400" step="5"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>🔦 5</span>
+          <span>400 🔆</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpotlightSizeHint' | translate }}</p>
+      </div>
+    </div>
+
+    <!-- Team Tug Settings -->
+    <div *ngSwitchCase="'team-tug'" class="space-y-6">
+
+      <!-- Movement Speed -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsTeamTugMovementSpeed' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('movementSpeed')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="movementSpeed"
+          min="1" max="20" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>🐢 1</span>
+          <span>20 🚀</span>
+        </div>
+      </div>
+
+      <!-- Win by Click Count -->
+      <div>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="winByClickCount" class="h-4 w-4">
+          <span class="text-sm font-medium">{{ 'settingsWinByClickCount' | translate }}</span>
+        </label>
+        <div *ngIf="settingsForm.get('winByClickCount')?.value" class="mt-3">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium">{{ 'settingsClicksToWin' | translate }}</label>
+            <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+              {{ settingsForm.get('clickTarget')?.value }}
+            </span>
+          </div>
+          <input
+            type="range"
+            formControlName="clickTarget"
+            min="1" max="100" step="1"
+            class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+          >
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>1</span>
+            <span>100</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enable Timer -->
+      <div>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="enableTimer" class="h-4 w-4">
+          <span class="text-sm font-medium">{{ 'settingsEnableTimer' | translate }}</span>
+        </label>
+        <div *ngIf="settingsForm.get('enableTimer')?.value" class="mt-3">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium">{{ 'settingsTimerMinutes' | translate }}</label>
+            <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+              {{ settingsForm.get('timerMinutes')?.value }}m
+            </span>
+          </div>
+          <input
+            type="range"
+            formControlName="timerMinutes"
+            min="1" max="59" step="1"
+            class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+          >
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>1m</span>
+            <span>59m</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Cup Clash Settings -->
+    <div *ngSwitchCase="'cup-clash'" class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsCupsPerTeam' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('cupsPerTeam')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="cupsPerTeam"
+          min="1" max="30" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>30</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Odd One Out Settings -->
+    <div *ngSwitchCase="'odd-one-out'" class="space-y-6">
+
+      <!-- Item Amount -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsOddOneOutItemAmount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('itemAmount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="itemAmount"
+          min="1" max="5" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>5</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsOddOneOutItemAmountHint' | translate }}</p>
+      </div>
+
+      <!-- Timer -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsOddOneOutTimer' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('timerSeconds')?.value }}s
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="timerSeconds"
+          min="5" max="60" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>5s</span>
+          <span>60s</span>
+        </div>
+      </div>
+
+      <!-- Show Item Names -->
+      <div>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="showItemNames" class="h-4 w-4 accent-blue-600">
+          <span class="text-sm font-medium">{{ 'settingsShowItemNames' | translate }}</span>
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsShowItemNamesHint' | translate }}</p>
+      </div>
+
+    </div>
+
+    <!-- Test ABC Settings -->
+    <div *ngSwitchCase="'test-abc'">
+      <label class="flex items-center">
+        <input type="checkbox" formControlName="reverseMode" class="mr-2">
+        {{ 'settingsTestAbcReverseMode' | translate }}
+      </label>
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTestAbcReverseModeHint' | translate }}</p>
+    </div>
+
+    <!-- Team Sentence Settings -->
+    <div *ngSwitchCase="'team-sentence'">
+      <label class="block mb-2">{{ 'settingsTeamSentenceSpeed' | translate }}</label>
+      <input type="range" formControlName="speed" min="0.3" max="3" step="0.1" class="w-full">
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceSpeedHint' | translate }}</p>
+
+      <label class="flex items-center mt-4">
+        <input type="checkbox" formControlName="reverseMode" class="mr-2">
+        {{ 'settingsTeamSentenceReverseMode' | translate }}
+      </label>
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceReverseModeHint' | translate }}</p>
+
+      <label class="flex items-center mt-4">
+        <input type="checkbox" formControlName="soundQuizMode" class="mr-2">
+        {{ 'settingsTeamSentenceSoundQuizMode' | translate }}
+      </label>
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceSoundQuizModeHint' | translate }}</p>
+    </div>
+
+    <!-- Spelling Check Game Settings -->
+    <div *ngSwitchCase="'spelling-check'" class="space-y-3">
+      <div *ngFor="let category of spellingRuleCategories" class="border rounded-lg p-3 bg-white/60">
+        <button
+          type="button"
+          class="w-full flex items-center justify-between text-sm font-semibold text-left"
+          (click)="toggleSpellingCategory(category.id)"
+        >
+          <span>{{ category.labelKey | translate }}</span>
+          <span class="text-lg leading-none text-blue-600">{{ expandedSpellingCategories[category.id] ? '−' : '+' }}</span>
+        </button>
+
+        <div *ngIf="expandedSpellingCategories[category.id]" class="grid grid-cols-2 gap-2 mt-3">
+          <label *ngFor="let option of category.options; let i = index" class="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" [formControlName]="ruleControlName(category.id, i)" class="h-4 w-4 accent-blue-600">
+            <span>{{ option }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="border rounded-lg p-3 bg-white/60">
+        <div class="text-sm font-semibold">{{ 'settingsSpellingCheckCustom' | translate }}</div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpellingCheckCustomHint' | translate }}</p>
+
+        <div formArrayName="customRules" class="space-y-2 mt-3">
+          <div *ngFor="let control of customRules.controls; let i = index" class="flex items-center gap-2">
+            <input
+              type="text"
+              [formControlName]="i"
+              class="flex-1 border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="-ing, un-, -th-, in front of"
+            >
+            <button
+              type="button"
+              class="h-7 w-7 flex items-center justify-center rounded-full bg-red-100 text-red-600 hover:bg-red-200 text-sm font-bold leading-none"
+              (click)="removeCustomRule(i)"
+            >×</button>
+          </div>
+        </div>
+
+        <button type="button" class="mt-3 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700" (click)="addCustomRule()">
+          + {{ 'settingsSpellingCheckAddCustom' | translate }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Default: no settings -->
+    <div *ngSwitchDefault>
+      <p class="text-gray-500">{{ 'settingsNoSettingsRequired' | translate }}</p>
+    </div>
+  </ng-container>
+</form>

@@ -1,0 +1,120 @@
+<div class="game-container">
+  <!-- Video background -->
+  <video class="video-background" autoplay muted loop>
+    <source src="assets/videos/underwater.mp4" type="video/mp4">
+  </video>
+
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">📝</div>
+    <p>{{ 'teamSentenceLoading' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading && gameActive" class="game-board">
+    <button *ngIf="soundQuizMode"
+            type="button"
+            class="sound-prompt-btn"
+            (click)="playRandomSoundPrompt()"
+            [disabled]="remainingSoundItems().length === 0">
+      &#128266;
+    </button>
+
+    <!-- Left team side -->
+    <div class="team-side left" [class.frozen]="isLeftFrozen()">
+      <div class="team-header">
+        <h2><span class="score">{{ 'score' | translate }}: {{ teams.left.score }}</span></h2>
+      </div>
+      <div class="sentence-area" [class.correct]="correctTeam === 'left'">
+        <div *ngFor="let word of teams.left.sentenceWords; let i = index" 
+             class="sentence-word"
+             [class.image-mode]="reverseMode && imageForWord(word)"
+             (pointerdown)="onSentenceWordPress($event, 'left', i)">
+          <ng-container *ngIf="reverseMode && imageForWord(word) as wordImage; else leftSentenceText">
+            <img [src]="imageUrl(wordImage.image, wordImage.itemId)" [alt]="word" class="tile-image sentence-image">
+          </ng-container>
+          <ng-template #leftSentenceText>{{ word }}</ng-template>
+        </div>
+        <div class="placeholder" *ngIf="teams.left.sentenceWords.length === 0">{{ 'teamSentenceClickWords' | translate }}</div>
+      </div>
+      <div class="floating-area" #leftContainer>
+        <div *ngFor="let tile of teams.left.floatingWords" 
+             class="floating-word"
+             [class.image-mode]="reverseMode && tile.image"
+             [class.sound-locked]="soundQuizMode && !currentSoundSentence"
+             [class.shake]="isTileShaking('left', tile.id)"
+             [style.top.%]="tile.top" 
+             [style.left.%]="tile.left"
+             (pointerdown)="onWordPress($event, 'left', tile)">
+          <ng-container *ngIf="reverseMode && tile.image && tile.itemId !== undefined; else leftTileText">
+            <img [src]="imageUrl(tile.image, tile.itemId)" [alt]="tile.word" class="tile-image floating-image">
+          </ng-container>
+          <ng-template #leftTileText>{{ tile.word }}</ng-template>
+        </div>
+        <div *ngFor="let mine of teams.left.mines" 
+             class="floating-mine" 
+             [style.top.%]="mine.top" 
+             [style.left.%]="mine.left"
+             (pointerdown)="onMinePress($event, 'left', mine)">
+          <img src="assets/images/mine.png" alt="mine" class="mine-image">
+        </div>
+      </div>
+    </div>
+
+    <!-- Center anchor divider -->
+    <div class="center-divider">
+      <img src="assets/images/anchor.png" alt="anchor" class="anchor-image">
+    </div>
+
+    <!-- Right team side -->
+    <div class="team-side right" [class.frozen]="isRightFrozen()">
+      <div class="team-header">
+        <h2><span class="score">{{ 'score' | translate }}: {{ teams.right.score }}</span></h2>
+      </div>
+      <div class="sentence-area" [class.correct]="correctTeam === 'right'">
+        <div *ngFor="let word of teams.right.sentenceWords; let i = index" 
+             class="sentence-word"
+             [class.image-mode]="reverseMode && imageForWord(word)"
+             (pointerdown)="onSentenceWordPress($event, 'right', i)">
+          <ng-container *ngIf="reverseMode && imageForWord(word) as wordImage; else rightSentenceText">
+            <img [src]="imageUrl(wordImage.image, wordImage.itemId)" [alt]="word" class="tile-image sentence-image">
+          </ng-container>
+          <ng-template #rightSentenceText>{{ word }}</ng-template>
+        </div>
+        <div class="placeholder" *ngIf="teams.right.sentenceWords.length === 0">{{ 'teamSentenceClickWords' | translate }}</div>
+      </div>
+      <div class="floating-area" #rightContainer>
+        <div *ngFor="let tile of teams.right.floatingWords" 
+             class="floating-word"
+             [class.image-mode]="reverseMode && tile.image"
+             [class.sound-locked]="soundQuizMode && !currentSoundSentence"
+             [class.shake]="isTileShaking('right', tile.id)"
+             [style.top.%]="tile.top" 
+             [style.left.%]="tile.left"
+             (pointerdown)="onWordPress($event, 'right', tile)">
+          <ng-container *ngIf="reverseMode && tile.image && tile.itemId !== undefined; else rightTileText">
+            <img [src]="imageUrl(tile.image, tile.itemId)" [alt]="tile.word" class="tile-image floating-image">
+          </ng-container>
+          <ng-template #rightTileText>{{ tile.word }}</ng-template>
+        </div>
+        <div *ngFor="let mine of teams.right.mines" 
+             class="floating-mine" 
+             [style.top.%]="mine.top" 
+             [style.left.%]="mine.left"
+             (pointerdown)="onMinePress($event, 'right', mine)">
+          <img src="assets/images/mine.png" alt="mine" class="mine-image">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Winner overlay -->
+  <div *ngIf="gameFinished" class="winner-overlay">
+    <div class="winner-card">
+      <h2>🏆 {{ winner === 'left' ? teams.left.name : teams.right.name }} {{ 'teamSentenceWins' | translate }}! 🏆</h2>
+      <p>{{ 'teamSentenceFinalScore' | translate }}: {{ teams.left.score }} - {{ teams.right.score }}</p>
+      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
+    </div>
+  </div>
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

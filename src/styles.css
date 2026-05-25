@@ -1,3 +1,74 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+app-root {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+body.app-theme-active {
+  background: #0f172a;
+}
+
+body.app-theme-active .topics-page,
+body.app-theme-active .activity-page {
+  background: transparent !important;
+}
+
+body.app-theme-active:not(.app-theme-excluded) .min-h-screen.bg-gradient-to-br,
+body.app-theme-active:not(.app-theme-excluded) .game-container,
+body.app-theme-active:not(.app-theme-excluded) .cup-clash-board,
+body.app-theme-active:not(.app-theme-excluded) app-reveal-game {
+  background: transparent !important;
+}
+
+body.app-theme-active:not(.app-theme-excluded) .game-container::before,
+body.app-theme-active:not(.app-theme-excluded) .game-container::after {
+  background: transparent !important;
+}
+
+#app-notification-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.app-notification-toast {
+  min-width: 240px;
+  max-width: 340px;
+  padding: 0.85rem 1.05rem;
+  border-radius: 0.875rem;
+  color: white;
+  background: rgba(15, 23, 42, 0.94);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: auto;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.app-notification-toast.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.app-notification-info {
+  background: rgba(14, 165, 233, 0.95);
+}
+
+.app-notification-success {
+  background: rgba(22, 163, 74, 0.95);
+}
+
+.app-notification-error {
+  background: rgba(220, 38, 38, 0.95);
+}

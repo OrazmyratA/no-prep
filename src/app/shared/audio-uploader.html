@@ -1,0 +1,44 @@
+<div class="border-2 border-gray-300 rounded-lg overflow-hidden">
+  <input type="file" accept="audio/*" #fileInput (change)="onFileSelected($event)" class="hidden">
+  <div class="flex border-b border-gray-300">
+    <button type="button" (click)="triggerFileInput()"
+            [attr.aria-label]="'upload' | translate"
+            [attr.title]="'upload' | translate"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium bg-blue-500 text-white">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+      </svg>
+    </button>
+    <button type="button" *ngIf="!isRecording" (click)="startRecording()"
+            [disabled]="isStartingRecording"
+            [attr.aria-label]="(isStartingRecording ? 'startingRecording' : 'record') | translate"
+            [attr.title]="(isStartingRecording ? 'startingRecording' : 'record') | translate"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 disabled:opacity-60 disabled:cursor-wait">
+      <svg *ngIf="!isStartingRecording" class="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="12" cy="12" r="6"></circle>
+      </svg>
+      <span *ngIf="isStartingRecording" class="audio-spinner" aria-hidden="true"></span>
+    </button>
+    <button type="button" *ngIf="isRecording" (click)="stopRecording()"
+            [attr.aria-label]="'stopRecording' | translate"
+            [attr.title]="'stopRecording' | translate"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium bg-red-500 text-white animate-pulse">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="8" y="8" width="8" height="8" rx="1"></rect>
+      </svg>
+    </button>
+  </div>
+  <div class="p-3">
+    <div *ngIf="audioUrl; else noAudio" class="relative">
+      <audio [src]="audioUrl" controls class="w-full h-10"></audio>
+      <button type="button" (click)="removeAudio()"
+              class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+              [attr.title]="'removeAudio' | translate">x</button>
+    </div>
+    <ng-template #noAudio>
+      <div class="text-center text-gray-400 text-sm py-2">
+        {{ 'noAudioRecordOrUpload' | translate }}
+      </div>
+    </ng-template>
+  </div>
+</div>

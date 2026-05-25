@@ -1,3 +1,113 @@
 canvas { 
     transition: transform 2s ease-out; 
 }
+
+.zoom-in {
+  transform: scale(1);
+  opacity: 1;
+}
+
+button.quiz-option {
+  transition: all 0.2s ease;
+}
+button.quiz-option:hover {
+  transform: translateY(-5px);
+}
+button.quiz-option.fade-out {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  10%,30%,50%,70%,90% { transform: translateX(-8px); }
+  20%,40%,60%,80% { transform: translateX(8px); }
+}
+
+/* Quiz buttons – 3x bigger */
+.quiz-option {
+  padding: 1rem 1rem !important;
+  font-size: 2rem !important;
+  min-width: 200px !important;
+  border-radius: 2rem !important;
+  transition: all 0.3s ease;
+}
+
+/* Correct answer flash effect */
+.quiz-option.correct-flash {
+  background: linear-gradient(135deg, #4caf50, #2e7d32) !important;
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+  animation: fadeOutGreen 1s ease-out forwards;
+}
+
+@keyframes fadeOutGreen {
+  0% {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+
+/* Fade‑in overlay (3 seconds) */
+.quiz-overlay {
+  transition: opacity 3s ease-in-out;
+  opacity: 0;
+}
+.quiz-overlay.visible {
+  opacity: 1;
+}
+
+/* Pop‑in effect (like a PowerPoint entrance) */
+@keyframes popIn {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.pop-in {
+  animation: popIn 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+.spin-btn {
+  transform: translate(-50%, calc(-25% - 25px));
+}
+
+/* Quiz overlay background */
+.quiz-overlay {
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  transition: opacity 3s ease-in-out;
+  opacity: 0;
+}
+.quiz-overlay.visible {
+  opacity: 1;
+}
+.selected-item-container {
+    width: 484px;
+    height: 360px;
+    max-width: 70vw;
+    max-height: 70vh;
+    padding: 30px;
+}
+
+

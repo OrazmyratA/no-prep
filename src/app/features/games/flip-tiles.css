@@ -1,40 +1,342 @@
-   .game-container {
-      perspective: 2000px;
-    }
-    .card-container {
-      transform-style: preserve-3d;
-      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-    }
-    .card-container.flipped {
-      transform: rotateY(180deg);
-    }
-    .card-face {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
-      border-radius: 0.75rem;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .card-front {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    .card-back {
-      background: white;
-      transform: rotateY(180deg);
-      padding: 0.5rem;
-      flex-direction: column;
-    }
-    .card-back img {
-      max-height: 70%;
-      object-fit: contain;
-    }
-    .card-back p {
-      font-weight: 600;
-      text-align: center;
-      margin-top: 0.25rem;
-      font-size: 0.9rem;
-    }
+/* ===== MAIN CONTAINER ===== */
+.game-container {
+  perspective: 2000px;
+  overflow: hidden;
+}
+
+/* ===== FLEX GRID WRAPPER – centered & responsive ===== */
+.tile-board-container {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-board {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.tile-row {
+  display: flex;
+  justify-content: center;
+}
+
+/* ===== INDIVIDUAL CARD ===== */
+.card {
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+/* ===== FLIP CARD CONTAINER ===== */
+.card-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.card-container.flipped {
+  transform: rotateY(180deg);
+}
+
+/* ===== CARD FACES ===== */
+.card-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-front {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card-back {
+  background: white;
+  transform: rotateY(180deg);
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Fullscreen button on card back (top-left) */
+.fullscreen-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.2);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.2s;
+}
+.fullscreen-btn:hover {
+  transform: scale(1.1);
+  background: rgba(0,0,0,0.8);
+}
+.fullscreen-btn img {
+  filter: brightness(0) invert(1);
+}
+
+.card-back img:not(.fullscreen-btn img) {
+  width: 95%;
+  height: 90%;
+  object-fit: contain;
+}
+
+.card-back p {
+  font-weight: 600;
+  text-align: center;
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+}
+/* ===== FULLSCREEN OVERLAY ===== */
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.fullscreen-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+
+/* Fixed‑size card container */
+.fullscreen-card {
+  position: relative;
+  background: white;
+  border-radius: 1.5rem;
+  width: 70vw;
+  height: 70vh;
+  max-width: 800px;
+  max-height: 800px;
+  min-width: 300px;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+  overflow: hidden;
+  padding: 0;   /* no padding – image fills fully */
+}
+
+/* Speaker button (absolute inside the card, top‑right) */
+.fullscreen-speaker {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: #3b82f6;
+  border: none;
+  font-size: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s;
+  z-index: 10;
+}
+.fullscreen-speaker:hover {
+  transform: scale(1.1);
+}
+
+/* Image area – fills the card, text overlays if needed */
+.fullscreen-image-area {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.fullscreen-image-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* stretch to fill card, cropping if necessary */
+}
+
+/* Text appears at the bottom of the card (over image, with semi‑transparent background) */
+.fullscreen-text {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: clamp(1rem, 4vw, 1.8rem);
+  font-weight: bold;
+  text-align: center;
+  padding: 0.5rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .fullscreen-text {
+    white-space: normal;
+    font-size: 0.9rem;
+  }
+}
+
+/* Navigation buttons – left and right of the card */
+.fullscreen-nav-btn {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(4px);
+  border: none;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.fullscreen-nav-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.4);
+  transform: scale(1.1);
+}
+.fullscreen-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .fullscreen-nav-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+  .fullscreen-speaker {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  .fullscreen-card {
+    width: 85vw;
+    height: 60vh;
+    min-height: 300px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 640px) {
+  .card-back p {
+    font-size: 0.7rem;
+  }
+  .card-front span {
+    font-size: 2rem;
+  }
+  .fullscreen-card {
+    padding: 1rem;
+  }
+  .fullscreen-speaker {
+    width: 40px;
+    height: 40px;
+    font-size: 1.5rem;
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+  .nav-btn {
+    padding: 0.5rem 1.2rem;
+    font-size: 1rem;
+  }
+}
+
+/* Speaker button (top‑right) */
+.speaker-btn {
+  background: #3b82f6;
+  border: none;
+  font-size: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.speaker-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  background: #2563eb;
+}
+.speaker-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.speaker-btn.active {
+  background: #22c55e;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Shake animation for wrong flip */
+.card.shake {
+  animation: shakeCard 0.5s ease-in-out;
+}
+@keyframes shakeCard {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+

@@ -1,5 +1,5 @@
-<div class="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 p-4 flex flex-col items-center">
-  <h2 class="text-4xl font-bold text-white mb-2">Reveal Game</h2>
+<div #host class="game-shell">
+  <h2 class="text-4xl font-bold text-white mb-2">{{ 'revealGameTitle' | translate }}</h2>
 
   <!-- Loading -->
   <div *ngIf="loading" class="flex items-center justify-center h-64">
@@ -8,32 +8,30 @@
 
   <!-- No images -->
   <div *ngIf="!loading && items.length === 0" class="text-white text-center p-8">
-    <p class="text-xl">No items with images found.</p>
-    <button (click)="onMenuAction('activity')" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Back to Activities</button>
+    <p class="text-xl">{{ 'revealGameNoImages' | translate }}</p>
+    <button (click)="onMenuAction('activity')" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">{{ 'backToActivities' | translate }}</button>
   </div>
 
   <!-- Game active -->
   <div *ngIf="!loading && items.length > 0 && gameActive && currentItem" class="flex flex-col items-center">
-    <div class="relative inline-block">
-      <img [src]="imageUrl(currentItem.image!, currentItem.id!)"
-     class="block max-w-full max-h-[70vh] rounded-xl shadow-2xl">
-      <!-- Grid overlay - exactly covers the image -->
-      <div class="absolute inset-0 grid"
+<div class="reveal-container" (click)="openQuiz()" [attr.title]="'revealGameTapForQuestion' | translate">     
+   <img [src]="imageUrl(currentItem.image!, currentItem.id!)" class="reveal-image">
+      <div class="grid-overlay"
           [style.gridTemplateColumns]="'repeat(' + gridSize + ', 1fr)'"
           [style.gridTemplateRows]="'repeat(' + gridSize + ', 1fr)'">
-        <div *ngFor="let row of gridRevealed; let r = index">
+        <ng-container *ngFor="let row of gridRevealed; let r = index">
           <div *ngFor="let cell of row; let c = index"
-              class="w-full h-full bg-black transition-opacity duration-200"
-              [class.opacity-0]="gridRevealed[r][c]">
+              class="grid-cell"
+              [class.revealed]="gridRevealed[r][c]">
           </div>
-        </div>
+        </ng-container>
       </div>
     </div>
 
     <!-- Timer bar -->
     <div class="w-full max-w-md mt-4">
       <div class="flex justify-between text-white mb-1">
-        <span>{{ isPaused ? 'Paused' : 'Revealing...' }}</span>
+        <span>{{ (isPaused ? 'paused' : 'revealing') | translate }}</span>
         <span>{{ timeLeft.toFixed(1) }}s</span>
       </div>
       <div class="w-full bg-gray-700 rounded-full h-2.5">
@@ -46,17 +44,65 @@
     <button (click)="skipToNext()"
             [disabled]="isPaused"
             class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-      Skip to Next
+      {{ 'skipToNext' | translate }}
     </button>
   </div>
 
-  <!-- Game Finished Overlay -->
-  <div *ngIf="!loading && gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <!-- Quiz Overlay -->
+  <div *ngIf="showQuiz && currentItem" 
+       class="fixed inset-0 flex items-center justify-center quiz-overlay"
+       [class.visible]="quizOverlayVisible">
+    <div class="w-full max-w-5xl mx-auto p-6 text-center">
+      <div class="flex flex-wrap justify-center gap-4">
+        <button *ngFor="let opt of quizOptions"
+                [attr.data-opt-id]="opt.id"
+                (click)="onQuizAnswer(opt)"
+                [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
+                class="quiz-option px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+          {{ opt.text || '?' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Non‑team mode (class mode) victory popup -->
+  <div *ngIf="!loading && gameFinished && !teamMode" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-xl p-8 text-center">
-      <p class="text-2xl mb-4">All images revealed!</p>
+      <p class="text-2xl mb-4">{{ 'revealGameAllRevealed' | translate }}</p>
       <div class="space-x-4">
-        <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">Activities</button>
-        <button (click)="onMenuAction('startover')" class="bg-blue-500 text-white px-6 py-2 rounded-full">Play Again</button>
+        <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
+        <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team mode victory popup with rankings – background click does NOT close -->
+  <div *ngIf="!loading && gameFinished && teamMode" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
+<h2 class="text-3xl font-bold text-center mb-6">🏆 {{ 'gameResults' | translate }} 🏆</h2>
+      <div class="space-y-4">
+        <div *ngFor="let entry of rankedTeamsWithPosition" class="flex items-center gap-3">
+          <div class="w-12 text-center font-bold text-xl">{{ entry.medal }}</div>
+          <div class="w-28 font-semibold" [style.color]="entry.team.color">{{ entry.team.name }}</div>
+          <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
+                 [style.width.%]="(entry.team.score / maxScore) * 100"
+                 [style.backgroundColor]="entry.team.color"
+                 [style.transition]="'width 0.5s ease-out'">
+              <span *ngIf="entry.team.score > 0">{{ entry.team.score }}</span>
+            </div>
+          </div>
+          <div class="w-12 text-right font-bold">{{ entry.team.score }}</div>
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-4 mt-8">
+        <button (click)="onMenuAction('activity')" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-full transition">
+          {{ 'activitiesLabel' | translate }}
+        </button>
+        <button (click)="resetGame()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full transition">
+          {{ 'playAgain' | translate }}
+        </button>
       </div>
     </div>
   </div>

@@ -1,56 +1,76 @@
-<div class="min-h-screen bg-gradient-to-br from-purple-900 to-indigo-800 p-4">
-  <div class="container mx-auto">
-    <h2 class="text-4xl font-bold text-white mb-4 text-center">Match the Pairs</h2>
+<div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-purple-900 to-indigo-800 p-4 flex flex-col game-container">
+  <div class="w-full mx-auto flex flex-col flex-1 min-h-0">
+    <div class="match-header flex items-center justify-center">
+      <button (click)="peek()"
+              [disabled]="isPeeking"
+              class="mr-4 text-white hover:text-gray-300 transition disabled:opacity-50"
+              [attr.title]="'matchPairsPeek' | translate">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+        </svg>
+      </button>
+      <h2 class="text-4xl font-bold text-white">{{ 'matchPairsTitle' | translate }}</h2>
+    </div>
 
-    <!-- Loading / Empty State -->
+    <!-- Loading -->
     <div *ngIf="!cards.length" class="flex justify-center items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
     </div>
 
-    <!-- Game Grid -->
-    <div *ngIf="cards.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-      <div *ngFor="let card of cards; let i = index"
-          (click)="onCardClick(i)"
-          class="aspect-square relative perspective-1000">
-        <div class="card w-full h-full preserve-3d"
-            [class.flipped]="card.flipped"
-            [class.matched]="card.matched"
-            [class.shake]="card.shake">
-          <!-- Front (hidden) -->
-          <div class="card-front">
-            {{ i + 1 }}
-          </div>
-          <!-- Back (revealed) -->
-          <div class="card-back">
-            <div *ngIf="card.imageSrc" class="w-full h-3/4 flex items-center justify-center">
-              <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+    <!-- Dynamic Game Grid -->
+    <div *ngIf="cards.length > 0" 
+         class="game-board-container">
+      <div #gridContainer class="game-grid"
+           [style.gap.px]="gap"
+           [style.height.px]="boardHeight">
+        <div *ngFor="let row of cardRows; let rowIndex = index"
+             class="game-row"
+             [style.gap.px]="gap">
+          <div *ngFor="let card of row; let colIndex = index"
+               (click)="onCardClick(rowIndex * gridColumns + colIndex)"
+               class="card"
+               [class.flipped]="card.flipped"
+               [class.matched]="card.matched"
+               [class.shake]="card.shake"
+               [style.width.px]="cardSize"
+               [style.height.px]="cardSize">
+            <!-- Front (hidden) -->
+            <div class="card-front">
+              {{ rowIndex * gridColumns + colIndex + 1 }}
             </div>
-            <p *ngIf="card.item.text" class="text-center">{{ card.item.text }}</p>
+            <!-- Back (revealed) -->
+            <div class="card-back">
+              <div class="flex items-center justify-center h-3/5">
+                <img *ngIf="card.imageSrc" [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+              </div>
+              <p *ngIf="card.item.text" class="text-center mt-2 px-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Game Info -->
-    <div class="mt-4 text-white text-center">
-      <p>Matched: {{ matchedCount / 2 }} / {{ items.length }} pairs</p>
+    <div class="match-info mt-4 text-white text-center">
+      <p>{{ 'matchPairsRemaining' | translate }}: {{ cards.filter(c => !c.matched).length / 2 }} / {{ items.length }} {{ 'matchPairsPairs' | translate }}</p>
     </div>
 
     <!-- Reset Button -->
-    <div class="mt-4 flex justify-center">
+    <div class="match-actions mt-4 flex justify-center">
       <button (click)="resetGame()"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-        Shuffle & Restart
+        {{ 'matchPairsShuffleRestart' | translate }}
       </button>
     </div>
 
-    <!-- Game Finished Overlay -->
+    <!-- Winner Overlay -->
     <div *ngIf="gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl mb-4">You got them all!</p>
+        <p class="text-2xl">{{ 'matchPairsYouGotThemAll' | translate }}</p>
         <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">Activities</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">Play Again</button>
+          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
+          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
         </div>
       </div>
     </div>

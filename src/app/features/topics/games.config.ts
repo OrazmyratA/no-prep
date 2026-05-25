@@ -1,67 +1,126 @@
 // src/app/features/topics/games.config.ts
 export interface GameConfig {
   id: string;
-  name: string;
+  nameKey: string;        // translation key for game name
+  descKey: string;        // translation key for description
   icon: string;
   requiresSettings: boolean;
-  description: string;
+  // For backward compatibility, we can keep name/description but they will not be used in template.
+  name?: string;
+  description?: string;
 }
 
 export const GAMES: GameConfig[] = [
+    {
+    id: 'flip-tiles',
+    nameKey: 'gameFlipTilesName',
+    descKey: 'gameFlipTilesDesc',
+    icon: '\u{1F504}',
+    requiresSettings: false,
+  },
+    {
+    id: 'match-pairs',
+    nameKey: 'gameMatchPairsName',
+    descKey: 'gameMatchPairsDesc',
+    icon: '\u{1F0CF}',
+    requiresSettings: false,
+  },
+    {
+    id: 'watch-memorize',
+    nameKey: 'gameWatchMemorizeName',
+    descKey: 'gameWatchMemorizeDesc',
+    icon: '\u{1F440}',
+    requiresSettings: true,
+  },
+  {
+    id: 'spotlight',
+    nameKey: 'gameSpotlightName',
+    descKey: 'gameSpotlightDesc',
+    icon: '\u{1F56F}',
+    requiresSettings: true,
+  },
   {
     id: 'spin-wheel',
-    name: 'Spin the Wheel',
+    nameKey: 'gameSpinWheelName',
+    descKey: 'gameSpinWheelDesc',
     icon: '\u{1F3A1}',
-    requiresSettings: false,
-    description: 'Spin to land on an item. Eliminate segments and continue.'
+    requiresSettings: true,
   },
   {
     id: 'reveal-game',
-    name: 'Reveal Game',
-    icon: '\u{1F50D}',
+    nameKey: 'gameRevealGameName',
+    descKey: 'gameRevealGameDesc',
+    icon: '\u{1F9E9}',
     requiresSettings: true,
-    description: 'Image covered by squares that disappear over time.'
   },
-  {
-    id: 'match-pairs',
-    name: 'Match the Pairs',
-    icon: '\u{1F0CF}',
-    requiresSettings: false,
-    description: 'Find matching pairs of cards.'
-  },
-  {
-    id: 'flip-tiles',
-    name: 'Flip Tiles',
-    icon: '\u{1F504}',
-    requiresSettings: false,
-    description: 'Flip cards to explore items.'
-  },
-  {
-    id: 'watch-memorize',
-    name: 'Watch & Memorize',
-    icon: '\u{1F440}',
+    {
+    id: 'pop-balloon',
+    nameKey: 'gamePopBalloonName',
+    descKey: 'gamePopBalloonDesc',
+    icon: '\u{1F388}',
     requiresSettings: true,
-    description: 'Watch items scroll, then recall them.'
+  },
+    {
+    id: 'test-abc',
+    nameKey: 'gameTestAbcName',
+    descKey: 'gameTestAbcDesc',
+    icon: '\u{2611}',
+    requiresSettings: true,
   },
   {
     id: 'anagram',
-    name: 'Anagram',
+    nameKey: 'gameAnagramName',
+    descKey: 'gameAnagramDesc',
     icon: '\u{1F524}',
-    requiresSettings: true,
-    description: 'Unscramble the letters to form the word.'
-  },
-  {
-    id: 'unjumble',
-    name: 'Unjumble',
-    icon: '\u{1F4DD}',
-    requiresSettings: true,
-    description: 'Unscramble the words.'
+    requiresSettings: false,
   },
   {
     id: 'word-search',
-    name: 'Word Search',
+    nameKey: 'gameWordSearchName',
+    descKey: 'gameWordSearchDesc',
     icon: '\u{1F50E}',
     requiresSettings: false,
-    description: 'Find words in the grid.'
+  },
+  {
+    id: 'unjumble',
+    nameKey: 'gameUnjumbleName',
+    descKey: 'gameUnjumbleDesc',
+    icon: '\u{1F4DD}',
+    requiresSettings: false,
+  },
+  {
+    id: 'team-tug',
+    nameKey: 'gameTeamTugName',
+    descKey: 'gameTeamTugDesc',
+    icon: '🤼',
+    requiresSettings: true,
+  },
+  {
+    id: 'spelling-check',
+    nameKey: 'gameSpellingCheckName',
+    descKey: 'gameSpellingCheckDesc',
+    icon: '\u{1F4DD}',
+    requiresSettings: true,
+  },
+  {
+    id: 'cup-clash',
+    nameKey: 'gameCupClashName',
+    descKey: 'gameCupClashDesc',
+    icon: '\u{1F964}',
+    requiresSettings: true,
+  },
+  {
+    id: 'odd-one-out',
+    nameKey: 'gameOddOneOutName',
+    descKey: 'gameOddOneOutDesc',
+    icon: '\u{1F53A}',
+    requiresSettings: true,
+  },
+  {
+    id: 'team-sentence',
+    nameKey: 'gameTeamSentenceName',
+    descKey: 'gameTeamSentenceDesc',
+    icon: '\u{1F3A3}',
+    requiresSettings: true,
   }
 ];

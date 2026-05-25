@@ -1,52 +1,115 @@
-<div class="min-h-screen bg-gradient-to-br from-green-900 to-teal-800 p-4 game-container">
-  <div class="container mx-auto">
-    <h2 class="text-4xl font-bold text-white mb-4 text-center">Flip Tiles</h2>
+<div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-green-900 to-teal-800 p-4 flex flex-col game-container">
+  <div class="w-full mx-auto flex flex-col flex-1 min-h-0">
+    <!-- Header with title and speaker button -->
+    <div class="flip-header flex justify-between items-center">
+      <h2 class="text-4xl font-bold text-white text-center flex-1">{{ 'flipTilesTitle' | translate }}</h2>
+      <button (click)="activateSoundQuiz()" 
+              class="speaker-btn" 
+              [class.active]="soundQuizActive"
+              [disabled]="allAudioItemsMatched">
+        🔊
+      </button>
+    </div>
 
-    <!-- Loading/Empty State -->
+    <!-- Loading State -->
     <div *ngIf="!cards.length" class="flex justify-center items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
     </div>
 
     <!-- Game Grid -->
-    <div *ngIf="cards.length > 0" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      <div *ngFor="let card of cards; let i = index"
-           (click)="flipCard(i)"
-           class="aspect-square cursor-pointer">
-        <div class="relative w-full h-full card-container"
-             [class.flipped]="card.flipped">
-          <!-- Front Face (hidden when flipped) -->
-          <div class="card-face card-front">
-            <span class="text-5xl text-white">{{ i + 1 }}</span>
-          </div>
-          <!-- Back Face (shown when flipped) -->
-          <div class="card-face card-back">
-            <div *ngIf="card.imageSrc" class="w-full h-3/4 flex items-center justify-center">
-              <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+    <div *ngIf="cards.length > 0" class="tile-board-container">
+      <div #gridContainer class="tile-board"
+           [style.gap.px]="gap"
+           [style.height.px]="boardHeight">
+        <div *ngFor="let row of cardRows; let rowIndex = index"
+             class="tile-row"
+             [style.gap.px]="gap">
+          <div *ngFor="let card of row; let colIndex = index"
+               (click)="flipCard(rowIndex * gridColumns + colIndex)"
+               class="card"
+               [class.shake]="card.shake"
+               [style.width.px]="cardSize"
+               [style.height.px]="cardSize">
+            <div class="relative w-full h-full card-container" [class.flipped]="card.flipped || card.matched">
+              <!-- Front -->
+              <div class="card-face card-front">
+                <span class="text-5xl text-white">{{ rowIndex * gridColumns + colIndex + 1 }}</span>
+              </div>
+              <!-- Back -->
+              <div class="card-face card-back">
+                <button class="fullscreen-btn" (click)="openFullscreen($event, rowIndex * gridColumns + colIndex)"
+                        [attr.title]="'fullscreen' | translate">
+                  <img src="assets/images/fullscreen.png" alt="fullscreen" class="w-5 h-5">
+                </button>
+                <div *ngIf="card.imageSrc" class="w-full h-3/4 flex items-center justify-center">
+                  <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+                </div>
+                <p *ngIf="card.item.text" class="text-center font-semibold mt-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
+                <p *ngIf="!card.item.text && !card.item.image" class="text-center text-gray-400 text-sm">{{ 'flipTilesNoContent' | translate }}</p>
+              </div>
             </div>
-            <p *ngIf="card.item.text" class="text-center font-semibold">{{ card.item.text }}</p>
-            <p *ngIf="!card.item.text && !card.item.image" class="text-center text-gray-400">No content</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Control Buttons -->
-    <div class="mt-6 flex flex-wrap justify-center gap-3">
-      <button (click)="randomSelect()"
-              class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105">
-        Random Select
+    <!-- Control Buttons (disabled during sound quiz) -->
+    <div class="flip-controls flex flex-wrap justify-center gap-3">
+      <button (click)="randomSelect()" [disabled]="soundQuizActive"
+              class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105 disabled:opacity-50">
+        {{ 'flipTilesRandomSelect' | translate }}
       </button>
-      <button *ngIf="selectedIndex !== null" (click)="eliminate()"
-              class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105">
-        Eliminate
+      <button *ngIf="selectedIndex !== null" (click)="eliminate()" [disabled]="soundQuizActive"
+              class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105 disabled:opacity-50">
+        {{ 'flipTilesEliminate' | translate }}
       </button>
-      <button (click)="shuffleAndReset()"
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105">
-        Shuffle
+      <button (click)="shuffleAndReset()" [disabled]="soundQuizActive"
+              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:scale-105 disabled:opacity-50">
+        {{ 'flipTilesShuffle' | translate }}
       </button>
     </div>
 
-    <!-- Sandwich Menu -->
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+  </div>
+</div>
+
+
+<!-- Fullscreen Overlay Modal -->
+<div *ngIf="fullscreenVisible" class="fullscreen-overlay" (click)="closeFullscreen($event)">
+  <div class="fullscreen-content" (click)="$event.stopPropagation()">
+    
+    <!-- Left navigation button -->
+    <button class="fullscreen-nav-btn prev" 
+            (click)="navigateFullscreen(-1)" 
+            [disabled]="fullscreenIndex === 0">
+      ◀
+    </button>
+
+    <!-- Enlarged card -->
+    <ng-container *ngIf="fullscreenItem as fItem">
+      <div class="fullscreen-card">
+        <!-- Speaker button inside the card (top‑right) -->
+        <button *ngIf="fItem.item.audio" 
+                class="fullscreen-speaker" 
+                (click)="playFullscreenAudio()">
+          🔊
+        </button>
+
+        <div *ngIf="fItem.imageSrc" class="fullscreen-image-area">
+          <img [src]="fItem.imageSrc" alt="Enlarged item">
+        </div>
+        <p *ngIf="fItem.item.text" class="fullscreen-text">{{ fItem.item.text }}</p>
+        <p *ngIf="!fItem.item.text && !fItem.item.image" class="fullscreen-text">
+          {{ 'flipTilesNoContent' | translate }}
+        </p>
+      </div>
+    </ng-container>
+
+    <!-- Right navigation button -->
+    <button class="fullscreen-nav-btn next" 
+            (click)="navigateFullscreen(1)" 
+            [disabled]="fullscreenIndex === cards.length - 1">
+      ▶
+    </button>
   </div>
 </div>

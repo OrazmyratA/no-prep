@@ -8,6 +8,14 @@ import { WatchMemorizeComponent } from './watch-memorize';
 import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
 import { WordSearchComponent } from './word-search';
+import { PopBalloonComponent } from './pop-balloon';
+import { SpotlightComponent } from './spotlight';
+import { TeamTugComponent } from './team-tug';
+import { CupClashComponent } from './cup-clash';
+import { OddOneOutComponent } from './odd-one-out';
+import { TestAbcComponent } from './test-abc';
+import { TeamSentenceComponent } from './team-sentence';
+import { SpellingCheckComponent } from './spelling-check';
 
 const routes: Routes = [
   { path: 'spin-wheel', component: SpinWheelComponent },
@@ -17,7 +25,15 @@ const routes: Routes = [
   { path: 'watch-memorize', component: WatchMemorizeComponent },
   { path: 'anagram', component: AnagramComponent },
   { path: 'unjumble', component: UnjumbleComponent },
-  { path: 'word-search', component: WordSearchComponent }
+  { path: 'word-search', component: WordSearchComponent },
+  { path: 'pop-balloon', component: PopBalloonComponent },
+  { path: 'spotlight', component: SpotlightComponent },
+  { path: 'team-tug', component: TeamTugComponent},
+  { path: 'cup-clash', component: CupClashComponent },
+  { path: 'odd-one-out', component: OddOneOutComponent },
+  { path: 'test-abc', component: TestAbcComponent },
+  { path: 'team-sentence', component: TeamSentenceComponent },
+  { path: 'spelling-check', component: SpellingCheckComponent }
 ];
 
 @NgModule({

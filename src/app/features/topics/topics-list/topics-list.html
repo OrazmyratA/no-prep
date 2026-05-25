@@ -1,32 +1,142 @@
-<div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-  <div class="container mx-auto">
+<div class="topics-page min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+  <div class="topics-shell mx-auto w-full max-w-screen-xl">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-8">
-      <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-        My Topics
-      </h1>
-      <button routerLink="/topics/new" 
-              class="bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transform transition hover:scale-105">
-        + New Topic
+<div class="topics-header flex flex-wrap lg:flex-nowrap justify-between items-center gap-3 mb-8">
+  <!-- Left side: title + search -->
+  <div class="flex items-center gap-4 min-w-0 flex-1">
+    <h1 class="text-4xl font-extrabold leading-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 whitespace-nowrap">
+      {{ 'myTopics' | translate }}
+    </h1>
+    <div class="search-input-wrapper flex-shrink min-w-0">
+      <span class="search-icon" aria-hidden="true">🔍</span>
+      <input id="topic-search" type="text" class="search-input w-full" [placeholder]="'searchTopics' | translate" [formControl]="searchControl">
+      <button *ngIf="searchControl.value" type="button" class="search-clear" (click)="clearSearch()" [attr.aria-label]="'clearSearch' | translate">
+        ✕
       </button>
     </div>
+  </div>
+
+  <!-- Right side: action buttons + flags -->
+  <div class="topics-actions flex flex-wrap lg:flex-nowrap items-center gap-2">
+    <!-- Combine button -->
+    <button (click)="canCombineTopics ? combineSelectedTopics() : (!fullAccess ? licenseService.requestReopen() : null)"
+            class="topics-action-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            [class.btn-disabled]="!canCombineTopics">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path>
+      </svg>
+      {{ 'combine' | translate }}{{ selectedTopicIds.size ? ' (' + selectedTopicIds.size + ')' : '' }}
+    </button>
+
+    <!-- Export All -->
+    <button (click)="fullAccess ? exportAllTopics() : licenseService.requestReopen()"
+            class="topics-action-btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            [class.btn-disabled]="!fullAccess">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+      </svg>
+      {{ 'exportAll' | translate }}
+    </button>
+
+    <!-- Import -->
+    <button (click)="fullAccess ? importTopics() : licenseService.requestReopen()"
+            class="topics-action-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            [class.btn-disabled]="!fullAccess">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+      </svg>
+      {{ 'import' | translate }}
+    </button>
+
+    <!-- New Topic -->
+    <button (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()"
+            class="topics-action-btn bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            [class.btn-disabled]="!fullAccess">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path>
+      </svg>
+      {{ 'newTopic' | translate }}
+    </button>
+
+<!-- Language dropdown -->
+<div class="relative language-dropdown">
+  <button (click)="toggleLanguageMenu()"
+          class="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition flex items-center justify-center shadow-md"
+          aria-label="Select language">
+    <img src="assets/flags/translation.png" alt="Translate" class="w-6 h-6 object-contain">
+  </button>
+
+  <div *ngIf="showLanguageMenu"
+       class="language-menu absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl py-2 z-50 w-48">
+    <button *ngFor="let lang of supportedLanguages"
+            (click)="setLanguage(lang.code); showLanguageMenu = false"
+            class="flex items-center gap-3 w-full px-4 py-2 hover:bg-gray-100 transition text-left">
+      <img [src]="'assets/flags/' + lang.flag" class="w-5 h-4 object-cover">
+      <span>{{ lang.name }}</span>
+    </button>
+  </div>
+</div>
+
+    <button
+      type="button"
+      class="theme-trigger"
+      (click)="openThemePicker()"
+      aria-label="Choose background"
+      title="Choose background">
+      📷
+    </button>
+  </div>
+</div>
+
+    <app-theme-picker *ngIf="showThemePicker" (closed)="closeThemePicker()"></app-theme-picker>
 
     <!-- Topics Grid -->
-    <div *ngIf="(topics$ | async)?.length; else emptyState" 
+    <div *ngIf="(filteredTopics$ | async)?.length; else emptyOrNoMatch"
          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      <div *ngFor="let topic of topics$ | async" 
-           class="group relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
-        
-        <!-- Edit/Delete Buttons (appear on hover) -->
-        <div class="absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <button (click)="editTopic(topic.id!)" 
-                  class="bg-yellow-400 hover:bg-yellow-500 text-white p-2 rounded-full shadow-md">
+      <div *ngFor="let topic of filteredTopics$ | async; trackBy: trackByTopicId"
+           (click)="onTopicClick(topic.id!)"
+           class="topics-card group relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+           [class.topic-armed]="isTopicArmed(topic.id!)">
+        <label class="absolute top-3 left-3 flex items-center bg-white/90 p-2 rounded-full shadow z-20"
+               (click)="$event.stopPropagation()">
+          <input #selectionCheckbox
+                 type="checkbox"
+                 class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                 [checked]="selectedTopicIds.has(topic.id!)"
+                 (change)="toggleTopicSelection(topic.id!, selectionCheckbox.checked)">
+        </label>
+
+        <!-- Action Buttons (appear on hover) -->
+        <div class="topic-actions absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <button (click)="$event.stopPropagation(); fullAccess ? copyTopic(topic.id!) : licenseService.requestReopen()"
+                  class="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-full shadow-md"
+                  [class.btn-disabled]="!fullAccess"
+                  [attr.title]="'copyTopic' | translate">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7H5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-4"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5h11a2 2 0 012 2v11a2 2 0 01-2 2H8a2 2 0 01-2-2V7a2 2 0 012-2z"/>
+            </svg>
+          </button>
+          <button (click)="$event.stopPropagation(); fullAccess ? editTopic(topic.id!) : licenseService.requestReopen()"
+                  class="bg-yellow-400 hover:bg-yellow-500 text-white p-2 rounded-full shadow-md"
+                  [class.btn-disabled]="!fullAccess"
+                  [attr.title]="'editTopic' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
             </svg>
           </button>
-          <button (click)="deleteTopic(topic.id!)" 
-                  class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md">
+          <button (click)="$event.stopPropagation(); fullAccess ? exportSingleTopic(topic.id!) : licenseService.requestReopen()"
+                  class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-md"
+                  [class.btn-disabled]="!fullAccess"
+                  [attr.title]="'exportTopic' | translate">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+          </button>
+          <button (click)="$event.stopPropagation(); fullAccess ? deleteTopic(topic.id!) : licenseService.requestReopen()"
+                  class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md"
+                  [class.btn-disabled]="!fullAccess"
+                  [attr.title]="'deleteTopic' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
             </svg>
@@ -34,7 +144,7 @@
         </div>
 
         <!-- Topic Content -->
-        <div [routerLink]="['/topics', topic.id, 'activities']" class="cursor-pointer p-6">
+        <div class="cursor-pointer p-6">
           <div class="flex items-center justify-between mb-4">
             <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg">
               {{ topic.name.charAt(0).toUpperCase() }}
@@ -42,23 +152,64 @@
             <span class="text-xs text-gray-400">{{ topic.updatedAt | date:'mediumDate' }}</span>
           </div>
           <h3 class="text-xl font-bold text-gray-800 mb-2">{{ topic.name }}</h3>
-          <!-- <p class="text-gray-500 text-sm">{{ topic.itemCount || 0 }} items</p> -->
-          <!-- Progress bar or additional info can go here -->
+          <span class="text-xs text-gray-400">{{ 'items' | translate }}: {{ topic.itemCount || 0 }}</span>
         </div>
       </div>
     </div>
+
+    <ng-template #emptyOrNoMatch>
+      <ng-container *ngIf="(topics$ | async)?.length; else emptyState">
+        <div class="text-center py-20">
+          <h2 class="text-2xl font-semibold text-gray-600 mb-2">{{ 'noTopicsMatch' | translate }}</h2>
+          <p class="text-gray-500 mb-4">{{ 'tryDifferentKeyword' | translate }}</p>
+          <button (click)="clearSearch()"
+                  class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105">
+            {{ 'clearSearch' | translate }}
+          </button>
+        </div>
+      </ng-container>
+    </ng-template>
 
     <!-- Empty State -->
     <ng-template #emptyState>
       <div class="text-center py-20">
         <div class="text-8xl mb-4">📚</div>
-        <h2 class="text-2xl font-semibold text-gray-600 mb-2">No topics yet</h2>
-        <p class="text-gray-500 mb-6">Create your first topic to get started</p>
-        <button routerLink="/topics/new" 
-                class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105">
-          + Create Topic
+        <h2 class="text-2xl font-semibold text-gray-600 mb-2">{{ 'noTopicsYet' | translate }}</h2>
+        <p class="text-gray-500 mb-6">{{ 'createFirstTopic' | translate }}</p>
+        <button (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()"
+                class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105"
+                [class.btn-disabled]="!fullAccess">
+          + {{ 'createTopic' | translate }}
         </button>
       </div>
     </ng-template>
   </div>
+
+  <!-- Platform Footer -->
+  <footer class="platform-footer">
+    <span class="platform-footer-label">{{ 'alsoAvailableOn' | translate }}</span>
+    <div class="platform-footer-links">
+      <!-- Web Version: show on Android & Electron (not on web) -->
+      <button *ngIf="platform.isNative() || platform.isElectron()"
+              class="platform-link web-link"
+              (click)="openUrl('https://noprep.netlify.app')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        {{ 'tryWebVersion' | translate }}
+      </button>
+
+      <!-- Windows App: show on Android & web (not on Electron) -->
+      <button *ngIf="!platform.isElectron()"
+              class="platform-link windows-link"
+              (click)="openUrl('https://noprep.netlify.app/#/download')">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+        </svg>
+        {{ 'windowsApp' | translate }}
+      </button>
+    </div>
+  </footer>
 </div>

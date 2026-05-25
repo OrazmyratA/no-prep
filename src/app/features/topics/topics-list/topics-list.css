@@ -1,0 +1,215 @@
+.topics-page {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.topics-shell {
+  width: min(100%, 1280px);
+}
+
+.topics-card {
+  min-height: 152px;
+  contain: layout paint;
+}
+
+.topics-card.topic-armed .topic-actions {
+  opacity: 1;
+}
+
+.topics-actions {
+  justify-content: flex-end;
+}
+
+.topics-action-btn {
+  padding-left: 0.65rem !important;
+  padding-right: 0.65rem !important;
+}
+
+.topics-action-btn svg {
+  margin-right: 0.3rem !important;
+}
+
+.theme-trigger {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: none;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.theme-trigger:hover,
+.theme-trigger:focus-visible {
+  transform: translateY(-1px) scale(1.04);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.22);
+  outline: none;
+}
+
+.language-menu {
+  max-width: calc(100vw - 2rem);
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 150px;
+  min-width: 130px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.65rem 2.6rem 0.65rem 2.4rem;
+  border-radius: 9999px;
+  border: 1px solid #d1d5db;
+  background-color: #fff;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  font-size: 1rem;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+}
+
+.search-clear:hover {
+  color: #374151;
+}
+
+.btn-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+.btn-disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .search-input-wrapper {
+    width: min(100%, 220px);
+    min-width: auto;
+  }
+
+  .language-menu {
+    left: 0;
+    right: auto;
+  }
+
+  .topics-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ── Platform Footer ─────────────────────────────────────── */
+.platform-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem 1.25rem;
+  margin-top: 2rem;
+  border-top: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.platform-footer-label {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.platform-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.platform-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  text-decoration: none;
+  line-height: 1;
+}
+
+.platform-link svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+}
+
+.platform-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.platform-link:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Web Version — blue tint */
+.web-link {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.web-link:hover {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+/* Windows App — indigo/windows tint */
+.windows-link {
+  background: rgba(79, 70, 229, 0.08);
+  color: #4f46e5;
+  border-color: rgba(79, 70, 229, 0.25);
+}
+
+.windows-link:hover {
+  background: rgba(79, 70, 229, 0.14);
+  border-color: rgba(79, 70, 229, 0.45);
+}

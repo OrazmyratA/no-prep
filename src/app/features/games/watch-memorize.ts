@@ -1,6 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
+import { showAppNotification } from '../../core/notification';
+import { LanguageService } from '../../core/language';
+import { ResizeService } from '../../core/resize';
 
 @Component({
   selector: 'app-watch-memorize',
@@ -8,7 +12,7 @@ import { db, Item } from '../../core/db.model';
   templateUrl: './watch-memorize.html',
   styleUrl: `./watch-memorize.css`
 })
-export class WatchMemorizeComponent implements OnInit, OnDestroy {
+export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy {
   topicId!: number;
   allItems: Item[] = [];
   scrollingItems: Item[] = [];          // subset that will scroll
@@ -32,15 +36,30 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
   private objectUrls: string[] = [];
   private imageUrls: Map<number, string> = new Map();
 
+  @ViewChild('gameShell', { static: true }) gameShellRef!: ElementRef<HTMLElement>;
+  @ViewChild('gridContainer') gridContainerRef!: ElementRef<HTMLElement>;
+  cardSize: number = 100;
+  gridGap: number = 16;
+  gridColumns = 1;
+  gridRows = 1;
+  recallRows: Item[][] = [];
+  recallBoardHeight = 0;
+  gridTextSize = 14;
+  private resizeObserver: ResizeObserver | null = null;
+  private layoutSubscription?: Subscription;
+
   // Sound effects
   private flipSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
+  private rewardSound: HTMLAudioElement | null = null;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private langService: LanguageService,
+    private resizeService: ResizeService
   ) {}
 
   async ngOnInit() {
@@ -55,19 +74,22 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
     try {
       this.allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
       if (this.allItems.length === 0) {
-        alert('No items in this topic!');
+        const msg = this.langService.translate('watchMemorizeNoItemsError');
+        showAppNotification(msg, 'error');
         this.router.navigate(['/topics', this.topicId, 'activities']);
         return;
       }
 
       this.applySettings(queryParams);
       // Preload sounds
-      this.flipSound = new Audio('/assets/sound/flip.mp3');
+      this.flipSound = new Audio('assets/sound/flip.mp3');
       this.flipSound.load();
-      this.buzzSound = new Audio('/assets/sound/buzz.mp3');
+      this.buzzSound = new Audio('assets/sound/buzz.mp3');
       this.buzzSound.load();
-      this.collectSound = new Audio('/assets/sound/collect.mp3');
+      this.collectSound = new Audio('assets/sound/collect.mp3');
       this.collectSound.load();
+      this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');
+      this.rewardSound.load();
       canStartGame = true;
     } catch (error) {
       console.error('Failed to load items', error);
@@ -82,11 +104,114 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.clearTimers();
+    this.resizeObserver?.disconnect();
+    this.layoutSubscription?.unsubscribe();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
     // Cleanup sounds
     [this.flipSound, this.buzzSound, this.collectSound].forEach(s => s?.pause());
+    [this.flipSound, this.buzzSound, this.collectSound, this.rewardSound].forEach(s => s?.pause());
   }
+
+
+ngAfterViewInit() {
+  this.calculateGridLayout();
+  this.resizeObserver = new ResizeObserver(() => this.calculateGridLayout());
+  if (this.gameShellRef?.nativeElement) {
+    this.resizeObserver.observe(this.gameShellRef.nativeElement);
+  }
+  this.layoutSubscription = this.resizeService.layoutChanged$.subscribe(() => this.recalculateLayout());
+  this.resizeService.requestLayoutRefresh();
+}
+
+private recalculateLayout() {
+  this.calculateGridLayout();
+  if (this.activeAnimation && this.scrollPhase) {
+    const container = document.querySelector('.scroll-container') as HTMLElement;
+    if (container) {
+      this.activeAnimation.endLeft = container.offsetWidth;
+    }
+  }
+}
+
+private calculateGridLayout() {
+  if (this.scrollPhase || this.gridItems.length === 0) return;
+
+  // Wait one tick for the DOM to be ready
+  setTimeout(() => {
+    const shell = this.gameShellRef?.nativeElement;
+    const gridContainer = this.gridContainerRef?.nativeElement;
+    const header = shell?.querySelector('.watch-title') as HTMLElement | null;
+    const menuReserve = 8;
+    const shellRect = shell?.getBoundingClientRect();
+
+    const viewportWidth = Math.max(240, shellRect?.width ?? window.innerWidth);
+    const headerHeight = header?.offsetHeight ?? 0;
+    const verticalPadding = 32;
+    const availableWidth = Math.max(220, (gridContainer?.clientWidth || viewportWidth) - 8);
+    const availableHeight = Math.max(
+      180,
+      window.innerHeight - headerHeight - verticalPadding - menuReserve
+    );
+
+    const totalCards = this.gridItems.length;
+    const preferredMinCardSize = totalCards > 24 ? 44 : totalCards > 16 ? 56 : 72;
+    const maxCardSize = 360;
+    const gap = Math.max(6, Math.min(16, Math.floor(Math.min(availableWidth, availableHeight) / 42)));
+
+    let best = {
+      columns: 1,
+      rows: totalCards,
+      size: 1,
+      usedArea: 0
+    };
+    let bestReadable = best;
+
+    for (let cols = 1; cols <= totalCards; cols++) {
+      const rows = Math.ceil(totalCards / cols);
+      const widthSize = (availableWidth - (cols - 1) * gap) / cols;
+      const heightSize = (availableHeight - (rows - 1) * gap) / rows;
+      const size = Math.floor(Math.min(widthSize, heightSize, maxCardSize));
+      if (size <= 0) continue;
+
+      const usedArea = (cols * size + (cols - 1) * gap) * (rows * size + (rows - 1) * gap);
+      if (
+        size > best.size ||
+        (size === best.size && usedArea > best.usedArea) ||
+        (size === best.size && usedArea === best.usedArea && rows < best.rows)
+      ) {
+        best = { columns: cols, rows, size, usedArea };
+      }
+      if (
+        size >= preferredMinCardSize &&
+        (size > bestReadable.size ||
+          (size === bestReadable.size && usedArea > bestReadable.usedArea) ||
+          (size === bestReadable.size && usedArea === bestReadable.usedArea && rows < bestReadable.rows))
+      ) {
+        bestReadable = { columns: cols, rows, size, usedArea };
+      }
+    }
+
+    if (bestReadable.size > 1) best = bestReadable;
+
+    this.gridGap = gap;
+    this.gridColumns = best.columns;
+    this.gridRows = best.rows;
+    this.cardSize = best.size;
+    this.gridTextSize = Math.max(9, Math.min(16, Math.floor(this.cardSize / 8)));
+    this.recallBoardHeight = best.rows * this.cardSize + (best.rows - 1) * this.gridGap;
+    this.rebuildRecallRows();
+    this.cdr.detectChanges();
+  }, 0);
+}
+
+private rebuildRecallRows() {
+  const columns = Math.max(1, this.gridColumns);
+  this.recallRows = [];
+  for (let i = 0; i < this.gridItems.length; i += columns) {
+    this.recallRows.push(this.gridItems.slice(i, i + columns));
+  }
+}
 
   private startGame() {
     // Randomly select 'count' items (or all if count > total)
@@ -103,6 +228,8 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
       const j = Math.floor(Math.random() * (i + 1));
       [this.gridItems[i], this.gridItems[j]] = [this.gridItems[j], this.gridItems[i]];
     }
+    this.rebuildRecallRows();
+    this.calculateGridLayout();
 
     this.currentScrollIndex = -1;
     this.scrollPhase = true;
@@ -118,38 +245,39 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
     this.nextScrollItem();
   }
 
-  private nextScrollItem() {
-    if (this.currentScrollIndex + 1 >= this.scrollingItems.length) {
-      this.phaseTransitionTimer = setTimeout(() => {
-        this.scrollPhase = false;
-        this.cdr.detectChanges();
-      }, 500);
-      return;
-    }
-
-    this.currentScrollIndex++;
-    this.cdr.detectChanges();
-    this.playSound(this.flipSound, 0.3);
-
-    const container = document.querySelector('.scroll-container') as HTMLElement;
-    const element = document.querySelector('.scrolling-item') as HTMLElement;
-    if (!container || !element) return;
-
-    const startTime = performance.now();
-    const duration = this.speed * 1000;
-    const startLeft = -Math.max(element.clientWidth, 1);
-    const endLeft = container.clientWidth;
-    element.style.left = startLeft + 'px';
-    this.activeAnimation = {
-      element,
-      startLeft,
-      endLeft,
-      duration,
-      startedAt: startTime,
-      elapsed: 0
-    };
-    this.runActiveAnimation();
+private nextScrollItem() {
+  if (this.currentScrollIndex + 1 >= this.scrollingItems.length) {
+    this.phaseTransitionTimer = setTimeout(() => {
+      this.scrollPhase = false;
+      this.calculateGridLayout();
+      this.cdr.detectChanges();
+    }, 500);
+    return;
   }
+
+  this.currentScrollIndex++;
+  this.cdr.detectChanges();
+  this.playSound(this.flipSound, 0.3);
+
+  const container = document.querySelector('.scroll-container') as HTMLElement;
+  const element = document.querySelector('.scrolling-item') as HTMLElement;
+  if (!container || !element) return;
+
+  const startTime = performance.now();
+  const duration = this.speed * 1000; 
+const startLeft = -element.offsetWidth;   // fully off‑screen left
+const endLeft = container.offsetWidth;    // fully off‑screen right         // move until left edge reaches right edge
+  element.style.left = startLeft + 'px';
+  this.activeAnimation = {
+    element,
+    startLeft,
+    endLeft,
+    duration,
+    startedAt: startTime,
+    elapsed: 0
+  };
+  this.runActiveAnimation();
+}
 
   private clearTimers() {
     if (this.animationFrame) {
@@ -170,29 +298,30 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private runActiveAnimation() {
+private runActiveAnimation() {
+  if (!this.activeAnimation || this.isPaused) return;
+
+  const animate = (time: number) => {
     if (!this.activeAnimation || this.isPaused) return;
 
-    const animate = (time: number) => {
-      if (!this.activeAnimation || this.isPaused) return;
+    const state = this.activeAnimation;
+    const elapsed = state.elapsed + (time - state.startedAt);
+    const progress = Math.min(elapsed / state.duration, 1);
+    const left = state.startLeft + (state.endLeft - state.startLeft) * progress;
+    state.element.style.left = left + 'px';
 
-      const state = this.activeAnimation;
-      const elapsed = state.elapsed + (time - state.startedAt);
-      const progress = Math.min(elapsed / state.duration, 1);
-      const left = state.startLeft + (state.endLeft - state.startLeft) * progress;
-      state.element.style.left = left + 'px';
+    if (progress < 1) {
+      this.animationFrame = requestAnimationFrame(animate);
+      return;
+    }
 
-      if (progress < 1) {
-        this.animationFrame = requestAnimationFrame(animate);
-        return;
-      }
+    // Animation finished – immediately start the next item (no delay)
+    this.activeAnimation = null;
+    this.nextScrollItem();
+  };
 
-      this.activeAnimation = null;
-      this.scrollTimer = setTimeout(() => this.nextScrollItem(), 100);
-    };
-
-    this.animationFrame = requestAnimationFrame(animate);
-  }
+  this.animationFrame = requestAnimationFrame(animate);
+}
 
   private pauseGame() {
     if (!this.scrollPhase || this.gameFinished || this.isPaused) return;
@@ -253,6 +382,7 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
           this.gridItems.some((gridItem, idx) => gridItem === item && this.selectedIndices.has(idx))
         );
         if (allCorrectSelected) {
+          this.playSound(this.rewardSound, 0.6);
           this.gameFinished = true;
           this.winPopupTimer = setTimeout(() => {
             this.showWinPopup = true;
@@ -276,7 +406,7 @@ export class WatchMemorizeComponent implements OnInit, OnDestroy {
     if (sound) {
       sound.volume = volume;
       sound.currentTime = 0;
-      sound.play().catch(e => console.log('Sound error:', e));
+      sound.play().catch(e => console.debug('Sound error:', e));
     }
   }
 

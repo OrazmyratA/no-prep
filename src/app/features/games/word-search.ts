@@ -1,6 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
+import { showAppNotification } from '../../core/notification';
+import { LanguageService, SupportedLanguage } from '../../core/language';
+import { ResizeService } from '../../core/resize';
 
 interface GridCell {
   letter: string;
@@ -24,6 +28,7 @@ interface WordPlacement {
   direction: PlacementDirection;
   cells: PlacementCell[];
   found: boolean;
+  color: string;
 }
 
 interface PlacementCandidate {
@@ -39,7 +44,7 @@ interface PlacementCandidate {
   templateUrl: './word-search.html',
   styleUrls: ['./word-search.css']
 })
-export class WordSearchComponent implements OnInit, OnDestroy {
+export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
   topicId!: number;
   items: Item[] = [];
   grid: GridCell[][] = [];
@@ -49,15 +54,50 @@ export class WordSearchComponent implements OnInit, OnDestroy {
   loading = true;
   gridSize = 0;
 
+  private colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+    '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2'
+  ];
+
+  private readonly fillerCharactersByLanguage: Record<SupportedLanguage, string[]> = {
+    en: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ'),
+    tk: Array.from('ABÇDEÄFGHIJŽKLMNŇOÖPRSŞTUÜWYÝZ'),
+    ru: Array.from('АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ'),
+    cn: Array.from('的一是在不了有和人这中大为上个国我以要他时来用们生到作地于出就分对成会可主发年动同工也能下过子说产种面而方后多定行学法所民得经十三之进着等部度家电力里如水化高自二理起小物现实加量都两体制机当使点从业本去把性好应开它合还因由其些然前外天政四日那社义事平形相全表间样与关各重新线内数正心反你明看原又么利比或但质气第向道命此变条只没结解问意建月公无系军很情者最立代想已通并提直题党程展五果料象员革位入常文总次品式活设及管特件长求老头基资边流路级少图山统接知较将组见计别'),
+    cde: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜẞ'),
+    es: Array.from('ABCDEFGHIJKLMNÑOPQRSTUVWXYZÁÉÍÓÚÜ'),
+    fr: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZÀÂÆÇÉÈÊËÎÏÔŒÙÛÜŸ'),
+    kr: Array.from('가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추쿠투푸후기니디리미비시이지치키티피히'),
+    sa: Array.from('ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأإؤئةى')
+  };
+
+  private readonly localeByLanguage: Record<SupportedLanguage, string> = {
+    en: 'en',
+    tk: 'tk',
+    ru: 'ru',
+    cn: 'zh-CN',
+    cde: 'de-DE',
+    es: 'es',
+    fr: 'fr',
+    kr: 'ko',
+    sa: 'ar'
+  };
+
   private flipSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
+  private victorySound: HTMLAudioElement | null = null;
   private victoryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private victoryPending = false;
+  private layoutSubscription?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private langService: LanguageService,
+    private resizeService: ResizeService,
+    private elementRef: ElementRef<HTMLElement>
   ) {}
 
   async ngOnInit() {
@@ -70,15 +110,18 @@ export class WordSearchComponent implements OnInit, OnDestroy {
       const allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
       this.items = allItems.filter(item => item.text && item.text.trim().length > 0);
       if (this.items.length === 0) {
-        alert('No items with text found in this topic!');
+        const msg = this.langService.translate('wordSearchNoTextItems');
+        showAppNotification(msg, 'error');
         this.router.navigate(['/topics', this.topicId, 'activities']);
         return;
       }
 
-      this.flipSound = new Audio('/assets/sound/flip.mp3');
+      this.flipSound = new Audio('assets/sound/flip.mp3');
       this.flipSound.load();
-      this.collectSound = new Audio('/assets/sound/collect.mp3');
+      this.collectSound = new Audio('assets/sound/collect.mp3');
       this.collectSound.load();
+      this.victorySound = new Audio('assets/sound/reward-reveal.mp3');
+      this.victorySound.load();
 
       this.buildGrid();
     } catch (error) {
@@ -86,19 +129,41 @@ export class WordSearchComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
       this.cdr.detectChanges();
+      this.resizeService.requestLayoutRefresh();
     }
   }
 
+  ngAfterViewInit() {
+    this.layoutSubscription = this.resizeService.layoutChanged$.subscribe(() => this.recalculateLayout());
+    this.resizeService.requestLayoutRefresh();
+  }
+
   ngOnDestroy() {
+    this.layoutSubscription?.unsubscribe();
     this.clearVictoryTimeout();
-    [this.flipSound, this.collectSound].forEach(s => s?.pause());
+    [this.flipSound, this.collectSound, this.victorySound].forEach(s => s?.pause());
+  }
+
+  private recalculateLayout() {
+    if (!this.gridSize) return;
+    const wrap = this.elementRef.nativeElement.querySelector('.grid-wrap') as HTMLElement | null;
+    if (!wrap) return;
+
+    const parentWidth = wrap.parentElement?.clientWidth ?? window.innerWidth;
+    const availableWidth = Math.max(220, Math.min(parentWidth, window.innerWidth - 32));
+    const wrapperPadding = window.innerWidth >= 640 ? 32 : 24;
+    const marginPerCell = 4;
+    const preferred = window.innerWidth >= 640 ? 37.6 : 32;
+    const cellSize = Math.max(22, Math.min(preferred, Math.floor((availableWidth - wrapperPadding) / this.gridSize - marginPerCell)));
+    wrap.style.setProperty('--word-cell-size', `${cellSize}px`);
+    this.cdr.detectChanges();
   }
 
   private buildGrid() {
     const candidates = this.prepareWords();
     if (candidates.length === 0) {
-      alert('No valid words found. Please use items with letters.');
-      this.router.navigate(['/topics', this.topicId, 'activities']);
+      const msg = this.langService.translate('wordSearchNoValidWords');
+      showAppNotification(msg, 'error');
       return;
     }
 
@@ -189,6 +254,7 @@ export class WordSearchComponent implements OnInit, OnDestroy {
     }
 
     this.victoryPending = true;
+    this.playSound(this.victorySound, 1.0);
     this.clearVictoryTimeout();
     this.victoryTimeoutId = setTimeout(() => {
       this.gameFinished = true;
@@ -205,19 +271,25 @@ export class WordSearchComponent implements OnInit, OnDestroy {
     this.victoryPending = false;
   }
 
-  private prepareWords(): Array<{ text: string; answer: string }> {
-    return this.items
-      .map(item => {
-        const text = item.text!.trim();
-        const answer = text.toUpperCase().replace(/[^A-Z]/g, '');
-        return { text, answer };
-      })
-      .filter(word => word.answer.length >= 2);
+  getCellColor(row: number, col: number): string {
+    const word = this.words.find(w => w.found && w.cells.some(c => c.row === row && c.col === col));
+    return word ? word.color : '';
   }
+
+private prepareWords(): Array<{ text: string; answer: string }> {
+  return this.items
+    .map(item => {
+      const text = item.text!.trim();
+      const answer = text.toLocaleUpperCase(this.localeByLanguage[this.langService.currentLang]);   // no regex stripping
+      return { text, answer };
+    })
+    .filter(word => word.answer.length >= 2);
+}
 
   private tryBuildGrid(candidates: Array<{ text: string; answer: string }>, size: number): boolean {
     const rawGrid: string[][] = Array.from({ length: size }, () => Array.from({ length: size }, () => ''));
     const placements: WordPlacement[] = [];
+    const fillerCharacters = this.getFillerCharacters(candidates);
 
     for (let i = 0; i < candidates.length; i++) {
       const candidate = candidates[i];
@@ -230,12 +302,13 @@ export class WordSearchComponent implements OnInit, OnDestroy {
       );
       if (!placement) return false;
       placements.push(placement);
+      placement.color = this.colors[placements.length % this.colors.length];
     }
 
     for (let r = 0; r < size; r++) {
       for (let c = 0; c < size; c++) {
         if (!rawGrid[r][c]) {
-          rawGrid[r][c] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+          rawGrid[r][c] = this.getRandomFillerCharacter(fillerCharacters);
         }
       }
     }
@@ -253,8 +326,22 @@ export class WordSearchComponent implements OnInit, OnDestroy {
         isFound: false
       }))
     );
+    this.resizeService.requestLayoutRefresh();
 
     return true;
+  }
+
+  private getFillerCharacters(candidates: Array<{ text: string; answer: string }>): string[] {
+    const languageCharacters = this.fillerCharactersByLanguage[this.langService.currentLang] ?? this.fillerCharactersByLanguage.en;
+    const answerCharacters = candidates.flatMap(candidate =>
+      Array.from(candidate.answer).filter(char => char.trim().length > 0)
+    );
+    return Array.from(new Set([...languageCharacters, ...answerCharacters]));
+  }
+
+  private getRandomFillerCharacter(characters: string[]): string {
+    if (characters.length === 0) return 'A';
+    return characters[Math.floor(Math.random() * characters.length)];
   }
 
   private placeWord(
@@ -280,7 +367,8 @@ export class WordSearchComponent implements OnInit, OnDestroy {
       startCol: col,
       direction,
       cells,
-      found: false
+      found: false,
+      color: ''
     };
   }
 
@@ -424,7 +512,7 @@ export class WordSearchComponent implements OnInit, OnDestroy {
     if (sound) {
       sound.volume = volume;
       sound.currentTime = 0;
-      sound.play().catch(e => console.log('Sound error:', e));
+      sound.play().catch(e => console.debug('Sound error:', e));
     }
   }
 

@@ -1,0 +1,9 @@
+<div class="license-card">
+  <button class="close-btn" (click)="dismiss()" [attr.title]="'close' | translate">✕</button>
+  <h2>🔐 {{ 'license.title' | translate }}</h2>
+  <p>{{ 'license.message' | translate }}</p>
+  <div class="license-buttons">
+    <button class="btn-request" (click)="requestLicense()">📄 {{ 'license.requestButton' | translate }}</button>
+    <button class="btn-enter" (click)="selectLicenseFile()">📁 {{ 'license.enterButton' | translate }}</button>
+  </div>
+</div>

@@ -1,33 +1,118 @@
-    <div class="container mx-auto p-4">
-      <h1 class="text-3xl font-bold mb-6">{{ isEdit ? 'Edit' : 'Create' }} Topic</h1>
-      <form [formGroup]="topicForm" (ngSubmit)="onSubmit()" class="max-w-2xl">
-        <div class="mb-4">
-          <label class="block text-gray-700 text-sm font-bold mb-2">Topic Name</label>
-          <input type="text" formControlName="name" class="shadow appearance-none border rounded w-full py-2 px-3">
-        </div>
+<div class="container mx-auto p-4 md:p-6">
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-8">
+    <button (click)="goBack()" 
+            class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            [attr.title]="'backToTopics' | translate">
+      <svg class="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+      </svg>
+    </button>
+    <h1 class="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+      {{ (isEdit ? 'editTopic' : 'createTopic') | translate }}
+    </h1>
+  </div>
 
-        <div class="mb-4">
-          <label class="block text-gray-700 text-sm font-bold mb-2">Items</label>
-          <div formArrayName="items">
-            <div *ngFor="let item of items.controls; let i = index" [formGroupName]="i" class="flex items-start space-x-2 mb-2">
-              <div class="flex-1">
-                <input type="text" formControlName="text" placeholder="Text (optional)" class="w-full border p-2">
+  <form [formGroup]="topicForm" (ngSubmit)="onSubmit()" class="max-w-5xl mx-auto">
+    <!-- Topic name -->
+<div class="mb-8 bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+  <label class="block text-sm font-semibold text-gray-700 mb-2">{{ 'topicName' | translate }}</label>
+  <input type="text" formControlName="name" 
+         class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+         [placeholder]="'topicNamePlaceholder' | translate">
+</div>
+
+    <!-- Items section -->
+    <div class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <label class="text-sm font-semibold text-gray-700">{{ 'itemsLabel' | translate }}</label>
+      </div>
+
+      <div formArrayName="items">
+        <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-4">
+          <div *ngFor="let item of items.controls; let i = index" 
+               [formGroupName]="i" cdkDrag [cdkDragStartDelay]="200"
+               class="group relative bg-white rounded-2xl shadow-md border border-gray-100 transition-all hover:shadow-lg">
+
+            <!-- Drag handle + order badge -->
+            <div class="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center cursor-grab active:cursor-grabbing bg-gray-50 rounded-l-2xl border-r border-gray-100">
+              <div class="item-order-badge">{{ i + 1 }}</div>
+                          <!-- Delete button (top-right) -->
+            <button type="button" (click)="removeItem(i)" 
+                    class="absolute top-2 right-2 p-1.5 rounded-full text-red-500 hover:bg-red-50 transition-colors"
+                    [attr.title]="'deleteTopic' | translate">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+            </div>
+
+            <!-- Main content area (flexible) -->
+            <div class="ml-12 p-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+              
+              <!-- Text input -->
+              <div class="md:col-span-4">
+                <input type="text" formControlName="text" 
+                       class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       [placeholder]="'textOptional' | translate">
               </div>
-              <div class="flex-1">
-               <app-image-uploader 
-                  [initialImage]="item.get('image')?.value" 
-                  (imageSelected)="onImageSelected($event, i)">
-                </app-image-uploader>
+
+              <!-- Image uploader -->
+              <div class="md:col-span-4">
+                <button *ngIf="!isImagePanelOpen(item)"
+                        type="button"
+                        class="optional-media-card"
+                        (click)="openImagePanel(item)">
+                  <span class="optional-media-plus">+</span>
+                  <span>{{ 'image' | translate }}</span>
+                </button>
+                <div *ngIf="isImagePanelOpen(item)" class="upload-card media-panel-open">
+                  <app-image-uploader 
+                    [initialImage]="item.get('image')?.value" 
+                    (imageSelected)="onImageSelected($event, i)">
+                  </app-image-uploader>
+                </div>
               </div>
-              <button type="button" (click)="removeItem(i)" class="text-red-500">✖</button>
+
+              <!-- Audio uploader -->
+             <div class="md:col-span-4">
+                <button *ngIf="!isAudioPanelOpen(item)"
+                        type="button"
+                        class="optional-media-card"
+                        (click)="openAudioPanel(item)">
+                  <span class="optional-media-plus">+</span>
+                  <span>{{ 'record' | translate }}</span>
+                </button>
+                <div *ngIf="isAudioPanelOpen(item)" class="upload-card media-panel-open">
+                  <app-audio-uploader 
+                    [initialAudio]="item.get('audio')?.value" 
+                    (audioSelected)="onAudioSelected($event, i)">
+                  </app-audio-uploader>
+                </div>
+              </div>
             </div>
           </div>
-          <button type="button" (click)="addItem()" class="mt-2 bg-blue-500 text-white px-4 py-2 rounded">+ Add Item</button>
         </div>
-
-        <div class="flex space-x-4">
-          <button type="submit" [disabled]="topicForm.invalid" class="bg-green-500 text-white px-4 py-2 rounded disabled:opacity-50">Save</button>
-          <button type="button" (click)="goBack()" class="bg-gray-500 text-white px-4 py-2 rounded">Cancel</button>
-        </div>
-      </form>
+      </div>
     </div>
+
+    <!-- Form actions -->
+    <div class="flex flex-wrap gap-3 justify-end border-t pt-6 mt-6">
+      <button type="button" (click)="goBack()" 
+              class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+        {{ 'cancel' | translate }}
+      </button>
+      <button type="submit" [disabled]="topicForm.invalid || !licenseService.fullAccess" 
+              class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all">
+        {{ 'save' | translate }}
+      </button>
+    </div>
+  </form>
+  <!-- Floating action button: always visible bottom-right -->
+<button type="button" (click)="addItem()"
+        [disabled]="!licenseService.fullAccess"
+        class="fixed bottom-24 right-6 z-50 w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center"
+        aria-label="Add new item">
+  <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
+  </svg>
+</button>
+</div>

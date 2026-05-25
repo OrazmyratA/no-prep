@@ -1,6 +1,6 @@
-<div class="min-h-screen bg-gradient-to-br from-purple-900 to-pink-800 p-4">
-  <div class="container mx-auto">
-    <h2 class="text-4xl font-bold text-white mb-4 text-center">Watch & Memorize</h2>
+<div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-purple-900 to-pink-800 p-4 flex flex-col game-container">
+  <div class="w-full px-2 flex flex-col flex-1 min-h-0">
+    <h2 class="watch-title text-4xl font-bold text-white mb-4 text-center">{{ 'watchMemorizeTitle' | translate }}</h2>
 
     <!-- Loading -->
     <div *ngIf="loading" class="flex justify-center items-center h-64">
@@ -23,30 +23,42 @@
     </div>
 
     <!-- Recall Phase Grid -->
-    <div *ngIf="!loading && !scrollPhase && gridItems.length > 0" class="recall-grid grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-      <div *ngFor="let item of gridItems; let i = index"
-           (click)="onGridClick(i)"
+<!-- Recall Phase Grid (dynamic, no scrolling) -->
+<div *ngIf="!loading && !scrollPhase && gridItems.length > 0" 
+     class="recall-grid-container">
+  <div #gridContainer class="recall-grid" 
+       [style.gap.px]="gridGap"
+       [style.height.px]="recallBoardHeight">
+    <div *ngFor="let row of recallRows; let rowIndex = index"
+         class="recall-row"
+         [style.gap.px]="gridGap">
+      <div *ngFor="let item of row; let colIndex = index"
+           (click)="onGridClick(rowIndex * gridColumns + colIndex)"
            class="grid-item"
-           [class.selected]="selectedIndices.has(i)">
-        <div class="grid-item-media">
-          <img *ngIf="item.image" [src]="imageUrl(item.image!, item.id!)">
+           [class.selected]="selectedIndices.has(rowIndex * gridColumns + colIndex)"
+           [style.width.px]="cardSize"
+           [style.height.px]="cardSize">
+        <div class="grid-item-media w-full flex-1 flex items-center justify-center min-h-0">
+          <img *ngIf="item.image" [src]="imageUrl(item.image!, item.id!)" class="w-full h-full object-contain">
         </div>
-        <p>{{ item.text }}</p>
+        <p class="text-center font-medium mt-1" [style.fontSize.px]="gridTextSize">{{ item.text }}</p>
       </div>
     </div>
+  </div>
+</div>
 
     <!-- Empty / Info -->
     <div *ngIf="!loading && scrollingItems.length === 0" class="text-white text-center p-8">
-      <p class="text-xl">No items to display.</p>
+      <p class="text-xl">{{ 'watchMemorizeNoItems' | translate }}</p>
     </div>
 
     <!-- Game Finished Overlay -->
     <div *ngIf="showWinPopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl mb-4">You got them all!</p>
+        <p class="text-2xl mb-4">{{ 'watchMemorizeYouGotThemAll' | translate }}</p>
         <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">Activities</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">Play Again</button>
+          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
+          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
         </div>
       </div>
     </div>

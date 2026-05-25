@@ -1,0 +1,29 @@
+.activity-page {
+  min-height: 100vh;
+  width: 100%;
+}
+
+.activity-shell {
+  width: min(100%, 1280px);
+}
+
+.coming-soon {
+  filter: sepia(0.18) saturate(1.3) brightness(1.3);
+  background: #515050;
+  transition: filter 0.2s ease;
+}
+
+.coming-soon .bg-gradient-to-br {
+  filter: grayscale(0.5) brightness(0.8);
+}
+
+.coming-soon:hover {
+  filter: sepia(0.8) saturate(0.6) brightness(0.85);
+  transform: scale(1) !important; /* prevent hover scale */
+}
+
+.coming-soon .game-icon,
+.coming-soon .game-title,
+.coming-soon .game-description {
+  opacity: 0.7;
+}

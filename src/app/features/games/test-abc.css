@@ -1,0 +1,415 @@
+.game-container {
+  width: 100vw;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: radial-gradient(circle at top left, rgba(255,255,255,0.18), transparent 25%),
+              radial-gradient(circle at bottom right, rgba(255,255,255,0.12), transparent 20%),
+              linear-gradient(135deg, #1b2565 0%, #1e3c72 45%, #2a5298 100%);
+  color: white;
+  font-family: 'Nunito', 'Segoe UI', sans-serif;
+}
+
+.game-container::before,
+.game-container::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.35;
+  filter: blur(40px);
+}
+
+.game-container::before {
+  width: 420px;
+  height: 420px;
+  top: -120px;
+  left: -80px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.game-container::after {
+  width: 360px;
+  height: 360px;
+  bottom: -90px;
+  right: -80px;
+  background: rgba(168, 85, 247, 0.16);
+}
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 18, 48, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.loading-spinner {
+  font-size: 3rem;
+  animation: pulse 1.2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.quiz-board {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 16px;
+  padding-top: 20px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+.quiz-header {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 10px 14px;
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 12px 30px rgba(7, 19, 60, 0.18);
+  max-width: 260px;
+}
+.score {
+  display: none;
+}
+.progress {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  color: #f8fafc;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.18);
+}
+
+.question-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+
+/* Base card style - height will adapt to content */
+.question-card {
+  width: min(100%, 800px);
+  height: 260px;               /* fixed height for all content types */
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.16);
+  box-shadow: 0 20px 50px rgba(12, 25, 62, 0.18);
+  backdrop-filter: blur(24px);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* When there's a flip card (has audio) we need taller min-height */
+.question-card:has(.flip-card) {
+  min-height: 280px;
+}
+
+/* Normal content (no audio) - shorter height, perfectly centered */
+.question-card:not(:has(.flip-card)) {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Text display - always centered vertically and horizontally */
+.word-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, #f8fafc, #dbeafe 60%);
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  padding: 0 12px;
+  line-height: 1.2;
+}
+
+.image-display {
+  display: inline-flex;
+  padding: 12px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.14);
+}
+.image-display img {
+  width: auto;
+  max-width: 430px;
+  max-height: 220px;   /* slightly reduced to fit inside 260px card */
+  border-radius: 16px;
+  object-fit: contain;
+}
+
+.options-area {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 25px;
+  margin: 0 auto;
+  max-width: 90vw;
+}
+
+
+.option-card {
+  flex: 0 0 auto;
+  width: 260px;
+  min-height: 190px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.92));
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
+  border: 1px solid transparent;
+  padding: 6px;
+}
+.option-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+  border-color: rgba(59, 130, 246, 0.32);
+}
+.option-card.disabled {
+  pointer-events: none;
+  opacity: 0.55;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(219, 234, 254, 0.82));
+  border-color: rgba(148, 163, 184, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+  cursor: not-allowed;
+}
+.option-card.disabled:hover {
+  transform: none;
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+.option-card.selected {
+  background: linear-gradient(180deg, rgba(132, 204, 22, 0.92), rgba(253, 230, 138, 0.95));
+  border-color: rgba(253, 224, 71, 0.9);
+  box-shadow: 0 0 0 3px rgba(253, 224, 71, 0.45);
+}
+.option-card.shake {
+  animation: shake 0.5s;
+}
+.option-card.fade-out {
+  opacity: 0;
+  transform: scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  10%,30%,50%,70%,90% { transform: translateX(-5px); }
+  20%,40%,60%,80% { transform: translateX(5px); }
+}
+.option-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+.option-image img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 16px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(59, 130, 246, 0.12));
+}
+.option-text {
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: #0f172a;
+  text-align: center;
+  line-height: 1.1;
+  padding: 4px 6px;
+}
+
+.nav-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.nav-btn {
+  min-width: 110px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #60a5fa, #c084fc);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
+}
+.nav-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 36px rgba(59, 130, 246, 0.28);
+}
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.winner-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 22, 58, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.winner-card {
+  width: min(90%, 450px);
+  padding: 2.2rem;
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.98));
+  box-shadow: 0 30px 90px rgba(15, 23, 42, 0.28);
+  text-align: center;
+  color: #0f172a;
+  animation: popIn 0.45s ease;
+}
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.winner-card h2 {
+  margin-bottom: 0.8rem;
+  font-size: 2rem;
+}
+.winner-card p {
+  margin-bottom: 1.4rem;
+  font-size: 1.05rem;
+  color: #334155;
+}
+.winner-card button {
+  margin: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #14b8a6);
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+}
+.winner-card button:hover {
+  transform: translateY(-2px);
+}
+
+/* Flip card container */
+.flip-card {
+  width: 100%;
+  height: 100%;               /* fill parent height */
+  position: relative;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  cursor: pointer;
+}
+.flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* Front and back sides */
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+}
+.flip-card-front {
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px);
+}
+.flip-card-back {
+  background: transparent;
+  transform: rotateY(180deg);
+}
+
+/* Speaker icon styling */
+.speaker-icon {
+  font-size: 5rem;
+  cursor: pointer;
+  transition: transform 0.2s, filter 0.2s;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3));
+}
+.speaker-icon:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 12px 20px rgba(0,0,0,0.4));
+}
+.speaker-icon:active {
+  transform: scale(0.95);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .options-area {
+    gap: 10px;
+  }
+  .option-card {
+    width: 160px;
+    min-height: 120px;
+  }
+
+  .option-text {
+    font-size: 0.85rem;
+  }
+  .question-card:not(:has(.flip-card)) {
+    min-height: 120px;
+  }
+  .flip-card {
+    min-height: 180px;
+  }
+  .question-card:has(.flip-card) {
+    min-height: 220px;
+  }
+
+
+
+  .question-card {
+    height: 220px;
+  }
+  .image-display img {
+    max-height: 140px;
+  }
+  .speaker-icon {
+    font-size: 4rem;
+  }
+  .word-display {
+    font-size: 1.5rem;
+  }
+}
+
+
+

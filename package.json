@@ -1,14 +1,72 @@
 {
   "name": "no-prep",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "main": "electron/index.js",
+  "author": "Orazmyrat Ashyrmyradov Artykmyradovich",
+  "description": "No-Prep – classroom game platform",
+  "homepage": "https://noprep.netlify.app/",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "build:prod": "ng build --configuration production",
+    "android:add": "cap add android",
+    "android:sync": "npm run build:prod && cap sync android",
+    "android:open": "cap open android",
+    "android:apk": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:aab": "npm run android:sync && cd android && gradlew.bat bundleRelease",
+    "build:security-core": "cd native/security-core && napi build --release --platform .",
+    "encrypt:features": "node scripts/encrypt-features.js",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "netlify": "npm run build:prod"
+    "netlify": "npm run build:prod",
+    "electron:prod": "npm run build && npm run build:security-core && npm run encrypt:features && set ELECTRON_RUN_AS_NODE=& electron .",
+    "electron:build": "npm run build:security-core && npm run encrypt:features && npm run build && electron-builder",
+    "electron:local": "set ELECTRON_RUN_AS_NODE=& cross-env ELECTRON_START_URL=http://localhost:4200 electron .",
+    "electron:dev": "concurrently \"ng serve\" \"wait-on http://localhost:4200 && set ELECTRON_RUN_AS_NODE=& cross-env ELECTRON_START_URL=http://localhost:4200 electron .\""
+  },
+  "build": {
+    "appId": "com.orazmyrat.noprep",
+    "productName": "No-Prep",
+    "copyright": "Copyright © 2026 Orazmyrat Ashyrmyradov Artykmyradovich",
+    "asar": true,
+    "asarUnpack": [
+      "native/security-core/**/*.node"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "native/security-core/index.js",
+      "native/security-core/*.node",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "electron/assets/icon.ico",
+      "legalTrademarks": "No-Prep™",
+      "forceCodeSigning": false
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "electron/assets/icon.icns",
+      "category": "public.app-category.education"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "electron/assets/icon.png",
+      "category": "Education"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "No-Prep"
+    }
   },
   "prettier": {
     "printWidth": 100,
@@ -33,8 +91,19 @@
     "@angular/platform-browser": "^21.1.0",
     "@angular/platform-browser-dynamic": "^21.1.0",
     "@angular/router": "^21.1.0",
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "browser-image-compression": "^2.0.2",
     "dexie": "^4.3.0",
+    "node-forge": "^1.4.0",
+    "node-machine-id": "^1.1.12",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -42,12 +111,22 @@
     "@angular/build": "^21.1.2",
     "@angular/cli": "^21.1.2",
     "@angular/compiler-cli": "^21.1.0",
+    "@napi-rs/cli": "^2.18.4",
+    "@types/jasmine": "^6.0.0",
+    "@types/jasminewd2": "^2.0.13",
+    "@types/node": "^25.3.3",
     "autoprefixer": "^10.4.24",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1",
+    "javascript-obfuscator": "^5.4.2",
     "jsdom": "^27.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8",
+    "wait-on": "^9.0.5",
     "zone.js": "^0.16.1"
   }
 }

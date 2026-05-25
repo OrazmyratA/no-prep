@@ -1,0 +1,16 @@
+import { TestBed } from '@angular/core/testing';
+
+import { ImportExportService } from './import-export';
+
+describe('ImportExport', () => {
+  let service: ImportExportService;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(ImportExportService);
+  });
+
+  it('should be created', () => {
+    expect(service).toBeTruthy();
+  });
+});

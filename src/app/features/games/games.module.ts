@@ -12,6 +12,15 @@ import { WatchMemorizeComponent } from './watch-memorize';
 import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
 import { WordSearchComponent } from './word-search';
+import { PopBalloonComponent } from './pop-balloon';
+import { SpotlightComponent } from './spotlight';
+import { TeamTugComponent } from './team-tug';
+import { CupClashComponent } from './cup-clash';
+import { OddOneOutComponent } from './odd-one-out';
+import { TestAbcComponent } from './test-abc';
+import { TeamSentenceComponent } from './team-sentence';
+import { TranslatePipe } from "../../shared/translate-pipe";
+import { SpellingCheckComponent } from './spelling-check';
 
 @NgModule({
   declarations: [
@@ -23,13 +32,22 @@ import { WordSearchComponent } from './word-search';
     AnagramComponent,
     UnjumbleComponent,
     WordSearchComponent,
+    PopBalloonComponent,
+    SpotlightComponent,
+    TeamTugComponent,
+    CupClashComponent,
+    OddOneOutComponent,
+    TestAbcComponent,
+    TeamSentenceComponent,
+    SpellingCheckComponent
   ],
   imports: [
     CommonModule,
     GamesRoutingModule,
     SharedModule,
     ReactiveFormsModule,
-    DragDropModule  
-  ]
+    DragDropModule,
+    TranslatePipe
+]
 })
 export class GamesModule { }

@@ -1,0 +1,140 @@
+<div class="theme-backdrop" (click)="cancel()"></div>
+
+<section class="theme-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'themeBackground' | translate">
+  <header class="theme-header">
+    <div>
+      <h2>{{ 'themeBackground' | translate }}</h2>
+      <p>{{ 'themeBackgroundSubtitle' | translate }}</p>
+    </div>
+    <button type="button" class="theme-close" (click)="cancel()" [attr.aria-label]="'close' | translate">x</button>
+  </header>
+
+  <div class="theme-section">
+    <h3>{{ 'themeColors' | translate }}</h3>
+    <div class="theme-color-grid">
+      <button
+        type="button"
+        class="theme-swatch theme-default"
+        [class.selected]="isDefaultSelected()"
+        (click)="previewDefault()"
+        [title]="'themeDefault' | translate">
+        <span>{{ 'themeDefault' | translate }}</span>
+      </button>
+
+      <button
+        *ngFor="let color of themeService.colorThemes"
+        type="button"
+        class="theme-swatch"
+        [class.selected]="isColorSelected(color.value)"
+        [style.background]="color.value"
+        (click)="previewColor(color.value)"
+        [title]="colorName(color)">
+        <span class="sr-only">{{ colorName(color) }}</span>
+      </button>
+
+      <label
+        class="theme-swatch theme-color-wheel"
+        [class.selected]="isColorSelected(customColor)"
+        [title]="'themeCustomColor' | translate">
+        <input
+          type="color"
+          [value]="customColor"
+          (input)="previewPickedColor($event)"
+          [attr.aria-label]="'themeCustomColor' | translate">
+        <span class="sr-only">{{ 'themeCustomColor' | translate }}</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="theme-section">
+    <div class="theme-section-title">
+      <h3>{{ 'themeCustom' | translate }}</h3>
+      <span>{{ backgrounds.length }}/{{ themeService.maxBackgrounds }}</span>
+    </div>
+
+    <div class="theme-background-grid">
+      <button
+        type="button"
+        class="theme-upload"
+        (click)="fileInput.click()"
+        [disabled]="uploading || backgrounds.length >= themeService.maxBackgrounds">
+        <span class="theme-upload-icon">📷</span>
+        <span>{{ (uploading ? 'themeAdding' : 'upload') | translate }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="theme-upload theme-google"
+        (click)="openGoogleImages()"
+        [disabled]="backgrounds.length >= themeService.maxBackgrounds">
+        <span class="theme-upload-icon">G</span>
+        <span>{{ 'copyImageFromGoogle' | translate }}</span>
+      </button>
+
+      <!-- Desktop / Electron: clipboard.read() works fine -->
+      <button
+        *ngIf="googlePasteReady && !isAndroid"
+        type="button"
+        class="theme-upload theme-paste"
+        (click)="pasteBackgroundFromClipboard()"
+        [disabled]="pastingBackground || uploading || backgrounds.length >= themeService.maxBackgrounds">
+        <span class="theme-upload-icon">+</span>
+        <span>{{ (pastingBackground ? 'importingPastedImage' : 'pasteImageButton') | translate }}</span>
+      </button>
+
+      <div
+        *ngFor="let background of backgrounds"
+        class="theme-background"
+        role="button"
+        tabindex="0"
+        [class.selected]="isImageSelected(background)"
+        (click)="previewImage(background)"
+        [title]="background.name">
+        <img [src]="background.objectUrl" [alt]="background.name">
+        <span>{{ background.name }}</span>
+        <button
+          type="button"
+          class="theme-delete"
+          (click)="deleteBackground($event, background)"
+          [attr.aria-label]="'themeDeleteBackground' | translate">
+          ×
+        </button>
+      </div>
+    </div>
+
+    <!-- Android: URL input replaces the paste button (clipboard.read() hangs in WebView) -->
+    <div *ngIf="googlePasteReady && isAndroid" class="theme-android-url">
+      <input type="url"
+             [formControl]="androidBgUrlControl"
+             placeholder="https://..."
+             (paste)="onAndroidBgUrlPaste($event)"
+             class="theme-android-url-input">
+      <button type="button"
+              (click)="importAndroidBgUrl()"
+              [disabled]="pastingBackground || uploading || backgrounds.length >= themeService.maxBackgrounds"
+              class="theme-android-url-btn">
+        {{ (pastingBackground ? 'importingPastedImage' : 'import') | translate }}
+      </button>
+    </div>
+
+    <input
+      #fileInput
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/gif"
+      hidden
+      (change)="onFileSelected($event)">
+
+    <p class="theme-note">{{ 'themeUploadNote' | translate }}</p>
+  </div>
+
+  <div class="theme-dim" *ngIf="selection.type === 'image'">
+    <label for="theme-dim">{{ 'themeDimImage' | translate }}</label>
+    <input id="theme-dim" type="range" min="0" max="75" step="5" [value]="dimPercent" (input)="updateDim($event)">
+    <span>{{ dimPercent }}%</span>
+  </div>
+
+  <footer class="theme-actions">
+    <button type="button" class="theme-secondary" (click)="cancel()">{{ 'cancel' | translate }}</button>
+    <button type="button" class="theme-primary" (click)="apply()">{{ 'apply' | translate }}</button>
+  </footer>
+</section>

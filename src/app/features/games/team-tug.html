@@ -1,0 +1,169 @@
+<div class="game-container">
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">⚙</div>
+    <p>{{ 'teamTugLoading' | translate }}</p>
+  </div>
+
+  <!-- Ready screen -->
+  <div *ngIf="!loading && gameStatus === 'ready'" class="ready-screen">
+    <div class="ready-content">
+      <h2>{{ 'teamTugTitle' | translate }}</h2>
+      <p>{{ 'teamTugReadyDesc' | translate }}</p>
+      <button (click)="startGame()" class="start-btn">{{ 'startGame' | translate }}</button>
+    </div>
+  </div>
+
+  <!-- Game board -->
+  <div *ngIf="!loading && gameActive && leftChoice.primary && rightChoice.primary" class="game-board">
+    <div class="status-bar">
+      <div class="score-pill left-pill" [class.highlight]="leftTeam.isAboutToWin">
+        <strong>{{ leftTeam.score }}</strong>
+        <small>{{ 'teamTugClicks' | translate }}</small>
+      </div>
+      <div *ngIf="enableTimer && timerRemaining !== null" class="timer-pill" aria-live="polite">
+        <span class="timer-label">{{ 'teamTugTimer' | translate }}</span>
+        <strong>{{ timerDisplay }}</strong>
+      </div>
+      <div class="score-pill right-pill" [class.highlight]="rightTeam.isAboutToWin">
+        <strong>{{ rightTeam.score }}</strong>
+        <small>{{ 'teamTugClicks' | translate }}</small>
+      </div>
+    </div>
+
+    <section class="video-stage">
+      <div class="stage-secret-glow"></div>
+      <div class="center-line"></div>
+      <video
+        autoplay
+        loop
+        muted
+        playsinline
+        class="character-video"
+        [style.left]="characterPosition + '%'"
+        [style.width]="characterWidth + '%'"
+      >
+        <source src="assets/videos/playing.mp4" type="video/mp4" />
+      </video>
+    </section>
+
+    <section class="game-details">
+      <div class="teams-row">
+        <article class="team left-team">
+          <div class="team-item" *ngIf="leftChoice.primary as leftPrimary">
+            <img
+              *ngIf="leftPrimary.image"
+              [src]="imageUrl(leftPrimary.image, leftPrimary.id!)"
+              [attr.alt]="leftPrimary.text + ' image'"
+              class="item-thumb"
+            />
+          </div>
+          <div *ngIf="leftTeam.isAboutToWin" class="about-to-win">⚡ {{ 'teamTugAboutToWin' | translate }}</div>
+          <div class="button-row">
+            <button
+              type="button"
+              class="team-button"
+              [class.about-to-win]="leftTeam.isAboutToWin"
+              (pointerdown)="onTeamButtonPress($event, 'left', leftButtonOrder ? true : false)"
+            >
+              {{ leftFirstButtonLabel }}
+            </button>
+            <button
+              type="button"
+              class="team-button"
+              [class.about-to-win]="leftTeam.isAboutToWin"
+              (pointerdown)="onTeamButtonPress($event, 'left', leftButtonOrder ? false : true)"
+            >
+              {{ leftSecondButtonLabel }}
+            </button>
+          </div>
+        </article>
+        <article class="team right-team">
+          <div class="team-item" *ngIf="rightChoice.primary as rightPrimary">
+            <img
+              *ngIf="rightPrimary.image"
+              [src]="imageUrl(rightPrimary.image, rightPrimary.id!)"
+              [attr.alt]="rightPrimary.text + ' image'"
+              class="item-thumb"
+            />
+          </div>
+          <div *ngIf="rightTeam.isAboutToWin" class="about-to-win">⚡ {{ 'teamTugAboutToWin' | translate }}</div>
+          <div class="button-row">
+            <button
+              type="button"
+              class="team-button"
+              [class.about-to-win]="rightTeam.isAboutToWin"
+              (pointerdown)="onTeamButtonPress($event, 'right', rightButtonOrder ? true : false)"
+            >
+              {{ rightFirstButtonLabel }}
+            </button>
+            <button
+              type="button"
+              class="team-button"
+              [class.about-to-win]="rightTeam.isAboutToWin"
+              (pointerdown)="onTeamButtonPress($event, 'right', rightButtonOrder ? false : true)"
+            >
+              {{ rightSecondButtonLabel }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <!-- Winner overlays -->
+  <div *ngIf="gameStatus === 'leftWin'" class="winner-announcement">
+    <div class="winner-card">
+      <h2>🎉 {{ 'teamTugWins' | translate }}! 🎉</h2>
+      <div class="winner-scoreboard">
+        <div class="score-chip left-chip">
+          <strong>{{ leftTeam.score }}</strong>
+          <small>{{ 'teamTugClicks' | translate }}</small>
+        </div>
+        <div class="score-chip right-chip">
+          <strong>{{ rightTeam.score }}</strong>
+          <small>{{ 'teamTugClicks' | translate }}</small>
+        </div>
+      </div>
+      <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+    </div>
+  </div>
+
+  <div *ngIf="gameStatus === 'rightWin'" class="winner-announcement">
+    <div class="winner-card">
+      <h2>🎉 {{ 'teamTugWins' | translate }}! 🎉</h2>
+      <div class="winner-scoreboard">
+        <div class="score-chip left-chip">
+          <strong>{{ leftTeam.score }}</strong>
+          <small>{{ 'teamTugClicks' | translate }}</small>
+        </div>
+        <div class="score-chip right-chip">
+          <strong>{{ rightTeam.score }}</strong>
+          <small>{{ 'teamTugClicks' | translate }}</small>
+        </div>
+      </div>
+      <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+    </div>
+  </div>
+
+  <div *ngIf="gameStatus === 'draw'" class="winner-announcement">
+    <div class="winner-card">
+      <h2>💜 {{ 'teamTugDraw' | translate }} 💜</h2>
+      <div class="winner-scoreboard">
+        <div class="score-chip left-chip">
+          <strong>{{ leftTeam.score }}</strong>
+          <small>{{ 'teamTugClicks' | translate }}</small>
+        </div>
+        <div class="score-chip right-chip">
+          <strong>{{ rightTeam.score }}</strong>
+          <small>{{ 'teamTugClicks' | translate }}</small>
+        </div>
+      </div>
+      <p class="winner-clips">{{ 'teamTugTotalClicks' | translate }} {{ leftTeam.score }},{{ rightTeam.score }}</p>
+      <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+    </div>
+  </div>
+
+  <!-- Sandwich Menu -->
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

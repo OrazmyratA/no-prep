@@ -1,0 +1,82 @@
+<div class="game-container">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="ambient ambient-three"></div>
+
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">🔍</div>
+    <p>{{ 'oddOneOutLoading' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading && gameActive" class="game-board">
+    <header class="game-header">
+      <div class="score-card">
+        <p class="label">{{ 'score' | translate }}</p>
+        <strong>{{ score }} / {{ totalRounds }}</strong>
+      </div>
+      <div class="timer-card" [class.urgent]="timerRemaining <= 5">
+        <p class="label">{{ 'oddOneOutTimeLeft' | translate }}</p>
+        <strong>⏱ {{ timerRemaining }}s</strong>
+      </div>
+    </header>
+
+    <section class="playground">
+      <article class="rectangle left">
+        <div class="set-pill">
+          <span>{{ 'oddOneOutLeftSet' | translate }}</span>
+          <span>{{ (oddSide === 'left' ? 'oddOneOutOddHere' : 'oddOneOutMirrorSet') | translate }}</span>
+        </div>
+        <div class="items-area">
+          <div *ngFor="let ri of leftSet"
+               class="item-card"
+               [attr.data-item-id]="ri.item.id"
+               [style.top]="ri.position.top"
+               [style.left]="ri.position.left"
+               [class.fading-out]="isRevealingOdd && ri.item.id !== currentOddItem?.id"
+               [class.odd-winner]="isRevealingOdd && ri.item.id === currentOddItem?.id"
+               (click)="onItemClick(ri.item, 'left')">
+            <div *ngIf="ri.item.image" class="item-image">
+              <img [src]="imageUrl(ri.item.image, ri.item.id!)" alt="item">
+            </div>
+            <div *ngIf="ri.item.text && showItemNames" class="item-text">{{ ri.item.text }}</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="rectangle right">
+        <div class="set-pill">
+          <span>{{ 'oddOneOutRightSet' | translate }}</span>
+          <span>{{ (oddSide === 'right' ? 'oddOneOutOddHere' : 'oddOneOutMirrorSet') | translate }}</span>
+        </div>
+        <div class="items-area">
+          <div *ngFor="let ri of rightSet"
+               class="item-card"
+               [attr.data-item-id]="ri.item.id"
+               [style.top]="ri.position.top"
+               [style.left]="ri.position.left"
+               [class.fading-out]="isRevealingOdd && ri.item.id !== currentOddItem?.id"
+               [class.odd-winner]="isRevealingOdd && ri.item.id === currentOddItem?.id"
+               (click)="onItemClick(ri.item, 'right')">
+            <div *ngIf="ri.item.image" class="item-image">
+              <img [src]="imageUrl(ri.item.image, ri.item.id!)" alt="item">
+            </div>
+            <div *ngIf="ri.item.text && showItemNames" class="item-text">{{ ri.item.text }}</div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+
+  <div *ngIf="gameFinished" class="winner-overlay">
+    <div class="winner-card">
+      <h2>{{ 'oddOneOutVictory' | translate }}</h2>
+      <p class="winner-score">{{ 'oddOneOutFinalScore' | translate }} {{ score }} / {{ totalRounds }}</p>
+      <div class="winner-actions">
+        <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+        <button class="ghost" (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <app-sandwich-menu (action)="onMenuAction($event)" (menuOpenChange)="onMenuOpenChange($event)"></app-sandwich-menu>
+</div>

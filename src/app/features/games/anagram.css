@@ -1,3 +1,96 @@
+.media-stage {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  perspective: 900px;
+}
+
+.media-card {
+  width: min(420px, 76vw);
+  height: clamp(180px, 30vh, 263px);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s ease;
+  cursor: pointer;
+}
+
+.media-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.media-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 18px 36px rgba(5, 12, 24, 0.22);
+}
+
+.media-front {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
+    #1e3a8a;
+}
+
+.card-back-pattern {
+  position: absolute;
+  inset: 12px;
+  border-radius: 12px;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.11) 25%, transparent 25% 50%, rgba(255, 255, 255, 0.11) 50% 75%, transparent 75%),
+    linear-gradient(135deg, #2563eb, #7e22ce);
+  background-size: 24px 24px, auto;
+  opacity: 0.95;
+}
+
+.media-back {
+  background: rgba(255, 255, 255, 0.94);
+  transform: rotateY(180deg);
+}
+
+.media-back img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.65rem;
+}
+
+.image-empty {
+  width: 64%;
+  height: 52%;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(126, 34, 206, 0.14)),
+    rgba(30, 58, 138, 0.08);
+}
+
+.speaker-btn {
+  position: relative;
+  z-index: 1;
+  width: 4.25rem;
+  height: 4.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.95);
+  color: #1e3a8a;
+  display: grid;
+  place-items: center;
+  font-size: 2.25rem;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(5, 12, 24, 0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.speaker-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 16px 28px rgba(5, 12, 24, 0.34);
+}
+
 .target-slots {
   display: flex;
   flex-wrap: wrap;
@@ -32,4 +125,38 @@
 
 .cdk-drop-list-dragging .cdk-drop-list-dragging .cdk-drag {
   transition: none;
+}
+
+@keyframes flyToTarget {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-8px);
+  }
+  50% {
+    transform: translateX(8px);
+  }
+  75% {
+    transform: translateX(-8px);
+  }
+}
+
+.animate-fly {
+  animation: flyToTarget 0.3s ease-out forwards;
+}
+
+.animate-shake {
+  animation: shake 0.6s ease-in-out forwards;
 }

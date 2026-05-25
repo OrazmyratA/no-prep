@@ -1,0 +1,248 @@
+<div class="game-board cup-clash-board" [style.--cup-size]="cupSize">
+  <!-- RPS modal — who goes first? -->
+  <div *ngIf="showRpsModal" class="rps-overlay">
+    <div class="rps-modal">
+
+      <!-- Floating decorative icons -->
+      <div class="rps-banner">
+        <span class="rps-float">✊</span>
+        <span class="rps-float">✌️</span>
+        <span class="rps-float">✋</span>
+      </div>
+
+      <h2 class="rps-title">{{ 'cupClashWhoGoesFirst' | translate }}</h2>
+
+      <!-- Two team buttons + their revealed choices -->
+      <div class="rps-arena">
+
+        <div class="rps-team-col">
+          <div class="rps-reveal"
+               [class.spinning]="rpsRedSpinning"
+               [class.has-choice]="!rpsRedSpinning && !!rpsRedChoice">
+            {{ rpsRedDisplay }}
+          </div>
+          <button
+            class="rps-btn rps-btn-red"
+            (click)="rpsChoose('red')"
+            [disabled]="rpsRedSpinning || !!rpsRedChoice || !!rpsWinner">
+            🔴
+          </button>
+          <span class="rps-label rps-label-red">{{ 'cupClashRed' | translate }}</span>
+        </div>
+
+        <div class="rps-vs">{{ 'cupClashVs' | translate }}</div>
+
+        <div class="rps-team-col">
+          <div class="rps-reveal"
+               [class.spinning]="rpsBlueSpinning"
+               [class.has-choice]="!rpsBlueSpinning && !!rpsBlueChoice">
+            {{ rpsBlueDisplay }}
+          </div>
+          <button
+            class="rps-btn rps-btn-blue"
+            (click)="rpsChoose('blue')"
+            [disabled]="rpsBlueSpinning || !!rpsBlueChoice || !!rpsWinner">
+            🔵
+          </button>
+          <span class="rps-label rps-label-blue">{{ 'cupClashBlue' | translate }}</span>
+        </div>
+
+      </div>
+
+      <!-- Result -->
+      <div class="rps-result" *ngIf="rpsIsTie">🤝 It's a tie — try again!</div>
+      <div class="rps-result rps-result-red" *ngIf="rpsWinner === 'red'">🔴 Red team goes first!</div>
+      <div class="rps-result rps-result-blue" *ngIf="rpsWinner === 'blue'">🔵 Blue team goes first!</div>
+
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">🥤</div>
+    <p>{{ 'cupClashLoading' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading && gameStatus === 'running'" class="board-container">
+    <!-- Red Zone -->
+    <div class="zone red-zone" [class.zone-miss]="missedTurn && currentTurn === 'blue'">
+      <div class="zone-header">
+        <div class="team-info">
+          <span class="team-color red">🔴</span>
+          <h2>{{ 'cupClashRedTeam' | translate }}</h2>
+          <span class="cup-count">{{ redCups.length }} {{ 'cupClashCups' | translate }}</span>
+        </div>
+      </div>
+      <div class="cups-grid"
+           [attr.data-zone-team]="'red'"
+           [style.gridTemplateColumns]="'repeat(' + gridColumns + ', minmax(0, 1fr))'">
+        <div *ngFor="let pos of boardCells; let idx = index; trackBy: trackByBoardPosition"
+             class="grid-cell"
+             [attr.data-position]="idx">
+          <div class="slot-glow"></div>
+          <ng-container *ngIf="getCupAtPosition(redCups, idx) as cup">
+            <div class="cup red"
+                 [attr.data-cup-id]="cup.id"
+                 [attr.data-team]="cup.team"
+                 [class.clickable]="cup.team !== currentTurn && capturesRemaining > 0 && gameStatus === 'running'"
+                 (click)="onCupClick(cup)">
+              <img [src]="'assets/images/cup1-red.png'" alt="red cup" class="cup-image">
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center Dice -->
+    <div class="center-dice">
+      <div class="dice-container"
+           [class.enabled]="diceValue === null && gameStatus === 'running'"
+           [attr.aria-disabled]="diceRolling || diceValue !== null"
+           role="button"
+           tabindex="0"
+           (click)="triggerDiceRoll()"
+           (keydown.enter)="triggerDiceRoll()"
+           (keydown.space)="triggerDiceRoll()">
+        <div class="dice" [class.rolling]="diceRolling" [class.landing]="diceLanding">
+          <div class="dice-face">
+            <ng-container [ngSwitch]="diceDisplayValue">
+              <span *ngSwitchCase="1">⚀</span>
+              <span *ngSwitchCase="2">⚁</span>
+              <span *ngSwitchCase="3">⚂</span>
+              <span *ngSwitchCase="4">⚃</span>
+              <span *ngSwitchCase="5">⚄</span>
+              <span *ngSwitchCase="6">⚅</span>
+              <span *ngSwitchDefault>🎲</span>
+            </ng-container>
+          </div>
+        </div>
+        <span class="dice-label"
+              *ngIf="diceDisplayValue === null && diceValue === null && !diceRolling">
+          {{ 'cupClashRollDice' | translate }}
+        </span>
+        <span class="dice-value" *ngIf="diceDisplayValue !== null">
+          {{ diceDisplayValue }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Blue Zone -->
+    <div class="zone blue-zone" [class.zone-miss]="missedTurn && currentTurn === 'red'">
+      <div class="zone-header">
+        <div class="team-info">
+          <span class="cup-count">{{ blueCups.length }} {{ 'cupClashCups' | translate }}</span>
+          <h2>{{ 'cupClashBlueTeam' | translate }}</h2>
+          <span class="team-color blue">🔵</span>
+        </div>
+      </div>
+      <div class="cups-grid"
+           [attr.data-zone-team]="'blue'"
+           [style.gridTemplateColumns]="'repeat(' + gridColumns + ', minmax(0, 1fr))'">
+        <div *ngFor="let pos of boardCells; let idx = index; trackBy: trackByBoardPosition"
+             class="grid-cell"
+             [attr.data-position]="idx">
+          <div class="slot-glow"></div>
+          <ng-container *ngIf="getCupAtPosition(blueCups, idx) as cup">
+            <div class="cup blue"
+                 [attr.data-cup-id]="cup.id"
+                 [attr.data-team]="cup.team"
+                 [class.clickable]="cup.team !== currentTurn && capturesRemaining > 0 && gameStatus === 'running'"
+                 (click)="onCupClick(cup)">
+              <img [src]="'assets/images/cup1-blue.png'" alt="blue cup" class="cup-image">
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Miss Turn overlay — not enough opponent cups -->
+  <div *ngIf="missedTurn" class="miss-overlay">
+    <div class="miss-card">
+      <span class="miss-icon-x">❌</span>
+      <div class="miss-compare">
+        <div class="miss-side">
+          <span class="miss-emoji">🎲</span>
+          <span class="miss-val miss-val-dice">{{ diceValue }}</span>
+        </div>
+        <span class="miss-gt">›</span>
+        <div class="miss-side">
+          <span class="miss-emoji">🥤</span>
+          <span class="miss-val miss-val-cups">{{ currentTurn === 'red' ? blueCups.length : redCups.length }}</span>
+        </div>
+      </div>
+      <p class="miss-label">{{ 'cupClashMissedTurn' | translate }}</p>
+      <div class="miss-bar-wrap">
+        <div class="miss-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom controls -->
+  <div class="game-controls" *ngIf="gameStatus === 'running'">
+    <div class="turn-indicator" [class]="'turn-' + currentTurn">
+      <span class="turn-text">
+        {{ (currentTurn === 'red' ? 'cupClashRedTurn' : 'cupClashBlueTurn') | translate }}
+      </span>
+      <span class="dice-requirement" *ngIf="diceValue">
+        🎲 {{ 'cupClashNeedToCapture' | translate }}: {{ capturesRemaining }} / {{ diceValue }}
+      </span>
+<span class="miss-turn" *ngIf="missedTurn">❌ {{ 'cupClashMissedTurn' | translate }}</span>
+    </div>
+  </div>
+
+<div class="items-row">
+  <div class="items-carousel">
+    <div class="items-container"
+         #itemsScroller
+         (scroll)="onItemsScroll()"
+         touch-action="pan-x">
+      <div *ngFor="let item of items; let idx = index"
+           class="item-flip-scene"
+           role="button"
+           tabindex="0"
+           [attr.aria-pressed]="isItemFlipped(item, idx)"
+           [class.flipped]="isItemFlipped(item, idx)"
+           (click)="toggleItemFace(item, idx)"
+           (keydown.enter)="toggleItemFace(item, idx)"
+           (keydown.space)="toggleItemFace(item, idx)">
+          <div class="item-card">
+            <div class="item-face front">
+              <img *ngIf="item.image" [src]="imageUrl(item.image, item.id!)" alt="item">
+              <span *ngIf="!item.image && item.text">{{ item.text }}</span>
+              <span *ngIf="!item.image && !item.text" class="muted">{{ 'cupClashNoPreview' | translate }}</span>
+            </div>
+            <div class="item-face back">
+              <div class="back-content">
+                <span class="back-icon">?</span>
+                <span class="back-label">{{ 'cupClashTapToReveal' | translate }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button
+      class="scroll-btn right"
+      type="button"
+      (click)="scrollItems('right')"
+      [disabled]="!itemsCanScrollRight">
+      ▶
+    </button>
+  </div>
+
+  <!-- Winner popup -->
+  <div *ngIf="gameStatus === 'finished'" class="winner-overlay">
+    <div class="winner-card">
+      <h2 *ngIf="winner === 'red'">{{ 'cupClashRedWins' | translate }}</h2>
+      <h2 *ngIf="winner === 'blue'">{{ 'cupClashBlueWins' | translate }}</h2>
+      <h2 *ngIf="!winner">{{ 'cupClashDraw' | translate }}</h2>
+      <p>{{ 'cupClashFinalScore' | translate }}: {{ 'cupClashRed' | translate }} {{ redCups.length }} – {{ blueCups.length }} {{ 'cupClashBlue' | translate }}</p>
+      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
+    </div>
+  </div>
+
+  <!-- Sandwich Menu -->
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

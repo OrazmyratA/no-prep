@@ -2,10 +2,17 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { db, Item } from '../../core/db.model';
+import { showAppNotification } from '../../core/notification';
+import { LanguageService } from '../../core/language';
 
 interface WordTile {
   id: string;
   word: string;
+}
+
+interface AnimatingTile {
+  tileId: string;
+  animationType: 'fade' | 'shake';
 }
 
 @Component({
@@ -24,22 +31,29 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   targetWords: WordTile[] = [];
   gameFinished = false;
   loading = true;
-  showHint = true;
+  isMediaFlipped = false;
   solvedIndexes: Set<number> = new Set();
   solvedState: Map<number, { source: WordTile[]; target: WordTile[] }> = new Map();
+  animatingTiles: Map<string, AnimatingTile> = new Map();
 
   private objectUrls: string[] = [];
   private imageUrls: Map<number, string> = new Map();
 
   // Sounds
   private flipSound: HTMLAudioElement | null = null;
+  private captureSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
+  private rewardSound: HTMLAudioElement | null = null;
+  private currentItemAudio: HTMLAudioElement | null = null;
+  private currentItemAudioUrl: string | null = null;
+  private advanceTimer: number | null = null;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private langService: LanguageService  
   ) {}
 
   async ngOnInit() {
@@ -47,7 +61,6 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       this.route.snapshot.paramMap.get('id') ??
       this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
-    this.applySettings(this.route.snapshot.queryParams);
 
     try {
       const allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -58,18 +71,23 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
         return words.length >= 2;
       });
       if (this.items.length === 0) {
-        alert('No items with multiple words found in this topic!');
+        const msg = this.langService.translate('unjumbleNoMultipleWords');
+        showAppNotification(msg, 'error');
         this.router.navigate(['/topics', this.topicId, 'activities']);
         return;
       }
 
       // Load sounds
-      this.flipSound = new Audio('/assets/sound/flip.mp3');
+      this.flipSound = new Audio('assets/sound/flip.mp3');
       this.flipSound.load();
-      this.buzzSound = new Audio('/assets/sound/buzz.mp3');
+      this.captureSound = new Audio('assets/sound/capture.mp3');
+      this.captureSound.load();
+      this.buzzSound = new Audio('assets/sound/buzz.mp3');
       this.buzzSound.load();
-      this.collectSound = new Audio('/assets/sound/collect.mp3');
+      this.collectSound = new Audio('assets/sound/collect.mp3');
       this.collectSound.load();
+      this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');
+      this.rewardSound.load();
 
       this.loadItem(0);
     } catch (error) {
@@ -81,9 +99,11 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.clearAdvanceTimer();
+    this.stopCurrentItemAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
-    [this.flipSound, this.buzzSound, this.collectSound].forEach(s => s?.pause());
+    [this.flipSound, this.captureSound, this.buzzSound, this.collectSound, this.rewardSound].forEach(s => s?.pause());
   }
 
   private loadItem(index: number) {
@@ -91,7 +111,9 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.stopCurrentItemAudio();
     this.currentItem = this.items[index];
+    this.isMediaFlipped = false;
     const text = this.currentItem.text!;
     this.originalWords = text.trim().split(/\s+/); // split by whitespace
 
@@ -140,6 +162,10 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  trackByWordId(_: number, word: WordTile): string {
+    return word.id;
+  }
+
   private checkWinCondition() {
     // If not all words are in target, no win
     if (this.targetWords.length !== this.originalWords.length) return;
@@ -149,28 +175,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     const isCorrect = this.originalWords.every((word, i) => word === targetWordStrings[i]);
 
     if (isCorrect) {
-      // Mark as solved
-      this.solvedIndexes.add(this.currentIndex);
-      this.solvedState.set(this.currentIndex, {
-        source: this.sourceWords.map(w => ({ ...w })),
-        target: this.targetWords.map(w => ({ ...w }))
-      });
-
-      this.playSound(this.collectSound, 0.5);
-
-      // Proceed to next item after a delay
-      setTimeout(() => {
-        if (this.solvedIndexes.size >= this.items.length) {
-          this.gameFinished = true;
-        } else {
-          const nextUnsolvedIndex = this.findNextUnsolvedIndex(this.currentIndex);
-          if (nextUnsolvedIndex !== null) {
-            this.currentIndex = nextUnsolvedIndex;
-            this.loadItem(this.currentIndex);
-          }
-        }
-        this.cdr.detectChanges();
-      }, 2000);
+      this.completeCurrentSentence();
     } else {
       // Optionally play a small buzz if they want feedback? But maybe not.
     }
@@ -187,6 +192,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
   nextItem() {
     if (this.currentIndex < this.items.length - 1) {
+      this.clearAdvanceTimer();
       this.currentIndex++;
       this.loadItem(this.currentIndex);
     }
@@ -194,31 +200,44 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
   previousItem() {
     if (this.currentIndex > 0) {
+      this.clearAdvanceTimer();
       this.currentIndex--;
       this.loadItem(this.currentIndex);
     }
-  }
-
-  private applySettings(params: Record<string, unknown>) {
-    const rawHint = params['showHint'];
-    if (rawHint === undefined || rawHint === null || rawHint === '') {
-      this.showHint = true;
-      return;
-    }
-
-    if (typeof rawHint === 'boolean') {
-      this.showHint = rawHint;
-      return;
-    }
-
-    this.showHint = String(rawHint).toLowerCase() !== 'false';
   }
 
   private playSound(sound: HTMLAudioElement | null, volume: number = 1.0) {
     if (sound) {
       sound.volume = volume;
       sound.currentTime = 0;
-      sound.play().catch(e => console.log('Sound error:', e));
+      sound.play().catch(e => console.debug('Sound error:', e));
+    }
+  }
+
+  playCurrentItemAudio() {
+    if (!this.currentItem?.audio) {
+      return;
+    }
+
+    this.stopCurrentItemAudio();
+    const url = URL.createObjectURL(this.currentItem.audio);
+    const audio = new Audio(url);
+    this.currentItemAudio = audio;
+    this.currentItemAudioUrl = url;
+    audio.play().catch(e => console.debug('Item audio error:', e));
+    audio.onended = () => this.stopCurrentItemAudio();
+  }
+
+  private stopCurrentItemAudio() {
+    if (this.currentItemAudio) {
+      this.currentItemAudio.pause();
+      this.currentItemAudio.currentTime = 0;
+      this.currentItemAudio = null;
+    }
+
+    if (this.currentItemAudioUrl) {
+      URL.revokeObjectURL(this.currentItemAudioUrl);
+      this.currentItemAudioUrl = null;
     }
   }
 
@@ -241,7 +260,23 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     return this.imageUrls.get(itemId)!;
   }
 
+  get currentImageUrl(): string | null {
+    if (!this.currentItem?.image) return null;
+    return this.imageUrl(this.currentItem.image, this.currentItem.id ?? this.currentIndex);
+  }
+
+  get hasCurrentAudio(): boolean {
+    return !!this.currentItem?.audio;
+  }
+
+  toggleMediaFlip() {
+    this.isMediaFlipped = !this.isMediaFlipped;
+    this.playSound(this.captureSound, 0.65);
+  }
+
   resetGame() {
+    this.clearAdvanceTimer();
+    this.stopCurrentItemAudio();
     this.currentIndex = 0;
     this.gameFinished = false;
     this.solvedIndexes.clear();
@@ -250,10 +285,106 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   }
 
   onMenuAction(action: string) {
+    this.stopCurrentItemAudio();
     if (action === 'activity') {
       this.router.navigate(['/topics', this.topicId, 'activities']);
     } else if (action === 'startover') {
       this.resetGame();
+    }
+  }
+
+  selectWordByClick(word: WordTile, wordIndex: number) {
+    // The next position in target should be at targetWords.length
+    const nextTargetIndex = this.targetWords.length;
+
+    // Get the word that should be at this position
+    const expectedWord = this.originalWords[nextTargetIndex];
+
+    // Check if clicked word matches the expected word
+    if (word.word !== expectedWord) {
+      this.playSound(this.buzzSound, 0.4);
+      this.triggerShake(word.id);
+      return;
+    }
+
+    // Correct word! Trigger animation
+    this.triggerFadeAnimation(word.id);
+    this.playSound(this.flipSound, 0.3);
+
+    // After animation, remove from source and add to target
+    setTimeout(() => {
+      this.sourceWords.splice(wordIndex, 1);
+      this.targetWords.push(word);
+      this.animatingTiles.delete(word.id);
+      this.cdr.detectChanges();
+
+      // Check win condition
+      if (this.targetWords.length === this.originalWords.length) {
+        this.completeCurrentSentence();
+      }
+    }, 300);
+  }
+
+  isAnimating(tileId: string): boolean {
+    return this.animatingTiles.has(tileId);
+  }
+
+  getAnimationType(tileId: string): string {
+    return this.animatingTiles.get(tileId)?.animationType ?? '';
+  }
+
+  private triggerFadeAnimation(tileId: string) {
+    this.animatingTiles.set(tileId, { tileId, animationType: 'fade' });
+    this.cdr.detectChanges();
+  }
+
+  private triggerShake(tileId: string) {
+    this.animatingTiles.set(tileId, { tileId, animationType: 'shake' });
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      this.animatingTiles.delete(tileId);
+      this.cdr.detectChanges();
+    }, 600);
+  }
+
+  private completeCurrentSentence() {
+    if (this.solvedIndexes.has(this.currentIndex)) {
+      return;
+    }
+
+    this.solvedIndexes.add(this.currentIndex);
+    this.solvedState.set(this.currentIndex, {
+      source: this.sourceWords.map(w => ({ ...w })),
+      target: this.targetWords.map(w => ({ ...w }))
+    });
+    this.playSound(this.collectSound, 0.5);
+    this.clearAdvanceTimer();
+
+    this.advanceTimer = window.setTimeout(() => {
+      this.advanceTimer = null;
+
+      if (this.solvedIndexes.size >= this.items.length) {
+        this.stopCurrentItemAudio();
+        this.gameFinished = true;
+        this.playSound(this.rewardSound, 0.75);
+        this.cdr.detectChanges();
+        return;
+      }
+
+      const nextUnsolvedIndex = this.findNextUnsolvedIndex(this.currentIndex);
+      if (nextUnsolvedIndex !== null) {
+        this.currentIndex = nextUnsolvedIndex;
+        this.loadItem(this.currentIndex);
+      }
+      this.cdr.detectChanges();
+    }, 2000);
+  }
+
+  private clearAdvanceTimer() {
+    if (this.advanceTimer !== null) {
+      window.clearTimeout(this.advanceTimer);
+      this.advanceTimer = null;
     }
   }
 }

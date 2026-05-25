@@ -1,0 +1,105 @@
+<div class="game-container">
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">🔍</div>
+    <p>{{ 'spellingCheckLoading' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading && !gameFinished && questions.length" class="game-board">
+    <div class="header">
+      <div class="score">{{ 'score' | translate }}: {{ score }} / {{ questions.length }}</div>
+      <div class="progress">{{ currentIndex + 1 }} / {{ questions.length }}</div>
+    </div>
+
+    <div class="media-stage">
+      <div
+        class="media-card"
+        [class.flipped]="isMediaFlipped"
+        (click)="toggleMediaFlip()"
+        [attr.aria-label]="'spellingCheckTitle' | translate"
+      >
+        <span class="media-face media-front">
+          <span class="card-back-pattern"></span>
+          <button
+            *ngIf="hasCurrentAudio"
+            type="button"
+            class="speaker-btn"
+            (click)="playCurrentAudio($event)"
+            aria-label="Play audio"
+          >
+            🔊
+          </button>
+        </span>
+        <span class="media-face media-back">
+          <img *ngIf="currentImageUrl; else noImage" [src]="currentImageUrl" alt="">
+          <ng-template #noImage>
+            <span class="image-empty"></span>
+          </ng-template>
+        </span>
+      </div>
+    </div>
+
+    <div
+      class="text-area"
+      [innerHTML]="currentQuestionHtml"
+      (click)="onTextAreaClick($event)"
+    ></div>
+
+    <div class="answer-bubble-slot" [class.visible]="showPopup">
+      <div *ngIf="showPopup" class="quiz-popup">
+        <div class="popup-content">
+          <button
+            *ngFor="let opt of popupOptions"
+            type="button"
+            class="popup-option"
+            (click)="onQuizAnswer(opt)"
+          >
+            {{ opt }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pen-dock" [class.pen-dock-active]="penDragging || penPlaced || isCurrentAnswered">
+      <button
+        type="button"
+        class="pen-tool"
+        [class.pen-dragging]="penDragging"
+        [class.pen-shake]="penShake"
+        [class.pen-placed]="penPlaced || isCurrentAnswered"
+        [style.left.px]="penDragging ? penX : null"
+        [style.top.px]="penDragging ? penY : null"
+        [attr.aria-label]="'spellingCheckDragPen' | translate"
+        (pointerdown)="onPenPointerDown($event)"
+        (pointermove)="onPenPointerMove($event)"
+        (pointerup)="onPenPointerUp($event)"
+        (pointercancel)="onPenPointerCancel($event)"
+      >
+        <span class="pen-icon">🖊</span>
+      </button>
+    </div>
+
+    <div class="controls">
+      <button class="nav-btn" type="button" (click)="previousQuestion()" [disabled]="currentIndex === 0 || answerLocked">
+        ‹ {{ 'previous' | translate }}
+      </button>
+      <button class="nav-btn skip" type="button" (click)="skipQuestion()" [disabled]="answerLocked || isCurrentAnswered">
+        {{ 'skipToNext' | translate }}
+      </button>
+      <button class="nav-btn" type="button" (click)="nextQuestion()" [disabled]="answerLocked || (currentIndex === questions.length - 1 && answeredQuestions.size >= questions.length)">
+        {{ 'next' | translate }} ›
+      </button>
+    </div>
+  </div>
+
+  <!-- Victory Popup -->
+  <div *ngIf="gameFinished" class="victory-overlay">
+    <div class="victory-card">
+      <h2>{{ 'spellingCheckVictory' | translate }} 🎉</h2>
+      <p>{{ 'spellingCheckScore' | translate }}: {{ score }} / {{ questions.length }}</p>
+      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
+    </div>
+  </div>
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

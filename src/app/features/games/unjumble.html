@@ -1,56 +1,80 @@
 <div class="min-h-screen bg-gradient-to-br from-green-900 to-teal-800 p-4">
   <div class="container mx-auto">
-    <h2 class="text-4xl font-bold text-white mb-4 text-center">Unjumble</h2>
+    <h2 class="text-4xl font-bold text-white mb-4 text-center">{{ 'unjumbleTitle' | translate }}</h2>
 
     <!-- Loading -->
     <div *ngIf="loading" class="flex justify-center items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
     </div>
 
-    <div *ngIf="!loading && !gameFinished && currentItem">
-      <!-- Image hint (optional) -->
-      <div *ngIf="showHint && currentItem.image" class="flex justify-center mb-6">
-        <img [src]="imageUrl(currentItem.image, currentItem.id!)" class="max-h-40 rounded-xl shadow-2xl">
+    <div *ngIf="!loading && !gameFinished && currentItem"
+         class="unjumble-board"
+         [class.long-sentence]="originalWords.length > 15">
+
+      <div class="media-stage">
+        <div class="media-card" [class.flipped]="isMediaFlipped" (click)="toggleMediaFlip()">
+          <span class="media-face media-front">
+            <span class="card-back-pattern"></span>
+            <button
+              *ngIf="hasCurrentAudio"
+              type="button"
+              class="speaker-btn"
+              (click)="$event.stopPropagation(); playCurrentItemAudio()"
+              aria-label="Play item audio"
+            >
+              🔊
+            </button>
+          </span>
+          <span class="media-face media-back">
+            <img *ngIf="currentImageUrl; else noUnjumbleImage" [src]="currentImageUrl" alt="">
+            <ng-template #noUnjumbleImage>
+              <span class="image-empty"></span>
+            </ng-template>
+          </span>
+        </div>
       </div>
 
       <!-- Target area (arranged sentence) -->
       <div class="mb-8">
-        <h3 class="text-white text-lg mb-2">Your sentence:</h3>
+        <h3 class="text-white text-lg mb-2">{{ 'unjumbleYourSentence' | translate }}</h3>
         <div cdkDropList
              #targetList="cdkDropList"
              [cdkDropListData]="targetWords"
-             cdkDropListOrientation="horizontal"
+             cdkDropListOrientation="mixed"
              [cdkDropListConnectedTo]="[sourceList]"
              (cdkDropListDropped)="drop($event)"
              class="drop-zone target-zone flex flex-wrap gap-2 p-4 min-h-24 bg-white bg-opacity-10 rounded-xl">
-          <div *ngFor="let word of targetWords; let i = index"
+          <div *ngFor="let word of targetWords; let i = index; trackBy: trackByWordId"
                cdkDrag
                class="word-tile word-tile-target px-4 py-2 bg-green-500 text-white rounded-lg shadow-lg cursor-move text-lg">
             {{ word.word }}
           </div>
           <div *ngIf="targetWords.length === 0" class="text-white opacity-50 italic">
-            Drag words here to build your sentence...
+            {{ 'unjumbleDragWordsHere' | translate }}
           </div>
         </div>
       </div>
 
       <!-- Source area (available words) -->
       <div>
-        <h3 class="text-white text-lg mb-2">Available words:</h3>
+        <h3 class="text-white text-lg mb-2">{{ 'unjumbleAvailableWords' | translate }}</h3>
         <div cdkDropList
              #sourceList="cdkDropList"
              [cdkDropListData]="sourceWords"
-             cdkDropListOrientation="horizontal"
+             cdkDropListOrientation="mixed"
              [cdkDropListConnectedTo]="[targetList]"
              (cdkDropListDropped)="drop($event)"
              class="drop-zone source-zone flex flex-wrap gap-2 p-4 min-h-24 bg-white bg-opacity-20 rounded-xl">
-          <div *ngFor="let word of sourceWords; let i = index"
+          <div *ngFor="let word of sourceWords; let i = index; trackBy: trackByWordId"
                cdkDrag
-               class="word-tile word-tile-source px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg cursor-move text-lg">
+               (click)="selectWordByClick(word, i)"
+               [class.animate-fade]="getAnimationType(word.id) === 'fade'"
+               [class.animate-shake]="getAnimationType(word.id) === 'shake'"
+               class="word-tile word-tile-source px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg cursor-pointer hover:bg-yellow-400 transition text-lg">
             {{ word.word }}
           </div>
           <div *ngIf="sourceWords.length === 0" class="text-white opacity-50 italic">
-            No words left
+            {{ 'unjumbleNoWordsLeft' | translate }}
           </div>
         </div>
       </div>
@@ -60,15 +84,15 @@
         <button (click)="previousItem()"
                 [disabled]="currentIndex === 0"
                 class="bg-slate-500 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition disabled:opacity-50">
-          Previous
+          {{ 'previous' | translate }}
         </button>
         <button (click)="shuffle()"
                 class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-          Shuffle
+          {{ 'shuffle' | translate }}
         </button>
         <button (click)="nextItem()"
                 class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-          Next
+          {{ 'next' | translate }}
         </button>
       </div>
     </div>
@@ -76,10 +100,10 @@
     <!-- Game Finished Overlay -->
     <div *ngIf="gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl mb-4">All sentences solved!</p>
+        <p class="text-2xl mb-4">{{ 'unjumbleAllSentencesSolved' | translate }}</p>
         <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">Activities</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">Play Again</button>
+          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
+          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
         </div>
       </div>
     </div>

@@ -1,1 +1,32 @@
-<router-outlet />
+<ng-container *ngIf="themeRender$ | async as theme">
+  <div
+    *ngIf="theme.active && !themeExcluded"
+    class="app-theme-layer"
+    [style.background]="theme.background">
+  </div>
+  <div
+    *ngIf="theme.active && !themeExcluded && theme.dim > 0"
+    class="app-theme-dim"
+    [style.opacity]="theme.dim">
+  </div>
+</ng-container>
+
+<!-- Main app always visible -->
+<main class="app-content">
+  <router-outlet></router-outlet>
+</main>
+
+<!-- License overlay (full‑screen when needed) -->
+<div *ngIf="showLicenseOverlay" class="license-overlay">
+  <app-license (dismissLicense)="hideLicenseOverlay()"></app-license>
+</div>
+
+<button
+  type="button"
+  class="app-fullscreen-toggle"
+  [class.is-active]="fullscreenButtonActive"
+  (click)="toggleFullscreen($event)"
+  [attr.title]="'fullscreen' | translate"
+  [attr.aria-label]="'fullscreen' | translate">
+  <img src="assets/images/maximize.png" alt="" aria-hidden="true">
+</button>

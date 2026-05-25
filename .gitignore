@@ -5,6 +5,8 @@
 /tmp
 /out-tsc
 /bazel-out
+/release
+native/security-core/target/
 
 # Node
 /node_modules
@@ -38,6 +40,12 @@ yarn-error.log
 testem.log
 /typings
 __screenshots__/
+.tools/
+private.pem
+license.dat
+android/keystore.properties
+android/*.jks
+android/*.keystore
 
 # System files
 .DS_Store

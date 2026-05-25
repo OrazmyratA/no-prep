@@ -1,6 +1,6 @@
 <div class="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 pt-0 pb-1 px-1 flex items-start justify-center">
   <div class="text-center -mt-1">
-    <h2 class="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">Spin the Wheel</h2>
+    <h2 class="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">{{ 'spinWheelTitle' | translate }}</h2>
 
     <!-- Loading State -->
     <div *ngIf="loading" class="flex justify-center items-center h-40">
@@ -8,35 +8,66 @@
     </div>
 
     <!-- Wheel Container -->
-    <div *ngIf="!loading" class="relative inline-block">
-      <canvas #wheelCanvas width="560" height="560" class="rounded-full max-w-full h-auto"></canvas>
-
-      <!-- Spin Button -->
+<div *ngIf="!loading" class="relative inline-block wheel-wrapper" [class.eliminate]="eliminationAnimation" [class.eliminate-long]="eliminationLong">
+  <canvas #wheelCanvas [width]="canvasSize" [height]="canvasSize" class="rounded-full max-w-full h-auto"></canvas>  <!-- Spin Button -->
       <button (click)="spin()"
               [disabled]="spinning || currentItems.length === 0"
-              class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold py-2 px-5 rounded-full shadow-lg text-xl hover:scale-110 transition border-4 border-white disabled:opacity-50 disabled:cursor-not-allowed">
-        {{ spinning ? 'Spinning...' : (currentItems.length === 0 ? 'No Items' : 'SPIN') }}
+              class="spin-btn absolute top-1/2 left-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-lg text-base hover:scale-110 transition border-4 border-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-24 h-24 rounded-full p-0">
+        {{ spinning ? ('spinWheelSpinning' | translate) : (currentItems.length === 0 ? ('spinWheelNoItems' | translate) : ('spinWheelSpin' | translate)) }}
       </button>
     </div>
 
     <!-- Empty State -->
     <div *ngIf="!loading && currentItems.length === 0" class="mt-0.5 bg-white bg-opacity-20 backdrop-blur-lg rounded-xl p-2">
-      <p class="text-white text-lg">No items left!</p>
-      <button (click)="resetGame()" class="mt-0.5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-full">
-        Start Over
-      </button>
+      <p class="text-white text-lg">{{ 'spinWheelNoItemsLeft' | translate }}</p>
+      <button (click)="resetGame()" class="mt-0.5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-full">{{ 'startOver' | translate }}</button>
     </div>
 
     <!-- Action Buttons -->
     <div class="mt-0.5 flex justify-center space-x-2">
       <button (click)="eliminate()"
               class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-full shadow transition text-sm">
-        Eliminate
+        {{ 'spinWheelEliminate' | translate }}
       </button>
       <button (click)="resetGame()"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-full shadow transition text-sm">
-        Reset
+        {{ 'reset' | translate }}
       </button>
+    </div>
+
+    <!-- Quiz Overlay with fade‑in -->
+    <div *ngIf="showQuiz && selectedItem" 
+         class="fixed inset-0 z-50 flex items-center justify-center quiz-overlay"
+         [class.visible]="quizOverlayVisible">
+      <div class="w-full max-w-5xl mx-auto p-6 text-center">
+        <!-- Selected item with pop‑in animation -->
+        <div class="flex justify-center mb-8">
+          <div class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
+            <img *ngIf="!useTextOnWheel && selectedItem.image" 
+                 [src]="imageUrl(selectedItem.image, selectedItem.id!)" 
+                 class="max-w-full max-h-full object-contain">
+            <div *ngIf="useTextOnWheel && selectedItem.text" 
+                 class="text-5xl font-bold text-gray-800 px-4 text-center break-words">{{ selectedItem.text }}</div>
+            <div *ngIf="!useTextOnWheel && !selectedItem.image && selectedItem.text" 
+                 class="text-5xl font-bold text-gray-800 px-4 text-center break-words">{{ selectedItem.text }}</div>
+          </div>
+        </div>
+
+        <!-- Options -->
+        <div class="flex flex-wrap justify-center gap-4">
+          <button *ngFor="let opt of quizOptions"
+                  [attr.data-opt-id]="opt.id"
+                  (click)="onQuizAnswer(opt)"
+                  [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
+                  class="quiz-option px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+            <div *ngIf="!useTextOnWheel">{{ opt.text || '?' }}</div>
+            <div *ngIf="useTextOnWheel">
+              <img *ngIf="opt.image" [src]="imageUrl(opt.image, opt.id!)" class="w-40 h-32 object-contain mx-auto mb-2">
+              <span *ngIf="!opt.image">?</span>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Sandwich Menu -->

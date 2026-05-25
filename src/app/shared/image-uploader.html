@@ -1,44 +1,145 @@
-<div class="border-2 border-gray-300 rounded-lg overflow-hidden">
+<div class="border-2 border-gray-300 rounded-lg overflow-hidden" (focusin)="markAsPasteTarget()">
   <input #fileInput type="file" accept="image/*" (change)="onFileSelected($event)" class="hidden">
 
   <div class="flex border-b border-gray-300">
     <button type="button"
             (click)="activateUploadMode(); triggerFilePicker(fileInput)"
-            class="flex-1 py-2 text-sm font-medium"
+            [attr.aria-label]="'upload' | translate"
+            [attr.title]="'upload' | translate"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium"
             [class.bg-blue-500]="activeTab === 'upload'"
             [class.text-white]="activeTab === 'upload'"
             [class.bg-gray-100]="activeTab !== 'upload'">
-      Upload
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+      </svg>
+    </button>
+    <button type="button"
+            (click)="openCamera()"
+            [attr.aria-label]="'openCamera' | translate"
+            [attr.title]="'openCamera' | translate"
+            class="flex-1 flex items-center justify-center gap-1 py-2 text-sm font-medium text-gray-600 border-x border-gray-300 hover:text-blue-600"
+            [class.bg-blue-500]="isCameraActive"
+            [class.text-white]="isCameraActive">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 7h3l2-2h6l2 2h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"></path>
+        <circle cx="12" cy="14" r="3"></circle>
+      </svg>
     </button>
     <button type="button"
             (click)="activateSearchMode()"
-            class="flex-1 py-2 text-sm font-medium"
+            [attr.aria-label]="'googleImages' | translate"
+            [attr.title]="'googleImages' | translate"
+            class="flex-1 flex items-center justify-center gap-1 py-2 text-sm font-medium"
             [class.bg-blue-500]="activeTab === 'search'"
             [class.text-white]="activeTab === 'search'"
             [class.bg-gray-100]="activeTab !== 'search'">
-      Search
+      <span class="font-bold">G</span>
+    </button>
+    <button type="button"
+            (click)="activateTextMode()"
+            [attr.aria-label]="'textImage' | translate"
+            [attr.title]="'textImage' | translate"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium border-l border-gray-300"
+            [class.bg-blue-500]="activeTab === 'text'"
+            [class.text-white]="activeTab === 'text'"
+            [class.bg-gray-100]="activeTab !== 'text'">
+      <span aria-hidden="true">🔤</span>
     </button>
   </div>
 
   <div *ngIf="activeTab === 'upload'" class="p-4">
-    <div class="border-2 border-dashed rounded p-4 text-center transition relative"
+    <div class="border-2 border-dashed rounded p-4 text-center transition relative cursor-pointer"
          [class.border-blue-500]="isDragOver"
          [class.bg-blue-50]="isDragOver"
          [class.border-gray-300]="!isDragOver"
          (dragover)="onDragOver($event)"
          (dragleave)="onDragLeave($event)"
-         (drop)="onFileDrop($event)">
+         (drop)="onFileDrop($event)"
+         (click)="markAsPasteTarget(); triggerFilePicker(fileInput)">
       <div *ngIf="preview; else uploadPlaceholder" class="relative">
         <img [src]="preview" class="max-h-32 mx-auto rounded">
         <button type="button"
                 (click)="removeImage($event)"
-                class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center">
+                class="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                [attr.title]="'removeImage' | translate">
           &times;
         </button>
       </div>
       <ng-template #uploadPlaceholder>
-        <p class="text-gray-500">Use Upload button or drag and drop an image here</p>
+        <p class="text-gray-500">{{ 'tapOrDropImage' | translate }}</p>
+        <p class="text-xs text-gray-400 mt-1">{{ 'pasteImageHint' | translate }}</p>
       </ng-template>
+    </div>
+    <p *ngIf="pasteImportError" class="text-xs text-amber-600 text-center mt-2">
+      {{ pasteImportError }}
+    </p>
+  </div>
+
+  <div *ngIf="activeTab === 'text'" class="p-4">
+    <div class="rounded border border-blue-200 bg-blue-50 p-3 space-y-2">
+      <input type="text"
+             [formControl]="textImageControl"
+             [placeholder]="'textImagePlaceholder' | translate"
+             (keydown.enter)="useTextAsImage()"
+             class="w-full px-3 py-2 rounded border border-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+      <div class="flex items-center justify-center gap-2">
+        <button *ngFor="let color of textImageColors"
+                type="button"
+                (click)="setTextImageColor(color)"
+                [style.background]="color"
+                [attr.aria-label]="'textImageBackgroundColor' | translate"
+                [class.ring-2]="textImageColor === color"
+                [class.ring-offset-2]="textImageColor === color"
+                [class.ring-blue-500]="textImageColor === color"
+                class="w-7 h-7 rounded-full border-2 border-white shadow">
+        </button>
+        <label class="relative w-8 h-8 rounded-full border-2 border-white shadow overflow-hidden cursor-pointer"
+               [attr.title]="'textImageCustomColor' | translate">
+          <input type="color"
+                 [value]="textImageColor"
+                 (input)="updateTextImageColor($event)"
+                 [attr.aria-label]="'textImageCustomColor' | translate"
+                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+          <span class="absolute inset-0 rounded-full bg-[conic-gradient(red,yellow,lime,cyan,blue,magenta,red)]"></span>
+          <span class="absolute inset-[7px] rounded-full border border-white/80"
+                [style.background]="textImageColor"></span>
+        </label>
+      </div>
+      <button type="button"
+              (click)="useTextAsImage()"
+              [disabled]="!textImageControl.value?.trim()"
+              class="w-full px-3 py-2 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        {{ 'createTextImage' | translate }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="isCameraActive" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+  <div class="bg-white rounded-lg shadow-xl p-4 w-[90vw] max-w-md space-y-3 border border-gray-200">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-semibold">{{ 'capturePhoto' | translate }}</h2>
+      <button type="button"
+              (click)="closeCamera()"
+              class="text-sm text-red-500 hover:underline">
+        {{ 'cancel' | translate }}
+      </button>
+    </div>
+
+    <div class="h-64 bg-black rounded overflow-hidden">
+      <video #cameraVideo autoplay playsinline class="w-full h-full object-cover bg-black"></video>
+    </div>
+
+    <p *ngIf="cameraError" class="text-sm text-red-500 text-center">{{ cameraError }}</p>
+
+    <div class="flex justify-end gap-2">
+      <button type="button"
+              (click)="captureCameraPhoto()"
+              [disabled]="cameraCaptureInProgress"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+        {{ (cameraCaptureInProgress ? 'capturing' : 'captureAndUpload') | translate }}
+      </button>
     </div>
   </div>
 </div>
@@ -48,41 +149,66 @@
   <div class="relative mx-auto my-4 w-[96vw] h-[92vh] bg-white rounded-lg shadow-xl p-4 flex flex-col">
     <div class="flex items-center gap-2 mb-3">
       <input type="text"
-             [formControl]="searchControl"
-             placeholder="Search Pixabay (e.g., cat, cartoon dog)"
+             [formControl]="googleSearchControl"
+             [placeholder]="'googleImagesSearchPlaceholder' | translate"
+             (keydown.enter)="openGoogleImages()"
              class="w-full border rounded p-2">
+      <button type="button"
+              (click)="openGoogleImages()"
+              class="px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700 whitespace-nowrap flex items-center gap-2">
+        <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white font-bold text-blue-600">G</span>
+        <span>{{ 'googleImages' | translate }}</span>
+      </button>
       <button type="button"
               (click)="closeSearchFullscreen()"
               class="px-3 py-2 rounded border border-gray-300 text-sm hover:bg-gray-100">
-        Close
+        {{ 'close' | translate }}
       </button>
     </div>
 
-    <div *ngIf="searching" class="text-center py-4 text-sm text-gray-600">
-      Searching...
-    </div>
-
-    <div *ngIf="searchError && !searching" class="text-center py-2 text-sm text-red-500">
-      {{ searchError }}
-    </div>
-
-    <div *ngIf="!searching && searchResults.length === 0 && searchControl.value" class="text-center text-gray-500 py-4">
-      No images found. Try a different keyword.
-    </div>
-
-    <div class="flex-1 overflow-y-auto" (scroll)="onSearchResultsScroll($event)">
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <div *ngFor="let img of searchResults"
-             (click)="onSearchImageClick(img)"
-             (dblclick)="onSearchImageDoubleClick(img)"
-             class="cursor-pointer border-2 rounded hover:border-blue-500 transition"
-             [class.border-blue-500]="selectedImageId === img.id">
-          <img [src]="img.previewURL" class="w-full h-32 object-cover rounded">
+    <div #pasteTarget
+         tabindex="0"
+         (click)="markAsPasteTarget()"
+         class="flex-1 rounded border-2 border-dashed border-gray-300 bg-gray-50 p-6 flex flex-col items-center justify-center text-center outline-none focus:border-blue-500 focus:bg-blue-50">
+      <div class="max-w-lg space-y-3">
+        <div class="mx-auto h-12 w-12 rounded-full bg-white border border-gray-200 flex items-center justify-center text-2xl font-bold text-blue-600">
+          G
         </div>
-      </div>
 
-      <div *ngIf="loadingMore" class="text-center text-xs text-gray-500 py-3">
-        Loading more images...
+        <!-- Android: URL input field (clipboard.read() hangs in WebView — URL paste is reliable) -->
+        <ng-container *ngIf="isAndroid; else desktopPaste">
+          <p class="text-gray-700 font-medium text-sm leading-snug">{{ 'androidGoogleImagesGuide' | translate }}</p>
+          <div class="flex gap-2 w-full">
+            <input type="url"
+                   [formControl]="androidUrlControl"
+                   placeholder="https://..."
+                   (paste)="onAndroidUrlPaste($event)"
+                   class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+            <button type="button"
+                    (click)="importAndroidImageUrl()"
+                    [disabled]="isImportingPastedImage"
+                    class="px-5 py-3 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm whitespace-nowrap">
+              {{ 'import' | translate }}
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Desktop / Electron: clipboard.read() works — keep the paste button -->
+        <ng-template #desktopPaste>
+          <p class="text-gray-700 font-medium">{{ 'googleImagesPasteGuide' | translate }}</p>
+          <p class="text-sm text-gray-500">{{ 'pasteImageHint' | translate }}</p>
+          <button type="button"
+                  (click)="pasteFromClipboard()"
+                  [disabled]="isImportingPastedImage"
+                  class="w-full sm:w-auto px-8 py-4 rounded-lg bg-green-600 text-white text-base font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+            {{ 'pasteImageButton' | translate }}
+          </button>
+        </ng-template>
+
+        <p *ngIf="isImportingPastedImage" class="text-sm text-blue-600">{{ 'importingPastedImage' | translate }}</p>
+        <p *ngIf="pasteImportError && !isImportingPastedImage" class="text-sm text-amber-600">
+          {{ pasteImportError }}
+        </p>
       </div>
     </div>
   </div>

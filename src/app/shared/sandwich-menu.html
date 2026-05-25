@@ -1,19 +1,20 @@
-<div *ngIf="isOpen" class="menu-backdrop"></div>
+<div *ngIf="isOpen" class="menu-backdrop" aria-hidden="true" (click)="closeMenu()"></div>
 
-<div class="fixed bottom-4 left-4 z-50">
+<div class="sandwich-wrapper">
   <button
     type="button"
     (click)="toggleMenu()"
     class="menu-fab"
-    [attr.aria-label]="isOpen ? 'Resume game' : 'Pause game menu'"
+    [attr.aria-label]="(isOpen ? 'menuResumeAria' : 'menuPauseAria') | translate"
   >
     <span *ngIf="isOpen">||</span>
     <span *ngIf="!isOpen">&#9776;</span>
   </button>
 
   <div *ngIf="isOpen" class="menu-panel">
-    <button type="button" (click)="onAction('activity')" class="menu-action">Activity Page</button>
-    <button type="button" (click)="onAction('startover')" class="menu-action">Start Over</button>
-    <button type="button" (click)="onAction('resume')" class="menu-action">Resume</button>
+    <button type="button" (click)="onAction('topics')" class="menu-action">{{ 'menuTopics' | translate }}</button>
+    <button type="button" (click)="onAction('activity')" class="menu-action">{{ 'menuActivityPage' | translate }}</button>
+    <button type="button" (click)="onAction('startover')" class="menu-action">{{ 'menuStartOver' | translate }}</button>
+    <button type="button" (click)="onAction('resume')" class="menu-action">{{ 'menuResume' | translate }}</button>
   </div>
 </div>

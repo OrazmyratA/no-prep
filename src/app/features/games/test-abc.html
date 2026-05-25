@@ -1,0 +1,94 @@
+<div class="game-container">
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="loading-spinner">📝</div>
+    <p>{{ 'testAbcLoading' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading && !gameFinished && questions.length" class="quiz-board">
+    <!-- Header with score and progress -->
+    <div class="quiz-header">
+      <div class="score">{{ 'score' | translate }}: {{ score }} / {{ questions.length }}</div>
+      <div class="progress">{{ 'testAbcQuestion' | translate }} {{ currentIndex + 1 }} {{ 'testAbcOf' | translate }} {{ questions.length }}</div>
+    </div>
+
+    <!-- Question area -->
+ <div class="question-area">
+  <div class="question-card" (click)="toggleFlip()">
+    <!-- Flip container (only if item has audio, otherwise just show content) -->
+    <div *ngIf="questions[currentIndex]?.correctItem?.audio; else noAudioContent"
+         class="flip-card"
+         [class.flipped]="isFlipped">
+      <!-- Front side: speaker icon -->
+      <div class="flip-card-front">
+        <div class="speaker-icon" (click)="playAudioAndStay($event)">
+          🔊
+        </div>
+      </div>
+      <!-- Back side: actual question content -->
+      <div class="flip-card-back">
+        <ng-container *ngTemplateOutlet="questionContent"></ng-container>
+      </div>
+    </div>
+
+    <!-- No audio: just show content (no flip) -->
+    <ng-template #noAudioContent>
+      <ng-container *ngTemplateOutlet="questionContent"></ng-container>
+    </ng-template>
+
+    <!-- Reusable content template -->
+    <ng-template #questionContent>
+      <!-- Mode: word → image (question = text, options = images) -->
+      <div *ngIf="!reverseMode" class="question-text">
+        <div class="word-display">{{ questions[currentIndex].correctItem.text }}</div>
+      </div>
+      <!-- Mode: image → word (question = image, options = text) -->
+      <div *ngIf="reverseMode" class="question-image">
+        <div class="image-display">
+          <img [src]="imageUrl(questions[currentIndex].correctItem.image!, questions[currentIndex].correctItem.id!)" alt="question">
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div>
+
+    <!-- Options grid (3 items) -->
+    <div class="options-area">
+      <div *ngFor="let opt of questions[currentIndex].options"
+           class="option-card"
+           [class.selected]="selectedCorrect && opt.id === selectedOptionId"
+           [class.disabled]="answeredQuestions.has(currentIndex)"
+           [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
+           [attr.data-opt-id]="opt.id"
+           (click)="onOptionClick(opt)">
+        <!-- In word→image mode, options are images -->
+        <div *ngIf="!reverseMode && opt.image" class="option-image">
+          <img [src]="imageUrl(opt.image, opt.id!)" alt="option">
+        </div>
+        <!-- Fallback if image missing in this mode: show text -->
+        <div *ngIf="!reverseMode && !opt.image" class="option-text">{{ opt.text }}</div>
+        <!-- In image→word mode, options are texts -->
+        <div *ngIf="reverseMode" class="option-text">{{ opt.text }}</div>
+      </div>
+    </div>
+
+    <!-- Navigation buttons -->
+    <div class="nav-buttons">
+      <button class="nav-btn prev" (click)="previousQuestion()" [disabled]="currentIndex === 0">◀ {{ 'previous' | translate }}</button>
+      <button class="nav-btn next" (click)="nextQuestion()" [disabled]="currentIndex === questions.length - 1">{{ 'next' | translate }} ▶</button>
+    </div>
+  </div>
+
+  <!-- Victory Popup -->
+  <div *ngIf="gameFinished" class="winner-overlay">
+    <div class="winner-card">
+      <h2>{{ 'testAbcQuizComplete' | translate }} 🎉</h2>
+      <p>{{ 'testAbcYourScore' | translate }}: {{ score }} / {{ questions.length }}</p>
+      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
+    </div>
+  </div>
+
+  <!-- Sandwich Menu -->
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

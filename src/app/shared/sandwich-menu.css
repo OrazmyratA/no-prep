@@ -1,9 +1,10 @@
 .menu-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 1999;
   background: rgba(15, 23, 42, 0.32);
   backdrop-filter: blur(6px);
+  pointer-events: auto;
 }
 
 .menu-fab {
@@ -17,6 +18,8 @@
   line-height: 1;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   cursor: pointer;
+  position: relative;
+  z-index: 92;
 }
 
 .menu-panel {
@@ -28,6 +31,15 @@
   border-radius: 10px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
   padding: 8px;
+  z-index: 92;
+}
+
+
+.sandwich-wrapper {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 2000;
 }
 
 .menu-action {
