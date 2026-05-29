@@ -6,7 +6,7 @@
   </div>
 
   <!-- Game area -->
-  <div *ngIf="!loading && !gameFinished && currentItem" class="spotlight-wrapper">
+  <div *ngIf="!loading && currentItem" class="spotlight-wrapper">
     <!-- Item display – fills the screen -->
     <div class="item-display">
       <div *ngIf="currentItem.image" class="item-image">
@@ -24,7 +24,7 @@
             (touchmove)="onTouchMove($event)"
             (touchstart)="onTouchMove($event)"></canvas>
 
-    <div *ngIf="!gameFinished && currentItem"
+    <div *ngIf="currentItem"
          class="spotlight-pointer"
          [style.left.px]="pointerLeft"
          [style.top.px]="pointerTop"></div>
@@ -52,17 +52,6 @@
     </div>
   </div>  
 
-  <!-- Victory popup -->
-  <div *ngIf="gameFinished" class="victory-overlay">
-    <div class="victory-content">
-      <h2 class="victory-title">{{ 'spotlightVictory' | translate }}</h2>
-      <div class="popup-actions">
-        <button (click)="resetGame()" class="btn btn-primary">{{ 'playAgain' | translate }}</button>
-        <button (click)="onMenuAction('activity')" class="btn btn-secondary">{{ 'activitiesLabel' | translate }}</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Sandwich Menu (shared component) -->
+<!-- Sandwich Menu (shared component) -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
 </div>

@@ -109,7 +109,18 @@
           <div *ngIf="!team.selectedItem.image" class="question-fallback">{{ team.selectedItem.text || '?' }}</div>
         </div>
 
-        <div class="balloon-options">
+        <!-- Simple OK / Oops mode (no text on items) -->
+        <div *ngIf="team.simpleConfirmMode" class="balloon-options balloon-simple-confirm">
+          <button type="button" class="quiz-option confirm-ok" (click)="onConfirmOk(team.id)">
+            ✓ OK
+          </button>
+          <button type="button" class="quiz-option confirm-oops" (click)="onConfirmOops(team.id)">
+            ✗ Oops!
+          </button>
+        </div>
+
+        <!-- Multiple-choice options -->
+        <div *ngIf="!team.simpleConfirmMode" class="balloon-options">
           <button *ngFor="let opt of team.quizOptions"
                   type="button"
                   class="quiz-option"

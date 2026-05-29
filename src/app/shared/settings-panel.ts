@@ -368,8 +368,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       case 'team-sentence':
         this.settingsForm = this.fb.group({
           speed: [1],
-          reverseMode: [false],
-          soundQuizMode: [false]
+          reverseMode: [false]
         });
         break;
       case 'spin-wheel':

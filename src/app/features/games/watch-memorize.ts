@@ -19,6 +19,7 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   gridItems: Item[] = [];               // shuffled all items for recall phase
   selectedIndices: Set<number> = new Set(); // indices of correctly selected items in grid
   currentScrollIndex = -1;
+  currentScrollItem: Item | null = null;
   scrollPhase = true;
   gameFinished = false;
   showWinPopup = false;
@@ -232,6 +233,7 @@ private rebuildRecallRows() {
     this.calculateGridLayout();
 
     this.currentScrollIndex = -1;
+    this.currentScrollItem = null;
     this.scrollPhase = true;
     this.gameFinished = false;
     this.showWinPopup = false;
@@ -256,6 +258,7 @@ private nextScrollItem() {
   }
 
   this.currentScrollIndex++;
+  this.currentScrollItem = this.scrollingItems[this.currentScrollIndex];
   this.cdr.detectChanges();
   this.playSound(this.flipSound, 0.3);
 

@@ -74,6 +74,7 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   quizOptions: Item[] = [];
   quizAnswerLocked = false;
   fadeOutOptionIds = new Set<number>();
+  simpleConfirmMode = false;
 
   // Team competition
   teamMode = false;
@@ -300,15 +301,13 @@ private updateTeamButtons() {
   }
 
   private openQuizForTeam(teamId: number) {
-    if (this.showQuiz || !this.currentItem || !this.currentItem.text) return;
+    if (this.showQuiz || !this.currentItem) return;
 
-    const options = this.buildQuizOptions();
-    if (!options.length) {
-      const msg = this.langService.translate('revealGameNotEnoughNames');
-      showAppNotification(msg, 'info');
-      return;
-    }
+    const hasText = !!this.currentItem.text?.trim();
+    let options: Item[] = [];
+    if (hasText) options = this.buildQuizOptions();
 
+    this.simpleConfirmMode = !hasText || options.length === 0;
     this.quizOptions = options;
     this.showQuiz = true;
     this.updateTeamButtons();
@@ -319,14 +318,16 @@ private updateTeamButtons() {
     this.quizPending = true;
 
     setTimeout(() => {
-      const team = this.teams.find(t => t.id === teamId);
-      if (team) {
-        document.querySelectorAll('.quiz-option').forEach(btn => {
-          const el = btn as HTMLElement;
-          el.style.background = `linear-gradient(135deg, ${team.color}, ${this.adjustBrightness(team.color, -20)})`;
-          el.style.border = '3px solid white';
-          el.style.fontWeight = 'bold';
-        });
+      if (!this.simpleConfirmMode) {
+        const team = this.teams.find(t => t.id === teamId);
+        if (team) {
+          document.querySelectorAll('.quiz-option').forEach(btn => {
+            const el = btn as HTMLElement;
+            el.style.background = `linear-gradient(135deg, ${team.color}, ${this.adjustBrightness(team.color, -20)})`;
+            el.style.border = '3px solid white';
+            el.style.fontWeight = 'bold';
+          });
+        }
       }
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
@@ -410,6 +411,28 @@ private updateTeamButtons() {
     }
   }
 
+  onConfirmOk() {
+    if (!this.showQuiz || !this.currentItem) return;
+    this.quizAnswerLocked = true;
+    this.transitionLock = true;
+    this.collectSound?.play();
+    if (this.teamMode && this.currentAnsweringTeamId !== null) {
+      const team = this.teams.find(t => t.id === this.currentAnsweringTeamId);
+      if (team) { team.score++; this.updateTeamButtons(); }
+    }
+    setTimeout(() => {
+      this.closeQuizAndResetTurn();
+      this.startFastReveal();
+    }, 600);
+  }
+
+  onConfirmOops() {
+    if (!this.showQuiz) return;
+    this.playBuzzSound();
+    this.closeQuizAndResetTurn();
+    this.cdr.detectChanges();
+  }
+
   private closeQuizAndResetTurn() {
     this.showQuiz = false;
     this.quizOverlayVisible = false;
@@ -417,6 +440,7 @@ private updateTeamButtons() {
     this.quizAnswerLocked = false;
     this.fadeOutOptionIds.clear();
     this.quizPending = false;
+    this.simpleConfirmMode = false;
     this.currentAnsweringTeamId = null;
     this.resumeGame();
     this.cdr.detectChanges();
@@ -465,6 +489,7 @@ if (this.currentIndex >= this.items.length) {
     this.quizAnswerLocked = false;
     this.fadeOutOptionIds.clear();
     this.quizPending = false;
+    this.simpleConfirmMode = false;
     this.currentAnsweringTeamId = null;
 
     if (this.teamMode) this.updateTeamButtons();
@@ -572,19 +597,13 @@ if (this.currentIndex >= this.items.length) {
   }
 
   openQuiz() {
-    if (
-      this.showQuiz ||
-      this.fastRevealMode ||
-      this.transitionLock ||
-      !this.currentItem ||
-      !this.currentItem.text
-    ) return;
-    const options = this.buildQuizOptions();
-    if (!options.length) {
-      const msg = this.langService.translate('revealGameNotEnoughNames');
-      showAppNotification(msg, 'info');
-      return;
-    }
+    if (this.showQuiz || this.fastRevealMode || this.transitionLock || !this.currentItem) return;
+
+    const hasText = !!this.currentItem.text?.trim();
+    let options: Item[] = [];
+    if (hasText) options = this.buildQuizOptions();
+
+    this.simpleConfirmMode = !hasText || options.length === 0;
     this.quizOptions = options;
     this.showQuiz = true;
     this.updateTeamButtons();
@@ -649,6 +668,7 @@ if (this.currentIndex >= this.items.length) {
     this.quizOptions = [];
     this.quizAnswerLocked = false;
     this.fadeOutOptionIds.clear();
+    this.simpleConfirmMode = false;
     this.resumeGame();
     this.cdr.detectChanges();
   }

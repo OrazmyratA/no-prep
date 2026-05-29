@@ -49,11 +49,23 @@
   </div>
 
   <!-- Quiz Overlay -->
-  <div *ngIf="showQuiz && currentItem" 
+  <div *ngIf="showQuiz && currentItem"
        class="fixed inset-0 flex items-center justify-center quiz-overlay"
        [class.visible]="quizOverlayVisible">
     <div class="w-full max-w-5xl mx-auto p-6 text-center">
-      <div class="flex flex-wrap justify-center gap-4">
+      <!-- Simple OK / Oops mode (no text on item) -->
+      <div *ngIf="simpleConfirmMode" class="flex justify-center gap-6 mt-4">
+        <button (click)="onConfirmOk()"
+                class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+          ✓ OK
+        </button>
+        <button (click)="onConfirmOops()"
+                class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+          ✗ Oops!
+        </button>
+      </div>
+      <!-- Multiple-choice options -->
+      <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
         <button *ngFor="let opt of quizOptions"
                 [attr.data-opt-id]="opt.id"
                 (click)="onQuizAnswer(opt)"

@@ -10,13 +10,29 @@
   </div>
 
   <div *ngIf="!loading && gameActive" class="game-board">
-    <button *ngIf="soundQuizMode"
-            type="button"
-            class="sound-prompt-btn"
-            (click)="playRandomSoundPrompt()"
-            [disabled]="remainingSoundItems().length === 0">
-      &#128266;
-    </button>
+    <!-- Flipping item card (with stack) -->
+    <div *ngIf="cardItem" class="card-stage">
+      <!-- Stack layers behind the active card -->
+      <div *ngFor="let layer of stackLayers" class="card-stack-layer"></div>
+      <!-- Active card -->
+      <div class="card-item" [class.flipped]="cardFlipped" (click)="onCardClick()">
+        <!-- Front: decorative + speaker (if item has audio) -->
+        <span class="card-face card-front">
+          <span class="card-deco-pattern"></span>
+          <button *ngIf="cardHasAudio" type="button" class="card-speaker-btn"
+                  (click)="onCardSpeakerClick($event)">🔊</button>
+        </span>
+        <!-- Back: complementary content only -->
+        <span class="card-face card-back">
+          <div class="card-back-content">
+            <!-- Text mode (tiles = text) → show image on card -->
+            <img *ngIf="!reverseMode && cardItemImageUrl" [src]="cardItemImageUrl" alt="" class="card-content-img">
+            <!-- Reverse mode (tiles = images) → show text on card -->
+            <span *ngIf="reverseMode" class="card-text">{{ cardItem.text }}</span>
+          </div>
+        </span>
+      </div>
+    </div>
 
     <!-- Left team side -->
     <div class="team-side left" [class.frozen]="isLeftFrozen()">
@@ -39,7 +55,7 @@
         <div *ngFor="let tile of teams.left.floatingWords" 
              class="floating-word"
              [class.image-mode]="reverseMode && tile.image"
-             [class.sound-locked]="soundQuizMode && !currentSoundSentence"
+             [class.sound-locked]="!currentSoundSentence"
              [class.shake]="isTileShaking('left', tile.id)"
              [style.top.%]="tile.top" 
              [style.left.%]="tile.left"
@@ -85,7 +101,7 @@
         <div *ngFor="let tile of teams.right.floatingWords" 
              class="floating-word"
              [class.image-mode]="reverseMode && tile.image"
-             [class.sound-locked]="soundQuizMode && !currentSoundSentence"
+             [class.sound-locked]="!currentSoundSentence"
              [class.shake]="isTileShaking('right', tile.id)"
              [style.top.%]="tile.top" 
              [style.left.%]="tile.left"
@@ -109,7 +125,7 @@
   <!-- Winner overlay -->
   <div *ngIf="gameFinished" class="winner-overlay">
     <div class="winner-card">
-      <h2>🏆 {{ winner === 'left' ? teams.left.name : teams.right.name }} {{ 'teamSentenceWins' | translate }}! 🏆</h2>
+      <h2>🏆 {{ winner === 'left' ? ('teamSentenceLeftTeam' | translate) : ('teamSentenceRightTeam' | translate) }} {{ 'teamSentenceWins' | translate }}! 🏆</h2>
       <p>{{ 'teamSentenceFinalScore' | translate }}: {{ teams.left.score }} - {{ teams.right.score }}</p>
       <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
       <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>

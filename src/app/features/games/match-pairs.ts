@@ -44,6 +44,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private flipSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
+  private rewardSound: HTMLAudioElement | null = null;
   private cardImageUrls: string[] = [];
   private layoutSubscription?: Subscription;
 
@@ -71,6 +72,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.collectSound = new Audio('assets/sound/collect.mp3');
     this.collectSound.volume = 0.4;
     this.collectSound.load();
+    this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');
+    this.rewardSound.load();
 
     this.calculateCardSize();
     this.layoutSubscription = this.resizeService.layoutChanged$.subscribe(() => this.recalculateLayout());
@@ -83,7 +86,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.layoutSubscription?.unsubscribe();
-    [this.flipSound, this.buzzSound, this.collectSound].forEach(sound => sound?.pause());
+    [this.flipSound, this.buzzSound, this.collectSound, this.rewardSound].forEach(sound => sound?.pause());
     this.cleanupCardImageUrls();
   }
 
@@ -253,6 +256,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
         // Check win condition
         if (this.cards.every(c => c.matched)) {
           this.gameFinished = true;
+          this.playSound(this.rewardSound);
         }
         this.cdr.detectChanges();
       }, 3000);

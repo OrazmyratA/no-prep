@@ -10,14 +10,14 @@
     <!-- Scrolling Phase -->
     <div *ngIf="!loading && scrollPhase && scrollingItems.length > 0" class="scroll-stage mb-8">
       <div class="scroll-container" [class.paused]="isPaused">
-        <div *ngIf="currentScrollIndex >= 0" class="scrolling-item">
+        <div *ngIf="currentScrollItem" class="scrolling-item">
           <div class="scrolling-item-media">
             <img
-              *ngIf="scrollingItems[currentScrollIndex].image"
-              [src]="imageUrl(scrollingItems[currentScrollIndex].image!, scrollingItems[currentScrollIndex].id!)"
+              *ngIf="currentScrollItem.image"
+              [src]="imageUrl(currentScrollItem.image!, currentScrollItem.id!)"
             >
           </div>
-          <p class="font-semibold text-center mt-2">{{ scrollingItems[currentScrollIndex].text }}</p>
+          <p class="font-semibold text-center mt-2">{{ currentScrollItem.text }}</p>
         </div>
       </div>
     </div>

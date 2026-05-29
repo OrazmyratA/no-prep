@@ -48,6 +48,7 @@ interface PopTeam {
   showQuiz: boolean;
   quizOverlayVisible: boolean;
   quizClosing: boolean;
+  simpleConfirmMode: boolean;
   selectedBalloonIndex: number | null;
   selectedItem: Item | null;
   quizOptions: Item[];
@@ -235,6 +236,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       showQuiz: false,
       quizOverlayVisible: false,
       quizClosing: false,
+      simpleConfirmMode: false,
       selectedBalloonIndex: null,
       selectedItem: null,
       quizOptions: [],
@@ -262,6 +264,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       showQuiz: false,
       quizOverlayVisible: false,
       quizClosing: false,
+      simpleConfirmMode: false,
       selectedBalloonIndex: null,
       selectedItem: null,
       quizOptions: [],
@@ -429,15 +432,25 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private openBalloonQuiz(index: number, teamId = 0): boolean {
     const team = this.getTeam(teamId);
     const balloon = team?.balloons[index];
-    if (!team || !balloon?.item.text) return false;
+    if (!team || !balloon) return false;
 
-    const options = this.buildQuizOptions(balloon.item);
-    if (!options.length) return false;
+    const item = balloon.item;
+    const hasText = !!item.text?.trim();
+    let options: Item[] = [];
+    let simpleMode = false;
+
+    if (!hasText) {
+      simpleMode = true;
+    } else {
+      options = this.buildQuizOptions(item);
+      if (!options.length) return false;
+    }
 
     this.prepareBalloonFocus(index, teamId);
     team.selectedBalloonIndex = index;
-    team.selectedItem = balloon.item;
+    team.selectedItem = item;
     team.quizOptions = options;
+    team.simpleConfirmMode = simpleMode;
     team.showQuiz = true;
     team.quizClosing = false;
     team.quizAnswerLocked = false;
@@ -607,12 +620,43 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.showQuiz = false;
     team.quizOverlayVisible = false;
     team.quizClosing = false;
+    team.simpleConfirmMode = false;
     team.selectedBalloonIndex = null;
     team.selectedItem = null;
     team.quizOptions = [];
     team.quizAnswerLocked = false;
     team.fadeOutOptionIds.clear();
     team.showCenterPopEffect = false;
+  }
+
+  onConfirmOk(teamId = 0) {
+    const team = this.getTeam(teamId);
+    if (!team?.showQuiz || !team.selectedItem) return;
+    const index = team.selectedBalloonIndex;
+    this.playSound(this.correctSound);
+    team.quizClosing = true;
+    team.quizOverlayVisible = false;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.closeBalloonQuiz(team);
+      this.cdr.detectChanges();
+      if (index !== null) {
+        setTimeout(() => this.completeBalloonPop(index, teamId), 360);
+      }
+    }, 650);
+  }
+
+  onConfirmOops(teamId = 0) {
+    const team = this.getTeam(teamId);
+    if (!team?.showQuiz) return;
+    this.playSound(this.buzzSound);
+    team.quizClosing = true;
+    team.quizOverlayVisible = false;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.closeBalloonQuiz(team);
+      this.cdr.detectChanges();
+    }, 420);
   }
 
   private playSound(sound: HTMLAudioElement | null) {

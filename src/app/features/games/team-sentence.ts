@@ -57,7 +57,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private animationFrame: any;
   private speed = 1;
   reverseMode = false;
-  soundQuizMode = false;
+  cardFlipped = false;
+  cardItem: Item | null = null;
   currentSoundItem: Item | null = null;
   currentSoundSentence = '';
   currentSoundWords: string[] = [];
@@ -68,6 +69,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private buzzSound: HTMLAudioElement | null = null;
   private winSound: HTMLAudioElement | null = null;
   private explodeSound: HTMLAudioElement | null = null;
+  private captureSound: HTMLAudioElement | null = null;
   private activeAudio: HTMLAudioElement | null = null;
   private activeAudioUrl: string | null = null;
 
@@ -98,7 +100,6 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       if (params['speed']) this.speed = Number(params['speed']);
       this.reverseMode = String(params['reverseMode']).toLowerCase() === 'true';
-      this.soundQuizMode = String(params['soundQuizMode']).toLowerCase() === 'true';
     });
 
     try {
@@ -133,6 +134,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       this.winSound.load();
       this.explodeSound = new Audio('assets/sound/explode.mp3');
       this.explodeSound.load();
+      this.captureSound = new Audio('assets/sound/capture.mp3');
+      this.captureSound.load();
 
       this.startGame();
     } catch (error) {
@@ -161,7 +164,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
-    [this.correctSound, this.buzzSound, this.winSound, this.explodeSound].forEach(s => s?.pause());
+    [this.correctSound, this.buzzSound, this.winSound, this.explodeSound, this.captureSound].forEach(s => s?.pause());
   }
 
   private buildWordImageMap(items: Item[]) {
@@ -177,7 +180,6 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     return items.filter(item => {
       const text = item.text?.trim();
       if (!text) return false;
-      if (this.soundQuizMode && !item.audio) return false;
       if (this.reverseMode && !this.sentenceHasImages(text)) return false;
       return true;
     });
@@ -242,7 +244,10 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.winner = null;
     this.explodingTeam = null;
+    this.cardFlipped = false;
+    this.cardItem = null;
     this.cdr.detectChanges();
+    this.pickNextCardItem();
   }
 
   private createFloatingTile(word: string, id: number = Date.now() + Math.random()): WordTile {
@@ -393,18 +398,14 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   onWordClick(team: 'left' | 'right', wordTile: WordTile) {
     if (!this.gameActive) return;
     const targetTeam = this.teams[team];
-    if (this.isFrozen(targetTeam) || this.correctTeam === team) return; // prevent clicks when frozen or correct effect
+    if (this.isFrozen(targetTeam) || this.correctTeam !== null) return;
+    if (!this.currentSoundSentence) return;
 
-    if (this.soundQuizMode) {
-      if (!this.currentSoundSentence) {
-        return;
-      }
-      const expectedWord = this.currentSoundWords[targetTeam.sentenceWords.length];
-      if (wordTile.word !== expectedWord) {
-        this.playSound(this.buzzSound);
-        this.shakeTile(team, wordTile.id);
-        return;
-      }
+    const expectedWord = this.currentSoundWords[targetTeam.sentenceWords.length];
+    if (wordTile.word !== expectedWord) {
+      this.playSound(this.buzzSound);
+      this.shakeTile(team, wordTile.id);
+      return;
     }
 
     const index = targetTeam.floatingWords.findIndex(w => w.id === wordTile.id);
@@ -438,26 +439,18 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     const targetTeam = this.teams[team];
     if (this.isFrozen(targetTeam)) return;
     const builtSentence = targetTeam.sentenceWords.join(' ').trim();
-    if (!builtSentence) return;
-    if (this.soundQuizMode) {
-      if (this.currentSoundSentence && builtSentence === this.currentSoundSentence) {
-        this.checkSentence(team);
-      }
-      return;
-    }
-    if (this.sentences.some(s => s === builtSentence)) {
+    if (!builtSentence || !this.currentSoundSentence) return;
+    if (builtSentence === this.currentSoundSentence) {
       this.checkSentence(team);
     }
   }
 
   checkSentence(team: 'left' | 'right') {
-    if (!this.gameActive) return;
+    if (!this.gameActive || this.correctTeam !== null) return;
     const targetTeam = this.teams[team];
     if (this.isFrozen(targetTeam)) return;
     const builtSentence = targetTeam.sentenceWords.join(' ').trim();
-    const isValid = this.soundQuizMode
-      ? Boolean(this.currentSoundSentence && builtSentence === this.currentSoundSentence)
-      : this.sentences.some(s => s === builtSentence);
+    const isValid = Boolean(this.currentSoundSentence && builtSentence === this.currentSoundSentence);
     if (isValid) {
       this.playSound(this.correctSound);
       this.correctTeam = team;
@@ -465,28 +458,33 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
         this.correctTeam = null;
         targetTeam.score++;
         targetTeam.sentenceWords = [];
-        if (this.soundQuizMode) {
-          if (this.currentSoundItem?.id !== undefined) {
-            this.completedSoundItemIds.add(this.currentSoundItem.id);
-          }
-          this.currentSoundItem = null;
-          this.currentSoundSentence = '';
-          this.currentSoundWords = [];
-          this.stopActiveAudio();
+        if (this.cardItem?.id !== undefined) {
+          this.completedSoundItemIds.add(this.cardItem.id);
+        }
+        this.currentSoundItem = null;
+        this.currentSoundSentence = '';
+        this.currentSoundWords = [];
+        this.stopActiveAudio();
+        const otherTeam = team === 'left' ? this.teams.right : this.teams.left;
+        const wordsToReturn = [...otherTeam.sentenceWords];
+        otherTeam.sentenceWords = [];
+        for (const word of wordsToReturn) {
+          otherTeam.floatingWords.push(this.createFloatingTile(word));
         }
         this.cdr.detectChanges();
-        if (this.soundQuizMode ? this.remainingSoundItems().length === 0 : targetTeam.floatingWords.length === 0) {
+        if (this.remainingItems().length === 0) {
           this.gameActive = false;
           this.gameFinished = true;
           this.winner = this.teams.left.score >= this.teams.right.score ? 'left' : 'right';
           this.playSound(this.winSound);
+        } else {
+          this.pickNextCardItem();
         }
+        this.cdr.detectChanges();
       }, 2000);
     } else {
       this.playSound(this.buzzSound);
-      // Freeze this team for 3 seconds
       this.freezeTeam(targetTeam, 3000);
-      // Return all sentence words to floating pool (but keep them in the same team's pool)
       const wordsToReturn = [...targetTeam.sentenceWords];
       targetTeam.sentenceWords = [];
       for (const word of wordsToReturn) {
@@ -503,37 +501,63 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     }
   }
 
-  playRandomSoundPrompt() {
-    if (!this.soundQuizMode || !this.gameActive) return;
-    if (this.currentSoundItem && this.currentSoundSentence) {
-      this.playTrackedAudio(this.currentSoundItem.audio);
-      return;
-    }
-
-    const remainingItems = this.remainingSoundItems();
-    if (remainingItems.length === 0) {
-      this.gameActive = false;
-      this.gameFinished = true;
-      this.winner = this.teams.left.score >= this.teams.right.score ? 'left' : 'right';
-      this.playSound(this.winSound);
+  onCardClick() {
+    if (!this.cardItem || !this.gameActive) return;
+    this.playSound(this.captureSound);
+    this.cardFlipped = !this.cardFlipped;
+    if (this.cardFlipped && !this.currentSoundSentence) {
+      this.currentSoundSentence = this.cardItem.text?.trim() ?? '';
+      this.currentSoundWords = this.currentSoundSentence.split(/\s+/);
       this.cdr.detectChanges();
-      return;
     }
-
-    const item = remainingItems[Math.floor(Math.random() * remainingItems.length)];
-    this.currentSoundItem = item;
-    this.currentSoundSentence = item.text?.trim() ?? '';
-    this.currentSoundWords = this.currentSoundSentence.split(/\s+/);
-    this.playTrackedAudio(item.audio);
-    this.cdr.detectChanges();
   }
 
-  remainingSoundItems(): Item[] {
+  onCardSpeakerClick(event: Event) {
+    event.stopPropagation();
+    if (!this.cardItem?.audio) return;
+    this.playTrackedAudio(this.cardItem.audio);
+  }
+
+  get cardHasAudio(): boolean {
+    return !!this.cardItem?.audio;
+  }
+
+  get stackLayers(): number[] {
+    const depth = Math.min(Math.max(this.remainingItems().length - 1, 0), 4);
+    return Array.from({ length: depth }, (_, i) => i);
+  }
+
+  get cardItemImageUrl(): string | null {
+    if (!this.cardItem?.image || this.cardItem.id === undefined) return null;
+    return this.imageUrl(this.cardItem.image, this.cardItem.id);
+  }
+
+  private remainingItems(): Item[] {
     return this.eligibleItems.filter(item =>
-      item.audio &&
-      item.id !== undefined &&
-      !this.completedSoundItemIds.has(item.id)
+      item.id !== undefined && !this.completedSoundItemIds.has(item.id)
     );
+  }
+
+  private pickNextCardItem() {
+    const remaining = this.remainingItems();
+    if (remaining.length === 0) {
+      this.cardItem = null;
+      return;
+    }
+    let next = remaining[0];
+    if (remaining.length > 1) {
+      let tries = 0;
+      do {
+        next = remaining[Math.floor(Math.random() * remaining.length)];
+        tries++;
+      } while (next.id === this.cardItem?.id && tries < 5);
+    }
+    this.cardItem = next;
+    this.cardFlipped = false;
+    this.currentSoundItem = next;
+    this.currentSoundSentence = '';
+    this.currentSoundWords = [];
+    this.cdr.detectChanges();
   }
 
   private playTrackedAudio(blob: Blob | undefined) {

@@ -2339,6 +2339,30 @@ private translations: TranslationDictionary = {
   sa: 'لم يتم العثور على جمل صالحة. يرجى إضافة عناصر تحتوي على نص إلى هذا الموضوع.',
 },
 
+'teamSentenceLeftTeam': {
+  en: 'Left Team',
+  tk: 'Çep Topar',
+  ru: 'Левая команда',
+  cn: '左队',
+  cde: 'Linkes Team',
+  es: 'Equipo Izquierdo',
+  fr: 'Équipe Gauche',
+  kr: '왼쪽 팀',
+  sa: 'الفريق الأيسر',
+},
+
+'teamSentenceRightTeam': {
+  en: 'Right Team',
+  tk: 'Sag Topar',
+  ru: 'Правая команда',
+  cn: '右队',
+  cde: 'Rechtes Team',
+  es: 'Equipo Derecho',
+  fr: 'Équipe Droite',
+  kr: '오른쪽 팀',
+  sa: 'الفريق الأيمن',
+},
+
 'gameAiAnalyzerName': {
   en: 'AI Analyzer',
   tk: 'AI Bahalandyrjysy',

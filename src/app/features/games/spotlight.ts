@@ -27,7 +27,6 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   pointerTop = 0;
   isDrawing = false;
   loading = true;
-  gameFinished = false;
   revealAll = false;
 
   currentHasAudio = false;
@@ -42,9 +41,6 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   private drawFrame: number | null = null;
   private layoutSubscription?: Subscription;
 
-  // Sounds
-  private collectSound: HTMLAudioElement | null = null;
-  private victorySound: HTMLAudioElement | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -84,12 +80,6 @@ export class SpotlightComponent implements OnInit, OnDestroy {
         return;
       }
 
-      // Preload sounds
-      this.collectSound = new Audio('assets/sound/collect.mp3');
-      this.collectSound.load();
-      this.victorySound = new Audio('assets/sound/win.mp3'); // you may have this
-      this.victorySound.load();
-
       this.loadItem(0);
     } catch (error) {
       console.error('Failed to load items', error);
@@ -105,7 +95,6 @@ export class SpotlightComponent implements OnInit, OnDestroy {
     this.clearTimer();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
-    [this.collectSound, this.victorySound].forEach(s => s?.pause());
     this.layoutSubscription?.unsubscribe();
     if (this.drawFrame !== null) {
       cancelAnimationFrame(this.drawFrame);
@@ -114,11 +103,9 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   }
 
 private loadItem(index: number) {
-  if (index >= this.items.length) {
-    this.gameFinished = true;
-    return;
-  }
-  this.currentItem = this.items[index];
+  if (this.items.length === 0) return;
+  this.currentIndex = index % this.items.length;
+  this.currentItem = this.items[this.currentIndex];
   this.currentHasAudio = !!this.currentItem.audio;
   this.cdr.detectChanges();
 }
@@ -169,7 +156,7 @@ private loadItem(index: number) {
   }
 
   onMouseMove(event: MouseEvent) {
-    if (this.gameFinished || !this.currentItem) return;
+    if (!this.currentItem) return;
     const coords = this.translatePointerPosition(event.clientX, event.clientY);
     if (!coords) return;
     this.setSpotlightPosition(coords.canvasX, coords.canvasY, coords.cssX, coords.cssY);
@@ -177,7 +164,7 @@ private loadItem(index: number) {
 
   onTouchMove(event: TouchEvent) {
     event.preventDefault();
-    if (this.gameFinished || !this.currentItem) return;
+    if (!this.currentItem) return;
     const touch = event.touches[0];
     const coords = this.translatePointerPosition(touch.clientX, touch.clientY);
     if (!coords) return;
@@ -313,18 +300,9 @@ private loadItem(index: number) {
   private startCollectionTimer() {
     this.clearTimer();
     this.collectionTimer = setTimeout(() => {
-      // Collect item
-      if (this.collectSound) this.collectSound.play();
       this.currentIndex++;
-      if (this.currentIndex < this.items.length) {
-        this.loadItem(this.currentIndex);
-        // Keep spotlight centered? Maybe not, but we could recenter
-        this.startSpotlightJourney();
-      } else {
-        // Game finished
-        this.gameFinished = true;
-        if (this.victorySound) this.victorySound.play();
-      }
+      this.loadItem(this.currentIndex); // wraps via modulo
+      this.startSpotlightJourney();
       this.cdr.detectChanges();
     }, this.collectDelay);
   }
@@ -394,7 +372,6 @@ private loadItem(index: number) {
 
   resetGame() {
     this.currentIndex = 0;
-    this.gameFinished = false;
     this.loadItem(0);
     this.startSpotlightJourney();
   }

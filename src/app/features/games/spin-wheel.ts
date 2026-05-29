@@ -43,6 +43,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   private layoutSubscription?: Subscription;
   eliminationAnimation = false;
   eliminationLong = false;
+  simpleConfirmMode = false;
 
   // Constants for wheel geometry
   private centerX = 280;
@@ -354,24 +355,29 @@ if (landedItem.text && landedItem.text.trim() !== '') {
   const canShowQuiz = this.buildQuizOptions();
   if (canShowQuiz) {
     setTimeout(() => {
+      this.simpleConfirmMode = false;
       this.showQuiz = true;
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
     }, 1000);
   } else {
-    // No valid distractors – the teacher must press Eliminate manually
-    // The selectedItem is already set, so the Eliminate button will work.
-    this.showQuiz = false;
+    // No valid distractors – fall back to simple OK/Oops confirm
+    setTimeout(() => {
+      this.simpleConfirmMode = true;
+      this.showQuiz = true;
+      this.quizOverlayVisible = true;
+      this.cdr.detectChanges();
+    }, 1000);
   }
 } else {
-  // Item has no text – teacher must eliminate manually as well (or use original behaviour)
-  // To keep consistent with the "manual elimination" principle, we do not auto‑eliminate.
-  // The teacher can still press Eliminate.
-  // (Optionally you could keep the old auto‑elimination, but the requirement says "skip quiz entirely, just eliminate" – but we changed to manual)
-  // We'll set selectedItem and leave it for the teacher.
-  // No automatic elimination.
-  this.showQuiz = false;
-} 
+  // Item has no text – show simple OK/Oops confirm overlay
+  setTimeout(() => {
+    this.simpleConfirmMode = true;
+    this.showQuiz = true;
+    this.quizOverlayVisible = true;
+    this.cdr.detectChanges();
+  }, 1000);
+}
     }
   };
   requestAnimationFrame(animate);
@@ -508,6 +514,32 @@ onQuizAnswer(selected: Item) {
     setTimeout(() => el?.classList.remove('shake'), 500);
   }
 }
+  onConfirmOk() {
+    if (!this.selectedItem) return;
+    this.playSound(this.collectSound);
+    this.eliminationLong = true;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const idx = this.currentItems.findIndex(i => i.id === this.selectedItem?.id);
+      if (idx !== -1) this.currentItems.splice(idx, 1);
+      this.showQuiz = false;
+      this.quizOverlayVisible = false;
+      this.simpleConfirmMode = false;
+      this.selectedItem = null;
+      this.drawWheel();
+      setTimeout(() => { this.eliminationLong = false; this.cdr.detectChanges(); }, 50);
+    }, 1500);
+  }
+
+  onConfirmOops() {
+    this.playSound(this.buzzSound, 0.5);
+    this.showQuiz = false;
+    this.quizOverlayVisible = false;
+    this.simpleConfirmMode = false;
+    this.selectedItem = null;
+    this.cdr.detectChanges();
+  }
+
   // Direct elimination (same as old eliminate button)
   eliminate() {
     if (this.showQuiz) return; // do not eliminate during quiz
