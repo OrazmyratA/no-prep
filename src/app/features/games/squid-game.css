@@ -1,0 +1,372 @@
+/* ─── Container ───────────────────────────────────────────────── */
+.squid-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  user-select: none;
+}
+
+/* ─── Full-screen background cross-fade ──────────────────────── */
+.squid-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.squid-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 0;
+  transition: opacity 0.6s ease-in-out;
+  pointer-events: none;
+}
+
+.squid-bg img.active {
+  opacity: 1;
+}
+
+/* ─── Loading ─────────────────────────────────────────────────── */
+.squid-loading {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 1.4rem;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+
+/* ─── Timer ───────────────────────────────────────────────────── */
+.squid-timer {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid #ff4d6d;
+  border-radius: 12px;
+  padding: 4px 14px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ff4d6d;
+  letter-spacing: 0.05em;
+  backdrop-filter: blur(4px);
+}
+
+.squid-timer.timer-urgent {
+  color: #ff0000;
+  border-color: #ff0000;
+  animation: timerPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes timerPulse {
+  from { opacity: 1; }
+  to   { opacity: 0.45; }
+}
+
+/* ─── Light badge ─────────────────────────────────────────────── */
+.squid-light-badge {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  z-index: 10;
+  font-size: 1rem;
+  font-weight: 800;
+  padding: 5px 22px;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+
+.squid-light-badge.green-light {
+  background: rgba(0, 220, 80, 0.25);
+  color: #00ff7f;
+  border: 2px solid #00ff7f;
+  text-shadow: 0 0 10px rgba(0,255,127,0.7);
+}
+
+.squid-light-badge.red-light {
+  background: rgba(255, 30, 30, 0.25);
+  color: #ff4d4d;
+  border: 2px solid #ff4d4d;
+  text-shadow: 0 0 10px rgba(255,77,77,0.8);
+  animation: redBadgePulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes redBadgePulse {
+  from { box-shadow: 0 0 6px rgba(255,77,77,0.4); }
+  to   { box-shadow: 0 0 20px rgba(255,0,0,0.8); }
+}
+
+/* ─── Finish line ─────────────────────────────────────────────── */
+.squid-finish-line {
+  position: absolute;
+  bottom: 43%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 5;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(255, 220, 0, 0.95);
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 12px rgba(255,220,0,0.7), 0 1px 5px rgba(0,0,0,0.9);
+  pointer-events: none;
+  border-bottom: 2px dashed rgba(255, 220, 0, 0.5);
+  padding-bottom: 4px;
+}
+
+/* ─── Player tokens ───────────────────────────────────────────── */
+.squid-player {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* Colored circle background — 3× the original 48 px ≈ 130 px */
+.char-bg {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  opacity: 0.9;
+  border: 3px solid rgba(255,255,255,0.55);
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,0.55));
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.squid-char-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Caught: red glow pulse on the bg circle */
+.squid-player.caught-glow .char-bg {
+  border-color: #ff2222;
+  animation: caughtPulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes caughtPulse {
+  from { box-shadow: 0 0 6px rgba(255,0,0,0.5), 0 0 0 3px rgba(255,0,0,0.3); }
+  to   { box-shadow: 0 0 24px rgba(255,0,0,0.95), 0 0 0 7px rgba(255,0,0,0.55); }
+}
+
+/* Correct answer: green flash on bg circle */
+.squid-player.correct-flash .char-bg {
+  border-color: #00ff88;
+  box-shadow: 0 0 22px rgba(0,255,136,0.9), 0 0 0 5px rgba(0,255,136,0.45);
+}
+
+/* ─── Finished: bounce + gold glow ──────────────────────────── */
+.squid-player.team-finished .char-bg {
+  border-color: gold;
+  animation: finishBounce 0.65s ease-in-out infinite alternate,
+             finishGlow   1.3s  ease-in-out infinite alternate;
+}
+
+@keyframes finishBounce {
+  from { transform: translateY(0)    scale(1); }
+  to   { transform: translateY(-16px) scale(1.08); }
+}
+
+@keyframes finishGlow {
+  from { box-shadow: 0 0 14px rgba(255,215,0,0.65), 0 0 0 3px rgba(255,215,0,0.3); }
+  to   { box-shadow: 0 0 44px rgba(255,215,0,1.0),  0 0 0 10px rgba(255,215,0,0.55); }
+}
+
+/* ─── Team move buttons ───────────────────────────────────────── */
+.squid-buttons {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: space-evenly;
+  gap: 6px;
+  padding: 8px 10px 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.55) 70%, transparent 100%);
+  align-items: center;
+}
+
+/* Each team: [small avatar indicator | wider button] side by side */
+.team-unit {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  max-width: 160px;
+}
+
+.btn-avatar-indicator {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid rgba(255,255,255,0.55);
+  flex-shrink: 0;
+}
+
+.btn-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.squid-team-btn {
+  flex: 1;
+  min-width: 60px;
+  max-width: 110px;
+  min-height: 54px;
+  touch-action: manipulation;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 6px;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 8px;
+  background: hsla(var(--team-hue, 0deg), 60%, 38%, 0.88);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.12s, opacity 0.2s;
+  outline: none;
+  backdrop-filter: blur(4px);
+}
+
+.squid-team-btn:not(:disabled):hover {
+  transform: translateY(-3px);
+  background: hsla(var(--team-hue, 0deg), 65%, 48%, 0.96);
+}
+
+.squid-team-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+.squid-team-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.squid-team-btn.btn-caught {
+  background: rgba(130, 18, 18, 0.88);
+  border-color: rgba(255, 55, 55, 0.65);
+}
+
+.btn-step {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  letter-spacing: 0.03em;
+}
+
+.btn-caught-icon {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+/* Quiz badge avatar — half the size of the game-field avatar */
+.quiz-team-badge .char-bg {
+  width: 65px;
+  height: 65px;
+}
+
+/* ─── Quiz overlay (matches spin-wheel style) ─────────────────── */
+.quiz-overlay {
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.quiz-overlay.visible {
+  opacity: 1;
+}
+
+.selected-item-container {
+  width: 420px;
+  height: 320px;
+  max-width: 70vw;
+  max-height: 55vh;
+  padding: 28px;
+}
+
+.quiz-team-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,255,0.12);
+  border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 50px;
+  padding: 6px 18px 6px 8px;
+}
+
+/* Pop-in (from spin-wheel) */
+@keyframes popIn {
+  0%   { transform: scale(0.2); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pop-in {
+  animation: popIn 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+/* Option buttons (from spin-wheel) */
+button.quiz-option {
+  transition: all 0.2s ease;
+}
+
+button.quiz-option:hover {
+  transform: translateY(-5px);
+}
+
+button.quiz-option.fade-out {
+  opacity: 0;
+  transform: scale(0.93);
+  pointer-events: none;
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+button.quiz-option.correct-flash {
+  background: linear-gradient(135deg, #4caf50, #2e7d32) !important;
+  transform: scale(1.06);
+  box-shadow: 0 0 24px rgba(76,175,80,0.8);
+  animation: fadeOutGreen 1.2s ease-out forwards;
+}
+
+@keyframes fadeOutGreen {
+  0%   { opacity: 1; transform: scale(1.06); }
+  70%  { opacity: 0.8; }
+  100% { opacity: 0; transform: scale(1.18); }
+}
+
+button.quiz-option.shake {
+  animation: shake 0.55s ease-in-out;
+}
+
+@keyframes shake {
+  0%,100%         { transform: translateX(0); }
+  10%,30%,50%,70%,90% { transform: translateX(-8px); }
+  20%,40%,60%,80%     { transform: translateX(8px); }
+}

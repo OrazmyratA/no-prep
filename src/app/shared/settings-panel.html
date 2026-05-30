@@ -346,6 +346,117 @@
 
     </div>
 
+    <!-- Squid Game – Red Light, Green Light Settings -->
+    <div *ngSwitchCase="'squid-game'" class="space-y-6">
+
+      <!-- Team Count -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsSquidGameTeamCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('teamCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="teamCount"
+          min="1" max="6" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>6</span>
+        </div>
+      </div>
+
+      <!-- Distance -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsSquidGameDistance' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('distance')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="distance"
+          min="5" max="300" step="5"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>5</span>
+          <span>300</span>
+        </div>
+      </div>
+
+      <!-- Enable Timer -->
+      <div>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="enableTimer" class="h-4 w-4">
+          <span class="text-sm font-medium">{{ 'settingsEnableTimer' | translate }}</span>
+        </label>
+        <div *ngIf="settingsForm.get('enableTimer')?.value" class="mt-3">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium">{{ 'settingsTimerMinutes' | translate }}</label>
+            <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+              {{ settingsForm.get('timerMinutes')?.value }}m
+            </span>
+          </div>
+          <input
+            type="range"
+            formControlName="timerMinutes"
+            min="1" max="59" step="1"
+            class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+          >
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>1m</span>
+            <span>59m</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Doll Timing — dual-range slider -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-sm font-medium">{{ 'settingsSquidGameDollTiming' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full">
+            {{ settingsForm.get('dollMinTime')?.value }}s – {{ settingsForm.get('dollMaxTime')?.value }}s
+          </span>
+        </div>
+
+        <div class="doll-slider-wrap"
+             (mousedown)="onDollPointerDown($event)"
+             (mousemove)="onDollPointerMove($event)"
+             (mouseup)="onDollPointerUp()"
+             (mouseleave)="onDollPointerUp()"
+             (touchstart)="onDollPointerDown($event)"
+             (touchmove)="onDollPointerMove($event)"
+             (touchend)="onDollPointerUp()">
+          <!-- Grey track + blue fill between thumbs -->
+          <div class="doll-track">
+            <div class="doll-fill"
+                 [style.left.%]="(settingsForm.get('dollMinTime')?.value - 1) / 19 * 100"
+                 [style.right.%]="100 - (settingsForm.get('dollMaxTime')?.value - 1) / 19 * 100">
+            </div>
+          </div>
+          <!-- Visual thumb — min -->
+          <div class="doll-thumb"
+               [style.left.%]="(settingsForm.get('dollMinTime')?.value - 1) / 19 * 100">
+          </div>
+          <!-- Visual thumb — max -->
+          <div class="doll-thumb"
+               [style.left.%]="(settingsForm.get('dollMaxTime')?.value - 1) / 19 * 100">
+          </div>
+        </div>
+
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1s</span>
+          <span>20s</span>
+        </div>
+      </div>
+
+    </div>
+
     <!-- Spelling Check Game Settings -->
     <div *ngSwitchCase="'spelling-check'" class="space-y-3">
       <div *ngFor="let category of spellingRuleCategories" class="border rounded-lg p-3 bg-white/60">

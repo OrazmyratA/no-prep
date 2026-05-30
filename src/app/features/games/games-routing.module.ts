@@ -16,6 +16,7 @@ import { OddOneOutComponent } from './odd-one-out';
 import { TestAbcComponent } from './test-abc';
 import { TeamSentenceComponent } from './team-sentence';
 import { SpellingCheckComponent } from './spelling-check';
+import { SquidGameComponent } from './squid-game';
 
 const routes: Routes = [
   { path: 'spin-wheel', component: SpinWheelComponent },
@@ -33,7 +34,8 @@ const routes: Routes = [
   { path: 'odd-one-out', component: OddOneOutComponent },
   { path: 'test-abc', component: TestAbcComponent },
   { path: 'team-sentence', component: TeamSentenceComponent },
-  { path: 'spelling-check', component: SpellingCheckComponent }
+  { path: 'spelling-check', component: SpellingCheckComponent },
+  { path: 'squid-game', component: SquidGameComponent }
 ];
 
 @NgModule({

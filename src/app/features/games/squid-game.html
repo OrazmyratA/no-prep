@@ -1,0 +1,180 @@
+<div class="squid-wrapper">
+
+  <!-- Full-screen background cross-fade -->
+  <div class="squid-bg">
+    <img src="assets/images/squid-game-back.png"  [class.active]="!dollLooking" alt="">
+    <img src="assets/images/squid-game-front.png" [class.active]="dollLooking"  alt="">
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="squid-loading">
+    <p>{{ 'squidGameLoading' | translate }}</p>
+  </div>
+
+  <ng-container *ngIf="!loading && gameStatus !== 'idle'">
+
+    <!-- Timer -->
+    <div *ngIf="enableTimer" class="squid-timer" [class.timer-urgent]="timerSeconds <= 30">
+      ⏱ {{ timerDisplay }}
+    </div>
+
+    <!-- Light badge (top-center) -->
+    <div class="squid-light-badge" [class.red-light]="dollLooking" [class.green-light]="!dollLooking">
+      {{ (dollLooking ? 'squidGameRedLight' : 'squidGameGreenLight') | translate }}
+    </div>
+
+    <!-- Finish line indicator — bottom% computed dynamically from real image scale -->
+    <div class="squid-finish-line" [style.bottom]="finishLineBottomPct + '%'">🏁 {{ 'squidGameFinish' | translate }}</div>
+
+    <!-- Player tokens positioned over background -->
+    <div
+      *ngFor="let team of teams; trackBy: trackByTeamId"
+      class="squid-player"
+      [class.caught-glow]="team.caught"
+      [class.correct-flash]="team.showCorrect"
+      [class.team-finished]="team.step >= totalSteps"
+      [ngStyle]="getTeamStyle(team)"
+    >
+      <div class="char-bg" [style.background]="getTeamColor(team.id)">
+        <img
+          [src]="'assets/images/characters/' + team.id + '.png'"
+          [alt]="('squidGameTeamLabel' | translate) + ' ' + team.id"
+          class="squid-char-img"
+        />
+      </div>
+    </div>
+
+    <!-- Team buttons: [small avatar indicator | wider button] per team -->
+    <div class="squid-buttons">
+      <div class="team-unit"
+           *ngFor="let team of teams; trackBy: trackByTeamId">
+        <div class="btn-avatar-indicator" [style.background]="getTeamColor(team.id)">
+          <img [src]="'assets/images/characters/' + team.id + '.png'"
+               class="btn-avatar-img" [alt]="('squidGameTeamLabel' | translate) + ' ' + team.id">
+        </div>
+        <button
+          class="squid-team-btn"
+          [class.btn-caught]="team.caught"
+          [disabled]="gameStatus !== 'running' || team.step >= totalSteps || quizVisible"
+          (touchstart)="onMoveTouch($event, team)"
+          (click)="onMoveClick(team)"
+          [style.--team-hue]="(team.id * 55) + 'deg'"
+        >
+          <span class="btn-step">{{ team.step }}/{{ totalSteps }}</span>
+          <span *ngIf="team.caught" class="btn-caught-icon">⚠️</span>
+        </button>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- ── Quiz overlay (spin-wheel style) ──────────────────────── -->
+  <div *ngIf="quizVisible && currentQuiz"
+       class="fixed inset-0 z-50 flex items-center justify-center quiz-overlay"
+       [class.visible]="quizOverlayVisible">
+    <div class="w-full max-w-5xl mx-auto p-6 text-center">
+
+      <!-- Team badge -->
+      <div class="flex justify-center mb-4">
+        <div class="quiz-team-badge">
+          <div class="char-bg" [style.background]="getTeamColor(currentQuiz.team.id)">
+            <img [src]="'assets/images/characters/' + currentQuiz.team.id + '.png'"
+                 class="squid-char-img" [alt]="('squidGameTeamLabel' | translate) + ' ' + currentQuiz.team.id" />
+          </div>
+          <span class="text-white font-bold text-lg">{{ 'squidGameTeamLabel' | translate }} {{ currentQuiz.team.id }}</span>
+        </div>
+      </div>
+
+      <!-- Selected item with pop-in animation -->
+      <div class="flex justify-center mb-8">
+        <div class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
+          <img *ngIf="currentQuiz.itemImageSrc"
+               [src]="currentQuiz.itemImageSrc"
+               class="max-w-full max-h-full object-contain"
+               alt="Question">
+        </div>
+      </div>
+
+      <!-- Simple OK / Oops (not enough distractors) -->
+      <div *ngIf="simpleConfirmMode" class="flex justify-center gap-6">
+        <button (click)="onQuizConfirmOk()"
+                class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+          ✓ OK
+        </button>
+        <button (click)="onQuizConfirmOops()"
+                class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+          ✗ Oops!
+        </button>
+      </div>
+
+      <!-- Text options -->
+      <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
+        <button
+          *ngFor="let opt of currentQuiz.options"
+          [class.fade-out]="opt.state === 'fade'"
+          [class.correct-flash]="opt.state === 'correct'"
+          [class.shake]="opt.state === 'wrong'"
+          [disabled]="currentQuiz.locked"
+          (click)="onQuizAnswer(opt)"
+          class="quiz-option px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+          {{ opt.text }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Result window (reveal-game style) ────────────────────── -->
+  <div *ngIf="gameStatus === 'finished' && resultVisible" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
+
+      <h2 class="text-3xl font-bold text-center mb-6">🏆 {{ 'gameResults' | translate }} 🏆</h2>
+
+      <div class="space-y-4">
+        <div *ngFor="let entry of rankedTeamsForResult" class="flex items-center gap-3">
+
+          <!-- Medal / rank -->
+          <div class="w-10 text-center font-bold text-xl flex-shrink-0">{{ entry.medal }}</div>
+
+          <!-- Team avatar -->
+          <img [src]="'assets/images/characters/' + entry.team.id + '.png'"
+               class="w-9 h-9 rounded-full object-contain flex-shrink-0"
+               [alt]="('squidGameTeamLabel' | translate) + ' ' + entry.team.id">
+
+          <!-- Team name -->
+          <div class="w-20 font-semibold text-gray-700 flex-shrink-0 text-sm">{{ 'squidGameTeamLabel' | translate }} {{ entry.team.id }}</div>
+
+          <!-- Progress bar -->
+          <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+            <div class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold text-sm"
+                 [style.width.%]="(entry.team.step / maxTeamStep) * 100"
+                 [style.backgroundColor]="getTeamColor(entry.team.id)"
+                 style="transition: width 0.6s ease-out; min-width: 2rem;">
+              <span *ngIf="entry.team.step > 0">{{ entry.team.step }}</span>
+            </div>
+          </div>
+
+          <!-- Numeric score -->
+          <div class="w-14 text-right font-bold text-gray-700 flex-shrink-0 text-sm">{{ entry.team.step }}/{{ totalSteps }}</div>
+
+        </div>
+      </div>
+
+      <div class="flex justify-center gap-4 mt-8">
+        <button (click)="onMenuAction('activity')"
+                class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-full transition">
+          {{ 'activitiesLabel' | translate }}
+        </button>
+        <button (click)="resetGame()"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full transition">
+          {{ 'playAgain' | translate }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Sandwich menu -->
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+
+</div>

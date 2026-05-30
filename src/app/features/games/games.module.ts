@@ -21,6 +21,7 @@ import { TestAbcComponent } from './test-abc';
 import { TeamSentenceComponent } from './team-sentence';
 import { TranslatePipe } from "../../shared/translate-pipe";
 import { SpellingCheckComponent } from './spelling-check';
+import { SquidGameComponent } from './squid-game';
 
 @NgModule({
   declarations: [
@@ -39,7 +40,8 @@ import { SpellingCheckComponent } from './spelling-check';
     OddOneOutComponent,
     TestAbcComponent,
     TeamSentenceComponent,
-    SpellingCheckComponent
+    SpellingCheckComponent,
+    SquidGameComponent
   ],
   imports: [
     CommonModule,

@@ -122,5 +122,12 @@ export const GAMES: GameConfig[] = [
     descKey: 'gameTeamSentenceDesc',
     icon: '\u{1F3A3}',
     requiresSettings: true,
+  },
+  {
+    id: 'squid-game',
+    nameKey: 'gameSquidGameName',
+    descKey: 'gameSquidGameDesc',
+    icon: '🦑',
+    requiresSettings: true,
   }
 ];

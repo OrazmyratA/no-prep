@@ -377,6 +377,16 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       case 'pop-balloon':
         this.settingsForm = this.fb.group({ teamCount: [1] });
         break;
+      case 'squid-game':
+        this.settingsForm = this.fb.group({
+          teamCount: [2],
+          distance: [20],
+          enableTimer: [false],
+          timerMinutes: [3],
+          dollMinTime: [4],
+          dollMaxTime: [7]
+        });
+        break;
       case 'spelling-check':
         this.createSpellingCheckForm();
         break;
@@ -453,5 +463,41 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       omissionRules: JSON.stringify(selectedRules),
       customOmissions: JSON.stringify(customRules)
     });
+  }
+
+  private dollDragging: 'min' | 'max' | null = null;
+
+  onDollPointerDown(event: MouseEvent | TouchEvent) {
+    event.preventDefault();
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const clientX = 'touches' in event ? (event as TouchEvent).touches[0].clientX : (event as MouseEvent).clientX;
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const val = Math.round(pct * 19) + 1;
+    const min = Number(this.settingsForm.get('dollMinTime')?.value);
+    const max = Number(this.settingsForm.get('dollMaxTime')?.value);
+    this.dollDragging = Math.abs(val - min) <= Math.abs(val - max) ? 'min' : 'max';
+    this.applyDollPct(pct);
+  }
+
+  onDollPointerMove(event: MouseEvent | TouchEvent) {
+    if (!this.dollDragging) return;
+    event.preventDefault();
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const clientX = 'touches' in event ? (event as TouchEvent).touches[0].clientX : (event as MouseEvent).clientX;
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    this.applyDollPct(pct);
+  }
+
+  onDollPointerUp() { this.dollDragging = null; }
+
+  private applyDollPct(pct: number) {
+    const val = Math.round(pct * 19) + 1;
+    const min = Number(this.settingsForm.get('dollMinTime')?.value);
+    const max = Number(this.settingsForm.get('dollMaxTime')?.value);
+    if (this.dollDragging === 'min') {
+      this.settingsForm.patchValue({ dollMinTime: Math.max(1, Math.min(val, max - 1)) });
+    } else {
+      this.settingsForm.patchValue({ dollMaxTime: Math.min(20, Math.max(val, min + 1)) });
+    }
   }
 }
