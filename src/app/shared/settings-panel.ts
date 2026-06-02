@@ -375,7 +375,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         this.settingsForm = this.fb.group({ textOnWheel: [false] });
         break;
       case 'pop-balloon':
-        this.settingsForm = this.fb.group({ teamCount: [1] });
+        this.settingsForm = this.fb.group({ teamCount: [1], reverseMode: [false] });
         break;
       case 'squid-game':
         this.settingsForm = this.fb.group({
@@ -384,7 +384,14 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
           enableTimer: [false],
           timerMinutes: [3],
           dollMinTime: [4],
-          dollMaxTime: [7]
+          dollMaxTime: [7],
+          reverseMode: [false]
+        });
+        break;
+      case 'rock-paper-scissors':
+        this.settingsForm = this.fb.group({
+          stepsToWin: [10],
+          reverseMode: [false]
         });
         break;
       case 'spelling-check':

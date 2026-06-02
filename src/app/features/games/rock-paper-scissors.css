@@ -1,0 +1,812 @@
+/* ── Wrapper ─────────────────────────────────────────────────── */
+.rps-wrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.rps-wrapper,
+.rps-wrapper * {
+  box-sizing: border-box;
+}
+
+/* ── Background ──────────────────────────────────────────────── */
+.rps-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  pointer-events: none;
+}
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.rps-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* ── Gift / knight ───────────────────────────────────────────── */
+.rps-gift {
+  position: absolute;
+  height: auto;
+  z-index: 5;
+  image-rendering: auto;
+  animation: knight-walk-bounce 0.58s ease-in-out infinite;
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.28));
+  will-change: margin-top, filter;
+}
+
+@keyframes knight-walk-bounce {
+  0%, 100% {
+    margin-top: 0;
+    filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.28));
+  }
+  35% {
+    margin-top: -8px;
+    filter: drop-shadow(0 14px 10px rgba(0, 0, 0, 0.2));
+  }
+  70% {
+    margin-top: 2px;
+    filter: drop-shadow(0 6px 7px rgba(0, 0, 0, 0.32));
+  }
+}
+
+/* ── Lightning overlay ───────────────────────────────────────── */
+.rps-lightning-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  pointer-events: none;
+  animation: lightning-pop 0.25s ease-out;
+}
+
+.rps-lightning-img {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+}
+
+@keyframes lightning-pop {
+  from { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+  to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+}
+
+/* ── Power-up badge ──────────────────────────────────────────── */
+.rps-powerup-badge {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 6px 18px;
+  border-radius: 999px;
+  z-index: 15;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  animation: badge-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { transform: translateX(-50%) scale(1);   }
+  50%       { transform: translateX(-50%) scale(1.1); }
+}
+
+/* ── Central banners (tie + VS reveal) ───────────────────────── */
+.rps-result-banner,
+.rps-vs-banner {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 20px;
+  z-index: 15;
+  animation: banner-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes banner-pop {
+  from { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1);   opacity: 1; }
+}
+
+/* Tie-specific colours */
+.rps-tie-banner {
+  background: rgba(0, 0, 0, 0.78);
+  color: #fde68a;
+  font-size: 2.6rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 12px 44px;
+}
+
+/* VS reveal — shows chosen emojis side-by-side */
+.rps-vs-banner {
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 32px;
+}
+
+.vs-emoji {
+  font-size: 3.2rem;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+  animation: emoji-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes emoji-enter {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.vs-label {
+  color: white;
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+/* ── Team panels ─────────────────────────────────────────────── */
+.rps-panel {
+  position: absolute;
+  bottom: 20px;
+  width: 190px;
+  background: rgba(255, 255, 255, 0.93);
+  border-radius: 18px;
+  padding: 14px 12px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+  border: 3px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 10;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.rps-panel-left  { left: 16px; }
+.rps-panel-right { right: 16px; }
+
+.rps-panel:not(.panel-disabled):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.38);
+}
+
+.rps-panel:not(.panel-disabled):active {
+  transform: translateY(0) scale(0.98);
+}
+
+.rps-panel:focus-visible {
+  outline: 4px solid rgba(255, 255, 255, 0.9);
+  outline-offset: 3px;
+}
+
+.rps-panel.panel-disabled {
+  cursor: default;
+}
+
+.rps-team-name {
+  font-weight: 800;
+  font-size: 0.9rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ── Choice display box ──────────────────────────────────────── */
+.rps-choice-box {
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Subtle scale-up when a choice has landed */
+.rps-choice-box.box-chosen {
+  transform: scale(1.1);
+}
+
+.rps-spin-emoji {
+  font-size: 2.6rem;
+  display: inline-block;
+  /* Rapid random swaps are visible enough — no extra CSS animation needed */
+}
+
+.rps-chosen-emoji {
+  font-size: 2.6rem;
+  animation: choice-land 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes choice-land {
+  from { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+  to   { transform: scale(1)   rotate(0deg);   opacity: 1; }
+}
+
+.rps-empty-slot {
+  font-size: 2rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ── Choose button ───────────────────────────────────────────── */
+/* ── Quiz overlay ────────────────────────────────────────────── */
+.rps-quiz-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.rps-quiz-overlay.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.rps-quiz-card {
+  border-radius: 24px;
+  padding: 30px 24px;
+  max-width: 560px;
+  width: 92%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.5);
+  animation: modal-pop 0.25s ease-out;
+}
+
+@keyframes modal-pop {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.quiz-winner-label {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 800;
+  font-size: 1.15rem;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.quiz-image-wrap {
+  width: 210px;
+  height: 190px;
+  background: white;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.quiz-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.quiz-options-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Long text (any option > 18 chars) → stack vertically */
+.quiz-options-row.long-text {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.rps-quiz-option {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s, opacity 0.2s;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* Long-text options stretch full width */
+.quiz-options-row.long-text .rps-quiz-option {
+  flex: none;
+  width: 100%;
+  min-height: 46px;
+}
+
+.rps-quiz-option:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: scale(1.05);
+}
+
+.rps-quiz-option.correct-flash {
+  background: #22c55e !important;
+  border-color: #16a34a !important;
+  animation: correct-pop 0.45s ease;
+}
+
+.rps-quiz-option.shake {
+  background: #dc2626 !important;
+  border-color: #b91c1c !important;
+  animation: shake 0.4s ease;
+}
+
+.rps-quiz-option.fade-out {
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+@keyframes correct-pop {
+  0%, 100% { transform: scale(1);   }
+  40%       { transform: scale(1.2); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0);   }
+  20%       { transform: translateX(-8px); }
+  60%       { transform: translateX(8px);  }
+}
+
+/* ── Reverse-mode text question ──────────────────────────────── */
+.quiz-text-question {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: white;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 14px;
+  padding: 10px 20px;
+  max-width: 100%;
+}
+
+/* ── Image answer options (reverse mode) ─────────────────────── */
+.quiz-options-row.image-options {
+  gap: 10px;
+}
+
+.quiz-options-row.image-options .rps-quiz-option {
+  flex: 1;
+  min-width: 0;
+  padding: 6px;
+}
+
+.rps-quiz-option .option-image {
+  width: 100%;
+  height: 148px;
+  object-fit: contain;
+  border-radius: 10px;
+  pointer-events: none;
+  display: block;
+}
+
+/* ── Simple confirm (OK / Oops) ──────────────────────────────── */
+.quiz-confirm-buttons {
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  margin: 8px 0 4px;
+}
+
+.quiz-confirm-ok,
+.quiz-confirm-oops {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: none;
+  font-size: 2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.quiz-confirm-ok   { background: #22c55e; color: white; }
+.quiz-confirm-oops { background: #ef4444; color: white; }
+
+.quiz-confirm-ok:hover,
+.quiz-confirm-oops:hover { transform: scale(1.12); filter: brightness(1.1); }
+
+/* ── Victory overlay ─────────────────────────────────────────── */
+.rps-victory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  animation: fade-in 0.4s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.rps-victory-card {
+  background: white;
+  border-radius: 28px;
+  padding: 40px 36px;
+  max-width: 440px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  animation: modal-pop 0.3s ease-out;
+}
+
+.victory-gif {
+  width: 160px;
+  height: 140px;
+  object-fit: contain;
+}
+
+.victory-title {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.victory-reward {
+  font-size: 1.2rem;
+  color: #6b7280;
+}
+
+.victory-buttons {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.btn-back {
+  padding: 10px 26px;
+  border-radius: 999px;
+  background: #8b5cf6;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  touch-action: manipulation;
+  line-height: 1.15;
+}
+
+.btn-back:hover { background: #7c3aed; }
+
+.btn-replay {
+  padding: 10px 26px;
+  border-radius: 999px;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.2s;
+  touch-action: manipulation;
+  line-height: 1.15;
+}
+
+.btn-replay:hover { filter: brightness(1.15); }
+
+/* Pop Balloon-style reward popup */
+.victory-overlay {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(255, 255, 255, 0.72), transparent 28%),
+    radial-gradient(circle at 80% 20%, rgba(254, 240, 138, 0.62), transparent 30%),
+    linear-gradient(135deg, rgba(14, 165, 233, 0.58), rgba(244, 114, 182, 0.52));
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fade-in 0.5s ease;
+}
+
+.victory-content {
+  position: relative;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 28%),
+    linear-gradient(135deg, #fef3c7 0%, #fde68a 34%, #f9a8d4 68%, #93c5fd 100%);
+  border-radius: 40px;
+  padding: 40px;
+  width: min(480px, 90vw);
+  text-align: center;
+  box-shadow: 0 30px 60px rgba(14, 116, 144, 0.32);
+  border: 4px solid rgba(255, 255, 255, 0.92);
+  animation: scale-in 0.5s cubic-bezier(0.64, 0.04, 0.35, 1);
+  color: #7c2d12;
+}
+
+.celebration {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 36px;
+}
+
+.confetti {
+  position: absolute;
+  font-size: 2rem;
+  animation: confetti-fall 5s linear infinite;
+  opacity: 0.8;
+}
+
+.confetti:nth-child(1) { left: 8%; animation-delay: 0s; }
+.confetti:nth-child(2) { left: 28%; animation-delay: 0.6s; }
+.confetti:nth-child(3) { left: 48%; animation-delay: 1.2s; }
+.confetti:nth-child(4) { left: 68%; animation-delay: 1.8s; }
+.confetti:nth-child(5) { left: 88%; animation-delay: 2.4s; }
+
+.victory-content .victory-title {
+  font-size: 2.8rem;
+  margin-bottom: 0.35rem;
+  color: #be123c;
+  text-shadow: 0 3px 0 rgba(255, 255, 255, 0.75);
+  animation: victory-bounce 2s ease-in-out infinite;
+}
+
+.victory-team-name {
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-bottom: 0.75rem;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.7);
+}
+
+.gift-box-popup {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 1rem auto;
+}
+
+.gift-box-popup .gift-image-popup {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.gift-box-popup .reward-number {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #facc15;
+  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.victory-message {
+  font-size: 1.3rem;
+  margin-bottom: 1.5rem;
+  color: #7c2d12;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.58);
+}
+
+.popup-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.popup-actions .btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 2.4rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.35);
+}
+
+.popup-actions .btn-primary {
+  background: #22d3ee;
+  color: #0f172a;
+}
+
+.popup-actions .btn-secondary {
+  background: #fcd34d;
+  color: #111827;
+}
+
+.popup-actions .btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 30px rgba(15, 23, 42, 0.4);
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes victory-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-20%) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  100% { transform: translateY(520%) rotate(360deg); opacity: 0; }
+}
+
+@media (max-width: 760px) {
+
+  .rps-powerup-badge {
+    max-width: calc(100vw - 112px);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  .rps-result-banner,
+  .rps-vs-banner {
+    top: 22%;
+  }
+
+  .rps-tie-banner {
+    font-size: 1.8rem;
+    padding: 10px 26px;
+  }
+
+  .rps-vs-banner {
+    gap: 12px;
+    padding: 10px 20px;
+  }
+
+  .vs-emoji {
+    font-size: 2.4rem;
+  }
+
+  .vs-label {
+    font-size: 1.2rem;
+  }
+
+  .rps-panel {
+    bottom: 12px;
+    width: min(42vw, 170px);
+    padding: 12px 10px;
+    gap: 8px;
+  }
+
+  .rps-panel-left { left: 10px; }
+  .rps-panel-right { right: 10px; }
+
+  .rps-team-name {
+    font-size: 0.78rem;
+  }
+
+  .rps-choice-box {
+    width: 64px;
+    height: 64px;
+  }
+
+  .rps-spin-emoji,
+  .rps-chosen-emoji {
+    font-size: 2.15rem;
+  }
+
+  .rps-quiz-card {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    padding: 22px 16px;
+    gap: 16px;
+  }
+
+  .quiz-image-wrap {
+    width: min(210px, 68vw);
+    height: 150px;
+  }
+
+  .quiz-options-row.image-options .rps-quiz-option .option-image {
+    height: 100px;
+  }
+
+  .rps-victory-card {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    padding: 28px 18px;
+  }
+
+  .victory-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .btn-back,
+  .btn-replay {
+    width: 100%;
+    min-height: 44px;
+  }
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+
+  .rps-result-banner,
+  .rps-vs-banner {
+    top: 16%;
+  }
+
+  .rps-panel {
+    bottom: 8px;
+    width: 160px;
+    padding: 10px;
+  }
+
+  .rps-choice-box {
+    width: 56px;
+    height: 56px;
+  }
+
+  .rps-spin-emoji,
+  .rps-chosen-emoji {
+    font-size: 1.9rem;
+  }
+
+  .rps-quiz-card {
+    max-width: 720px;
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .quiz-image-wrap {
+    width: 170px;
+    height: 120px;
+  }
+}

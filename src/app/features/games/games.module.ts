@@ -22,6 +22,7 @@ import { TeamSentenceComponent } from './team-sentence';
 import { TranslatePipe } from "../../shared/translate-pipe";
 import { SpellingCheckComponent } from './spelling-check';
 import { SquidGameComponent } from './squid-game';
+import { RockPaperScissorsComponent } from './rock-paper-scissors';
 
 @NgModule({
   declarations: [
@@ -41,7 +42,8 @@ import { SquidGameComponent } from './squid-game';
     TestAbcComponent,
     TeamSentenceComponent,
     SpellingCheckComponent,
-    SquidGameComponent
+    SquidGameComponent,
+    RockPaperScissorsComponent
   ],
   imports: [
     CommonModule,

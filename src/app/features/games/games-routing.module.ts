@@ -17,6 +17,7 @@ import { TestAbcComponent } from './test-abc';
 import { TeamSentenceComponent } from './team-sentence';
 import { SpellingCheckComponent } from './spelling-check';
 import { SquidGameComponent } from './squid-game';
+import { RockPaperScissorsComponent } from './rock-paper-scissors';
 
 const routes: Routes = [
   { path: 'spin-wheel', component: SpinWheelComponent },
@@ -35,7 +36,8 @@ const routes: Routes = [
   { path: 'test-abc', component: TestAbcComponent },
   { path: 'team-sentence', component: TeamSentenceComponent },
   { path: 'spelling-check', component: SpellingCheckComponent },
-  { path: 'squid-game', component: SquidGameComponent }
+  { path: 'squid-game', component: SquidGameComponent },
+  { path: 'rock-paper-scissors', component: RockPaperScissorsComponent }
 ];
 
 @NgModule({

@@ -129,5 +129,12 @@ export const GAMES: GameConfig[] = [
     descKey: 'gameSquidGameDesc',
     icon: '🦑',
     requiresSettings: true,
+  },
+  {
+    id: 'rock-paper-scissors',
+    nameKey: 'gameRockPaperScissorsName',
+    descKey: 'gameRockPaperScissorsDesc',
+    icon: '🏰',
+    requiresSettings: true,
   }
 ];

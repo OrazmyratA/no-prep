@@ -144,6 +144,13 @@
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsRevealTeamCountHint' | translate }}</p>
       </div>
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="reverseMode" class="mr-2">
+          {{ 'settingsTestAbcReverseMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsReverseModeOkOopsHint' | translate }}</p>
+      </div>
     </div>
 
     <!-- Spotlight Settings -->
@@ -282,12 +289,12 @@
         <input
           type="range"
           formControlName="itemAmount"
-          min="1" max="5" step="1"
+          min="1" max="30" step="1"
           class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
         >
         <div class="flex justify-between text-xs text-gray-400 mt-1">
           <span>1</span>
-          <span>5</span>
+          <span>30</span>
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsOddOneOutItemAmountHint' | translate }}</p>
       </div>
@@ -415,6 +422,15 @@
         </div>
       </div>
 
+      <!-- Reverse Mode -->
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="reverseMode" class="mr-2">
+          {{ 'settingsTestAbcReverseMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsReverseModeOkOopsHint' | translate }}</p>
+      </div>
+
       <!-- Doll Timing — dual-range slider -->
       <div>
         <div class="flex items-center justify-between mb-3">
@@ -501,6 +517,41 @@
           + {{ 'settingsSpellingCheckAddCustom' | translate }}
         </button>
       </div>
+    </div>
+
+    <!-- Castle Clash: Rock Paper Scissors Settings -->
+    <div *ngSwitchCase="'rock-paper-scissors'" class="space-y-6">
+
+      <!-- Steps to Win -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsRpsStepsToWin' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('stepsToWin')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="stepsToWin"
+          min="1" max="30" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>30</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsRpsStepsToWinHint' | translate }}</p>
+      </div>
+
+      <!-- Reverse Mode -->
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="reverseMode" class="mr-2">
+          {{ 'settingsRpsReverseMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsRpsReverseModeHint' | translate }}</p>
+      </div>
+
     </div>
 
     <!-- Default: no settings -->
