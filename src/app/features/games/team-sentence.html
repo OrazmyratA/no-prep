@@ -25,8 +25,13 @@
         <!-- Back: complementary content only -->
         <span class="card-face card-back">
           <div class="card-back-content">
-            <!-- Text mode (tiles = text) → show image on card -->
-            <img *ngIf="!reverseMode && cardItemImageUrl" [src]="cardItemImageUrl" alt="" class="card-content-img">
+            <!-- Text mode (tiles = text) → show item name at top + image below -->
+            <ng-container *ngIf="!reverseMode">
+              <div class="card-back-inner">
+                <span class="card-item-name">{{ cardItem.text }}</span>
+                <img *ngIf="cardItemImageUrl" [src]="cardItemImageUrl" alt="" class="card-content-img-small">
+              </div>
+            </ng-container>
             <!-- Reverse mode (tiles = images) → show text on card -->
             <span *ngIf="reverseMode" class="card-text">{{ cardItem.text }}</span>
           </div>

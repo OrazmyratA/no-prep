@@ -6,6 +6,8 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 
+type RPSChoice = 'rock' | 'paper' | 'scissors';
+
 interface Balloon {
   id: number;
   item: Item;
@@ -64,8 +66,9 @@ interface PopTeam {
   styleUrls: ['./pop-balloon.css']
 })
 export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
-  giftRisingComplete = false;  
+  giftRisingComplete = false;
   topicId!: number;
+  reverseMode = false;
   items: Item[] = [];
   balloons: Balloon[] = [];
   teams: PopTeam[] = [];
@@ -73,6 +76,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   teamMode = false;
   rankedTeamsWithPosition: { team: PopTeam; position: number; medal: string }[] = [];
   maxScore = 1;
+  forceSimpleMode = true;
   gameActive = true;
   showGift = true;
   flightStarted = false;
@@ -104,7 +108,23 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private rewardSound: HTMLAudioElement | null = null;
   private correctSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
+  private cashSound: HTMLAudioElement | null = null;
+  private powerUpSound: HTMLAudioElement | null = null;
   private layoutSubscription?: Subscription;
+
+  // RPS phase (2-team mode only)
+  readonly rpsChoiceList: readonly RPSChoice[] = ['rock', 'paper', 'scissors'];
+  readonly rpsEmojiMap: Record<RPSChoice, string> = { rock: '✊', paper: '✋', scissors: '✌️' };
+  rpsPhase = false;
+  rpsWinnerTeamId: number | null = null;
+  rpsTeamChoices: (RPSChoice | null)[] = [null, null];
+  rpsTeamSpinning: boolean[] = [false, false];
+  rpsTeamSpinEmojis: string[] = ['✊', '✊'];
+  rpsClash = false;
+  rpsClashResult: 'left-wins' | 'right-wins' | 'tie' | null = null;
+  private rpsSpinIntervals: any[] = [];
+  private rpsSpinTimeouts: any[] = [];
+  private rpsMiscTimers: any[] = [];
 
   private colors = [
     'linear-gradient(135deg, #fb7185 0%, #ef4444 100%)',
@@ -134,6 +154,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       const rawTeamCount = Number(params['teamCount'] ?? 1);
       this.teamCount = Math.min(4, Math.max(1, Number.isFinite(rawTeamCount) ? rawTeamCount : 1));
       this.teamMode = this.teamCount > 1;
+      this.reverseMode = params['reverseMode'] === 'true';
+      this.forceSimpleMode = params['simpleMode'] !== 'false';
       this.initGame();
     });
   }
@@ -159,6 +181,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       this.correctSound.load();
       this.buzzSound = new Audio('assets/sound/buzz.mp3');
       this.buzzSound.load();
+      this.cashSound = new Audio('assets/sound/cash.mp3');
+      this.cashSound.load();
+      this.powerUpSound = new Audio('assets/sound/power-up.mp3');
+      this.powerUpSound.load();
 
       this.createTeams();
       this.resetGameState();
@@ -167,6 +193,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     } finally {
       this.loading = false;
       setTimeout(() => this.queueGiftLift(), 100);
+      if (this.teamCount === 2) {
+        setTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
+      }
       this.cdr.detectChanges();
     }
   }
@@ -206,11 +235,12 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.clearGiftTimers();
+    this.clearRpsTimers();
     this.cancelStringTracking();
     this.layoutSubscription?.unsubscribe();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
-    [this.popSound, this.rewardSound, this.correctSound, this.buzzSound].forEach(s => s?.pause());
+    [this.popSound, this.rewardSound, this.correctSound, this.buzzSound, this.cashSound, this.powerUpSound].forEach(s => s?.pause());
   }
 
   private recalculateLayout() {
@@ -423,6 +453,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     const balloon = team?.balloons[index];
     if (!team || !balloon || team.completed) return;
     if (balloon.popped || !this.gameActive || team.showQuiz || team.quizAnswerLocked) return;
+    if (this.teamCount === 2 && this.teamMode && this.rpsWinnerTeamId !== teamId) return;
 
     if (!this.openBalloonQuiz(index, team.id)) {
       this.completeBalloonPop(index, team.id);
@@ -437,13 +468,22 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     const item = balloon.item;
     const hasText = !!item.text?.trim();
     let options: Item[] = [];
-    let simpleMode = false;
+    let simpleMode = this.forceSimpleMode;
 
-    if (!hasText) {
-      simpleMode = true;
-    } else {
-      options = this.buildQuizOptions(item);
-      if (!options.length) return false;
+    if (!this.forceSimpleMode) {
+      if (this.reverseMode) {
+        if (!hasText) {
+          simpleMode = true;
+        } else {
+          options = this.buildReverseQuizOptions(item);
+          if (!options.length) simpleMode = true;
+        }
+      } else if (!hasText) {
+        simpleMode = true;
+      } else {
+        options = this.buildQuizOptions(item);
+        if (!options.length) return false;
+      }
     }
 
     this.prepareBalloonFocus(index, teamId);
@@ -491,6 +531,33 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     balloon.focusDx = (targetCenterX - (rect.left + rect.width / 2)) + 'px';
     balloon.focusDy = (targetCenterY - (rect.top + rect.height / 2)) + 'px';
     balloon.focusScale = scale.toFixed(3);
+  }
+
+  private buildReverseQuizOptions(selectedItem: Item): Item[] {
+    if (!selectedItem.image) return [];
+
+    const uniqueCandidates: Item[] = [];
+    const seenIds = new Set<number | undefined>([selectedItem.id]);
+    for (const item of this.items) {
+      if (!item.image || seenIds.has(item.id)) continue;
+      seenIds.add(item.id);
+      uniqueCandidates.push(item);
+    }
+
+    for (let i = uniqueCandidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [uniqueCandidates[i], uniqueCandidates[j]] = [uniqueCandidates[j], uniqueCandidates[i]];
+    }
+
+    const distractors = uniqueCandidates.slice(0, Math.min(2, uniqueCandidates.length));
+    if (!distractors.length) return [];
+
+    const options = [selectedItem, ...distractors];
+    for (let i = options.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [options[i], options[j]] = [options[j], options[i]];
+    }
+    return options;
   }
 
   private buildQuizOptions(selectedItem: Item): Item[] {
@@ -543,6 +610,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         setTimeout(() => {
           this.closeBalloonQuiz(team);
           this.cdr.detectChanges();
+          if (this.teamCount === 2 && this.teamMode) {
+            this.rpsWinnerTeamId = null;
+            this.startRpsPhase();
+          }
         }, 420);
       }, 520);
       return;
@@ -598,6 +669,13 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       } else {
         this.dropGiftAndRevealReward(team.id);
       }
+    } else if (this.teamCount === 2 && this.teamMode) {
+      const t = setTimeout(() => {
+        this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
+        this.rpsWinnerTeamId = null;
+        this.startRpsPhase();
+      }, 1000);
+      this.rpsMiscTimers.push(t);
     }
     this.cdr.detectChanges();
   }
@@ -656,6 +734,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     setTimeout(() => {
       this.closeBalloonQuiz(team);
       this.cdr.detectChanges();
+      if (this.teamCount === 2 && this.teamMode) {
+        this.rpsWinnerTeamId = null;
+        this.startRpsPhase();
+      }
     }, 420);
   }
 
@@ -966,10 +1048,18 @@ private dropGiftAndRevealReward(teamId = 0) {
 
   resetGame() {
     this.clearGiftTimers();
+    this.clearRpsTimers();
+    this.rpsPhase = false;
+    this.rpsClash = false;
+    this.rpsClashResult = null;
+    this.rpsWinnerTeamId = null;
     this.createTeams();
     this.resetGameState();
     this.queueGiftLift();
     this.giftRisingComplete = false;
+    if (this.teamCount === 2) {
+      setTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
+    }
   }
 
   goToActivities() {
@@ -983,6 +1073,115 @@ private dropGiftAndRevealReward(teamId = 0) {
       this.objectUrls.push(url);
     }
     return this.imageUrls.get(itemId)!;
+  }
+
+  private startRpsPhase() {
+    this.rpsPhase = true;
+    this.rpsClash = false;
+    this.rpsClashResult = null;
+    this.rpsWinnerTeamId = null;
+    this.rpsTeamChoices = [null, null];
+    this.rpsTeamSpinning = [false, false];
+    this.rpsTeamSpinEmojis = ['✊', '✊'];
+    this.cdr.detectChanges();
+  }
+
+  canRpsChoose(teamIndex: number): boolean {
+    return this.rpsPhase && !this.rpsClash &&
+      this.rpsTeamChoices[teamIndex] === null &&
+      !this.rpsTeamSpinning[teamIndex];
+  }
+
+  onRpsTouchChoose(event: TouchEvent, teamIndex: number) {
+    event.preventDefault();
+    this.onRpsChoose(teamIndex);
+  }
+
+  onRpsChoose(teamIndex: number) {
+    if (!this.canRpsChoose(teamIndex)) return;
+    this.playSound(this.cashSound);
+
+    this.rpsTeamSpinning[teamIndex] = true;
+    this.cdr.detectChanges();
+
+    const interval = setInterval(() => {
+      this.rpsTeamSpinEmojis[teamIndex] = this.rpsEmojiMap[this.rpsRandomChoice()];
+      this.cdr.detectChanges();
+    }, 100);
+    this.rpsSpinIntervals.push(interval);
+
+    const timeout = setTimeout(() => {
+      this.rpsSpinTimeouts = this.rpsSpinTimeouts.filter(t => t !== timeout);
+      clearInterval(interval);
+      this.rpsSpinIntervals = this.rpsSpinIntervals.filter(i => i !== interval);
+
+      const choice = this.rpsRandomChoice();
+      this.rpsTeamChoices[teamIndex] = choice;
+      this.rpsTeamSpinEmojis[teamIndex] = this.rpsEmojiMap[choice];
+      this.rpsTeamSpinning[teamIndex] = false;
+      this.cdr.detectChanges();
+
+      if (this.rpsTeamChoices[0] !== null && this.rpsTeamChoices[1] !== null) {
+        this.rpsClash = true;
+        this.cdr.detectChanges();
+        // Let approach animation play (400ms), then determine winner
+        const t = setTimeout(() => {
+          this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
+          this.resolveRps();
+        }, 400);
+        this.rpsMiscTimers.push(t);
+      }
+    }, 600);
+    this.rpsSpinTimeouts.push(timeout);
+  }
+
+  private rpsRandomChoice(): RPSChoice {
+    return this.rpsChoiceList[Math.floor(Math.random() * 3)];
+  }
+
+  private resolveRps() {
+    const left = this.rpsTeamChoices[0]!;
+    const right = this.rpsTeamChoices[1]!;
+
+    if (left === right) {
+      this.rpsClashResult = 'tie';
+      this.playSound(this.powerUpSound);
+      this.cdr.detectChanges();
+      // Tie animation plays, then reset for a new round
+      const t = setTimeout(() => {
+        this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
+        this.startRpsPhase();
+      }, 1600);
+      this.rpsMiscTimers.push(t);
+      return;
+    }
+
+    const leftWins =
+      (left === 'rock' && right === 'scissors') ||
+      (left === 'scissors' && right === 'paper') ||
+      (left === 'paper' && right === 'rock');
+
+    this.rpsClashResult = leftWins ? 'left-wins' : 'right-wins';
+    this.cdr.detectChanges();
+
+    // Win/lose animations play (1400ms), then set winner and dismiss overlay
+    const t = setTimeout(() => {
+      this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
+      this.rpsWinnerTeamId = leftWins ? 0 : 1;
+      this.rpsClash = false;
+      this.rpsPhase = false;
+      this.cdr.detectChanges();
+    }, 1400);
+    this.rpsMiscTimers.push(t);
+  }
+
+  private clearRpsTimers() {
+    this.rpsSpinIntervals.forEach(i => clearInterval(i));
+    this.rpsSpinTimeouts.forEach(t => clearTimeout(t));
+    this.rpsMiscTimers.forEach(t => clearTimeout(t));
+    this.rpsSpinIntervals = [];
+    this.rpsSpinTimeouts = [];
+    this.rpsMiscTimers = [];
   }
 
   onMenuAction(action: string) {

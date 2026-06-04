@@ -76,6 +76,12 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   fadeOutOptionIds = new Set<number>();
   simpleConfirmMode = false;
 
+  forceSimpleMode = true;
+
+  private readonly buzzInThreshold = 0.40;
+  private thresholdReached = false;
+  private attemptedTeamIds = new Set<number>();
+
   // Team competition
   teamMode = false;
   teams: Team[] = [];
@@ -101,6 +107,7 @@ teamColors = ['#ff4d4d', '#ff8a00', '#00c2ff', '#7dff3b', '#ff4fd8', '#9b5cff', 
         this.teamMode = teamCount > 1;
         if (this.teamMode) this.createTeams(teamCount);
       }
+      this.forceSimpleMode = params['simpleMode'] !== 'false';
     });
 
     try {
@@ -137,7 +144,6 @@ teamColors = ['#ff4d4d', '#ff8a00', '#00c2ff', '#7dff3b', '#ff4fd8', '#9b5cff', 
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.clearTimers();
     [this.collectSound, this.correctSound, this.buzzSound, this.captureSound, this.rewardSound].forEach(s => s?.pause());
-
     const container = this.hostElement.nativeElement.querySelector('.team-buttons-container');
     if (container) container.remove();
   }
@@ -237,40 +243,50 @@ private createTeamButtons() {
 
 private updateTeamButtons() {
   const btns = document.querySelectorAll('.team-btn');
-  
   btns.forEach(btnElement => {
-    const btn = btnElement as HTMLElement;  // ✅ cast to HTMLElement
+    const btn = btnElement as HTMLElement;
     const teamId = Number(btn.getAttribute('data-team-id'));
     const team = this.teams.find(t => t.id === teamId);
-    
     if (team) {
-      const isActive = this.currentAnsweringTeamId === team.id;
-      btn.innerHTML = `
-        <span style="display:flex; flex-direction:column; align-items:center; line-height:1;">
-          <span style="font-size:1.7rem; font-weight:900;">${team.score}</span>
-          ${isActive ? `<span style="font-size:0.78rem; font-weight:800; letter-spacing:0.08em; margin-top:3px; text-shadow:0 1px 3px rgba(0,0,0,0.6);">TURN</span>` : ''}
-        </span>
-      `;
+      btn.innerHTML = `<span style="font-size:1.7rem; font-weight:900;">${team.score}</span>`;
       btn.setAttribute('aria-label', `${team.name} ${team.score}`);
     }
-    
-    // Remove glow from all buttons
     btn.classList.remove('team-btn-active');
     btn.style.boxShadow = '';
     btn.style.filter = '';
     btn.style.transition = '';
+
+    const attempted = this.attemptedTeamIds.has(teamId);
+    if (attempted) {
+      // Wrong answer this round — clearly disabled
+      btn.style.opacity = '0.3';
+      btn.style.cursor = 'not-allowed';
+      btn.style.filter = 'grayscale(0.6)';
+    } else if (!this.thresholdReached) {
+      // Image not revealed enough yet — softly locked
+      btn.style.opacity = '0.45';
+      btn.style.cursor = 'not-allowed';
+      btn.style.filter = '';
+    } else {
+      // Ready to buzz in
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.style.filter = '';
+    }
   });
-  
+
   if (this.currentAnsweringTeamId !== null) {
     const activeBtn = document.querySelector(
       `.team-btn[data-team-id="${this.currentAnsweringTeamId}"]`
     ) as HTMLElement | null;
-    
+
     if (activeBtn) {
       activeBtn.classList.add('team-btn-active');
       activeBtn.style.boxShadow = '0 0 0 6px gold, 0 0 0 12px rgba(255,215,0,0.6), 0 10px 0 rgba(0,0,0,0.22)';
       activeBtn.style.filter = 'brightness(1.15) saturate(1.4) drop-shadow(0 0 8px gold)';
       activeBtn.style.transition = 'all 0.1s';
+      activeBtn.style.opacity = '1';
+      activeBtn.style.cursor = 'pointer';
     }
   }
 }
@@ -295,6 +311,13 @@ private updateTeamButtons() {
 
     if (this.quizPending) return;
 
+    if (!this.thresholdReached) {
+      showAppNotification(this.langService.translate('revealWaitThreshold'), 'info');
+      return;
+    }
+
+    if (this.attemptedTeamIds.has(teamId)) return;
+
     this.currentAnsweringTeamId = teamId;
     this.updateTeamButtons();
     this.openQuizForTeam(teamId);
@@ -305,9 +328,9 @@ private updateTeamButtons() {
 
     const hasText = !!this.currentItem.text?.trim();
     let options: Item[] = [];
-    if (hasText) options = this.buildQuizOptions();
+    if (!this.forceSimpleMode && hasText) options = this.buildQuizOptions();
 
-    this.simpleConfirmMode = !hasText || options.length === 0;
+    this.simpleConfirmMode = this.forceSimpleMode || !hasText || options.length === 0;
     this.quizOptions = options;
     this.showQuiz = true;
     this.updateTeamButtons();
@@ -388,26 +411,18 @@ private updateTeamButtons() {
       this.playBuzzSound();
 
       if (this.teamMode && this.currentAnsweringTeamId !== null) {
-        const newTeamId = this.selectRandomNextTeam(this.currentAnsweringTeamId);
-        this.currentAnsweringTeamId = newTeamId;
-        this.updateTeamButtons();
-
-        const newTeam = this.teams.find(t => t.id === newTeamId);
-        if (newTeam) {
-          document.querySelectorAll('.quiz-option').forEach(btn => {
-            (btn as HTMLElement).style.background = `linear-gradient(135deg, ${newTeam.color}, ${this.adjustBrightness(newTeam.color, -20)})`;
-          });
-        }
+        const team = this.teams.find(t => t.id === this.currentAnsweringTeamId);
+        if (team) { team.score--; }
+        this.attemptedTeamIds.add(this.currentAnsweringTeamId);
       }
 
       const el = document.querySelector(`[data-opt-id="${selected.id}"]`);
       el?.classList.add('shake');
 
       setTimeout(() => {
-        el?.classList.remove('shake');
-        this.quizAnswerLocked = false;
+        this.closeQuizAndResetTurn();
         this.cdr.detectChanges();
-      }, 500);
+      }, 600);
     }
   }
 
@@ -428,6 +443,11 @@ private updateTeamButtons() {
 
   onConfirmOops() {
     if (!this.showQuiz) return;
+    if (this.teamMode && this.currentAnsweringTeamId !== null) {
+      const team = this.teams.find(t => t.id === this.currentAnsweringTeamId);
+      if (team) { team.score--; }
+      this.attemptedTeamIds.add(this.currentAnsweringTeamId);
+    }
     this.playBuzzSound();
     this.closeQuizAndResetTurn();
     this.cdr.detectChanges();
@@ -442,6 +462,7 @@ private updateTeamButtons() {
     this.quizPending = false;
     this.simpleConfirmMode = false;
     this.currentAnsweringTeamId = null;
+    if (this.teamMode) this.updateTeamButtons();
     this.resumeGame();
     this.cdr.detectChanges();
   }
@@ -491,6 +512,8 @@ if (this.currentIndex >= this.items.length) {
     this.quizPending = false;
     this.simpleConfirmMode = false;
     this.currentAnsweringTeamId = null;
+    this.thresholdReached = false;
+    this.attemptedTeamIds.clear();
 
     if (this.teamMode) this.updateTeamButtons();
 
@@ -579,6 +602,10 @@ if (this.currentIndex >= this.items.length) {
         this.revealRandomCell();
         this.revealedCount++;
         this.timeLeft = this.totalTime - (this.revealedCount / this.totalCells) * this.totalTime;
+        if (this.teamMode && !this.thresholdReached && this.revealedCount / this.totalCells >= this.buzzInThreshold) {
+          this.thresholdReached = true;
+          this.updateTeamButtons();
+        }
         this.cdr.detectChanges();
         return;
       }
@@ -601,9 +628,9 @@ if (this.currentIndex >= this.items.length) {
 
     const hasText = !!this.currentItem.text?.trim();
     let options: Item[] = [];
-    if (hasText) options = this.buildQuizOptions();
+    if (!this.forceSimpleMode && hasText) options = this.buildQuizOptions();
 
-    this.simpleConfirmMode = !hasText || options.length === 0;
+    this.simpleConfirmMode = this.forceSimpleMode || !hasText || options.length === 0;
     this.quizOptions = options;
     this.showQuiz = true;
     this.updateTeamButtons();
@@ -651,6 +678,10 @@ if (this.currentIndex >= this.items.length) {
         this.revealRandomCell();
         this.revealedCount++;
         this.timeLeft = this.totalTime - (this.revealedCount / this.totalCells) * this.totalTime;
+        if (this.teamMode && !this.thresholdReached && this.revealedCount / this.totalCells >= this.buzzInThreshold) {
+          this.thresholdReached = true;
+          this.updateTeamButtons();
+        }
         this.cdr.detectChanges();
       }
       if (this.revealedCount >= this.totalCells) {

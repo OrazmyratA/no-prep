@@ -97,14 +97,18 @@
           <div class="w-12 text-center font-bold text-xl">{{ entry.medal }}</div>
           <div class="w-28 font-semibold" [style.color]="entry.team.color">{{ entry.team.name }}</div>
           <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
-            <div class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
+            <div *ngIf="entry.team.score > 0"
+                 class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
                  [style.width.%]="(entry.team.score / maxScore) * 100"
                  [style.backgroundColor]="entry.team.color"
                  [style.transition]="'width 0.5s ease-out'">
-              <span *ngIf="entry.team.score > 0">{{ entry.team.score }}</span>
+              {{ entry.team.score }}
+            </div>
+            <div *ngIf="entry.team.score < 0"
+                 class="h-full flex items-center pl-3 text-gray-400 font-bold">
+              {{ entry.team.score }}
             </div>
           </div>
-          <div class="w-12 text-right font-bold">{{ entry.team.score }}</div>
         </div>
       </div>
 

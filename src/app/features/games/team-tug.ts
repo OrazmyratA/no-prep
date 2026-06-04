@@ -96,6 +96,13 @@ export class TeamTugComponent implements OnInit, OnDestroy {
         this.router.navigate(['/topics', this.topicId, 'activities']);
         return;
       }
+      const hasImages = this.items.some(item => !!item.image);
+      if (!hasImages) {
+        const msg = this.langService.translate('teamTugNeedImagesError');
+        showAppNotification(msg, 'error');
+        this.router.navigate(['/topics', this.topicId, 'activities']);
+        return;
+      }
 
       // Preload sounds
       this.correctSound = new Audio('assets/sound/collect.mp3');

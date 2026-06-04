@@ -48,7 +48,8 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   };
 
   roundResult: 'tie' | 'left' | 'right' | null = null;
-  showVsResult = false;   // true during the 800 ms "battle reveal" before resolveRound
+  rpsClash = false;
+  rpsClashResult: 'left-wins' | 'right-wins' | 'tie' | null = null;
   powerUpActive = false;
   powerUpMultiplier = 1;  // doubles each consecutive tie: 2 → 4 → 8 …
   lightningVisible = false;
@@ -87,9 +88,10 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   private powerUpSound: HTMLAudioElement | null = null;
 
   loading = true;
+  forceSimpleMode = true;
   simpleConfirmMode = false;
   knightBottomPx = 0;
-  knightWidthPx = 224;
+  knightWidthPx = 280;
   private resizeListener: (() => void) | null = null;
 
   readonly emojiMap: Record<RPSChoice, string> = {
@@ -112,6 +114,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     const sw = Number(params['stepsToWin']);
     if (Number.isFinite(sw) && sw >= 1 && sw <= 30) this.stepsToWin = sw;
     this.reverseMode = params['reverseMode'] === 'true';
+    this.forceSimpleMode = params['simpleMode'] !== 'false';
 
     try {
       const allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -148,7 +151,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     // Base knight width 195px in image-space → ≈224px at 1080p.
     const scale = Math.max(window.innerWidth / 1672, window.innerHeight / 941);
     this.knightBottomPx = Math.round(176 * scale);
-    this.knightWidthPx  = Math.round(195 * scale);
+    this.knightWidthPx  = Math.round(244 * scale);
   }
 
   private setupGame() {
@@ -163,7 +166,8 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.rightTeam.isSpinning = false;
     this.rightTeam.spinEmoji = this.emojiMap.rock;
     this.roundResult = null;
-    this.showVsResult = false;
+    this.rpsClash = false;
+    this.rpsClashResult = null;
     this.powerUpActive = false;
     this.powerUpMultiplier = 1;
     this.lightningVisible = false;
@@ -200,7 +204,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     return this.gameActive &&
       !this.gameFinished &&
       !this.quizVisible &&
-      !this.showVsResult &&
+      !this.rpsClash &&
       team.choice === null &&
       !team.isSpinning;
   }
@@ -232,13 +236,9 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
       this.cdr.detectChanges();
 
       if (this.leftTeam.choice !== null && this.rightTeam.choice !== null) {
-        // Show VS battle result for 800 ms so students can see what was chosen
-        this.showVsResult = true;
+        this.rpsClash = true;
         this.cdr.detectChanges();
-        this.setTrackedTimeout(() => {
-          this.showVsResult = false;
-          this.resolveRound();
-        }, 800);
+        this.setTrackedTimeout(() => this.resolveRound(), 400);
       }
     }, 600);
     this.spinTimeouts.push(timeout);
@@ -250,18 +250,30 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
     if (left === right) {
       this.roundResult = 'tie';
-      // Power-ups do not stack — only activate if none pending
+      this.rpsClashResult = 'tie';
+      this.cdr.detectChanges();
       this.activatePowerUp();
-      this.setTrackedTimeout(() => this.resetRound(), 1500);
-    } else {
-      const leftWins =
-        (left === 'rock'     && right === 'scissors') ||
-        (left === 'scissors' && right === 'paper')    ||
-        (left === 'paper'    && right === 'rock');
-      this.roundResult = leftWins ? 'left' : 'right';
-      this.launchQuiz(leftWins ? this.leftTeam : this.rightTeam);
+      this.setTrackedTimeout(() => {
+        this.rpsClash = false;
+        this.rpsClashResult = null;
+        this.resetRound();
+      }, 1600);
+      return;
     }
+
+    const leftWins =
+      (left === 'rock'     && right === 'scissors') ||
+      (left === 'scissors' && right === 'paper')    ||
+      (left === 'paper'    && right === 'rock');
+    this.roundResult = leftWins ? 'left' : 'right';
+    this.rpsClashResult = leftWins ? 'left-wins' : 'right-wins';
     this.cdr.detectChanges();
+
+    this.setTrackedTimeout(() => {
+      this.rpsClash = false;
+      this.rpsClashResult = null;
+      this.launchQuiz(leftWins ? this.leftTeam : this.rightTeam);
+    }, 1400);
   }
 
   private activatePowerUp() {
@@ -284,6 +296,8 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.simpleConfirmMode = false;
 
     if (this.quizItems.length === 0) {
+      this.quizImageSrc = null;
+      this.quizCorrectAnswer = '';
       this.openSimpleConfirm();
       return;
     }
@@ -291,6 +305,11 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     const item = this.randomChoice(this.quizItems);
     this.quizCorrectAnswer = item.text!;
     this.quizImageSrc = this.reverseMode ? null : this.getImageSrc(item);
+
+    if (this.forceSimpleMode) {
+      this.openSimpleConfirm();
+      return;
+    }
 
     const options = this.buildQuizOptions(item);
     if (!options) {
@@ -447,6 +466,8 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.leftTeam.spinEmoji = this.emojiMap.rock;
     this.rightTeam.spinEmoji = this.emojiMap.rock;
     this.roundResult = null;
+    this.rpsClash = false;
+    this.rpsClashResult = null;
     this.cdr.detectChanges();
   }
 

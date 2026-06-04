@@ -87,7 +87,16 @@
 
       <!-- Selected item with pop-in animation -->
       <div class="flex justify-center mb-8">
-        <div class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
+        <!-- Reverse mode: show text as question -->
+        <div *ngIf="reverseMode"
+             class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
+          <span class="text-4xl font-black text-gray-900 text-center px-6 break-words">
+            {{ currentQuiz.correctAnswer }}
+          </span>
+        </div>
+        <!-- Normal mode: show image -->
+        <div *ngIf="!reverseMode"
+             class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
           <img *ngIf="currentQuiz.itemImageSrc"
                [src]="currentQuiz.itemImageSrc"
                class="max-w-full max-h-full object-contain"
@@ -95,7 +104,7 @@
         </div>
       </div>
 
-      <!-- Simple OK / Oops (not enough distractors) -->
+      <!-- Simple OK / Oops (not enough distractors or images) -->
       <div *ngIf="simpleConfirmMode" class="flex justify-center gap-6">
         <button (click)="onQuizConfirmOk()"
                 class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
@@ -107,7 +116,7 @@
         </button>
       </div>
 
-      <!-- Text options -->
+      <!-- Options: images in reverse mode, text in normal mode -->
       <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
         <button
           *ngFor="let opt of currentQuiz.options"
@@ -116,8 +125,12 @@
           [class.shake]="opt.state === 'wrong'"
           [disabled]="currentQuiz.locked"
           (click)="onQuizAnswer(opt)"
-          class="quiz-option px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
-          {{ opt.text }}
+          class="quiz-option rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold hover:scale-105 transition transform"
+          [class.squid-image-option]="opt.imageSrc"
+          [class.px-8]="!opt.imageSrc" [class.py-4]="!opt.imageSrc"
+          [class.text-xl]="!opt.imageSrc" [class.min-w-60]="!opt.imageSrc">
+          <img *ngIf="opt.imageSrc" [src]="opt.imageSrc" class="squid-opt-img" [alt]="opt.text">
+          <span *ngIf="!opt.imageSrc">{{ opt.text }}</span>
         </button>
       </div>
 

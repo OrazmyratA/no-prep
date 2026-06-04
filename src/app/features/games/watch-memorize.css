@@ -64,6 +64,22 @@
   object-fit: contain;
 }
 
+.scrolling-item-text-only {
+  background: rgba(255,255,255,0.15);
+  border-radius: 12px;
+}
+
+.scroll-text-label {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  word-break: break-word;
+  line-height: 1.25;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
 .scrolling-item p {
   font-size: 1.2rem;
   font-weight: 600;

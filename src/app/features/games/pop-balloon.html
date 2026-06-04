@@ -37,6 +37,7 @@
              [class.strings-ready]="team.stringsReady"
              [class.team-completed]="team.completed"
              [class.quiz-active]="team.showQuiz"
+             [class.rps-locked]="teamMode && teamCount === 2 && rpsWinnerTeamId !== null && rpsWinnerTeamId !== team.id"
              [style.--team-color]="team.color">
       <div *ngIf="teamMode" class="team-label">
         <span>{{ team.name }}</span>
@@ -102,14 +103,19 @@
            [class.visible]="team.quizOverlayVisible"
            [class.closing]="team.quizClosing">
         <div class="balloon-question-card">
-          <img *ngIf="team.selectedItem.image"
-               [src]="imageUrl(team.selectedItem.image, team.selectedItem.id!)"
-               class="question-image"
-               [alt]="team.selectedItem.text ?? 'question'">
-          <div *ngIf="!team.selectedItem.image" class="question-fallback">{{ team.selectedItem.text || '?' }}</div>
+          <!-- Reverse mode: show text as question -->
+          <div *ngIf="reverseMode" class="question-fallback">{{ team.selectedItem.text || '?' }}</div>
+          <!-- Normal mode: show image, fallback to text -->
+          <ng-container *ngIf="!reverseMode">
+            <img *ngIf="team.selectedItem.image"
+                 [src]="imageUrl(team.selectedItem.image, team.selectedItem.id!)"
+                 class="question-image"
+                 [alt]="team.selectedItem.text ?? 'question'">
+            <div *ngIf="!team.selectedItem.image" class="question-fallback">{{ team.selectedItem.text || '?' }}</div>
+          </ng-container>
         </div>
 
-        <!-- Simple OK / Oops mode (no text on items) -->
+        <!-- Simple OK / Oops mode -->
         <div *ngIf="team.simpleConfirmMode" class="balloon-options balloon-simple-confirm">
           <button type="button" class="quiz-option confirm-ok" (click)="onConfirmOk(team.id)">
             ✓ OK
@@ -119,15 +125,19 @@
           </button>
         </div>
 
-        <!-- Multiple-choice options -->
-        <div *ngIf="!team.simpleConfirmMode" class="balloon-options">
+        <!-- Multiple-choice: images in reverse mode, text in normal mode -->
+        <div *ngIf="!team.simpleConfirmMode" class="balloon-options" [class.balloon-image-options]="reverseMode">
           <button *ngFor="let opt of team.quizOptions"
                   type="button"
                   class="quiz-option"
+                  [class.quiz-image-option]="reverseMode"
                   [id]="quizOptionDomId(team.id, opt.id)"
                   [class.fade-out]="team.fadeOutOptionIds.has(opt.id!)"
                   (click)="onQuizAnswer(opt, team.id)">
-            {{ opt.text || '?' }}
+            <ng-container *ngIf="reverseMode && opt.image; else optText">
+              <img [src]="imageUrl(opt.image, opt.id!)" class="quiz-option-img" [alt]="opt.text ?? ''">
+            </ng-container>
+            <ng-template #optText>{{ opt.text || '?' }}</ng-template>
           </button>
         </div>
       </div>
@@ -186,6 +196,62 @@
         <button (click)="goToActivities()" class="btn btn-secondary">{{ 'activitiesLabel' | translate }}</button>
       </div>
     </div>
+  </div>
+
+  <!-- RPS Phase Overlay (2-team mode) -->
+  <div *ngIf="rpsPhase && teamCount === 2" class="rps-pb-overlay">
+
+    <!-- Clash arena: shown when both have chosen -->
+    <ng-container *ngIf="rpsClash">
+      <div class="rps-clash-arena"
+           [class.result-left-wins]="rpsClashResult === 'left-wins'"
+           [class.result-right-wins]="rpsClashResult === 'right-wins'"
+           [class.result-tie]="rpsClashResult === 'tie'">
+        <div class="clash-emoji clash-left"
+             [class.winner]="rpsClashResult === 'left-wins'"
+             [class.loser]="rpsClashResult === 'right-wins'">
+          {{ rpsTeamSpinEmojis[0] }}
+        </div>
+        <div class="clash-center-area">
+          <div *ngIf="rpsClashResult === 'tie'" class="clash-tie-label">Tie!</div>
+        </div>
+        <div class="clash-emoji clash-right"
+             [class.winner]="rpsClashResult === 'right-wins'"
+             [class.loser]="rpsClashResult === 'left-wins'">
+          {{ rpsTeamSpinEmojis[1] }}
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Choose panels: shown while waiting for both teams to tap -->
+    <ng-container *ngIf="!rpsClash">
+      <div class="rps-pb-panel"
+           [style.border-color]="teams[0]?.color"
+           [class.panel-active]="canRpsChoose(0)"
+           (click)="onRpsChoose(0)"
+           (touchstart)="onRpsTouchChoose($event, 0)">
+        <div class="rps-pb-choice-box" [style.background]="teams[0]?.color">
+          <span *ngIf="rpsTeamSpinning[0]" class="rps-pb-spin">{{ rpsTeamSpinEmojis[0] }}</span>
+          <span *ngIf="!rpsTeamSpinning[0] && rpsTeamChoices[0] !== null">{{ rpsTeamSpinEmojis[0] }}</span>
+          <span *ngIf="!rpsTeamSpinning[0] && rpsTeamChoices[0] === null" class="rps-pb-empty">?</span>
+        </div>
+      </div>
+
+      <div class="rps-pb-spacer"></div>
+
+      <div class="rps-pb-panel"
+           [style.border-color]="teams[1]?.color"
+           [class.panel-active]="canRpsChoose(1)"
+           (click)="onRpsChoose(1)"
+           (touchstart)="onRpsTouchChoose($event, 1)">
+        <div class="rps-pb-choice-box" [style.background]="teams[1]?.color">
+          <span *ngIf="rpsTeamSpinning[1]" class="rps-pb-spin">{{ rpsTeamSpinEmojis[1] }}</span>
+          <span *ngIf="!rpsTeamSpinning[1] && rpsTeamChoices[1] !== null">{{ rpsTeamSpinEmojis[1] }}</span>
+          <span *ngIf="!rpsTeamSpinning[1] && rpsTeamChoices[1] === null" class="rps-pb-empty">?</span>
+        </div>
+      </div>
+    </ng-container>
+
   </div>
 
   <!-- Sandwich Menu -->

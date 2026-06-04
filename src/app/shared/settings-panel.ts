@@ -335,7 +335,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.formSubscription?.unsubscribe();
     switch (this.gameId) {
       case 'reveal-game':
-        this.settingsForm = this.fb.group({ timer: [25], gridSize: [14], teamCount: [1] });
+        this.settingsForm = this.fb.group({ timer: [25], gridSize: [14], teamCount: [1], simpleMode: [true] });
         break;
       case 'watch-memorize':
         this.settingsForm = this.fb.group({ count: [3], speed: [5] });
@@ -372,10 +372,10 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         });
         break;
       case 'spin-wheel':
-        this.settingsForm = this.fb.group({ textOnWheel: [false] });
+        this.settingsForm = this.fb.group({ textOnWheel: [false], simpleMode: [true] });
         break;
       case 'pop-balloon':
-        this.settingsForm = this.fb.group({ teamCount: [1], reverseMode: [false] });
+        this.settingsForm = this.fb.group({ teamCount: [1], reverseMode: [false], simpleMode: [true] });
         break;
       case 'squid-game':
         this.settingsForm = this.fb.group({
@@ -385,13 +385,15 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
           timerMinutes: [3],
           dollMinTime: [4],
           dollMaxTime: [7],
-          reverseMode: [false]
+          reverseMode: [false],
+          simpleMode: [true]
         });
         break;
       case 'rock-paper-scissors':
         this.settingsForm = this.fb.group({
           stepsToWin: [10],
-          reverseMode: [false]
+          reverseMode: [false],
+          simpleMode: [true]
         });
         break;
       case 'spelling-check':

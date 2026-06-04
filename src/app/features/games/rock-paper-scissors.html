@@ -28,22 +28,31 @@
       ⚡ {{ powerUpMultiplier }}× Next Move!
     </div>
 
-    <!-- Tie result banner -->
-    <div *ngIf="roundResult === 'tie'" class="rps-result-banner rps-tie-banner">
-      {{ 'rpsTie' | translate }}
-    </div>
-
-    <!-- VS battle reveal -->
-    <div *ngIf="showVsResult && leftTeam.choice && rightTeam.choice" class="rps-vs-banner">
-      <span class="vs-emoji" [style.color]="leftTeam.color">{{ emojiMap[leftTeam.choice] }}</span>
-      <span class="vs-label">VS</span>
-      <span class="vs-emoji" [style.color]="rightTeam.color">{{ emojiMap[rightTeam.choice] }}</span>
+    <!-- Clash arena: dramatic fly-in + winner/loser animations -->
+    <div *ngIf="rpsClash" class="rps-clash-arena">
+      <div class="clash-emoji clash-left"
+           [class.winner]="rpsClashResult === 'left-wins'"
+           [class.loser]="rpsClashResult === 'right-wins'"
+           [class.tied]="rpsClashResult === 'tie'">
+        {{ emojiMap[leftTeam.choice!] }}
+      </div>
+      <div class="clash-center-area">
+        <div *ngIf="rpsClashResult === 'tie'" class="clash-tie-label">Tie!</div>
+      </div>
+      <div class="clash-emoji clash-right"
+           [class.winner]="rpsClashResult === 'right-wins'"
+           [class.loser]="rpsClashResult === 'left-wins'"
+           [class.tied]="rpsClashResult === 'tie'">
+        {{ emojiMap[rightTeam.choice!] }}
+      </div>
     </div>
 
     <!-- Left team panel -->
     <div
       class="rps-panel rps-panel-left"
       [class.panel-disabled]="!canChoose('left')"
+      [class.panel-quiz-winner]="quizVisible && quizWinner?.side === 'left'"
+      [class.panel-quiz-loser]="quizVisible && quizWinner?.side === 'right'"
       [style.border-color]="leftTeam.color"
       role="button"
       aria-label="Blue team choose"
@@ -54,7 +63,8 @@
       (keydown.enter)="onChooseKeydown($event, 'left')"
       (keydown.space)="onChooseKeydown($event, 'left')"
     >
-      <div class="rps-team-name" [style.color]="leftTeam.color">Blue Team</div>
+      <div *ngIf="quizVisible && quizWinner?.side === 'left'" class="panel-your-turn-badge">{{ 'yourTurn' | translate }}</div>
+      <div class="rps-team-name" [style.color]="leftTeam.color">{{ 'rpsBlueTeam' | translate }}</div>
 
       <div class="rps-choice-box" [style.background]="leftTeam.color"
            [class.box-chosen]="leftTeam.choice !== null && !leftTeam.isSpinning">
@@ -70,6 +80,8 @@
     <div
       class="rps-panel rps-panel-right"
       [class.panel-disabled]="!canChoose('right')"
+      [class.panel-quiz-winner]="quizVisible && quizWinner?.side === 'right'"
+      [class.panel-quiz-loser]="quizVisible && quizWinner?.side === 'left'"
       [style.border-color]="rightTeam.color"
       role="button"
       aria-label="Red team choose"
@@ -80,7 +92,8 @@
       (keydown.enter)="onChooseKeydown($event, 'right')"
       (keydown.space)="onChooseKeydown($event, 'right')"
     >
-      <div class="rps-team-name" [style.color]="rightTeam.color">Red Team</div>
+      <div *ngIf="quizVisible && quizWinner?.side === 'right'" class="panel-your-turn-badge">{{ 'yourTurn' | translate }}</div>
+      <div class="rps-team-name" [style.color]="rightTeam.color">{{ 'rpsRedTeam' | translate }}</div>
 
       <div class="rps-choice-box" [style.background]="rightTeam.color"
            [class.box-chosen]="rightTeam.choice !== null && !rightTeam.isSpinning">
@@ -97,16 +110,26 @@
   <!-- Quiz overlay -->
   <div *ngIf="quizVisible && quizWinner"
        class="rps-quiz-overlay"
-       [class.visible]="quizOverlayVisible">
+       [class.visible]="quizOverlayVisible"
+       [class.quiz-to-left]="quizWinner.side === 'left'"
+       [class.quiz-to-right]="quizWinner.side === 'right'">
     <div class="rps-quiz-card" [style.background]="quizWinner.color">
 
       <!-- Winner badge -->
       <div class="quiz-winner-label">
-        {{ quizWinner.side === 'left' ? 'Blue Team' : 'Red Team' }}
+        {{ (quizWinner.side === 'left' ? 'rpsBlueTeam' : 'rpsRedTeam') | translate }}
         — {{ 'rpsAnswerQuestion' | translate }}
       </div>
 
-      <!-- Simple confirm (no valid quiz items / not enough options) -->
+      <!-- Question: shown in both simple and regular mode when an item is available -->
+      <div *ngIf="!reverseMode && quizImageSrc" class="quiz-image-wrap">
+        <img [src]="quizImageSrc" class="quiz-image" alt="">
+      </div>
+      <div *ngIf="reverseMode && quizCorrectAnswer" class="quiz-text-question">
+        {{ quizCorrectAnswer }}
+      </div>
+
+      <!-- Simple confirm (teacher Ok/Oops mode or not enough quiz items) -->
       <ng-container *ngIf="simpleConfirmMode">
         <div class="quiz-confirm-buttons">
           <button class="quiz-confirm-ok"   (click)="onConfirmOk()">✓</button>
@@ -114,20 +137,8 @@
         </div>
       </ng-container>
 
-      <!-- Regular quiz -->
+      <!-- Regular quiz: answer options -->
       <ng-container *ngIf="!simpleConfirmMode">
-
-        <!-- Normal mode: image question -->
-        <div *ngIf="!reverseMode && quizImageSrc" class="quiz-image-wrap">
-          <img [src]="quizImageSrc" class="quiz-image" alt="">
-        </div>
-
-        <!-- Reverse mode: text question -->
-        <div *ngIf="reverseMode" class="quiz-text-question">
-          {{ quizCorrectAnswer }}
-        </div>
-
-        <!-- Answer options -->
         <div class="quiz-options-row"
              [class.image-options]="reverseMode"
              [class.long-text]="!reverseMode && hasLongOptions">
@@ -144,7 +155,6 @@
             <span *ngIf="!reverseMode">{{ opt.text }}</span>
           </button>
         </div>
-
       </ng-container>
 
     </div>
@@ -162,7 +172,7 @@
       </div>
       <h2 class="victory-title">{{ 'popBalloonVictory' | translate }}</h2>
       <div class="victory-team-name" [style.color]="victoryTeam.color">
-        {{ victoryTeam.side === 'left' ? 'Blue Team' : 'Red Team' }}
+        {{ (victoryTeam.side === 'left' ? 'rpsBlueTeam' : 'rpsRedTeam') | translate }}
       </div>
       <div class="gift-box-popup">
         <img src="assets/gifs/gift-opened.gif"

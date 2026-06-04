@@ -4,6 +4,7 @@ import { db, Item } from '../../core/db.model';
 
 interface QuizOption {
   text: string;
+  imageSrc?: string | null;
   state: 'idle' | 'correct' | 'wrong' | 'fade';
 }
 
@@ -39,6 +40,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   timerMinutes = 3;
   dollMinTime = 4;
   dollMaxTime = 7;
+  reverseMode = false;
+  forceSimpleMode = true;
 
   // Game state
   teams: Team[] = [];
@@ -112,6 +115,9 @@ export class SquidGameComponent implements OnInit, OnDestroy {
 
     const dmax = Number(params['dollMaxTime']);
     if (Number.isFinite(dmax) && dmax >= 2 && dmax <= 20) this.dollMaxTime = dmax;
+
+    this.reverseMode = params['reverseMode'] === 'true';
+    this.forceSimpleMode = params['simpleMode'] !== 'false';
 
     try {
       const allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -320,11 +326,16 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       itemImageSrc = this.quizImageUrls.get(item.id!)!;
     }
 
-    const options = this.buildOptions(correctAnswer);
-    this.simpleConfirmMode = options === null;
+    let options: ReturnType<typeof this.buildOptions> = null;
+    if (!this.forceSimpleMode) {
+      options = this.reverseMode
+        ? this.buildImageOptions(item)
+        : this.buildOptions(correctAnswer);
+    }
+    this.simpleConfirmMode = this.forceSimpleMode || options === null;
     this.currentQuiz = {
       team,
-      itemImageSrc,
+      itemImageSrc: this.reverseMode ? null : itemImageSrc,
       options: options ?? [],
       correctAnswer,
       locked: false
@@ -445,6 +456,30 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   private pickRandomItem(): Item | null {
     if (this.quizItems.length === 0) return null;
     return this.quizItems[Math.floor(Math.random() * this.quizItems.length)];
+  }
+
+  private buildImageOptions(selectedItem: Item): QuizOption[] | null {
+    if (!selectedItem.image || selectedItem.id === undefined) return null;
+
+    const candidates = this.quizItems.filter(i => i.image && i.id !== selectedItem.id);
+    if (candidates.length < 2) return null;
+
+    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
+    const distractors = shuffled.slice(0, 2);
+    const optionItems = [selectedItem, ...distractors].sort(() => Math.random() - 0.5);
+
+    return optionItems.map(item => {
+      let imgSrc: string | null = null;
+      if (item.image && item.id !== undefined) {
+        if (!this.quizImageUrls.has(item.id)) {
+          const url = URL.createObjectURL(item.image);
+          this.quizImageUrls.set(item.id, url);
+          this.objectUrls.push(url);
+        }
+        imgSrc = this.quizImageUrls.get(item.id) ?? null;
+      }
+      return { text: item.text ?? '', imageSrc: imgSrc, state: 'idle' as const };
+    });
   }
 
   private buildOptions(correct: string): QuizOption[] | null {

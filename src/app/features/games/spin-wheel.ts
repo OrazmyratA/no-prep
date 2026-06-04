@@ -44,6 +44,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   eliminationAnimation = false;
   eliminationLong = false;
   simpleConfirmMode = false;
+  forceSimpleMode = true;
 
   // Constants for wheel geometry
   private centerX = 280;
@@ -69,6 +70,7 @@ async ngOnInit() {
   // Read the checkbox setting from query parameters (synchronous)
   const queryParams = this.route.snapshot.queryParams;
   this.useTextOnWheel = queryParams['textOnWheel'] === 'true';
+  this.forceSimpleMode = queryParams['simpleMode'] !== 'false';
 
   try {
     this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -351,7 +353,7 @@ spin() {
     } else {
       this.spinning = false;
       // Show quiz or not
-if (landedItem.text && landedItem.text.trim() !== '') {
+if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
   const canShowQuiz = this.buildQuizOptions();
   if (canShowQuiz) {
     setTimeout(() => {
@@ -361,7 +363,6 @@ if (landedItem.text && landedItem.text.trim() !== '') {
       this.cdr.detectChanges();
     }, 1000);
   } else {
-    // No valid distractors – fall back to simple OK/Oops confirm
     setTimeout(() => {
       this.simpleConfirmMode = true;
       this.showQuiz = true;
@@ -370,7 +371,6 @@ if (landedItem.text && landedItem.text.trim() !== '') {
     }, 1000);
   }
 } else {
-  // Item has no text – show simple OK/Oops confirm overlay
   setTimeout(() => {
     this.simpleConfirmMode = true;
     this.showQuiz = true;

@@ -337,6 +337,23 @@ button.quiz-option {
   transition: all 0.2s ease;
 }
 
+button.quiz-option.squid-image-option {
+  width: min(200px, 26vw);
+  height: min(200px, 26vw);
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.squid-opt-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
 button.quiz-option:hover {
   transform: translateY(-5px);
 }

@@ -11,13 +11,17 @@
     <div *ngIf="!loading && scrollPhase && scrollingItems.length > 0" class="scroll-stage mb-8">
       <div class="scroll-container" [class.paused]="isPaused">
         <div *ngIf="currentScrollItem" class="scrolling-item">
-          <div class="scrolling-item-media">
-            <img
-              *ngIf="currentScrollItem.image"
-              [src]="imageUrl(currentScrollItem.image!, currentScrollItem.id!)"
-            >
-          </div>
-          <p class="font-semibold text-center mt-2">{{ currentScrollItem.text }}</p>
+          <ng-container *ngIf="currentScrollItem.image; else scrollTextOnly">
+            <div class="scrolling-item-media">
+              <img [src]="imageUrl(currentScrollItem.image!, currentScrollItem.id!)">
+            </div>
+            <p class="font-semibold text-center mt-2">{{ currentScrollItem.text }}</p>
+          </ng-container>
+          <ng-template #scrollTextOnly>
+            <div class="scrolling-item-media scrolling-item-text-only">
+              <span class="scroll-text-label">{{ currentScrollItem.text }}</span>
+            </div>
+          </ng-template>
         </div>
       </div>
     </div>
@@ -38,10 +42,17 @@
            [class.selected]="selectedIndices.has(rowIndex * gridColumns + colIndex)"
            [style.width.px]="cardSize"
            [style.height.px]="cardSize">
-        <div class="grid-item-media w-full flex-1 flex items-center justify-center min-h-0">
-          <img *ngIf="item.image" [src]="imageUrl(item.image!, item.id!)" class="w-full h-full object-contain">
-        </div>
-        <p class="text-center font-medium mt-1" [style.fontSize.px]="gridTextSize">{{ item.text }}</p>
+        <ng-container *ngIf="item.image; else recallTextOnly">
+          <div class="grid-item-media w-full flex-1 flex items-center justify-center min-h-0">
+            <img [src]="imageUrl(item.image!, item.id!)" class="w-full h-full object-contain">
+          </div>
+          <p class="text-center font-medium mt-1" [style.fontSize.px]="gridTextSize">{{ item.text }}</p>
+        </ng-container>
+        <ng-template #recallTextOnly>
+          <div class="w-full h-full flex items-center justify-center px-2">
+            <p class="text-center font-semibold leading-tight" [style.fontSize.px]="gridTextSize + 4">{{ item.text }}</p>
+          </div>
+        </ng-template>
       </div>
     </div>
   </div>

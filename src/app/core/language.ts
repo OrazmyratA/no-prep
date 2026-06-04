@@ -4987,6 +4987,30 @@ private translations: TranslationDictionary = {
   sa: 'تعادل!',
 },
 
+'rpsBlueTeam': {
+  en: 'Blue Team',
+  tk: 'Gök topar',
+  ru: 'Синяя команда',
+  cn: '蓝队',
+  cde: 'Blaues Team',
+  es: 'Equipo Azul',
+  fr: 'Équipe Bleue',
+  kr: '파란 팀',
+  sa: 'الفريق الأزرق',
+},
+
+'rpsRedTeam': {
+  en: 'Red Team',
+  tk: 'Gyzyl topar',
+  ru: 'Красная команда',
+  cn: '红队',
+  cde: 'Rotes Team',
+  es: 'Equipo Rojo',
+  fr: 'Équipe Rouge',
+  kr: '빨간 팀',
+  sa: 'الفريق الأحمر',
+},
+
 'rpsAnswerQuestion': {
   en: 'Answer!',
   tk: 'Jogap ber!',
@@ -4997,6 +5021,30 @@ private translations: TranslationDictionary = {
   fr: 'Réponds !',
   kr: '대답해!',
   sa: 'أجب!',
+},
+
+'yourTurn': {
+  en: 'YOUR TURN!',
+  tk: 'SIZIŇ GEZEK!',
+  ru: 'ВАШ ХОД!',
+  cn: '你的回合！',
+  cde: 'DEIN ZUG!',
+  es: '¡TU TURNO!',
+  fr: 'TON TOUR !',
+  kr: '당신 차례!',
+  sa: 'دورك!',
+},
+
+'notYourTurn': {
+  en: 'Not your turn!',
+  tk: 'Siziň gezek däl!',
+  ru: 'Не ваш ход!',
+  cn: '还没到你！',
+  cde: 'Nicht dein Zug!',
+  es: '¡No es tu turno!',
+  fr: 'Ce n\'est pas ton tour !',
+  kr: '당신 차례가 아닙니다!',
+  sa: 'ليس دورك!',
 },
 
 'rpsWins': {
@@ -5117,6 +5165,42 @@ private translations: TranslationDictionary = {
   fr: 'Mode inversé',
   kr: '역방향 모드',
   sa: 'الوضع العكسي',
+},
+
+'settingsSimpleMode': {
+  en: 'Ok / Oops! buttons (simple mode)',
+  tk: 'Ok / Oops! düwmeleri (ýönekeý tertip)',
+  ru: 'Кнопки Ok / Oops! (простой режим)',
+  cn: '确定 / 哎呀！按钮（简单模式）',
+  cde: 'Ok / Oops! Schaltflächen (einfacher Modus)',
+  es: 'Botones Ok / ¡Vaya! (modo simple)',
+  fr: 'Boutons Ok / Oups ! (mode simple)',
+  kr: '확인 / 이런! 버튼 (단순 모드)',
+  sa: 'أزرار موافق / يا لها! (الوضع البسيط)',
+},
+
+'settingsSimpleModeHint': {
+  en: 'On: quizzes show only ✓ OK and ✗ Oops buttons. Off: show image/text answer choices.',
+  tk: 'Açyk: soraglar diňe ✓ Bolýar we ✗ Ýalňyşdym düwmelerini görkezýär. Ýapyk: surat/tekst wariantlar.',
+  ru: 'Вкл: вопросы показывают только ✓ Верно и ✗ Ошибка. Выкл: варианты ответов в виде текста/изображений.',
+  cn: '开启：测验仅显示 ✓ 确定 和 ✗ 哎呀 按钮。关闭：显示图片/文字答案选项。',
+  cde: 'An: Quiz zeigt nur ✓ OK und ✗ Oops. Aus: Bild/Text-Antwortoptionen anzeigen.',
+  es: 'Activado: los cuestionarios muestran solo ✓ OK y ✗ Vaya. Desactivado: opciones de imagen/texto.',
+  fr: 'Activé : les quiz affichent uniquement ✓ OK et ✗ Oups. Désactivé : choix image/texte.',
+  kr: '켜기: 퀴즈에 ✓ 확인 및 ✗ 이런 버튼만 표시. 끄기: 이미지/텍스트 답변 선택지 표시.',
+  sa: 'تشغيل: تعرض الاختبارات فقط ✓ موافق و ✗ يا لها. إيقاف: خيارات إجابات نصية/صورية.',
+},
+
+'revealWaitThreshold': {
+  en: 'Keep watching!',
+  tk: 'Dowam et!',
+  ru: 'Продолжай смотреть!',
+  cn: '继续看！',
+  cde: 'Weiterschauen!',
+  es: '¡Sigue mirando!',
+  fr: 'Continue à regarder !',
+  kr: '계속 봐요!',
+  sa: 'استمر في المشاهدة!',
 },
 
 'settingsRpsReverseModeHint': {

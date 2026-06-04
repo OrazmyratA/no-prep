@@ -2,12 +2,21 @@
   <ng-container [ngSwitch]="gameId">
 
     <!-- Spin-Wheel Game Settings -->
-    <div *ngSwitchCase="'spin-wheel'">
-      <label class="flex items-center">
-        <input type="checkbox" formControlName="textOnWheel" class="mr-2">
-        {{ 'settingsSpinWheelTextOnWheel' | translate }}
-      </label>
-      <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpinWheelTextOnWheelHint' | translate }}</p>
+    <div *ngSwitchCase="'spin-wheel'" class="space-y-4">
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="textOnWheel" class="mr-2">
+          {{ 'settingsSpinWheelTextOnWheel' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpinWheelTextOnWheelHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="simpleMode" class="mr-2">
+          {{ 'settingsSimpleMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
+      </div>
     </div>
 
     <!-- Reveal Game Settings -->
@@ -73,6 +82,15 @@
           <span>6</span>
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsRevealTeamCountHint' | translate }}</p>
+      </div>
+
+      <!-- Simple Mode -->
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="simpleMode" class="mr-2">
+          {{ 'settingsSimpleMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
       </div>
 
     </div>
@@ -150,6 +168,13 @@
           {{ 'settingsTestAbcReverseMode' | translate }}
         </label>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsReverseModeOkOopsHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="simpleMode" class="mr-2">
+          {{ 'settingsSimpleMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
       </div>
     </div>
 
@@ -431,6 +456,15 @@
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsReverseModeOkOopsHint' | translate }}</p>
       </div>
 
+      <!-- Simple Mode -->
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="simpleMode" class="mr-2">
+          {{ 'settingsSimpleMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
+      </div>
+
       <!-- Doll Timing — dual-range slider -->
       <div>
         <div class="flex items-center justify-between mb-3">
@@ -550,6 +584,15 @@
           {{ 'settingsRpsReverseMode' | translate }}
         </label>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsRpsReverseModeHint' | translate }}</p>
+      </div>
+
+      <!-- Simple Mode -->
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="simpleMode" class="mr-2">
+          {{ 'settingsSimpleMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
       </div>
 
     </div>
