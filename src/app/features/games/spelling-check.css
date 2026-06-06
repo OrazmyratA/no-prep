@@ -474,3 +474,104 @@
     padding-inline: 0.8rem;
   }
 }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-container {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .game-board {
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    padding: 0.45rem 0.65rem;
+    gap: 0.25rem;
+    border-radius: 18px;
+  }
+
+  .header {
+    font-size: 0.78rem;
+  }
+
+  .score,
+  .progress {
+    padding: 0.26rem 0.58rem;
+  }
+
+  .media-card {
+    width: min(320px, 44vw);
+    height: clamp(72px, 24dvh, 104px);
+  }
+
+  .media-face {
+    border-radius: 12px;
+  }
+
+  .card-back-pattern {
+    inset: 8px;
+    border-radius: 10px;
+  }
+
+  .media-back img {
+    padding: 0.35rem;
+  }
+
+  .speaker-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    font-size: 1.45rem;
+  }
+
+  .text-area {
+    min-height: clamp(54px, 18dvh, 78px);
+    padding: 0 0.5rem;
+    font-size: clamp(1.15rem, 5dvh, 1.7rem);
+    line-height: 1.22;
+  }
+
+  :host ::ng-deep .space-token.spot-active {
+    width: clamp(1.6rem, 4vw, 2.6rem);
+  }
+
+  .answer-bubble-slot.visible {
+    min-height: 48px;
+  }
+
+  .quiz-popup {
+    min-width: min(330px, 76vw);
+    padding: 0.45rem;
+    border-radius: 14px;
+  }
+
+  .popup-option {
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+  .pen-dock {
+    min-height: 2.55rem;
+  }
+
+  .pen-tool {
+    width: 2.65rem;
+    height: 2.65rem;
+  }
+
+  .pen-icon {
+    font-size: 2rem;
+  }
+
+  .controls {
+    gap: 0.35rem;
+  }
+
+  .nav-btn {
+    min-width: 82px;
+    padding: 0.38rem 0.55rem;
+    font-size: 0.74rem;
+  }
+}

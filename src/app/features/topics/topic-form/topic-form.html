@@ -29,10 +29,27 @@
       </div>
 
       <div formArrayName="items">
-        <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-4">
-          <div *ngFor="let item of items.controls; let i = index" 
+        <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-4 pt-4">
+          <div *ngFor="let item of items.controls; let i = index; let last = last"
                [formGroupName]="i" cdkDrag [cdkDragStartDelay]="200"
                class="group relative bg-white rounded-2xl shadow-md border border-gray-100 transition-all hover:shadow-lg">
+
+            <!-- Insert before this item -->
+            <div class="insert-zone insert-zone-top"
+                 [class.insert-zone-disabled]="!licenseService.fullAccess"
+                 (mousedown)="$event.stopPropagation()"
+                 (click)="$event.stopPropagation(); addItemAt(i)">
+              <button type="button" class="insert-zone-btn" [disabled]="!licenseService.fullAccess">+</button>
+              <div class="insert-zone-line"></div>
+            </div>
+            <!-- Insert after last item -->
+            <div *ngIf="last" class="insert-zone insert-zone-bottom"
+                 [class.insert-zone-disabled]="!licenseService.fullAccess"
+                 (mousedown)="$event.stopPropagation()"
+                 (click)="$event.stopPropagation(); addItemAt(items.length)">
+              <button type="button" class="insert-zone-btn" [disabled]="!licenseService.fullAccess">+</button>
+              <div class="insert-zone-line"></div>
+            </div>
 
             <!-- Drag handle + order badge -->
             <div class="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center cursor-grab active:cursor-grabbing bg-gray-50 rounded-l-2xl border-r border-gray-100">

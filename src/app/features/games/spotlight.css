@@ -286,7 +286,17 @@
   .item-image {
     width: 90vw;
     height: calc(90vw * 0.75); /* maintain 4:3 aspect ratio (600x450 = 4:3) */
+    max-height: 52vh;
   }
+}
+
+@media (max-height: 500px) {
+  .item-image {
+    width: min(55vh, 80vw);
+    height: calc(min(55vh, 80vw) * 0.75);
+    max-height: 52vh;
+  }
+  .item-text { font-size: 1.3rem; }
 }
 
 /* Speaker button (top‑right) */

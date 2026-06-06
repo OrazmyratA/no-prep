@@ -28,7 +28,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
   rightChoice: TeamChoice = { primary: null, decoy: null };
   leftTeam: Team = { name: 'Left', score: 0, isAboutToWin: false };
   rightTeam: Team = { name: 'Right', score: 0, isAboutToWin: false };
-  gameStatus: 'ready' | 'running' | 'leftWin' | 'rightWin' | 'draw' = 'ready';
+  gameStatus: 'running' | 'leftWin' | 'rightWin' | 'draw' = 'running';
   timerRemaining: number | null = null;
   private timerInterval: any;
 
@@ -115,7 +115,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
       this.winSound.load();
       this.winSound.volume = 0.35;
 
-      this.resetGame();
+      this.startGame();
     } catch (error) {
       console.error('Failed to load items', error);
     } finally {
@@ -157,21 +157,20 @@ export class TeamTugComponent implements OnInit, OnDestroy {
     });
   }
 
-  resetGame() {
+  private resetRoundState() {
     this.clearTimer();
     this.leftTeam = { name: 'Left', score: 0, isAboutToWin: false };
     this.rightTeam = { name: 'Right', score: 0, isAboutToWin: false };
+    this.leftChoice = { primary: null, decoy: null };
+    this.rightChoice = { primary: null, decoy: null };
     this.characterPosition = 50;
     this.characterWidth = 60;
-    this.gameStatus = 'ready';
-    this.gameActive = false;
     this.updateTimerDuration();
     this.timerRemaining = this.enableTimer ? this.timerDurationSeconds : null;
-    this.cdr.detectChanges();
   }
 
   startGame() {
-    this.resetGame();
+    this.resetRoundState();
     this.gameStatus = 'running';
     this.gameActive = true;
 
@@ -185,6 +184,10 @@ export class TeamTugComponent implements OnInit, OnDestroy {
       this.startTimer();
     }
     this.cdr.detectChanges();
+  }
+
+  resetGame() {
+    this.startGame();
   }
 
   onTeamButtonPress(event: Event, team: 'left' | 'right', isCorrect: boolean) {

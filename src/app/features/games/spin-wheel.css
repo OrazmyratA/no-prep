@@ -2,6 +2,28 @@ canvas {
     transition: transform 2s ease-out; 
 }
 
+:host {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+:host .min-h-screen {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.spin-layout {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
 .zoom-in {
   transform: scale(1);
   opacity: 1;
@@ -90,6 +112,14 @@ button.quiz-option.fade-out {
 
 .spin-btn {
   transform: translate(-50%, calc(-25% - 25px));
+  width: clamp(4rem, 18vmin, 6rem) !important;
+  height: clamp(4rem, 18vmin, 6rem) !important;
+  font-size: clamp(0.8rem, 2.6vmin, 1rem) !important;
+}
+
+.wheel-wrapper {
+  flex: 0 1 auto;
+  min-height: 0;
 }
 
 /* Quiz overlay background */
@@ -108,6 +138,36 @@ button.quiz-option.fade-out {
     max-width: 70vw;
     max-height: 70vh;
     padding: 30px;
+}
+
+.quiz-inner {
+  overflow-y: auto;
+  max-height: 100dvh;
+}
+
+@media (max-height: 680px) {
+  .spin-layout h2 {
+    font-size: clamp(1.45rem, 6vh, 2rem);
+    line-height: 1;
+  }
+  .spin-layout .mt-0\.5 {
+    margin-top: 0;
+  }
+  .spin-layout .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 0.35rem;
+  }
+  .spin-layout button:not(.spin-btn) {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  .selected-item-container {
+    max-height: 32vh;
+    padding: 12px;
+  }
+  .quiz-option {
+    padding: 0.5rem 0.65rem !important;
+    font-size: 1.5rem !important;
+  }
 }
 
 

@@ -505,7 +505,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     if (!this.cardItem || !this.gameActive) return;
     this.playSound(this.captureSound);
     this.cardFlipped = !this.cardFlipped;
-    if (this.cardFlipped && !this.currentSoundSentence) {
+    if (this.cardFlipped && !this.currentSoundSentence && !this.cardItem.audio) {
+      // No audio — unlock words immediately on flip
       this.currentSoundSentence = this.cardItem.text?.trim() ?? '';
       this.currentSoundWords = this.currentSoundSentence.split(/\s+/);
       this.cdr.detectChanges();
@@ -516,6 +517,12 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     if (!this.cardItem?.audio) return;
     this.playTrackedAudio(this.cardItem.audio);
+    // Unlock words the first time the teacher plays the audio
+    if (!this.currentSoundSentence) {
+      this.currentSoundSentence = this.cardItem.text?.trim() ?? '';
+      this.currentSoundWords = this.currentSoundSentence.split(/\s+/);
+      this.cdr.detectChanges();
+    }
   }
 
   get cardHasAudio(): boolean {

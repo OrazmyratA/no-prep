@@ -357,3 +357,112 @@
     height: calc(100vh - 48px);
   }
 }
+
+@media (max-width: 600px) {
+  .game-container { padding: 10px 8px; }
+  .game-board {
+    height: calc(100vh - 20px);
+    max-height: calc(100vh - 20px);
+    padding: 14px;
+    gap: 8px;
+  }
+  .game-header {
+    flex-direction: row;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .score-card, .timer-card { padding: 6px 10px; }
+  .score-card strong, .timer-card strong { font-size: 1.1rem; }
+  .label { font-size: 0.72rem; letter-spacing: 0.1rem; }
+  .items-area { min-height: 140px; padding: 10px; }
+  .item-card { width: 62px; height: 62px; }
+  .playground { gap: 8px; }
+  .rectangle { padding: 12px; }
+  .instructions { padding: 8px 10px; font-size: 0.78rem; }
+  .sparkle { font-size: 1rem; }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-container {
+    height: 100dvh;
+    padding: 8px 10px;
+  }
+
+  .game-board {
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 10px;
+    gap: 8px;
+    border-radius: 18px;
+  }
+
+  .game-header {
+    flex-direction: row;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 16px;
+  }
+
+  .score-card,
+  .timer-card {
+    padding: 4px 8px;
+    border-radius: 14px;
+  }
+
+  .score-card strong,
+  .timer-card strong {
+    font-size: 1rem;
+  }
+
+  .label {
+    font-size: 0.62rem;
+    letter-spacing: 0.08rem;
+    margin-bottom: 2px;
+  }
+
+  .playground {
+    flex-direction: row;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .rectangle {
+    padding: 8px;
+    border-radius: 18px;
+    flex-basis: 0;
+  }
+
+  .set-pill {
+    font-size: 0.66rem;
+    letter-spacing: 0.04rem;
+    margin-bottom: 5px;
+    gap: 6px;
+  }
+
+  .items-area {
+    min-height: 0;
+    padding: 8px;
+    border-radius: 14px;
+  }
+
+  .items-area::before {
+    inset: 8px;
+    border-radius: 12px;
+  }
+
+  .item-card {
+    width: 54px;
+    height: 54px;
+    padding: 5px;
+    border-radius: 12px;
+  }
+
+  .item-image img {
+    max-height: 34px;
+  }
+
+  .item-text {
+    font-size: 0.62rem;
+    margin-top: 2px;
+  }
+}

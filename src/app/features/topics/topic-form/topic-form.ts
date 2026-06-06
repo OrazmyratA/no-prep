@@ -101,6 +101,14 @@ createItemFormGroup(text: string = '', image: Blob | null = null, audio: Blob | 
     this.items.push(this.createItemFormGroup());
   }
 
+  addItemAt(index: number) {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    this.items.insert(index, this.createItemFormGroup());
+  }
+
   removeItem(index: number) {
     if (!this.licenseService.fullAccess) {
       this.licenseService.requestReopen();

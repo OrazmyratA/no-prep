@@ -5,15 +5,6 @@
     <p>{{ 'teamTugLoading' | translate }}</p>
   </div>
 
-  <!-- Ready screen -->
-  <div *ngIf="!loading && gameStatus === 'ready'" class="ready-screen">
-    <div class="ready-content">
-      <h2>{{ 'teamTugTitle' | translate }}</h2>
-      <p>{{ 'teamTugReadyDesc' | translate }}</p>
-      <button (click)="startGame()" class="start-btn">{{ 'startGame' | translate }}</button>
-    </div>
-  </div>
-
   <!-- Game board -->
   <div *ngIf="!loading && gameActive && leftChoice.primary && rightChoice.primary" class="game-board">
     <div class="status-bar">

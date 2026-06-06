@@ -311,6 +311,14 @@
   padding: 28px;
 }
 
+@media (max-width: 600px) {
+  .squid-buttons { flex-wrap: wrap; }
+  .team-unit { max-width: 76px; flex: 0 1 76px; gap: 4px; }
+  .btn-avatar-indicator { width: 30px; height: 30px; }
+  .squid-team-btn { min-height: 42px; padding: 5px 4px; }
+  .char-bg { width: 90px; height: 90px; }
+}
+
 .quiz-team-badge {
   display: inline-flex;
   align-items: center;

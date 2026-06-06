@@ -538,3 +538,12 @@
   50% { background-color: green; transform: scale(1.05); }
   100% { background-color: lightgreen; transform: scale(1); }
 }
+
+@media (max-width: 480px) {
+  .floating-image { width: 68px; height: 68px; }
+  .sentence-image { width: 52px; height: 52px; }
+  .sentence-word { padding: 7px 12px; font-size: 0.9rem; }
+  .floating-word { padding: 7px 12px; font-size: 0.9rem; }
+  .team-header h2 { font-size: 1.05rem; }
+  .check-btn { padding: 10px 18px; font-size: 0.95rem; }
+}

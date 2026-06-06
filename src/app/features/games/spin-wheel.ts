@@ -38,7 +38,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   fadeOutOptionIds = new Set<number>();
   zoomOut = false;       
   public canvasSize = 560;  // current canvas width/height in px
-  private readonly minCanvasSize = 400;
+  private readonly minCanvasSize = 240;
   private readonly maxCanvasSize = 900;
   private layoutSubscription?: Subscription;
   eliminationAnimation = false;
@@ -107,8 +107,11 @@ async ngOnInit() {
 private resizeCanvas() {
   const screenWidth = window.innerWidth;
   const screenHeight = window.innerHeight;
-  // Use 90% of the smaller dimension, but clamp between min and max
-  let size = Math.min(screenWidth, screenHeight) * 0.85;
+  const isLandscape = screenWidth > screenHeight;
+  const reservedChrome = isLandscape ? 86 : 150;
+  const heightBound = Math.max(220, screenHeight - reservedChrome);
+  const widthBound = isLandscape ? screenWidth * 0.62 : screenWidth * 0.85;
+  let size = Math.min(widthBound, heightBound);
   size = Math.min(size, this.maxCanvasSize);
   size = Math.max(size, this.minCanvasSize);
   this.canvasSize = size;

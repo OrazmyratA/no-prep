@@ -1,13 +1,13 @@
-<div class="min-h-screen bg-gradient-to-br from-blue-900 to-purple-800 p-4">
-  <div class="container mx-auto">
-    <h2 class="text-4xl font-bold text-white mb-4 text-center">{{ 'gameAnagramName' | translate }}</h2>
+<div class="h-screen overflow-hidden bg-gradient-to-br from-blue-900 to-purple-800 p-3 flex flex-col">
+  <div class="w-full flex-1 min-h-0 flex flex-col">
+    <h2 class="text-2xl font-bold text-white mb-1 text-center">{{ 'gameAnagramName' | translate }}</h2>
 
     <!-- Loading -->
     <div *ngIf="loading" class="flex justify-center items-center h-64">
       <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
     </div>
 
-    <div *ngIf="!loading && !gameFinished && currentItem" class="relative min-h-[70vh] pt-10 flex flex-col justify-center">
+    <div *ngIf="!loading && !gameFinished && currentItem" class="flex-1 min-h-0 flex flex-col justify-evenly pt-2">
 
       <div class="media-stage">
         <div class="media-card" [class.flipped]="isMediaFlipped" (click)="toggleMediaFlip()">
@@ -42,7 +42,7 @@
                 [cdkDropListData]="[]"
                 [cdkDropListConnectedTo]="['sourceList']"
                 (cdkDropListDropped)="drop($event)"
-                class="w-16 h-16 border-4 border-dashed border-white bg-white bg-opacity-10 rounded-lg flex items-center justify-center text-3xl font-bold text-white transition">
+                class="w-11 h-11 md:w-16 md:h-16 border-4 border-dashed border-white bg-white bg-opacity-10 rounded-lg flex items-center justify-center text-2xl md:text-3xl font-bold text-white transition">
               <div *ngIf="displaySlot.targetIndex !== null && targetLetters[displaySlot.targetIndex]" class="w-full h-full flex items-center justify-center bg-green-500 rounded-lg">
                 {{ targetLetters[displaySlot.targetIndex]!.letter }}
               </div>
@@ -57,19 +57,19 @@
           [cdkDropListData]="sourceLetters"
           [cdkDropListConnectedTo]="targetDropListIds"
           (cdkDropListDropped)="drop($event)"
-           class="flex justify-center flex-wrap gap-3 p-4 bg-white bg-opacity-20 rounded-xl min-h-24 max-w-4xl mx-auto">
+           class="flex justify-center flex-wrap gap-2 p-3 bg-white bg-opacity-20 rounded-xl min-h-16 max-w-4xl mx-auto">
         <div *ngFor="let tile of sourceLetters; let tileIdx = index"
              cdkDrag
              (click)="selectLetterByClick(tile, tileIdx)"
              [class.animate-fly]="getAnimationType(tile.id) === 'fly'"
              [class.animate-shake]="getAnimationType(tile.id) === 'shake'"
-             class="w-16 h-16 bg-yellow-400 rounded-lg shadow-lg flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-yellow-300 transition transform hover:scale-110">
+             class="w-11 h-11 md:w-16 md:h-16 bg-yellow-400 rounded-lg shadow-lg flex items-center justify-center text-2xl md:text-3xl font-bold cursor-pointer hover:bg-yellow-300 transition transform hover:scale-110">
           {{ tile.letter }}
         </div>
       </div>
 
       <!-- Control buttons -->
-      <div class="flex justify-center gap-4 mt-8">
+      <div class="flex justify-center gap-4 mt-2">
         <button (click)="previousItem()"
                 [disabled]="currentIndex === 0"
                 class="bg-slate-500 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">

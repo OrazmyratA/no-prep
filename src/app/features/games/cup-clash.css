@@ -816,3 +816,179 @@
     border-radius: 12px;
   }
 }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-board {
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100dvh;
+    padding: 6px 7px 0;
+    --cup-size: 30px;
+    --grid-gap: 4px;
+  }
+
+  .rps-modal {
+    width: min(520px, 78vw);
+    max-height: calc(100dvh - 18px);
+    padding: 0.8rem 1.15rem 0.9rem;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .rps-banner {
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .rps-float {
+    font-size: 1.8rem;
+  }
+
+  .rps-title {
+    font-size: clamp(1.15rem, 6dvh, 1.55rem);
+    margin-bottom: 0.7rem;
+  }
+
+  .rps-arena {
+    gap: 1.1rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .rps-team-col {
+    gap: 0.42rem;
+  }
+
+  .rps-reveal {
+    width: 54px;
+    height: 54px;
+    font-size: 1.8rem;
+  }
+
+  .rps-btn {
+    width: 78px;
+    height: 78px;
+    font-size: 2.2rem;
+  }
+
+  .rps-vs {
+    font-size: 1.25rem;
+  }
+
+  .rps-label {
+    font-size: 0.68rem;
+  }
+
+  .rps-result {
+    padding: 0.42rem 1rem;
+    font-size: 0.82rem;
+  }
+
+  .board-container {
+    flex-direction: row;
+    padding: 4px 4px 3px;
+    gap: 5px;
+  }
+
+  .zone {
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .zone-header {
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+  }
+
+  .team-info {
+    gap: 6px;
+  }
+
+  .team-info h2 {
+    font-size: 0.82rem;
+  }
+
+  .team-color {
+    font-size: 1rem;
+  }
+
+  .cup-count {
+    padding: 3px 7px;
+    font-size: 0.72rem;
+  }
+
+  .cups-grid {
+    padding: 5px;
+    gap: 4px;
+    border-radius: 10px;
+  }
+
+  .center-dice {
+    min-width: 66px;
+    order: 0;
+    margin: 0;
+  }
+
+  .dice-container {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .dice {
+    width: 56px;
+    height: 56px;
+    border-radius: 13px;
+    font-size: 2rem;
+  }
+
+  .dice-label,
+  .dice-value {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+
+  .game-controls {
+    padding: 3px 8px;
+  }
+
+  .turn-indicator {
+    padding: 5px 12px;
+    gap: 8px;
+    font-size: 0.78rem;
+  }
+
+  .dice-requirement,
+  .miss-turn {
+    padding: 2px 7px;
+    font-size: 0.7rem;
+  }
+
+  .items-row {
+    padding: 4px 8px;
+    margin: 4px 8px 6px;
+    border-radius: 16px;
+  }
+
+  .items-container {
+    gap: 5px;
+    overflow-x: hidden;
+    padding-bottom: 0;
+  }
+
+  .item-flip-scene {
+    flex-basis: 42px;
+    height: 42px;
+  }
+
+  .item-face {
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .back-icon {
+    font-size: 1rem;
+  }
+
+  .back-label {
+    display: none;
+  }
+}

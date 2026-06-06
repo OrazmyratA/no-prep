@@ -32,12 +32,16 @@ const DEFAULT_SELECTION: ThemeSelection = {
   dim: 0.45
 };
 
+const IMAGE_SIZE_LIMIT_MB = 75;
+const GIF_SIZE_LIMIT_MB = 100;
+const ACCEPTED_BACKGROUND_EXTENSIONS = /\.(jpe?g|png|webp|gif|heic|heif)$/i;
+
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   readonly maxBackgrounds = 10;
-  readonly maxImageFileSize = 5 * 1024 * 1024;
-  readonly maxGifFileSize = 50 * 1024 * 1024;
-  readonly acceptedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+  readonly maxImageFileSize = IMAGE_SIZE_LIMIT_MB * 1024 * 1024;
+  readonly maxGifFileSize = GIF_SIZE_LIMIT_MB * 1024 * 1024;
+  readonly acceptedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
 
   readonly colorThemes: ColorThemeOption[] = [
     { id: 'blue', name: 'Blue', value: 'linear-gradient(135deg, #dbeafe 0%, #60a5fa 55%, #1d4ed8 100%)', swatch: '#3b82f6' },
@@ -163,16 +167,25 @@ export class ThemeService {
   }
 
   private validateBackgroundFile(file: File) {
-    if (!this.acceptedTypes.includes(file.type)) {
-      throw new Error('Please choose a JPG, PNG, WebP, or GIF image.');
+    if (!this.isAcceptedBackgroundFile(file)) {
+      throw new Error('Please choose a JPG, PNG, WebP, HEIC/HEIF, or GIF image.');
     }
 
-    const maxSize = file.type === 'image/gif' ? this.maxGifFileSize : this.maxImageFileSize;
+    const maxSize = this.isGifFile(file) ? this.maxGifFileSize : this.maxImageFileSize;
     if (file.size > maxSize) {
-      throw new Error(file.type === 'image/gif'
-        ? 'GIF backgrounds can be up to 50 MB.'
-        : 'Background images can be up to 5 MB.');
+      throw new Error(this.isGifFile(file)
+        ? `GIF backgrounds can be up to ${GIF_SIZE_LIMIT_MB} MB.`
+        : `Background images can be up to ${IMAGE_SIZE_LIMIT_MB} MB.`);
     }
+  }
+
+  private isAcceptedBackgroundFile(file: File): boolean {
+    const type = file.type.toLowerCase();
+    return this.acceptedTypes.includes(type) || ACCEPTED_BACKGROUND_EXTENSIONS.test(file.name);
+  }
+
+  private isGifFile(file: File): boolean {
+    return file.type.toLowerCase() === 'image/gif' || /\.gif$/i.test(file.name);
   }
 
   private objectUrlFor(background: ThemeBackground): string {

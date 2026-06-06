@@ -29,6 +29,9 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   private flipSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
+  private rewardSound: HTMLAudioElement | null = null;
+
+  gameFinished = false;
   private cardImageUrls: string[] = [];
   private activeAudio: HTMLAudioElement | null = null;
   private activeAudioUrl: string | null = null;
@@ -76,12 +79,14 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
     this.flipSound = new Audio('assets/sound/flip.mp3');
     this.collectSound = new Audio('assets/sound/collect.mp3');
     this.buzzSound = new Audio('assets/sound/buzz.mp3');
+    this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');
     this.flipSound.volume = 0.4;
     this.collectSound.volume = 0.4;
     this.buzzSound.volume = 0.4;
     this.flipSound.load();
     this.collectSound.load();
     this.buzzSound.load();
+    this.rewardSound.load();
   }
 
   ngAfterViewInit() {
@@ -98,7 +103,7 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.resizeObserver) this.resizeObserver.disconnect();
     this.layoutSubscription?.unsubscribe();
     this.stopActiveAudio();
-    [this.flipSound, this.collectSound, this.buzzSound].forEach(s => s?.pause());
+    [this.flipSound, this.collectSound, this.buzzSound, this.rewardSound].forEach(s => s?.pause());
     this.cleanupCardImageUrls();
   }
 
@@ -281,7 +286,8 @@ flipCard(index: number) {
     if (!remainingAudio) {
       this.allAudioItemsMatched = true;
       this.soundQuizActive = false;
-      showAppNotification(this.langService.translate('flipTilesAllAudioCleared'), 'success');
+      this.playSound(this.rewardSound);
+      setTimeout(() => { this.gameFinished = true; this.cdr.detectChanges(); }, 600);
     } else {
       showAppNotification(this.langService.translate('clickSpeakerForNext'), 'info');
     }
@@ -350,6 +356,7 @@ private wrongFlipWithFeedback(index: number, card: any) {
     this.waitingForSound = false;
     this.currentSoundItem = null;
     this.allAudioItemsMatched = false;
+    this.gameFinished = false;
     const shuffled = [...this.items];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));

@@ -9,6 +9,11 @@
   perspective: 900px;
 }
 
+@media (max-height: 680px) {
+  .media-stage { margin-bottom: 0.6rem; }
+  .media-card { height: clamp(100px, 20vh, 180px); }
+}
+
 .media-card {
   width: min(420px, 76vw);
   height: clamp(180px, 30vh, 263px);
@@ -200,5 +205,77 @@
   .target-zone,
   .source-zone {
     max-height: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :host .h-screen > div {
+    overflow: hidden !important;
+  }
+
+  :host h2 {
+    font-size: clamp(1.35rem, 7dvh, 2rem) !important;
+    line-height: 1;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .unjumble-board {
+    height: calc(100dvh - 3.2rem);
+    display: grid;
+    grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.45rem 0.8rem;
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .media-stage {
+    grid-row: 1 / 4;
+    align-items: center;
+    margin-bottom: 0;
+  }
+
+  .media-card {
+    width: min(100%, 270px);
+    height: min(56dvh, 180px);
+  }
+
+  .media-stage + div,
+  .media-stage + div + div {
+    min-height: 0;
+    margin-bottom: 0 !important;
+  }
+
+  .media-stage + div h3,
+  .media-stage + div + div h3 {
+    font-size: 0.82rem !important;
+    line-height: 1;
+    margin-bottom: 0.28rem !important;
+  }
+
+  .drop-zone {
+    min-height: 0 !important;
+    height: calc(100% - 1.1rem);
+    max-height: none;
+    padding: 0.45rem !important;
+    gap: 0.35rem !important;
+    border-radius: 0.65rem !important;
+  }
+
+  .word-tile {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.86rem !important;
+    border-radius: 0.45rem !important;
+  }
+
+  .media-stage + div + div + div {
+    margin-top: 0 !important;
+    gap: 0.45rem !important;
+    align-self: center;
+  }
+
+  .media-stage + div + div + div button {
+    padding: 0.36rem 0.95rem !important;
+    font-size: 0.8rem !important;
   }
 }

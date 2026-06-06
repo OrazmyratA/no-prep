@@ -9,7 +9,7 @@
 
 .game-shell {
   width: 100%;            /* ← critical addition */
-  height: 90%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -159,6 +159,76 @@
   max-width: 70vw;
   max-height: 70vh;
   padding: 30px;
+}
+
+@media (max-width: 480px) {
+  .selected-item-container {
+    max-height: 36vh;
+    padding: 14px;
+  }
+  .quiz-option {
+    min-width: min(120px, 40vw) !important;
+    font-size: 0.95rem !important;
+    padding: 0.55rem 0.7rem !important;
+  }
+  .quiz-overlay {
+    overflow-y: auto;
+    align-items: flex-start;
+    padding-top: 0.75rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .game-shell {
+    justify-content: flex-start;
+    padding: 0.35rem 0.65rem;
+    overflow: hidden;
+  }
+
+  .game-shell h2 {
+    font-size: clamp(1.2rem, 6dvh, 1.8rem) !important;
+    line-height: 1;
+    margin-bottom: 0.3rem !important;
+  }
+
+  .reveal-container {
+    width: min(54vw, 330px);
+    height: clamp(110px, 43dvh, 168px);
+  }
+
+  .w-full {
+    margin-top: 0.45rem;
+  }
+
+  .w-full.max-w-md {
+    max-width: min(70vw, 360px);
+  }
+
+  .w-full.max-w-md .flex {
+    margin-bottom: 0.18rem !important;
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+
+  .h-2\.5 {
+    height: 0.38rem !important;
+  }
+
+  button.mt-4 {
+    margin-top: 0.45rem !important;
+    padding: 0.36rem 1rem !important;
+    font-size: 0.82rem !important;
+  }
+
+  .quiz-overlay > div {
+    padding: 0.75rem !important;
+  }
+
+  .quiz-option {
+    min-width: min(150px, 28vw) !important;
+    padding: 0.65rem 0.9rem !important;
+    font-size: 1rem !important;
+  }
 }
 
 .grid-cell {
@@ -359,5 +429,3 @@
       inset 0 2px 0 rgba(255,255,255,0.75);
   }
 }
-
-

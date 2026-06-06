@@ -298,6 +298,8 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
     if (type.includes('png')) return 'png';
     if (type.includes('webp')) return 'webp';
     if (type.includes('gif')) return 'gif';
+    if (type.includes('heif')) return 'heif';
+    if (type.includes('heic')) return 'heic';
     return 'jpg';
   }
 
@@ -308,13 +310,13 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
         count: this.themeService.maxBackgrounds
       });
     }
-    if (message === 'Please choose a JPG, PNG, WebP, or GIF image.') {
+    if (message.startsWith('Please choose a JPG')) {
       return this.langService.translate('themeUnsupportedFileType');
     }
-    if (message === 'GIF backgrounds can be up to 50 MB.') {
+    if (message.startsWith('GIF backgrounds can be up to')) {
       return this.langService.translate('themeGifTooLarge');
     }
-    if (message === 'Background images can be up to 5 MB.') {
+    if (message.startsWith('Background images can be up to')) {
       return this.langService.translate('themeImageTooLarge');
     }
     if (message === 'Unable to load the uploaded background.') {

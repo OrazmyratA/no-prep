@@ -150,13 +150,26 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!wrap) return;
 
     const parentWidth = wrap.parentElement?.clientWidth ?? window.innerWidth;
+    const parentHeight = wrap.parentElement?.clientHeight ?? window.innerHeight;
     const availableWidth = Math.max(220, Math.min(parentWidth, window.innerWidth - 32));
+    const availableHeight = Math.max(180, parentHeight - 24);
     const wrapperPadding = window.innerWidth >= 640 ? 32 : 24;
     const marginPerCell = 4;
     const preferred = window.innerWidth >= 640 ? 37.6 : 32;
-    const cellSize = Math.max(22, Math.min(preferred, Math.floor((availableWidth - wrapperPadding) / this.gridSize - marginPerCell)));
+    const byWidth = Math.floor((availableWidth - wrapperPadding) / this.gridSize - marginPerCell);
+    const byHeight = Math.floor((availableHeight - wrapperPadding) / this.gridSize - marginPerCell);
+    const cellSize = Math.max(18, Math.min(preferred, byWidth, byHeight));
     wrap.style.setProperty('--word-cell-size', `${cellSize}px`);
     this.cdr.detectChanges();
+  }
+
+  get foundWordsCount(): number {
+    return this.words.filter(word => word.found).length;
+  }
+
+  get foundProgressPercent(): number {
+    if (!this.words.length) return 0;
+    return (this.foundWordsCount / this.words.length) * 100;
   }
 
   private buildGrid() {

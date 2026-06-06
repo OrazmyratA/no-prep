@@ -5,6 +5,12 @@
   perspective: 900px;
 }
 
+@media (max-height: 680px) {
+  .media-stage { margin-bottom: 0.6rem; }
+  .media-card { height: clamp(100px, 20vh, 180px); }
+  .target-slots { gap: 0.35rem !important; margin-bottom: 0.4rem; }
+}
+
 .media-card {
   width: min(420px, 76vw);
   height: clamp(180px, 30vh, 263px);
@@ -159,4 +165,62 @@
 
 .animate-shake {
   animation: shake 0.6s ease-in-out forwards;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  :host .h-screen {
+    padding: 0.45rem !important;
+  }
+
+  :host h2 {
+    font-size: clamp(1rem, 5.5dvh, 1.5rem) !important;
+    line-height: 1;
+    margin-bottom: 0.2rem !important;
+  }
+
+  .media-stage {
+    margin-bottom: 0.25rem;
+  }
+
+  .media-card {
+    width: min(260px, 42vw);
+    height: clamp(70px, 22dvh, 96px);
+  }
+
+  .target-slots {
+    gap: 0.25rem !important;
+    margin-bottom: 0.25rem;
+  }
+
+  .target-slots [cdkDropList],
+  [cdkDrag].w-11 {
+    width: clamp(2rem, 8dvh, 2.6rem) !important;
+    height: clamp(2rem, 8dvh, 2.6rem) !important;
+    font-size: clamp(1rem, 4dvh, 1.35rem) !important;
+    border-width: 2px !important;
+    border-radius: 0.45rem !important;
+  }
+
+  .slot-gap {
+    width: 0.55rem;
+    height: 2rem;
+    flex-basis: 0.55rem;
+  }
+
+  #sourceList {
+    min-height: 0 !important;
+    gap: 0.25rem !important;
+    padding: 0.35rem !important;
+    border-radius: 0.65rem !important;
+  }
+
+  #sourceList + div {
+    margin-top: 0.25rem !important;
+    gap: 0.45rem !important;
+  }
+
+  #sourceList + div button {
+    padding: 0.36rem 0.9rem !important;
+    font-size: 0.78rem !important;
+  }
 }
