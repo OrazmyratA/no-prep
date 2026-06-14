@@ -36,7 +36,8 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
   textImageControl: FormControl<string | null>;
   androidUrlControl: FormControl<string | null>;
   textImageColor = '#1d4ed8';
-  readonly textImageColors = ['#1d4ed8', '#16a34a', '#dc2626', '#9333ea', '#f59e0b', '#111827'];
+  readonly transparentTextImageColor = 'transparent';
+  readonly textImageColors = [this.transparentTextImageColor, '#1d4ed8', '#16a34a', '#dc2626', '#9333ea', '#f59e0b', '#111827'];
   searchResults: PixabayImage[] = [];
   selectedImageId: number | null = null;
   searching = false;
@@ -318,8 +319,8 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
 
     try {
       const blob = await this.renderTextAsImage(text);
-      const file = new File([blob], `text-image-${Date.now()}.png`, { type: 'image/png' });
-      await this.processSelectedFile(file);
+      this.setPreview(blob);
+      this.imageSelected.emit(blob);
       this.activeTab = 'upload';
     } catch (error) {
       console.error('Text image generation failed', error);
@@ -328,6 +329,18 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
 
   setTextImageColor(color: string) {
     this.textImageColor = color;
+  }
+
+  isTransparentTextImageColor(color: string): boolean {
+    return color === this.transparentTextImageColor;
+  }
+
+  getTextImageSwatchBackground(color: string): string {
+    if (!this.isTransparentTextImageColor(color)) {
+      return color;
+    }
+
+    return 'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)';
   }
 
   updateTextImageColor(event: Event) {
@@ -692,8 +705,11 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
       throw new Error('Unable to create canvas context for text image generation.');
     }
 
-    ctx.fillStyle = this.textImageColor;
-    ctx.fillRect(0, 0, width, height);
+    const isTransparent = this.textImageColor === this.transparentTextImageColor;
+    if (!isTransparent) {
+      ctx.fillStyle = this.textImageColor;
+      ctx.fillRect(0, 0, width, height);
+    }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -710,7 +726,7 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
       fontSize -= 6;
     } while (fontSize > 34);
 
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = isTransparent ? '#111827' : '#fff';
     ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
     const lineHeight = fontSize * 1.18;
     const textBlockHeight = lines.length * lineHeight;

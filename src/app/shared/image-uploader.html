@@ -87,17 +87,20 @@
         <button *ngFor="let color of textImageColors"
                 type="button"
                 (click)="setTextImageColor(color)"
-                [style.background]="color"
-                [attr.aria-label]="'textImageBackgroundColor' | translate"
+                [style.background]="getTextImageSwatchBackground(color)"
+                [style.backgroundSize]="isTransparentTextImageColor(color) ? '12px 12px' : null"
+                [attr.aria-label]="isTransparentTextImageColor(color) ? 'Transparent background' : ('textImageBackgroundColor' | translate)"
+                [attr.title]="isTransparentTextImageColor(color) ? 'Transparent background' : ('textImageBackgroundColor' | translate)"
                 [class.ring-2]="textImageColor === color"
                 [class.ring-offset-2]="textImageColor === color"
                 [class.ring-blue-500]="textImageColor === color"
+                [class.border-gray-400]="isTransparentTextImageColor(color)"
                 class="w-7 h-7 rounded-full border-2 border-white shadow">
         </button>
         <label class="relative w-8 h-8 rounded-full border-2 border-white shadow overflow-hidden cursor-pointer"
                [attr.title]="'textImageCustomColor' | translate">
           <input type="color"
-                 [value]="textImageColor"
+                 [value]="isTransparentTextImageColor(textImageColor) ? '#1d4ed8' : textImageColor"
                  (input)="updateTextImageColor($event)"
                  [attr.aria-label]="'textImageCustomColor' | translate"
                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
@@ -144,9 +147,9 @@
   </div>
 </div>
 
-<div *ngIf="isSearchFullscreen" class="fixed inset-0 z-50">
+<div *ngIf="isSearchFullscreen" class="fixed inset-0 z-[9500]">
   <div class="absolute inset-0 bg-black/60" (click)="closeSearchFullscreen()"></div>
-  <div class="relative mx-auto my-4 w-[96vw] h-[92vh] bg-white rounded-lg shadow-xl p-4 flex flex-col">
+  <div class="relative mx-auto mt-16 w-[94vw] max-w-5xl h-[78vh] bg-white rounded-lg shadow-xl p-3 flex flex-col">
     <div class="flex items-center gap-2 mb-3">
       <input type="text"
              [formControl]="googleSearchControl"

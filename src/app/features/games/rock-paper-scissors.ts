@@ -10,6 +10,7 @@ interface RPSTeam {
   choice: RPSChoice | null;
   isSpinning: boolean;
   spinEmoji: string;
+  spinInterval: any;
 }
 
 interface QuizOption {
@@ -40,11 +41,11 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   leftTeam: RPSTeam = {
     side: 'left', color: '#3b82f6',
-    choice: null, isSpinning: false, spinEmoji: '\u270A'
+    choice: null, isSpinning: false, spinEmoji: '\u270A', spinInterval: null
   };
   rightTeam: RPSTeam = {
     side: 'right', color: '#ef4444',
-    choice: null, isSpinning: false, spinEmoji: '\u270A'
+    choice: null, isSpinning: false, spinEmoji: '\u270A', spinInterval: null
   };
 
   roundResult: 'tie' | 'left' | 'right' | null = null;
@@ -76,7 +77,6 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   // Timers — tracked separately so each category can be cleared precisely
   private spinIntervals: any[] = [];
-  private spinTimeouts: any[] = [];
   private miscTimers: any[] = [];
   private lightningTimer: any = null;
 
@@ -162,9 +162,11 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.leftTeam.choice = null;
     this.leftTeam.isSpinning = false;
     this.leftTeam.spinEmoji = this.emojiMap.rock;
+    this.leftTeam.spinInterval = null;
     this.rightTeam.choice = null;
     this.rightTeam.isSpinning = false;
     this.rightTeam.spinEmoji = this.emojiMap.rock;
+    this.rightTeam.spinInterval = null;
     this.roundResult = null;
     this.rpsClash = false;
     this.rpsClashResult = null;
@@ -205,43 +207,61 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
       !this.gameFinished &&
       !this.quizVisible &&
       !this.rpsClash &&
-      team.choice === null &&
-      !team.isSpinning;
+      team.choice === null;
   }
 
+  // First click starts a continuous spin; second click locks whatever
+  // rock/paper/scissors icon is showing at that moment.
   onChoose(side: 'left' | 'right') {
     if (!this.canChoose(side)) return;
     const team = side === 'left' ? this.leftTeam : this.rightTeam;
 
+    if (team.isSpinning) {
+      this.lockRpsChoice(team);
+      return;
+    }
+
+    this.startRpsSpin(team);
+  }
+
+  private startRpsSpin(team: RPSTeam) {
     this.playSound(this.cashSound);
     team.isSpinning = true;
+    team.spinEmoji = this.emojiMap[this.randomChoice(this.rpsChoices)];
     this.cdr.detectChanges();
 
     // Random emoji each frame — prevents students from timing the "stop"
-    const interval = setInterval(() => {
+    team.spinInterval = setInterval(() => {
       team.spinEmoji = this.emojiMap[this.randomChoice(this.rpsChoices)];
       this.cdr.detectChanges();
-    }, 100);
-    this.spinIntervals.push(interval);
+    }, 70);
+    this.spinIntervals.push(team.spinInterval);
+  }
 
-    const timeout = setTimeout(() => {
-      // Self-remove from tracking array so it doesn't accumulate
-      this.spinTimeouts = this.spinTimeouts.filter(t => t !== timeout);
-      clearInterval(interval);
-      this.spinIntervals = this.spinIntervals.filter(i => i !== interval);
+  private lockRpsChoice(team: RPSTeam) {
+    this.playSound(this.cashSound);
 
-      team.choice = this.randomChoice(this.rpsChoices);
-      team.spinEmoji = this.emojiMap[team.choice];
-      team.isSpinning = false;
+    if (team.spinInterval) {
+      clearInterval(team.spinInterval);
+      this.spinIntervals = this.spinIntervals.filter(i => i !== team.spinInterval);
+      team.spinInterval = null;
+    }
+
+    team.isSpinning = false;
+    team.choice = this.normaliseRpsChoice(team.spinEmoji);
+    team.spinEmoji = this.emojiMap[team.choice];
+    this.cdr.detectChanges();
+
+    if (this.leftTeam.choice !== null && this.rightTeam.choice !== null) {
+      this.rpsClash = true;
       this.cdr.detectChanges();
+      this.setTrackedTimeout(() => this.resolveRound(), 400);
+    }
+  }
 
-      if (this.leftTeam.choice !== null && this.rightTeam.choice !== null) {
-        this.rpsClash = true;
-        this.cdr.detectChanges();
-        this.setTrackedTimeout(() => this.resolveRound(), 400);
-      }
-    }, 600);
-    this.spinTimeouts.push(timeout);
+  private normaliseRpsChoice(emoji: string): RPSChoice {
+    return this.rpsChoices.find(choice => this.emojiMap[choice] === emoji)
+      ?? this.randomChoice(this.rpsChoices);
   }
 
   private resolveRound() {
@@ -473,11 +493,9 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   private clearAllTimers() {
     this.spinIntervals.forEach(i => clearInterval(i));
-    this.spinTimeouts.forEach(t => clearTimeout(t));
     this.miscTimers.forEach(t => clearTimeout(t));
     clearTimeout(this.lightningTimer);
     this.spinIntervals = [];
-    this.spinTimeouts = [];
     this.miscTimers = [];
     this.lightningTimer = null;
   }

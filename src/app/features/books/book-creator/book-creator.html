@@ -1,0 +1,511 @@
+<div class="book-creator-page">
+  <div class="creator-toolbar">
+    <div class="creator-toolbar-left">
+      <button type="button" class="icon-btn" (click)="goBack()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
+        <img src="assets/images/book/back.png" alt="">
+      </button>
+
+      <div class="creator-title">
+        <input
+          *ngIf="book"
+          class="book-title-input"
+          [(ngModel)]="book.title"
+          (focus)="beginHistoryCapture()"
+          (ngModelChange)="markBookDirty()"
+          (blur)="commitHistoryCapture()"
+          [attr.aria-label]="'creatorBookTitle' | translate">
+      </div>
+    </div>
+
+    <div class="creator-actions creator-toolbar-middle" *ngIf="book">
+      <button
+        type="button"
+        class="icon-tool-btn page-strip-toggle-btn"
+        [class.active]="pageStripToggleActive"
+        (click)="togglePageStrip()"
+        [title]="'readerGoToPage' | translate"
+        [attr.aria-label]="'readerGoToPage' | translate">
+        <img src="assets/images/book/content.png" alt="">
+      </button>
+      <div class="toolbar-page-stepper" *ngIf="activePages.length > 1">
+        <button
+          type="button"
+          (click)="selectPage(activePageIndex - 1)"
+          [disabled]="activePageIndex <= 0"
+          [title]="'previousPage' | translate"
+          [attr.aria-label]="'previousPage' | translate">&lt;</button>
+        <input
+          type="number"
+          min="1"
+          [max]="activePages.length"
+          [(ngModel)]="pageJumpValue"
+          (focus)="startPageJump()"
+          (keydown.enter)="commitPageJump()"
+          (keydown.escape)="cancelPageJump()"
+          (blur)="commitPageJump()"
+          [attr.aria-label]="'readerGoToPage' | translate">
+        <span>/ {{ activePages.length }}</span>
+        <button
+          type="button"
+          (click)="selectPage(activePageIndex + 1)"
+          [disabled]="activePageIndex >= activePages.length - 1"
+          [title]="'nextPage' | translate"
+          [attr.aria-label]="'nextPage' | translate">&gt;</button>
+      </div>
+      <div class="toolbar-group">
+        <button type="button" class="icon-tool-btn" (click)="undo()" [disabled]="!canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">
+          <img src="assets/images/book/undo.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="redo()" [disabled]="!canRedo()" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate">
+          <img src="assets/images/book/redo.png" alt="">
+        </button>
+      </div>
+      <div class="toolbar-group insert-group">
+        <button type="button" class="icon-tool-btn" (click)="addImage()" [title]="'image' | translate" [attr.aria-label]="'creatorAddImage' | translate">
+          <img src="assets/images/book/image.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="addVideo()" [title]="'videoLabel' | translate" [attr.aria-label]="'creatorAddVideo' | translate">
+          <img src="assets/images/book/video.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="addGameMarker()" [title]="'gameLabel' | translate" [attr.aria-label]="'creatorAddGame' | translate">
+          <img src="assets/images/book/game.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="addFocus()" [title]="'focusLabel' | translate" [attr.aria-label]="'creatorAddFocusArea' | translate">
+          <img src="assets/images/book/focus.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="addGuideDot()" [title]="'teacherGuideDotLabel' | translate" [attr.aria-label]="'creatorAddTeacherGuideDot' | translate">
+          <img src="assets/images/book/teacher.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="addNote()" [title]="'noteLabel' | translate" [attr.aria-label]="'creatorAddNote' | translate">
+          <img src="assets/images/book/note.png" alt="">
+        </button>
+      </div>
+    </div>
+
+    <div class="creator-toolbar-right" *ngIf="book">
+      <div class="toolbar-group">
+        <button type="button" class="icon-tool-btn" (click)="openReader()" [title]="'creatorViewReader' | translate" [attr.aria-label]="'creatorViewReader' | translate">
+          <img src="assets/images/book/view.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn save-tool-btn" [class.dirty]="hasUnsavedChanges()" (click)="save()" [title]="'save' | translate" [attr.aria-label]="'save' | translate">
+          <img src="assets/images/book/save.png" alt="">
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="operation-panel" *ngIf="progress$ | async as progress">
+    <div class="operation-row">
+      <strong>{{ progress.phase }}</strong>
+      <span *ngIf="progress.totalBytes > 0; else waitingForBookOperation">
+        {{ formatBytes(progress.transferredBytes) }} / {{ formatBytes(progress.totalBytes) }}
+      </span>
+      <ng-template #waitingForBookOperation>
+        <span>{{ 'pleaseWait' | translate }}</span>
+      </ng-template>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" [style.width.%]="progress.totalBytes ? (progress.transferredBytes / progress.totalBytes) * 100 : 0"></div>
+    </div>
+  </div>
+
+  <div *ngIf="book" class="creator-workspace" [class.page-strip-collapsed]="pageStripCollapsed">
+    <div
+      class="mobile-panel-backdrop"
+      *ngIf="pageStripOpen || inspectorOpen"
+      (click)="closeMobilePanels()">
+    </div>
+    <aside class="page-strip page-lanes" [class.open]="pageStripOpen" (scroll)="onCreatorThumbScroll($event)">
+      <section class="page-lane" [class.active-lane]="activePageSource === 'main'">
+        <div class="lane-header">
+          <span>{{ 'studentBookLabel' | translate }}</span>
+          <strong>{{ book.pages.length }}</strong>
+        </div>
+        <div class="virtual-spacer" [style.height.px]="mainVirtualTopPadding"></div>
+        <div
+          *ngFor="let item of mainVirtualPages; trackBy: trackByVirtualPageId"
+          class="page-thumb a4-thumb"
+          role="button"
+          tabindex="0"
+          draggable="true"
+          [class.selected]="activePageSource === 'main' && item.index === selectedPageIndex"
+          [class.hidden-page]="item.page.hidden"
+          [class.linking]="isLinkingMainPage(item.page)"
+          (dragstart)="onPageDragStart(item.index, $event)"
+          (dragover)="onPageDragOver($event)"
+          (drop)="onPageDrop(item.index, $event)"
+          (click)="selectMainPage(item.index)"
+          (keydown.enter)="selectMainPage(item.index)"
+          (keydown.space)="selectMainPage(item.index)">
+          <div class="thumb-page">
+            <app-pdf-page-canvas
+              *ngIf="item.page.type === 'pdf' && getPagePdfUrl(item.page)"
+              [sourceUrl]="getPagePdfUrl(item.page)"
+              [pageNumber]="item.page.pdfPage || 1"
+              [renderScale]="0.22"
+              [lazy]="true">
+            </app-pdf-page-canvas>
+            <div class="thumb-blank" *ngIf="item.page.type === 'blank'"></div>
+          </div>
+          <span class="page-number">{{ item.index + 1 }}</span>
+          <span class="page-status" *ngIf="item.page.hidden">{{ 'hiddenLabel' | translate }}</span>
+          <span class="page-link-count" *ngIf="getPageLinkCount(item.page)">{{ getPageLinkCount(item.page) }}</span>
+          <span class="page-thumb-actions">
+            <button
+              type="button"
+              class="page-corner-btn link"
+              [title]="'creatorLinkWorkbookPages' | translate"
+              [attr.aria-label]="'creatorLinkWorkbookPages' | translate"
+              (click)="beginWorkbookLinking(item.page, $event)">
+              <img src="assets/images/book/link.png" alt="">
+            </button>
+            <button
+              type="button"
+              class="page-corner-btn add"
+              [title]="'creatorAddBlankPageAfter' | translate"
+              [attr.aria-label]="'creatorAddBlankPageAfter' | translate"
+              (click)="addMainBlankPageAfterIndex(item.index, $event)">+</button>
+            <button
+              type="button"
+              class="page-corner-btn delete"
+              [title]="'creatorDeleteThisPage' | translate"
+              [attr.aria-label]="'creatorDeleteThisPage' | translate"
+              [disabled]="book.pages.length <= 1"
+              (click)="deletePageAt(item.index, $event)">-</button>
+          </span>
+        </div>
+        <div class="virtual-spacer" [style.height.px]="mainVirtualBottomPadding"></div>
+      </section>
+
+      <section class="page-lane workbook-lane" [class.active-lane]="activePageSource === 'workbook'">
+        <div class="lane-header">
+          <span>{{ 'workbookLabel' | translate }}</span>
+          <strong>{{ primaryWorkbook?.pages?.length || 0 }}</strong>
+        </div>
+        <div class="virtual-spacer" [style.height.px]="workbookVirtualTopPadding"></div>
+        <div
+          *ngFor="let item of workbookVirtualPages; trackBy: trackByVirtualPageId"
+          class="page-thumb a4-thumb"
+          role="button"
+          tabindex="0"
+          [class.selected]="activePageSource === 'workbook' && activeWorkbookId === primaryWorkbook?.id && item.index === selectedWorkbookPageIndex"
+          [class.workbook-linked]="primaryWorkbook ? isWorkbookPageLinked(primaryWorkbook.id, item.page.id) : false"
+          (click)="primaryWorkbook && selectWorkbookPage(primaryWorkbook, item.index, $event)"
+          (keydown.enter)="primaryWorkbook && selectWorkbookPage(primaryWorkbook, item.index, $event)"
+          (keydown.space)="primaryWorkbook && selectWorkbookPage(primaryWorkbook, item.index, $event)">
+          <div class="thumb-page">
+            <app-pdf-page-canvas
+              *ngIf="primaryWorkbook && item.page.type === 'pdf' && getPagePdfUrl(item.page, primaryWorkbook)"
+              [sourceUrl]="getPagePdfUrl(item.page, primaryWorkbook)"
+              [pageNumber]="item.page.pdfPage || 1"
+              [renderScale]="0.22"
+              [lazy]="true">
+            </app-pdf-page-canvas>
+            <div class="thumb-blank" *ngIf="item.page.type === 'blank'"></div>
+          </div>
+          <span class="page-number">{{ item.index + 1 }}</span>
+          <span class="linked-check" *ngIf="primaryWorkbook && isWorkbookPageLinked(primaryWorkbook.id, item.page.id)" [title]="'linkedLabel' | translate" [attr.aria-label]="'linkedLabel' | translate">
+            <img src="assets/images/book/switch-book.png" alt="">
+          </span>
+          <span class="page-thumb-actions" *ngIf="primaryWorkbook">
+            <button
+              type="button"
+              class="page-corner-btn add"
+              [title]="'creatorAddBlankPageAfterWorkbook' | translate"
+              [attr.aria-label]="'creatorAddBlankPageAfterWorkbook' | translate"
+              (click)="addWorkbookBlankPageAfterIndex(primaryWorkbook, item.index, $event)">+</button>
+            <button
+              type="button"
+              class="page-corner-btn delete"
+              [title]="'creatorDeleteWorkbookPage' | translate"
+              [attr.aria-label]="'creatorDeleteWorkbookPage' | translate"
+              [disabled]="primaryWorkbook.pages.length <= 1"
+              (click)="deleteWorkbookPageAt(primaryWorkbook, item.index, $event)">-</button>
+          </span>
+        </div>
+        <div class="virtual-spacer" [style.height.px]="workbookVirtualBottomPadding"></div>
+        <button
+          *ngIf="!primaryWorkbook"
+          type="button"
+          class="page-thumb a4-thumb workbook-upload-card"
+          [class.selected]="activePageSource === 'workbook' && !activeWorkbookId"
+          (click)="selectWorkbookPlaceholder($event)">
+          <img src="assets/images/book/switch-book.png" alt="">
+          <span>{{ 'creatorUploadPdf' | translate }}</span>
+        </button>
+      </section>
+    </aside>
+
+    <main class="editor-canvas-shell">
+      <button
+        type="button"
+        class="creator-page-edge previous"
+        (click)="$event.stopPropagation(); selectPage(activePageIndex - 1)"
+        [disabled]="activePageIndex <= 0"
+        [title]="'previousPage' | translate"
+        [attr.aria-label]="'previousPage' | translate">&lt;</button>
+      <button
+        type="button"
+        class="creator-page-edge next"
+        (click)="$event.stopPropagation(); selectPage(activePageIndex + 1)"
+        [disabled]="activePageIndex >= activePages.length - 1"
+        [title]="'nextPage' | translate"
+        [attr.aria-label]="'nextPage' | translate">&gt;</button>
+      <div
+        #editorCanvas
+        class="editor-canvas"
+        [style.aspect-ratio]="pageAspectRatio"
+        [style.background]="selectedPage?.backgroundColor || '#f8fafc'"
+        (wheel)="onEditorWheel($event)"
+        (click)="onCanvasBackgroundClick()"
+        (pointerdown)="onSwipeAreaPointerDown($event)"
+        (pointerup)="onSwipeAreaPointerUp($event)">
+        <app-pdf-page-canvas
+          *ngIf="selectedPage?.type === 'pdf' && selectedPdfUrl"
+          [sourceUrl]="selectedPdfUrl"
+          [pageNumber]="selectedPage?.pdfPage || 1"
+          [renderScale]="1.6"
+          (pageSize)="onPdfPageSize($event)">
+        </app-pdf-page-canvas>
+        <div class="pdf-placeholder page-starter" *ngIf="!selectedPage || shouldShowPageStarter()">
+          <strong>{{ activePageLabel }}</strong>
+          <span *ngIf="activePageSource === 'main'">{{ 'creatorUploadStudentPdfHint' | translate }}</span>
+          <span *ngIf="activePageSource === 'workbook'">{{ 'creatorUploadWorkbookPdfHint' | translate }}</span>
+          <div class="starter-actions">
+            <button type="button" class="mini-btn" (click)="activePageSource === 'workbook' ? uploadWorkbookPdf() : uploadStudentPdf()">
+              {{ 'creatorUploadPdf' | translate }}
+            </button>
+            <button type="button" class="mini-btn" (click)="addImageToCurrentPage()">
+              {{ 'creatorEnterImage' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <div
+          *ngFor="let element of selectedPage?.elements; trackBy: trackByElementId"
+          class="creator-element"
+          [class.selected]="element.id === selectedElementId"
+          [class.focus-element]="element.type === 'focus'"
+          [class.dot-element]="element.type === 'guideDot'"
+          [class.image-element]="element.type === 'image'"
+          [class.note-element]="element.type === 'note'"
+          [class.game-element]="element.type === 'game'"
+          [class.video-element]="element.type === 'video'"
+          [style.left.%]="element.x * 100"
+          [style.top.%]="element.y * 100"
+          [style.width.%]="(element.width || 0.08) * 100"
+          [style.height.%]="(element.height || 0.08) * 100"
+          (click)="$event.stopPropagation(); selectElement(element.id)"
+          (pointerdown)="startElementDrag($event, element)">
+          <img *ngIf="element.type === 'image' && element.data['src']" [src]="getElementAssetUrl(element)" [alt]="getElementLabel(element)">
+          <img *ngIf="element.type === 'image' && !element.data['src']" class="book-marker-icon" src="assets/images/book/image.png" [alt]="'image' | translate">
+          <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
+          <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+          <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+          <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+          <span *ngIf="element.type === 'note'" class="note-marker">
+            <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+          </span>
+          <span
+            *ngIf="element.id === selectedElementId"
+            class="resize-handle"
+            (pointerdown)="startElementResize($event, element)">
+          </span>
+        </div>
+
+        <div
+          *ngIf="selectedElement as previewElement"
+          class="guide-preview"
+          [class.active]="previewGuideElementId === previewElement.id"
+          [style.left.%]="(previewElement.x + (previewElement.width || 0.06) / 2) * 100"
+          [style.top.%]="previewElement.y * 100">
+          <img *ngIf="previewGuideElementId === previewElement.id" [src]="previewOwlImage" [attr.alt]="'creatorTeacherOwlPreview' | translate">
+          <div class="guide-preview-bubble" *ngIf="previewGuideElementId === previewElement.id && previewBubbleText">
+            {{ previewBubbleText }}
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="inspector" [class.open]="inspectorOpen">
+      <h2 *ngIf="!selectedElement">{{ activePageLabel }}</h2>
+      <div class="page-action-grid" *ngIf="selectedPage && !selectedElement">
+        <button
+          type="button"
+          class="mini-icon-btn"
+          (click)="clearSelectedPageElements()"
+          [disabled]="selectedPage.elements.length === 0"
+          [title]="'creatorClearPageElements' | translate"
+          [attr.aria-label]="'creatorClearPageElements' | translate">
+          <img src="assets/images/book/clear.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="mini-icon-btn"
+          (click)="deleteActiveBookSurface()"
+          [title]="(activePageSource === 'workbook' ? 'creatorDeleteWorkbook' : 'creatorDeleteStudentBook') | translate"
+          [attr.aria-label]="(activePageSource === 'workbook' ? 'creatorDeleteWorkbook' : 'creatorDeleteStudentBook') | translate">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+      </div>
+      <div class="page-tool-row" *ngIf="hasCopiedElement() && !selectedElement">
+        <button type="button" class="mini-btn" (click)="pasteCopiedElement()">{{ 'creatorPasteElement' | translate }}</button>
+      </div>
+      <div class="page-tool-row link-help" *ngIf="selectedPage && !selectedElement && activePageSource === 'main'">
+        <button
+          type="button"
+          class="mini-icon-btn"
+          [class.active]="linkingMainPageId === selectedPage.id"
+          (click)="beginWorkbookLinking(selectedPage, $event)"
+          [title]="(linkingMainPageId === selectedPage.id ? 'creatorStopLinking' : 'creatorLinkWorkbookPages') | translate"
+          [attr.aria-label]="(linkingMainPageId === selectedPage.id ? 'creatorStopLinking' : 'creatorLinkWorkbookPages') | translate">
+          <img src="assets/images/book/link.png" alt="">
+        </button>
+        <label class="link-page-input">
+          <input
+            #linkedPagesInput
+            type="text"
+            [ngModel]="getLinkedWorkbookPageNumbers(selectedPage)"
+            (keydown.enter)="setLinkedWorkbookPageNumbers(selectedPage, linkedPagesInput.value)"
+            (blur)="setLinkedWorkbookPageNumbers(selectedPage, linkedPagesInput.value)"
+            placeholder="5, 6, 8, 9">
+        </label>
+      </div>
+
+      <div class="element-inspector" *ngIf="selectedElement as element">
+        <h2>{{ getSelectedElementTypeLabel() }}</h2>
+        <div class="element-action-grid">
+          <button type="button" class="mini-icon-btn" (click)="duplicateSelectedElement()" [title]="'duplicateLabel' | translate" [attr.aria-label]="'duplicateLabel' | translate">
+            <img src="assets/images/book/duplicate.png" alt="">
+          </button>
+          <button type="button" class="mini-icon-btn" (click)="copySelectedElement()" [title]="'copyLabel' | translate" [attr.aria-label]="'copyLabel' | translate">
+            <img src="assets/images/book/copy.png" alt="">
+          </button>
+          <button type="button" class="mini-icon-btn" (click)="pasteCopiedElement()" [disabled]="!hasCopiedElement()" [title]="'pasteLabel' | translate" [attr.aria-label]="'pasteLabel' | translate">
+            <img src="assets/images/book/paste.png" alt="">
+          </button>
+          <button type="button" class="mini-icon-btn danger" (click)="deleteSelectedElement()" [title]="'creatorDeleteSelectedElement' | translate" [attr.aria-label]="'creatorDeleteSelectedElement' | translate">
+            <img src="assets/images/book/delete.png" alt="">
+          </button>
+          <button type="button" class="mini-icon-btn" (click)="moveSelectedElementLayer(-1)" [disabled]="!canMoveSelectedElementLayer(-1)" [title]="'creatorSendBackward' | translate" [attr.aria-label]="'creatorSendBackward' | translate">
+            <img src="assets/images/book/bringt to back.png" alt="">
+          </button>
+          <button type="button" class="mini-icon-btn" (click)="moveSelectedElementLayer(1)" [disabled]="!canMoveSelectedElementLayer(1)" [title]="'creatorBringForward' | translate" [attr.aria-label]="'creatorBringForward' | translate">
+            <img src="assets/images/book/bring to front.png" alt="">
+          </button>
+          <button
+            type="button"
+            class="mini-icon-btn"
+            *ngIf="element.type === 'image' || element.type === 'video'"
+            (click)="replaceElementAsset(element)"
+            [title]="'replaceLabel' | translate"
+            [attr.aria-label]="'replaceLabel' | translate">
+            <img src="assets/images/book/replace.png" alt="">
+          </button>
+        </div>
+        <label *ngIf="element.type === 'note' || element.type === 'guideDot'">
+          {{ 'textOptional' | translate }}
+          <textarea
+            rows="3"
+            [(ngModel)]="element.data['content']"
+            (focus)="beginHistoryCapture()"
+            (ngModelChange)="markBookDirty()"
+            (blur)="commitHistoryCapture()"
+            *ngIf="element.type === 'note'"></textarea>
+          <textarea
+            rows="3"
+            [(ngModel)]="element.data['text']"
+            (focus)="beginHistoryCapture()"
+            (ngModelChange)="markBookDirty()"
+            (blur)="commitHistoryCapture()"
+            *ngIf="element.type === 'guideDot'"></textarea>
+        </label>
+        <div class="game-link-panel" *ngIf="element.type === 'game'">
+          <div class="linked-topic-card" *ngIf="element.data['topicId']; else noLinkedTopic">
+            <span>{{ 'creatorLinkedTopic' | translate }}</span>
+            <strong>{{ element.data['topicName'] || element.data['label'] || ('creatorTopicNumber' | translate: {id: element.data['topicId']}) }}</strong>
+          </div>
+          <ng-template #noLinkedTopic>
+            <div class="linked-topic-card empty">
+              <span>{{ 'creatorNoTopicLinked' | translate }}</span>
+              <strong>{{ 'creatorCreateOrChooseTopic' | translate }}</strong>
+            </div>
+          </ng-template>
+          <div class="game-topic-actions">
+            <button type="button" class="mini-btn" (click)="createTopicForGame(element)">{{ 'createTopic' | translate }}</button>
+            <button type="button" class="mini-btn" (click)="editGameTopic(element)" [disabled]="!element.data['topicId']">{{ 'creatorEditTopic' | translate }}</button>
+          </div>
+          <label>
+            {{ 'creatorTopicLabel' | translate }}
+            <select
+              [(ngModel)]="element.data['topicId']"
+              (ngModelChange)="onGameTopicSelected(element, $event)">
+              <option [ngValue]="null">{{ 'creatorChooseTopic' | translate }}</option>
+              <option *ngFor="let topic of topics$ | async" [ngValue]="topic.id">{{ topic.name }}</option>
+            </select>
+          </label>
+        </div>
+        <div class="image-settings-panel" *ngIf="element.type === 'image'">
+          <app-image-uploader (imageSelected)="onBookImageSelected($event, element)"></app-image-uploader>
+        </div>
+        <div class="video-settings-panel" *ngIf="element.type === 'video'">
+          <button type="button" class="mini-icon-btn wide" (click)="uploadVideoElement(element)" [title]="'creatorUploadVideo' | translate" [attr.aria-label]="'creatorUploadVideo' | translate">
+            <img src="assets/images/book/video.png" alt="">
+            <span>{{ 'upload' | translate }}</span>
+          </button>
+          <label>
+            {{ 'creatorUrlLabel' | translate }}
+            <input
+              type="url"
+              [ngModel]="element.data['src']"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateVideoUrl(element, $event)"
+              (blur)="commitHistoryCapture()"
+              placeholder="https://.../video.mp4">
+          </label>
+        </div>
+        <div class="guide-audio-panel" *ngIf="element.type === 'guideDot'">
+          <div class="guide-preview-actions">
+            <button type="button" class="mini-icon-btn" (click)="previewGuideDot(element)" [title]="'previewLabel' | translate" [attr.aria-label]="'previewLabel' | translate">
+              <img src="assets/images/book/play.png" alt="">
+            </button>
+            <button type="button" class="mini-icon-btn" (click)="stopGuidePreview()" [disabled]="previewGuideElementId !== element.id" [title]="'stopLabel' | translate" [attr.aria-label]="'stopLabel' | translate">
+              <img src="assets/images/book/stop.png" alt="">
+            </button>
+          </div>
+          <div class="guide-audio-actions">
+            <button type="button" class="mini-icon-btn wide" (click)="addGuideDotAudio(element)" [title]="'creatorAddAudio' | translate" [attr.aria-label]="'creatorAddAudio' | translate">
+              <img src="assets/images/book/audio.png" alt="">
+              <span>{{ 'creatorAddAudio' | translate }}</span>
+            </button>
+            <button
+              type="button"
+              class="mini-icon-btn wide"
+              [class.recording]="recordingGuideElementId === element.id"
+              (click)="toggleGuideDotRecording(element)"
+              [title]="'record' | translate"
+              [attr.aria-label]="'record' | translate">
+              <span class="record-dot" aria-hidden="true"></span>
+              <span>{{ (recordingGuideElementId === element.id ? 'stopLabel' : 'record') | translate }}</span>
+            </button>
+          </div>
+          <span>{{ 'creatorAudioFileCount' | translate: {count: getGuideDotAudioFiles(element).length} }}</span>
+          <div class="audio-list" *ngIf="getGuideDotAudioFiles(element).length">
+            <div
+              class="audio-row"
+              *ngFor="let audioFile of getGuideDotAudioFiles(element); let i = index"
+              draggable="true"
+              (dragstart)="onGuideAudioDragStart(i, $event)"
+              (dragover)="onGuideAudioDragOver($event)"
+              (drop)="onGuideAudioDrop(element, i, $event)">
+              <span>{{ getAssetFileName(audioFile) }}</span>
+              <div class="audio-actions">
+                <button type="button" class="tiny-btn danger" (click)="removeGuideDotAudio(element, i)" [title]="'creatorRemove' | translate">&#10060;</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>

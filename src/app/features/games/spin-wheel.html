@@ -11,14 +11,14 @@
 <div *ngIf="!loading" class="relative inline-block wheel-wrapper" [class.eliminate]="eliminationAnimation" [class.eliminate-long]="eliminationLong">
   <canvas #wheelCanvas [width]="canvasSize" [height]="canvasSize" class="rounded-full max-w-full h-auto"></canvas>  <!-- Spin Button -->
       <button (click)="spin()"
-              [disabled]="spinning || currentItems.length === 0"
+              [disabled]="spinning || currentItems.length === 0 || gameFinished"
               class="spin-btn absolute top-1/2 left-1/2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-bold shadow-lg text-base hover:scale-110 transition border-4 border-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center w-24 h-24 rounded-full p-0">
         {{ spinning ? ('spinWheelSpinning' | translate) : (currentItems.length === 0 ? ('spinWheelNoItems' | translate) : ('spinWheelSpin' | translate)) }}
       </button>
     </div>
 
     <!-- Empty State -->
-    <div *ngIf="!loading && currentItems.length === 0" class="mt-0.5 bg-white bg-opacity-20 backdrop-blur-lg rounded-xl p-2">
+    <div *ngIf="!loading && currentItems.length === 0 && !gameFinished" class="mt-0.5 bg-white bg-opacity-20 backdrop-blur-lg rounded-xl p-2">
       <p class="text-white text-lg">{{ 'spinWheelNoItemsLeft' | translate }}</p>
       <button (click)="resetGame()" class="mt-0.5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-full">{{ 'startOver' | translate }}</button>
     </div>
@@ -26,6 +26,7 @@
     <!-- Action Buttons -->
     <div class="mt-0.5 flex justify-center space-x-2">
       <button (click)="eliminate()"
+              [disabled]="currentItems.length === 0 || gameFinished"
               class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-full shadow transition text-sm">
         {{ 'spinWheelEliminate' | translate }}
       </button>
@@ -79,6 +80,15 @@
             </div>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Victory Overlay -->
+    <div *ngIf="gameFinished" class="spin-victory-overlay">
+      <div class="spin-victory-card">
+        <h3>{{ 'spinWheelTitle' | translate }}</h3>
+        <p>{{ 'spinWheelNoItemsLeft' | translate }}</p>
+        <button type="button" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
       </div>
     </div>
 

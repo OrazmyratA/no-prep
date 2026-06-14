@@ -72,6 +72,13 @@ hideLicenseOverlay() {
     this.fullscreenButtonActive = true;
 
     try {
+      const api = (window as any)?.electronAPI;
+      if (typeof api?.toggleAppFullscreen === 'function') {
+        await api.toggleAppFullscreen();
+        this.resizeService.requestLayoutRefresh();
+        return;
+      }
+
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       } else {

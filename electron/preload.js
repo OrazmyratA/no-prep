@@ -25,6 +25,40 @@ contextBridge.exposeInMainWorld('electronAPI', {
   enterLicenseContent: (content) => ipcRenderer.invoke('enter-license-content', String(content ?? '')),
   runSecureFeature: (featureName, input) => ipcRenderer.invoke('run-secure-feature', String(featureName ?? ''), input ?? {}),
   openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', String(url ?? '')),
+  toggleAppFullscreen: () => ipcRenderer.invoke('app:toggle-fullscreen'),
+  capturePageScreenshot: (input) => ipcRenderer.invoke('app:capture-page-screenshot', input ?? {}),
+  confirmBookUnsavedChanges: (input) => ipcRenderer.invoke('books:confirm-unsaved-changes', input ?? {}),
+  getBookRegistry: () => ipcRenderer.invoke('books:get-registry'),
+  createEmptyBook: (input) => ipcRenderer.invoke('books:create-empty', input ?? {}),
+  createBookFromPdf: (input) => ipcRenderer.invoke('books:create-from-pdf', input ?? {}),
+  replaceBookMainPdf: (input) => ipcRenderer.invoke('books:replace-main-pdf', input ?? {}),
+  addBookWorkbookFromPdf: (input) => ipcRenderer.invoke('books:add-workbook-from-pdf', input ?? {}),
+  replaceBookWorkbookPdf: (input) => ipcRenderer.invoke('books:replace-workbook-pdf', input ?? {}),
+  importBookFolder: () => ipcRenderer.invoke('books:import-folder'),
+  exportBookToDesktop: (input) => ipcRenderer.invoke('books:export-to-desktop', input ?? {}),
+  copyBook: (input) => ipcRenderer.invoke('books:copy', input ?? {}),
+  combineBooks: (input) => ipcRenderer.invoke('books:combine', input ?? {}),
+  deleteBook: (input) => ipcRenderer.invoke('books:delete', input ?? {}),
+  cleanupBookStorage: (input) => ipcRenderer.invoke('books:cleanup-storage', input ?? {}),
+  readBook: (input) => ipcRenderer.invoke('books:read', input ?? {}),
+  saveBook: (input) => ipcRenderer.invoke('books:save', input ?? {}),
+  readBookAnnotations: (input) => ipcRenderer.invoke('books:read-annotations', input ?? {}),
+  saveBookAnnotations: (input) => ipcRenderer.invoke('books:save-annotations', input ?? {}),
+  addBookAsset: (input) => ipcRenderer.invoke('books:add-asset', input ?? {}),
+  saveBookAssetData: (input) => ipcRenderer.invoke('books:save-asset-data', input ?? {}),
+  saveBookAudioRecording: (input) => ipcRenderer.invoke('books:save-audio-recording', input ?? {}),
+  saveBookTopicSnapshot: (input) => ipcRenderer.invoke('books:save-topic-snapshot', input ?? {}),
+  getBookAssetUrl: (bookId, relativePath) => ipcRenderer.sendSync('books:get-asset-url', String(bookId ?? ''), String(relativePath ?? '')),
+  getBookAssetFileUrl: (bookId, relativePath) => ipcRenderer.sendSync('books:get-asset-file-url', String(bookId ?? ''), String(relativePath ?? '')),
+  getBookAssetBytes: (bookId, relativePath) => ipcRenderer.invoke('books:get-asset-bytes', String(bookId ?? ''), String(relativePath ?? '')),
+  onBookOperationProgress: (callback) => {
+    if (typeof callback !== 'function') {
+      return () => {};
+    }
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on('books:progress', listener);
+    return () => ipcRenderer.removeListener('books:progress', listener);
+  },
   onLayoutChanged: (callback) => {
     if (typeof callback !== 'function') {
       return () => {};

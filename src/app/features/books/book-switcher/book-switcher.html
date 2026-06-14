@@ -1,0 +1,28 @@
+<div class="book-switcher" [class.light]="tone === 'light'">
+  <button type="button" class="switch-button" (click)="toggle()" [title]="'bookSwitcherSwitchBook' | translate" [attr.aria-label]="'bookSwitcherSwitchBook' | translate">
+    <img src="assets/images/book/switch-book.png" alt="">
+  </button>
+
+  <div class="switch-menu" *ngIf="open">
+    <div class="switch-menu-title">{{ 'bookSwitcherBooksTitle' | translate }}</div>
+
+    <ng-container *ngIf="books$ | async as books">
+      <button
+        *ngFor="let book of books"
+        type="button"
+        class="book-option"
+        [class.current]="book.id === currentBookId"
+        (click)="switchBook(book)">
+        <span class="book-title">{{ book.title }}</span>
+        <span class="book-meta">
+          {{ 'bookSwitcherPagesCount' | translate: {count: book.pageCount} }}
+          <ng-container *ngIf="formatBytes(book.sizeBytes) as size"> - {{ size }}</ng-container>
+        </span>
+      </button>
+
+      <div class="empty-books" *ngIf="books.length === 0">
+        {{ 'bookSwitcherNoBooks' | translate }}
+      </div>
+    </ng-container>
+  </div>
+</div>

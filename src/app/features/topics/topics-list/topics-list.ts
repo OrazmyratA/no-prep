@@ -13,6 +13,10 @@ import { ConfirmationService } from '../../../shared/confirmation';
 import { LanguageService, SupportedLanguage } from '../../../core/language';
 import { PlatformService } from '../../../core/platform';
 import { ResizeService } from '../../../core/resize';
+import { BookLibraryService } from '../../../core/book-library';
+import { BookOperationProgress, BookRegistryItem } from '../../../core/book.model';
+
+type LibraryCategory = 'topics' | 'books';
 
 @Component({
   selector: 'app-topics-list',
@@ -23,11 +27,22 @@ import { ResizeService } from '../../../core/resize';
 export class TopicsListComponent implements OnInit, AfterViewInit, OnDestroy {
   topics$!: Observable<Topic[]>;
   filteredTopics$!: Observable<Topic[]>;
+  books$!: Observable<BookRegistryItem[]>;
+  filteredBooks$!: Observable<BookRegistryItem[]>;
+  visibleBooks: BookRegistryItem[] = [];
+  bookProgress$!: Observable<BookOperationProgress | null>;
   searchControl = new FormControl('');
   selectedTopicIds = new Set<number>();
+  selectedBookIds = new Set<string>();
   activeTopicId: number | null = null;
+  activeBookId: string | null = null;
+  activeLibraryCategory: LibraryCategory = 'topics';
+  topicCoverUrls: Record<number, string> = {};
   fullAccess$: Observable<boolean>;
   private layoutSubscription?: Subscription;
+  private topicCoverSubscription?: Subscription;
+  private booksSubscription?: Subscription;
+  private viewRefreshHandle?: ReturnType<typeof setTimeout>;
 
 supportedLanguages: { code: SupportedLanguage; name: string; flag: string }[] = [
   { code: 'en', name: 'English', flag: 'gb.svg' },
@@ -75,9 +90,11 @@ onClickOutside(event: MouseEvent) {
     private langService: LanguageService,
     private resizeService: ResizeService,
     private elementRef: ElementRef<HTMLElement>,
-    public platform: PlatformService
+    public platform: PlatformService,
+    public bookLibrary: BookLibraryService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
+    this.bookProgress$ = this.bookLibrary.progress$;
   }
 
   async openUrl(url: string): Promise<void> {
@@ -96,9 +113,41 @@ onClickOutside(event: MouseEvent) {
     return this.licenseService.fullAccess;
   }
 
+  get isTopicsCategory(): boolean {
+    return this.activeLibraryCategory === 'topics';
+  }
+
+  get isBooksCategory(): boolean {
+    return this.activeLibraryCategory === 'books';
+  }
+
+  setLibraryCategory(category: LibraryCategory): void {
+    if (this.activeLibraryCategory === category) return;
+    this.activeLibraryCategory = category;
+    this.activeTopicId = null;
+    this.activeBookId = null;
+  }
+
   ngOnInit() {
     const topics$ = this.db.topics$ as unknown as Observable<Topic[]>;
     this.topics$ = topics$;
+    this.books$ = this.bookLibrary.books$;
+    this.filteredBooks$ = combineLatest([
+      this.books$,
+      this.searchControl.valueChanges.pipe(startWith(''))
+    ]).pipe(
+      map(([books, term]) => {
+        const filter = (term ?? '').trim().toLowerCase();
+        if (!filter) {
+          return books;
+        }
+        return books.filter(book => book.title.toLowerCase().includes(filter));
+      })
+    );
+    this.booksSubscription = this.filteredBooks$.subscribe((books) => {
+      this.visibleBooks = books;
+      this.scheduleViewRefresh();
+    });
     this.filteredTopics$ = combineLatest([
       topics$,
       this.searchControl.valueChanges.pipe(startWith(''))
@@ -111,6 +160,9 @@ onClickOutside(event: MouseEvent) {
         return topics.filter(topic => topic.name.toLowerCase().includes(filter));
       })
     );
+    this.topicCoverSubscription = topics$.subscribe((topics) => {
+      void this.refreshTopicCovers(topics);
+    });
   }
 
   ngAfterViewInit() {
@@ -119,7 +171,24 @@ onClickOutside(event: MouseEvent) {
   }
 
   ngOnDestroy() {
+    if (this.viewRefreshHandle) {
+      clearTimeout(this.viewRefreshHandle);
+      this.viewRefreshHandle = undefined;
+    }
     this.layoutSubscription?.unsubscribe();
+    this.topicCoverSubscription?.unsubscribe();
+    this.booksSubscription?.unsubscribe();
+    this.clearTopicCoverUrls();
+  }
+
+  private scheduleViewRefresh(): void {
+    if (this.viewRefreshHandle) {
+      clearTimeout(this.viewRefreshHandle);
+    }
+    this.viewRefreshHandle = setTimeout(() => {
+      this.viewRefreshHandle = undefined;
+      this.cdr.detectChanges();
+    }, 0);
   }
 
   private recalculateLayout() {
@@ -134,6 +203,40 @@ onClickOutside(event: MouseEvent) {
     this.router.navigate(['/topics', id, 'edit']);
   }
 
+  async createBook() {
+    if (!this.bookLibrary.isAvailable) {
+      showAppNotification(this.langService.translate('bookLibDesktopOnly'), 'error');
+      return;
+    }
+    const created = await this.bookLibrary.createEmptyBook();
+    if (created) {
+      await this.router.navigate(['/books', created.id, 'edit']);
+    }
+  }
+
+  editBook(id: string) {
+    this.router.navigate(['/books', id, 'edit']);
+  }
+
+  onBookClick(bookId: string) {
+    if (!this.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+
+    if (this.activeBookId === bookId) {
+      this.router.navigate(['/books', bookId, 'read']);
+      return;
+    }
+
+    this.activeBookId = bookId;
+    this.activeTopicId = null;
+  }
+
+  isBookArmed(bookId: string): boolean {
+    return this.activeBookId === bookId;
+  }
+
   onTopicClick(topicId: number) {
     if (this.activeTopicId === topicId) {
       this.router.navigate(['/topics', topicId, 'activities']);
@@ -141,6 +244,7 @@ onClickOutside(event: MouseEvent) {
     }
 
     this.activeTopicId = topicId;
+    this.activeBookId = null;
   }
 
   isTopicArmed(topicId: number): boolean {
@@ -161,6 +265,20 @@ async deleteTopic(id: number) {
   }
 }
 
+  async deleteBook(id: string) {
+    const confirmed = await this.confirmationService.confirm('Delete this book from the No-Prep library? The folder will be moved to the Recycle Bin.');
+    if (confirmed) {
+      const deleted = await this.bookLibrary.deleteBook(id);
+      if (!deleted) return;
+      this.selectedBookIds.delete(id);
+      this.selectedBookIds = new Set(this.selectedBookIds);
+      this.visibleBooks = this.visibleBooks.filter((book) => book.id !== id);
+      this.activeBookId = null;
+      await this.bookLibrary.refresh();
+      this.cdr.detectChanges();
+    }
+  }
+
   async copyTopic(id: number) {
     const duplicateId = await this.db.duplicateTopic(id);
     if (duplicateId) {
@@ -176,8 +294,47 @@ async deleteTopic(id: number) {
     this.importExport.exportAllTopics();
   }
 
+  async copyBook(id: string) {
+    await this.bookLibrary.copyBook(id);
+  }
+
+  async exportBook(id: string) {
+    await this.bookLibrary.exportBookToDesktop(id);
+  }
+
+  async importBook() {
+    await this.bookLibrary.importBookFolder();
+  }
+
+  async importLibrary() {
+    if (this.isTopicsCategory) {
+      this.importTopics();
+      return;
+    }
+    if (!this.bookLibrary.isAvailable) {
+      showAppNotification(this.langService.translate('bookLibDesktopOnly'), 'error');
+      return;
+    }
+    await this.bookLibrary.importBookFolder();
+  }
+
   get canCombineTopics() {
     return this.licenseService.fullAccess && this.selectedTopicIds.size >= 2;
+  }
+
+  get canCombineBooks() {
+    return this.licenseService.fullAccess && this.selectedBookIds.size >= 2;
+  }
+
+  get selectedLibraryCount() {
+    return this.isBooksCategory ? this.selectedBookIds.size : this.selectedTopicIds.size;
+  }
+
+  get canCombineLibrary() {
+    if (!this.licenseService.fullAccess) {
+      return false;
+    }
+    return this.isBooksCategory ? this.selectedBookIds.size >= 2 : this.selectedTopicIds.size >= 2;
   }
 
   toggleTopicSelection(topicId: number, checked: boolean) {
@@ -187,6 +344,49 @@ async deleteTopic(id: number) {
       this.selectedTopicIds.delete(topicId);
     }
     this.selectedTopicIds = new Set(this.selectedTopicIds);
+  }
+
+  toggleBookSelection(bookId: string, checked: boolean) {
+    if (checked) {
+      this.selectedBookIds.add(bookId);
+    } else {
+      this.selectedBookIds.delete(bookId);
+    }
+    this.selectedBookIds = new Set(this.selectedBookIds);
+  }
+
+  async combineSelectedBooks() {
+    if (!this.canCombineBooks) {
+      showAppNotification('Select at least two books to combine.', 'error');
+      return;
+    }
+
+    const title = window.prompt('Combined book title')?.trim();
+    if (!title) {
+      return;
+    }
+
+    await this.bookLibrary.combineBooks(Array.from(this.selectedBookIds), title);
+    this.selectedBookIds = new Set();
+  }
+
+  async combineSelectedLibrary() {
+    if (!this.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+
+    if (this.isBooksCategory) {
+      await this.combineSelectedBooks();
+      return;
+    }
+
+    if (this.isTopicsCategory) {
+      await this.combineSelectedTopics();
+      return;
+    }
+
+    showAppNotification('Select at least two items to combine.', 'error');
   }
 
 async combineSelectedTopics() {
@@ -244,9 +444,60 @@ async combineSelectedTopics() {
   clearSearch() {
     this.searchControl.setValue('');
     this.activeTopicId = null;
+    this.activeBookId = null;
   }
 
   trackByTopicId(index: number, topic: Topic) {
     return topic.id;
+  }
+
+  getTopicCoverUrl(topic: Topic): string {
+    return topic.id ? this.topicCoverUrls[topic.id] || '' : '';
+  }
+
+  trackByBookId(index: number, book: BookRegistryItem) {
+    return book.id;
+  }
+
+  getBookCoverUrl(book: BookRegistryItem): string {
+    return book.coverPath ? this.bookLibrary.getAssetUrl(book.id, book.coverPath) : '';
+  }
+
+  formatBookSize(bytes?: number): string {
+    if (!bytes || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+  }
+
+  private async refreshTopicCovers(topics: Topic[]): Promise<void> {
+    const liveIds = new Set(topics.map((topic) => topic.id).filter((id): id is number => typeof id === 'number'));
+    for (const id of Object.keys(this.topicCoverUrls).map(Number)) {
+      if (!liveIds.has(id)) {
+        URL.revokeObjectURL(this.topicCoverUrls[id]);
+        delete this.topicCoverUrls[id];
+      }
+    }
+
+    await Promise.all(topics.map(async (topic) => {
+      if (!topic.id || this.topicCoverUrls[topic.id]) return;
+      const items = await this.db.getItemsSnapshot(topic.id);
+      const imageItem = items.find((item) => !!item.image);
+      if (!imageItem?.image || this.topicCoverUrls[topic.id!]) return;
+      this.topicCoverUrls[topic.id] = URL.createObjectURL(imageItem.image);
+    }));
+    this.cdr.detectChanges();
+  }
+
+  private clearTopicCoverUrls(): void {
+    for (const url of Object.values(this.topicCoverUrls)) {
+      URL.revokeObjectURL(url);
+    }
+    this.topicCoverUrls = {};
   }
 }

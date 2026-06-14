@@ -1,4 +1,5 @@
 import Dexie, { Table } from 'dexie';
+import { BookAnnotations, InteractiveBook } from './book.model';
 
 export interface Topic {
   id?: number;
@@ -37,11 +38,37 @@ export interface ThemeSettings {
   updatedAt: Date;
 }
 
+export interface StoredBook {
+  id: string;
+  title: string;
+  book: InteractiveBook;
+  pageCount: number;
+  sizeBytes: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredBookAnnotations {
+  bookId: string;
+  annotations: BookAnnotations;
+  updatedAt: string;
+}
+
+export interface StoredBookAsset {
+  relativePath: string;
+  bookId: string;
+  dataUrl: string;
+  updatedAt: string;
+}
+
 export class AppDatabase extends Dexie {
   topics!: Table<Topic, number>;
   items!: Table<Item, number>;
   themeBackgrounds!: Table<ThemeBackground, number>;
   themeSettings!: Table<ThemeSettings, string>;
+  books!: Table<StoredBook, string>;
+  bookAnnotations!: Table<StoredBookAnnotations, string>;
+  bookAssets!: Table<StoredBookAsset, string>;
 
   constructor() {
     super('NoPrepDB');
@@ -54,6 +81,15 @@ export class AppDatabase extends Dexie {
       items: '++id, topicId, order',
       themeBackgrounds: '++id, createdAt',
       themeSettings: 'id'
+    });
+    this.version(3).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: 'id, title, updatedAt',
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: 'relativePath, bookId, updatedAt'
     });
   }
 }

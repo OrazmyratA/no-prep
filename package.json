@@ -46,6 +46,7 @@
     "win": {
       "target": "nsis",
       "icon": "electron/assets/icon.ico",
+      "artifactName": "No-Prep-Setup-${version}.${ext}",
       "legalTrademarks": "No-Prep™",
       "forceCodeSigning": false
     },
@@ -100,12 +101,16 @@
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
+    "archiver": "^8.0.0",
     "browser-image-compression": "^2.0.2",
     "dexie": "^4.3.0",
+    "extract-zip": "^2.0.1",
     "node-forge": "^1.4.0",
     "node-machine-id": "^1.1.12",
+    "pdfjs-dist": "^6.0.227",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "yauzl": "^2.10.0"
   },
   "devDependencies": {
     "@angular/build": "^21.1.2",

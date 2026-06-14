@@ -27,6 +27,8 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   private spinSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
+  private rewardSound: HTMLAudioElement | null = null;
+  private victoryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private imageUrls = new Map<number, string>();
   quizOverlayVisible = false;
   useTextOnWheel = false;
@@ -45,6 +47,8 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   eliminationLong = false;
   simpleConfirmMode = false;
   forceSimpleMode = true;
+  gameFinished = false;
+  private victoryPending = false;
 
   // Constants for wheel geometry
   private centerX = 280;
@@ -87,6 +91,8 @@ async ngOnInit() {
     this.collectSound.load();
     this.buzzSound = new Audio('assets/sound/buzz.mp3');
     this.buzzSound.load();
+    this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');
+    this.rewardSound.load();
   } catch (error) {
     console.error('Failed to load items', error);
   } finally {
@@ -143,12 +149,14 @@ private resizeCanvas() {
 
   ngOnDestroy() {
     this.layoutSubscription?.unsubscribe();
+    this.clearVictoryTimeout();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.images.clear();
     this.imageLoadQueue.clear();
     if (this.spinSound) this.spinSound.pause();
     if (this.collectSound) this.collectSound.pause();
     if (this.buzzSound) this.buzzSound.pause();
+    if (this.rewardSound) this.rewardSound.pause();
   }
 
 private recalculateLayout() {
@@ -309,7 +317,7 @@ drawWheel(): boolean {
   }
 
 spin() {
-  if (this.spinning || this.currentItems.length === 0) return;
+  if (this.spinning || this.currentItems.length === 0 || this.gameFinished || this.victoryPending) return;
   this.playSound(this.spinSound);
   this.spinning = true;
   this.cdr.detectChanges();
@@ -474,7 +482,7 @@ private buildQuizOptions(): boolean {
   // new flag for the 3‑second effect
 
 onQuizAnswer(selected: Item) {
-  if (!this.showQuiz || !this.selectedItem || this.quizAnswerLocked) return;
+  if (!this.showQuiz || !this.selectedItem || this.quizAnswerLocked || this.gameFinished) return;
   if (selected.id === this.selectedItem.id) {
     this.quizAnswerLocked = true;
     this.fadeOutOptionIds.clear();
@@ -498,10 +506,12 @@ onQuizAnswer(selected: Item) {
       const idx = this.currentItems.findIndex(i => i.id === this.selectedItem?.id);
       if (idx !== -1) this.currentItems.splice(idx, 1);
       this.showQuiz = false;
+      this.quizOverlayVisible = false;
       this.selectedItem = null;
       this.fadeOutOptionIds.clear();
       this.quizAnswerLocked = false;
       this.drawWheel();
+      this.queueVictoryIfDone();
 
       // Remove the dissolve effect slightly after redraw
       setTimeout(() => {
@@ -518,7 +528,7 @@ onQuizAnswer(selected: Item) {
   }
 }
   onConfirmOk() {
-    if (!this.selectedItem) return;
+    if (!this.selectedItem || this.gameFinished) return;
     this.playSound(this.collectSound);
     this.eliminationLong = true;
     this.cdr.detectChanges();
@@ -530,6 +540,7 @@ onQuizAnswer(selected: Item) {
       this.simpleConfirmMode = false;
       this.selectedItem = null;
       this.drawWheel();
+      this.queueVictoryIfDone();
       setTimeout(() => { this.eliminationLong = false; this.cdr.detectChanges(); }, 50);
     }, 1500);
   }
@@ -545,10 +556,10 @@ onQuizAnswer(selected: Item) {
 
   // Direct elimination (same as old eliminate button)
   eliminate() {
-    if (this.showQuiz) return; // do not eliminate during quiz
-    this.playSound(this.collectSound);
+    if (this.showQuiz || this.gameFinished || this.victoryPending) return; // do not eliminate during quiz
     const count = this.currentItems.length;
     if (count === 0) return;
+    this.playSound(this.collectSound);
     const angle = (2 * Math.PI) / count;
     let rawAngle = this.rotation % (2 * Math.PI);
     if (rawAngle < 0) rawAngle += 2 * Math.PI;
@@ -556,16 +567,48 @@ onQuizAnswer(selected: Item) {
     if (index >= 0 && index < this.currentItems.length) {
       this.currentItems.splice(index, 1);
       this.drawWheel();
+      this.queueVictoryIfDone();
       this.cdr.detectChanges();
     }
   }
 
   resetGame() {
     if (this.showQuiz) return;
+    this.clearVictoryTimeout();
+    this.gameFinished = false;
     this.currentItems = [...this.items];
     this.rotation = 0;
+    this.selectedItem = null;
+    this.simpleConfirmMode = false;
+    this.quizOverlayVisible = false;
+    this.fadeOutOptionIds.clear();
+    this.quizAnswerLocked = false;
+    this.eliminationLong = false;
     this.drawWheel();
     this.cdr.detectChanges();
+  }
+
+  private queueVictoryIfDone() {
+    if (this.currentItems.length !== 0 || this.gameFinished || this.victoryPending || this.items.length === 0) {
+      return;
+    }
+
+    this.victoryPending = true;
+    this.victoryTimeoutId = setTimeout(() => {
+      this.playSound(this.rewardSound);
+      this.gameFinished = true;
+      this.victoryPending = false;
+      this.victoryTimeoutId = null;
+      this.cdr.detectChanges();
+    }, 450);
+  }
+
+  private clearVictoryTimeout() {
+    if (this.victoryTimeoutId) {
+      clearTimeout(this.victoryTimeoutId);
+      this.victoryTimeoutId = null;
+    }
+    this.victoryPending = false;
   }
 
   onMenuAction(action: string) {

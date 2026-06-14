@@ -41,6 +41,9 @@ testem.log
 /typings
 __screenshots__/
 .tools/
+test-results/
+.claude/
+.mcp.json
 private.pem
 license.dat
 android/keystore.properties

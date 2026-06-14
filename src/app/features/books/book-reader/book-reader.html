@@ -1,0 +1,554 @@
+<div class="book-reader-page">
+  <header class="reader-toolbar">
+    <div class="reader-toolbar-left">
+      <button type="button" class="tool-btn icon-reader-btn reader-back-btn" (click)="close()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
+        <img src="assets/images/book/back.png" alt="">
+      </button>
+      <div class="reader-title">
+        <strong>{{ readerTitle }}</strong>
+        <span>{{ readerSubtitle }}</span>
+      </div>
+    </div>
+
+    <div class="reader-actions reader-toolbar-center">
+      <div class="reader-tool-cluster page-tools">
+        <button type="button" class="tool-btn icon-reader-btn" (click)="togglePageDrawer()" [title]="'readerGoToPage' | translate" [attr.aria-label]="'readerGoToPage' | translate">
+          <img src="assets/images/book/content.png" alt="">
+        </button>
+        <div class="page-stepper" *ngIf="book && visiblePages.length">
+          <button type="button" class="tool-btn" (click)="previousPage()" [disabled]="currentPageIndex <= 0" [title]="'previousPage' | translate">&lt;</button>
+          <input
+            type="number"
+            min="1"
+            [max]="visiblePages.length"
+            [(ngModel)]="pageJumpValue"
+            (focus)="startPageJump()"
+            (keydown.enter)="commitPageJump()"
+            (keydown.escape)="cancelPageJump()"
+            (blur)="commitPageJump()"
+            [attr.aria-label]="'readerGoToPage' | translate">
+          <span>/ {{ visiblePages.length }}</span>
+          <button type="button" class="tool-btn" (click)="nextPage()" [disabled]="currentPageIndex >= visiblePages.length - 1" [title]="'nextPage' | translate">&gt;</button>
+        </div>
+      </div>
+
+      <div class="reader-tool-cluster history-tools">
+        <button type="button" class="tool-btn icon-reader-btn" [title]="'readerUndoAnnotation' | translate" (click)="undoAnnotation()" [disabled]="!canUndoAnnotation()" [attr.aria-label]="'readerUndoAnnotation' | translate">
+          <img src="assets/images/book/undo.png" alt="">
+        </button>
+        <button type="button" class="tool-btn icon-reader-btn" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate" (click)="redoAnnotation()" [disabled]="!canRedoAnnotation()">
+          <img src="assets/images/book/redo.png" alt="">
+        </button>
+        <button type="button" class="tool-btn icon-reader-btn" [title]="'readerClearAnnotations' | translate" (click)="clearPageAnnotations()" [disabled]="!canClearPageAnnotations()" [attr.aria-label]="'readerClearAnnotations' | translate">
+          <img src="assets/images/book/clear.png" alt="">
+        </button>
+      </div>
+
+      <div class="reader-tool-cluster zoom-tools">
+        <button type="button" class="tool-btn icon-reader-btn" (click)="setZoom(zoom + 0.1)" [title]="'zoomIn' | translate" [attr.aria-label]="'zoomIn' | translate">
+          <img src="assets/images/book/zoom-in.png" alt="">
+        </button>
+        <button type="button" class="tool-btn icon-reader-btn" (click)="setZoom(zoom - 0.1)" [title]="'zoomOut' | translate" [attr.aria-label]="'zoomOut' | translate">
+          <img src="assets/images/book/zoom-out.png" alt="">
+        </button>
+      </div>
+
+      <div class="reader-tool-cluster mark-tools">
+        <button type="button" class="tool-btn icon-reader-btn" [class.active]="focusMode" [title]="'focusLabel' | translate" (click)="toggleFocusMode()" [attr.aria-label]="'focusLabel' | translate">
+          <img src="assets/images/book/focus.png" alt="">
+        </button>
+        <button type="button" class="tool-btn icon-reader-btn" [class.active]="drawMode" [title]="'drawLabel' | translate" (click)="toggleDrawMode()" [attr.aria-label]="'drawLabel' | translate">
+          <img src="assets/images/book/draw.png" alt="">
+        </button>
+        <div class="pen-controls" *ngIf="drawMode">
+          <button
+            *ngFor="let color of penColors"
+            type="button"
+            class="color-dot"
+            [class.selected]="color === penColor"
+            [style.background]="color"
+            (click)="penColor = color"
+            [title]="'readerPenColor' | translate: {color: color}">
+          </button>
+          <label class="pen-size" [title]="'readerPenSize' | translate">
+            <span>{{ 'sizeLabel' | translate }}</span>
+            <input type="range" min="2" max="18" step="1" [(ngModel)]="penWidth">
+          </label>
+        </div>
+        <button type="button" class="tool-btn icon-reader-btn" [class.active]="textMode" [title]="'addTextLabel' | translate" (click)="addTemporaryText()" [attr.aria-label]="'addTextLabel' | translate">
+          <img src="assets/images/book/text.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="tool-btn icon-reader-btn"
+          [class.active]="deleteMode"
+          [title]="'readerDeleteAnnotations' | translate"
+          [attr.aria-label]="'readerDeleteAnnotations' | translate"
+          (click)="deleteSelectedText()"
+          [disabled]="!currentPage">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+        <div class="pen-controls text-color-controls" *ngIf="textMode || selectedText || activeTextInput">
+          <button
+            *ngFor="let color of textColors"
+            type="button"
+            class="color-dot"
+            [class.selected]="color === textColor"
+            [class.light-dot]="color === '#ffffff'"
+            [style.background]="color"
+            (click)="selectTextColor(color)"
+            [title]="'readerTextColor' | translate: {color: color}">
+          </button>
+        </div>
+      </div>
+
+      <div class="reader-tool-cluster book-tools">
+        <button
+          type="button"
+          class="tool-btn icon-reader-btn"
+          [class.active]="pageSource === 'workbook'"
+          [disabled]="!canSwitchLinkedWorkbook()"
+          (click)="toggleLinkedWorkbook()"
+          [title]="(pageSource === 'workbook' ? 'readerReturnToBook' : 'readerSwitchToWorkbook') | translate"
+          [attr.aria-label]="(pageSource === 'workbook' ? 'readerReturnToBook' : 'readerSwitchToWorkbook') | translate">
+          <img src="assets/images/book/switch-book.png" alt="">
+        </button>
+        <button type="button" class="tool-btn icon-reader-btn" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate" (click)="takeScreenshot()" [disabled]="!currentPage">
+          <img src="assets/images/book/screenshot.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="tool-btn icon-reader-btn"
+          (click)="toggleTwoPageMode()"
+          [title]="(twoPageMode ? 'singlePageLabel' : 'twoPagesLabel') | translate"
+          [attr.aria-label]="(twoPageMode ? 'readerShowSinglePage' : 'readerShowTwoPages') | translate">
+          <img [src]="twoPageMode ? 'assets/images/book/single page.png' : 'assets/images/book/two pages.png'" alt="">
+        </button>
+      </div>
+    </div>
+
+    <div class="reader-actions reader-toolbar-right">
+      <div class="guide-audio-controls" *ngIf="guideAudioVisible" [attr.aria-label]="'readerTeacherAudioControls' | translate">
+        <button
+          type="button"
+          class="tool-btn guide-play-btn"
+          (click)="toggleGuideAudioPlayback()"
+          [attr.aria-label]="(guideAudioPaused ? 'readerPlayTeacherAudio' : 'readerPauseTeacherAudio') | translate"
+          [title]="(guideAudioPaused ? 'playLabel' : 'pauseLabel') | translate">
+          <img [src]="guideAudioPaused ? 'assets/images/book/play.png' : 'assets/images/book/pause.png'" alt="">
+        </button>
+        <input
+          class="guide-progress"
+          type="range"
+          min="0"
+          [max]="guideAudioDuration || 1"
+          step="0.01"
+          [ngModel]="guideAudioCurrentTime"
+          (input)="seekGuideAudio($event)"
+          [attr.aria-label]="'readerTeacherAudioProgress' | translate">
+        <input
+          class="guide-volume"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          [ngModel]="guideAudioVolume"
+          (input)="setGuideAudioVolume($event)"
+          [attr.aria-label]="'readerTeacherAudioVolume' | translate">
+        <button
+          type="button"
+          class="tool-btn icon-reader-btn speed-btn guide-speed-btn"
+          [title]="'readerTeacherAudioSpeed' | translate"
+          [attr.aria-label]="'readerTeacherAudioSpeed' | translate"
+          (click)="cycleSpeechSpeed()">
+          <img src="assets/images/book/speed.png" alt="">
+          <span>{{ currentSpeechSpeed }}x</span>
+        </button>
+      </div>
+      <button type="button" class="tool-btn icon-reader-btn" (click)="edit()" [title]="'editTopic' | translate" [attr.aria-label]="'editTopic' | translate">
+        <img src="assets/images/book/edit.png" alt="">
+      </button>
+    </div>
+  </header>
+
+  <main #readerStage class="reader-stage" [class.drawer-open]="pageDrawerOpen">
+    <aside class="reader-page-drawer" *ngIf="pageDrawerOpen" (scroll)="onReaderThumbScroll($event)">
+      <div class="virtual-spacer" [style.height.px]="readerVirtualTopPadding"></div>
+      <button
+        *ngFor="let item of readerVirtualPages; trackBy: trackByVirtualPageId"
+        type="button"
+        class="reader-page-option a4-reader-thumb"
+        [class.selected]="item.index === currentPageIndex"
+        (click)="goToPage(item.index)"
+        [attr.aria-label]="'readerGoToPageNumber' | translate: {number: item.index + 1}">
+        <div class="reader-thumb-page">
+          <app-pdf-page-canvas
+            *ngIf="item.page.type === 'pdf' && getPagePdfUrl(item.page)"
+            [sourceUrl]="getPagePdfUrl(item.page)"
+            [pageNumber]="item.page.pdfPage || 1"
+            [renderScale]="0.22"
+            [lazy]="true">
+          </app-pdf-page-canvas>
+          <div class="reader-thumb-blank" *ngIf="item.page.type === 'blank'"></div>
+        </div>
+        <span class="reader-thumb-number">{{ item.index + 1 }}</span>
+        <span class="reader-thumb-source" *ngIf="pageSource === 'workbook'">
+          <img src="assets/images/book/switch-book.png" alt="">
+        </span>
+      </button>
+      <div class="virtual-spacer" [style.height.px]="readerVirtualBottomPadding"></div>
+    </aside>
+    <div *ngIf="loading" class="reader-message">{{ 'readerLoadingBook' | translate }}</div>
+    <div *ngIf="!loading && !book" class="reader-message">{{ 'readerBookNotFound' | translate }}</div>
+    <div *ngIf="!loading && book && !currentPage" class="reader-message">{{ 'readerNoVisiblePages' | translate }}</div>
+
+    <div *ngIf="book && currentPage" class="reader-canvas-shell">
+      <button
+        *ngIf="!expandedFocusElement"
+        type="button"
+        class="reader-page-edge previous"
+        (click)="$event.stopPropagation(); previousPage()"
+        [disabled]="currentPageIndex <= 0"
+        [title]="'previousPage' | translate"
+        [attr.aria-label]="'previousPage' | translate">&lt;</button>
+
+      <div
+        #readerSpread
+        class="reader-spread"
+        [class.two-page]="twoPageMode && companionPage && !expandedFocusElement"
+        [class.zoomed]="zoom > 1"
+        [class.focus-crop-active]="expandedFocusElement"
+        [style.width.px]="readerSpreadWidthPx">
+      <div
+        #pageFrame
+        class="page-frame"
+        [class.screenshotting]="screenshotting"
+        [class.delete-mode]="deleteMode"
+        [class.focus-crop-page]="isFocusCropActive(currentPage)"
+        (click)="onPageFrameClick($event)"
+        (pointerdown)="onSwipeAreaPointerDown($event)"
+        (pointerup)="onPageFramePointerUp($event); onSwipeAreaPointerUp($event)"
+        [attr.data-page-id]="currentPage.id"
+        [style.aspect-ratio]="getPageAspectRatioFor(currentPage)"
+        [style.background]="currentPage.backgroundColor || '#ffffff'">
+        <div class="page-content" [ngStyle]="getFocusContentStyle(currentPage)">
+          <app-pdf-page-canvas
+            *ngIf="pdfUrl && currentPage.type === 'pdf'"
+            [sourceUrl]="pdfUrl"
+            [pageNumber]="currentPage.pdfPage || 1"
+            [renderScale]="isFocusCropActive(currentPage) ? 2.6 : 1.7"
+            (pageSize)="onPdfPageSize($event)">
+          </app-pdf-page-canvas>
+
+          <div *ngIf="currentPage.type === 'blank'" class="blank-page"></div>
+
+          <canvas
+            #drawingCanvas
+            class="drawing-layer"
+            [attr.data-page-id]="currentPage.id"
+            [class.active]="drawMode"
+            (pointerdown)="startDrawing($event)"
+            (pointermove)="continueDrawing($event)"
+            (pointerup)="stopDrawing()"
+            (pointercancel)="stopDrawing()"
+            (pointerleave)="stopDrawing()">
+          </canvas>
+
+          <div
+            *ngIf="textMode"
+            class="text-placement-layer"
+            (pointerdown)="placeTextFromEvent($event)">
+          </div>
+
+        <div
+          *ngIf="isTextInputForPage(currentPage)"
+          class="reader-text-editor"
+          [attr.data-page-id]="currentPage.id"
+          [style.left.%]="activeTextInput!.x * 100"
+          [style.top.%]="activeTextInput!.y * 100"
+          [style.width.%]="activeTextInput!.width * 100"
+          [style.height.%]="activeTextInput!.height * 100"
+          [style.color]="activeTextInput!.color">
+          <button
+            type="button"
+            class="reader-text-move"
+            (pointerdown)="startTextEditorDrag($event)"
+            [title]="'readerMoveText' | translate"
+            [attr.aria-label]="'readerMoveText' | translate"></button>
+          <textarea
+            class="reader-inline-text-input"
+            [(ngModel)]="activeTextInput!.value"
+            (keydown.enter)="commitTextInputFromKey($event)"
+            (keydown.escape)="cancelTextInput()"
+            (blur)="commitTextInput($event)"
+            [attr.placeholder]="'textOptional' | translate"></textarea>
+        </div>
+
+        <div
+          *ngFor="let text of getPageTexts(currentPage)"
+          class="temporary-text"
+          [class.selected]="isTextSelected(currentPage, text)"
+          [class.delete-target]="deleteMode"
+          [attr.data-page-id]="currentPage.id"
+          [attr.data-text-id]="text.id"
+          [style.left.%]="text.x * 100"
+          [style.top.%]="text.y * 100"
+          [style.width.%]="(text.width || 0.22) * 100"
+          [style.height.%]="(text.height || 0.055) * 100"
+          [style.color]="text.color || '#111827'"
+          [style.--text-scale]="text.height || 0.055"
+          (click)="selectTextAnnotation(currentPage, text, $event)"
+          (pointerdown)="startSavedTextDrag(currentPage, text, $event)">
+          <img *ngIf="text.imageDataUrl" [src]="text.imageDataUrl" alt="">
+          <span *ngIf="!text.imageDataUrl">{{ text.text }}</span>
+        </div>
+
+        <svg
+          *ngFor="let stroke of getPageStrokes(currentPage)"
+          class="stroke-delete-target"
+          [style.display]="deleteMode ? 'block' : 'none'"
+          viewBox="0 0 1 1"
+          preserveAspectRatio="none"
+          (click)="deleteStrokeAnnotation(currentPage, stroke, $event)"
+          [attr.title]="'readerDeleteDrawing' | translate"
+          [attr.aria-label]="'readerDeleteDrawing' | translate">
+          <polyline
+            [attr.points]="getStrokePolylinePoints(stroke)"
+            fill="none"
+            vector-effect="non-scaling-stroke"></polyline>
+        </svg>
+
+        <div
+          *ngFor="let element of currentPage.elements; trackBy: trackByElementId"
+          class="reader-element"
+          [class.focus-element]="element.type === 'focus'"
+          [class.focus-visible]="focusMode && element.type === 'focus'"
+          [class.dot-element]="element.type === 'guideDot'"
+          [class.dot-disabled]="element.type === 'guideDot' && !isGuideDotEnabled(element, currentPage)"
+          [class.dot-playing]="element.id === playingGuideElementId"
+          [class.dot-paused]="element.id === pausedGuideElementId"
+          [class.note-element]="element.type === 'note'"
+          [class.game-element]="element.type === 'game'"
+          [class.hidden-focus]="element.type === 'focus' && !focusMode"
+          [style.left.%]="element.x * 100"
+          [style.top.%]="element.y * 100"
+          [style.width.%]="(element.width || 0.08) * 100"
+          [style.height.%]="(element.height || 0.08) * 100"
+          (click)="activateElement(element, $event, currentPage)">
+          <img *ngIf="element.type === 'image'" [src]="getElementAssetUrl(element)" [alt]="getElementText(element)">
+          <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
+          <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+          <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+          <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+          <span *ngIf="element.type === 'note'" class="note-marker">
+            <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+          </span>
+        </div>
+
+          <button
+            type="button"
+            class="guide-bubble"
+            [class.expanded]="guideBubbleExpanded"
+            *ngIf="guideBubbleText"
+            (click)="toggleGuideBubble($event)"
+            [title]="(guideBubbleExpanded ? 'readerCollapseTeacherText' : 'readerExpandTeacherText') | translate">
+            {{ guideBubbleText }}
+          </button>
+        </div>
+      </div>
+
+      <div
+        *ngIf="twoPageMode && !expandedFocusElement && companionPage as sidePage"
+        class="page-frame companion-page-frame"
+        [class.delete-mode]="deleteMode"
+        (click)="onPageFrameClick($event)"
+        (pointerdown)="onSwipeAreaPointerDown($event)"
+        (pointerup)="onPageFramePointerUp($event); onSwipeAreaPointerUp($event)"
+        [attr.data-page-id]="sidePage.id"
+        [style.aspect-ratio]="pageAspectRatio"
+        [style.background]="sidePage.backgroundColor || '#ffffff'">
+        <div class="page-content">
+          <app-pdf-page-canvas
+            *ngIf="sidePage.type === 'pdf' && getPagePdfUrl(sidePage)"
+            [sourceUrl]="getPagePdfUrl(sidePage)"
+            [pageNumber]="sidePage.pdfPage || 1"
+            [renderScale]="1.35">
+          </app-pdf-page-canvas>
+
+          <div *ngIf="sidePage.type === 'blank'" class="blank-page"></div>
+
+          <canvas
+            #drawingCanvas
+            class="drawing-layer"
+            [attr.data-page-id]="sidePage.id"
+            [class.active]="drawMode"
+            (pointerdown)="startDrawing($event)"
+            (pointermove)="continueDrawing($event)"
+            (pointerup)="stopDrawing()"
+            (pointercancel)="stopDrawing()"
+            (pointerleave)="stopDrawing()">
+          </canvas>
+
+          <div
+            *ngIf="textMode"
+            class="text-placement-layer"
+            (pointerdown)="placeTextFromEvent($event)">
+          </div>
+
+        <div
+          *ngIf="isTextInputForPage(sidePage)"
+          class="reader-text-editor"
+          [attr.data-page-id]="sidePage.id"
+          [style.left.%]="activeTextInput!.x * 100"
+          [style.top.%]="activeTextInput!.y * 100"
+          [style.width.%]="activeTextInput!.width * 100"
+          [style.height.%]="activeTextInput!.height * 100"
+          [style.color]="activeTextInput!.color">
+          <button
+            type="button"
+            class="reader-text-move"
+            (pointerdown)="startTextEditorDrag($event)"
+            [title]="'readerMoveText' | translate"
+            [attr.aria-label]="'readerMoveText' | translate"></button>
+          <textarea
+            class="reader-inline-text-input"
+            [(ngModel)]="activeTextInput!.value"
+            (keydown.enter)="commitTextInputFromKey($event)"
+            (keydown.escape)="cancelTextInput()"
+            (blur)="commitTextInput($event)"
+            [attr.placeholder]="'textOptional' | translate"></textarea>
+        </div>
+
+        <div
+          *ngFor="let text of getPageTexts(sidePage)"
+          class="temporary-text"
+          [class.selected]="isTextSelected(sidePage, text)"
+          [class.delete-target]="deleteMode"
+          [attr.data-page-id]="sidePage.id"
+          [attr.data-text-id]="text.id"
+          [style.left.%]="text.x * 100"
+          [style.top.%]="text.y * 100"
+          [style.width.%]="(text.width || 0.22) * 100"
+          [style.height.%]="(text.height || 0.055) * 100"
+          [style.color]="text.color || '#111827'"
+          [style.--text-scale]="text.height || 0.055"
+          (click)="selectTextAnnotation(sidePage, text, $event)"
+          (pointerdown)="startSavedTextDrag(sidePage, text, $event)">
+          <img *ngIf="text.imageDataUrl" [src]="text.imageDataUrl" alt="">
+          <span *ngIf="!text.imageDataUrl">{{ text.text }}</span>
+        </div>
+
+        <svg
+          *ngFor="let stroke of getPageStrokes(sidePage)"
+          class="stroke-delete-target"
+          [style.display]="deleteMode ? 'block' : 'none'"
+          viewBox="0 0 1 1"
+          preserveAspectRatio="none"
+          (click)="deleteStrokeAnnotation(sidePage, stroke, $event)"
+          [attr.title]="'readerDeleteDrawing' | translate"
+          [attr.aria-label]="'readerDeleteDrawing' | translate">
+          <polyline
+            [attr.points]="getStrokePolylinePoints(stroke)"
+            fill="none"
+            vector-effect="non-scaling-stroke"></polyline>
+        </svg>
+
+          <div
+            *ngFor="let element of sidePage.elements; trackBy: trackByElementId"
+            class="reader-element companion-element"
+            [class.focus-element]="element.type === 'focus'"
+            [class.focus-visible]="focusMode && element.type === 'focus'"
+            [class.dot-element]="element.type === 'guideDot'"
+            [class.dot-disabled]="element.type === 'guideDot' && !isGuideDotEnabled(element, sidePage)"
+            [class.dot-playing]="element.id === playingGuideElementId"
+            [class.dot-paused]="element.id === pausedGuideElementId"
+            [class.note-element]="element.type === 'note'"
+            [class.game-element]="element.type === 'game'"
+            [class.hidden-focus]="element.type === 'focus' && !focusMode"
+            [style.left.%]="element.x * 100"
+            [style.top.%]="element.y * 100"
+            [style.width.%]="(element.width || 0.08) * 100"
+            [style.height.%]="(element.height || 0.08) * 100"
+            (click)="activateElement(element, $event, sidePage)">
+            <img *ngIf="element.type === 'image'" [src]="getElementAssetUrl(element)" [alt]="getElementText(element)">
+            <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
+            <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+            <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+            <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+            <span *ngIf="element.type === 'note'" class="note-marker">
+              <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <button
+        *ngIf="!expandedFocusElement"
+        type="button"
+        class="reader-page-edge next"
+        (click)="$event.stopPropagation(); nextPage()"
+        [disabled]="currentPageIndex >= visiblePages.length - 1"
+        [title]="'nextPage' | translate"
+        [attr.aria-label]="'nextPage' | translate">&gt;</button>
+    </div>
+  </main>
+
+  <img
+    class="owl-guide"
+    [class.teaching]="owlTeaching"
+    [src]="owlImage"
+    [style.left.px]="owlX"
+    [style.top.px]="owlY"
+    [attr.alt]="'readerTeacherOwl' | translate">
+
+  <div class="reader-popover-backdrop" *ngIf="expandedElement" (click)="closeExpandedElement()">
+    <div class="reader-popover" (click)="$event.stopPropagation()">
+      <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>
+      <video
+        #expandedVideo
+        *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)"
+        [src]="getElementMediaUrl(expandedElement)"
+        controls
+        autoplay>
+      </video>
+      <div class="video-seek-controls" *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)">
+        <button type="button" (click)="skipExpandedVideo(-10)">-10s</button>
+        <button type="button" (click)="skipExpandedVideo(10)">+10s</button>
+      </div>
+      <iframe
+        *ngIf="expandedElement.type === 'video' && isYouTubeVideo(expandedElement)"
+        [src]="getYouTubeEmbedUrl(expandedElement)"
+        [attr.title]="'readerYoutubeVideo' | translate"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+      <div class="youtube-fallback" *ngIf="expandedElement.type === 'video' && isYouTubeVideo(expandedElement)">
+        <button type="button" (click)="openVideoExternally(expandedElement)">
+          {{ 'readerWatchYoutube' | translate }}
+        </button>
+      </div>
+      <div class="expanded-note" *ngIf="expandedElement.type === 'note'">
+        {{ getElementText(expandedElement) }}
+      </div>
+    </div>
+  </div>
+
+  <div class="reader-popover-backdrop legacy-focus-popover" *ngIf="false">
+    <div class="focus-zoom-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="popover-close" (click)="closeExpandedFocus()" [attr.aria-label]="'close' | translate">X</button>
+      <div class="focus-zoom-frame" [style.aspect-ratio]="pageAspectRatio">
+        <div class="focus-zoom-content" [style.transform]="getFocusZoomTransform(expandedFocusElement)">
+          <app-pdf-page-canvas
+            *ngIf="expandedFocusPage?.type === 'pdf' && getPagePdfUrl(expandedFocusPage!)"
+            [sourceUrl]="getPagePdfUrl(expandedFocusPage!)"
+            [pageNumber]="expandedFocusPage?.pdfPage || 1"
+            [renderScale]="2">
+          </app-pdf-page-canvas>
+          <div *ngIf="expandedFocusPage?.type === 'blank'" class="blank-page"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

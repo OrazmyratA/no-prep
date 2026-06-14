@@ -122,8 +122,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   rpsTeamSpinEmojis: string[] = ['✊', '✊'];
   rpsClash = false;
   rpsClashResult: 'left-wins' | 'right-wins' | 'tie' | null = null;
-  private rpsSpinIntervals: any[] = [];
-  private rpsSpinTimeouts: any[] = [];
+  private rpsSpinIntervals: (any | null)[] = [null, null];
   private rpsMiscTimers: any[] = [];
 
   private colors = [
@@ -1076,6 +1075,7 @@ private dropGiftAndRevealReward(teamId = 0) {
   }
 
   private startRpsPhase() {
+    this.clearRpsTimers();
     this.rpsPhase = true;
     this.rpsClash = false;
     this.rpsClashResult = null;
@@ -1088,8 +1088,7 @@ private dropGiftAndRevealReward(teamId = 0) {
 
   canRpsChoose(teamIndex: number): boolean {
     return this.rpsPhase && !this.rpsClash &&
-      this.rpsTeamChoices[teamIndex] === null &&
-      !this.rpsTeamSpinning[teamIndex];
+      this.rpsTeamChoices[teamIndex] === null;
   }
 
   onRpsTouchChoose(event: TouchEvent, teamIndex: number) {
@@ -1097,46 +1096,66 @@ private dropGiftAndRevealReward(teamId = 0) {
     this.onRpsChoose(teamIndex);
   }
 
+  // First click starts a continuous spin; second click locks whatever
+  // rock/paper/scissors icon is showing at that moment.
   onRpsChoose(teamIndex: number) {
     if (!this.canRpsChoose(teamIndex)) return;
-    this.playSound(this.cashSound);
 
+    if (this.rpsTeamSpinning[teamIndex]) {
+      this.lockRpsChoice(teamIndex);
+      return;
+    }
+
+    this.startRpsSpin(teamIndex);
+  }
+
+  private startRpsSpin(teamIndex: number) {
+    this.playSound(this.cashSound);
     this.rpsTeamSpinning[teamIndex] = true;
+    this.rpsTeamSpinEmojis[teamIndex] = this.rpsEmojiMap[this.rpsRandomChoice()];
     this.cdr.detectChanges();
 
     const interval = setInterval(() => {
       this.rpsTeamSpinEmojis[teamIndex] = this.rpsEmojiMap[this.rpsRandomChoice()];
       this.cdr.detectChanges();
-    }, 100);
-    this.rpsSpinIntervals.push(interval);
+    }, 70);
+    this.rpsSpinIntervals[teamIndex] = interval;
+  }
 
-    const timeout = setTimeout(() => {
-      this.rpsSpinTimeouts = this.rpsSpinTimeouts.filter(t => t !== timeout);
+  private lockRpsChoice(teamIndex: number) {
+    this.playSound(this.cashSound);
+
+    const interval = this.rpsSpinIntervals[teamIndex];
+    if (interval) {
       clearInterval(interval);
-      this.rpsSpinIntervals = this.rpsSpinIntervals.filter(i => i !== interval);
+      this.rpsSpinIntervals[teamIndex] = null;
+    }
 
-      const choice = this.rpsRandomChoice();
-      this.rpsTeamChoices[teamIndex] = choice;
-      this.rpsTeamSpinEmojis[teamIndex] = this.rpsEmojiMap[choice];
-      this.rpsTeamSpinning[teamIndex] = false;
+    this.rpsTeamSpinning[teamIndex] = false;
+    const choice = this.normaliseRpsChoice(this.rpsTeamSpinEmojis[teamIndex]);
+    this.rpsTeamChoices[teamIndex] = choice;
+    this.rpsTeamSpinEmojis[teamIndex] = this.rpsEmojiMap[choice];
+    this.cdr.detectChanges();
+
+    if (this.rpsTeamChoices[0] !== null && this.rpsTeamChoices[1] !== null) {
+      this.rpsClash = true;
       this.cdr.detectChanges();
-
-      if (this.rpsTeamChoices[0] !== null && this.rpsTeamChoices[1] !== null) {
-        this.rpsClash = true;
-        this.cdr.detectChanges();
-        // Let approach animation play (400ms), then determine winner
-        const t = setTimeout(() => {
-          this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
-          this.resolveRps();
-        }, 400);
-        this.rpsMiscTimers.push(t);
-      }
-    }, 600);
-    this.rpsSpinTimeouts.push(timeout);
+      // Let approach animation play (400ms), then determine winner
+      const t = setTimeout(() => {
+        this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
+        this.resolveRps();
+      }, 400);
+      this.rpsMiscTimers.push(t);
+    }
   }
 
   private rpsRandomChoice(): RPSChoice {
     return this.rpsChoiceList[Math.floor(Math.random() * 3)];
+  }
+
+  private normaliseRpsChoice(emoji: string): RPSChoice {
+    return this.rpsChoiceList.find(choice => this.rpsEmojiMap[choice] === emoji)
+      ?? this.rpsRandomChoice();
   }
 
   private resolveRps() {
@@ -1176,11 +1195,9 @@ private dropGiftAndRevealReward(teamId = 0) {
   }
 
   private clearRpsTimers() {
-    this.rpsSpinIntervals.forEach(i => clearInterval(i));
-    this.rpsSpinTimeouts.forEach(t => clearTimeout(t));
+    this.rpsSpinIntervals.forEach(i => i && clearInterval(i));
     this.rpsMiscTimers.forEach(t => clearTimeout(t));
-    this.rpsSpinIntervals = [];
-    this.rpsSpinTimeouts = [];
+    this.rpsSpinIntervals = [null, null];
     this.rpsMiscTimers = [];
   }
 

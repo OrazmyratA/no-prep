@@ -1,7 +1,7 @@
 <div class="game-board cup-clash-board" [style.--cup-size]="cupSize">
   <!-- RPS modal — who goes first? -->
   <div *ngIf="showRpsModal" class="rps-overlay">
-    <div class="rps-modal">
+    <div class="rps-modal" *ngIf="!rpsClash">
 
       <!-- Floating decorative icons -->
       <div class="rps-banner">
@@ -24,7 +24,7 @@
           <button
             class="rps-btn rps-btn-red"
             (click)="rpsChoose('red')"
-            [disabled]="rpsRedSpinning || !!rpsRedChoice || !!rpsWinner">
+            [disabled]="!!rpsRedChoice || !!rpsWinner">
             🔴
           </button>
           <span class="rps-label rps-label-red">{{ 'cupClashRed' | translate }}</span>
@@ -41,7 +41,7 @@
           <button
             class="rps-btn rps-btn-blue"
             (click)="rpsChoose('blue')"
-            [disabled]="rpsBlueSpinning || !!rpsBlueChoice || !!rpsWinner">
+            [disabled]="!!rpsBlueChoice || !!rpsWinner">
             🔵
           </button>
           <span class="rps-label rps-label-blue">{{ 'cupClashBlue' | translate }}</span>
@@ -54,6 +54,25 @@
       <div class="rps-result rps-result-red" *ngIf="rpsWinner === 'red'">🔴 Red team goes first!</div>
       <div class="rps-result rps-result-blue" *ngIf="rpsWinner === 'blue'">🔵 Blue team goes first!</div>
 
+    </div>
+
+    <!-- Clash arena: winner's icon beats the loser's -->
+    <div *ngIf="rpsClash" class="rps-clash-arena">
+      <div class="clash-emoji clash-left"
+           [class.winner]="rpsClashResult === 'red-wins'"
+           [class.loser]="rpsClashResult === 'blue-wins'"
+           [class.tied]="rpsClashResult === 'tie'">
+        {{ rpsRedDisplay }}
+      </div>
+      <div class="clash-center-area">
+        <div *ngIf="rpsClashResult === 'tie'" class="clash-tie-label">🤝</div>
+      </div>
+      <div class="clash-emoji clash-right"
+           [class.winner]="rpsClashResult === 'blue-wins'"
+           [class.loser]="rpsClashResult === 'red-wins'"
+           [class.tied]="rpsClashResult === 'tie'">
+        {{ rpsBlueDisplay }}
+      </div>
     </div>
   </div>
 

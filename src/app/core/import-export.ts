@@ -22,6 +22,12 @@ export interface ExportData {
   topics: ExportTopic[];
 }
 
+const MAX_IMPORT_JSON_BYTES = 250 * 1024 * 1024;
+const MAX_IMPORT_TOPICS = 500;
+const MAX_IMPORT_ITEMS_PER_TOPIC = 2000;
+const MAX_IMPORT_MEDIA_BYTES = 25 * 1024 * 1024;
+const ALLOWED_IMPORT_MEDIA_TYPES = /^(image|audio)\//i;
+
 @Injectable({ providedIn: 'root' })
 export class ImportExportService {
   private readonly currentVersion = '1.0';
@@ -103,6 +109,10 @@ const exportItems = await Promise.all(items.map(async item => ({
   // ---------- IMPORT ----------
   async importFromFile(file: File): Promise<void> {
     if (!file) return;
+    if (file.size > MAX_IMPORT_JSON_BYTES) {
+      showAppNotification('Topic import file is too large', 'error');
+      return;
+    }
     const content = await file.text();
     let data: ExportData;
     try {
@@ -116,34 +126,40 @@ const exportItems = await Promise.all(items.map(async item => ({
       return;
     }
     let importedCount = 0;
-    for (const expTopic of data.topics) {
-      // Create new topic with fresh timestamps (use current time)
-      const topicId = await db.topics.add({
-        name: expTopic.name,
-        createdAt: new Date(),   // fresh timestamp
-        updatedAt: new Date()
-      });
-      // Convert items
-      const items = await Promise.all(expTopic.items.map(async (expItem, idx) => {
-      let image: Blob | undefined;
-      if (expItem.image) {
-        image = await this.base64ToBlob(expItem.image);
+    try {
+      for (const expTopic of data.topics) {
+        // Create new topic with fresh timestamps (use current time)
+        const topicId = await db.topics.add({
+          name: expTopic.name,
+          createdAt: new Date(),   // fresh timestamp
+          updatedAt: new Date()
+        });
+        // Convert items
+        const items = await Promise.all(expTopic.items.map(async (expItem, idx) => {
+        let image: Blob | undefined;
+        if (expItem.image) {
+          image = await this.dataUrlToBlob(expItem.image);
+        }
+        let audio: Blob | undefined;
+        if (expItem.audio) {
+          audio = await this.dataUrlToBlob(expItem.audio);
+        }
+        return {
+          topicId,
+          text: expItem.text,
+          image,
+          audio,          // <-- new
+          order: expItem.order ?? idx,
+          createdAt: new Date()
+        };
+        }));
+        await db.items.bulkAdd(items);
+        importedCount++;
       }
-      let audio: Blob | undefined;
-      if (expItem.audio) {
-        audio = await this.base64ToBlob(expItem.audio);
-      }
-      return {
-        topicId,
-        text: expItem.text,
-        image,
-        audio,          // <-- new
-        order: expItem.order ?? idx,
-        createdAt: new Date()
-      };
-      }));
-      await db.items.bulkAdd(items);
-      importedCount++;
+    } catch (error) {
+      console.debug('Topic import media conversion failed:', error);
+      showAppNotification('Topic import media is not valid', 'error');
+      return;
     }
         await this.db.refresh();   // <-- add this line
     showAppNotification(`Successfully imported ${importedCount} topic(s).`, 'success');
@@ -153,14 +169,44 @@ const exportItems = await Promise.all(items.map(async item => ({
     if (!data || typeof data !== 'object') return false;
     if (data.version !== this.currentVersion) return false; // could allow older versions with migration later
     if (!Array.isArray(data.topics)) return false;
+    if (data.topics.length > MAX_IMPORT_TOPICS) return false;
     for (const topic of data.topics) {
       if (!topic.name || typeof topic.name !== 'string') return false;
       if (!Array.isArray(topic.items)) return false;
+      if (topic.items.length > MAX_IMPORT_ITEMS_PER_TOPIC) return false;
+      for (const item of topic.items) {
+        if (item?.image && !this.isAllowedDataUrl(item.image, 'image')) return false;
+        if (item?.audio && !this.isAllowedDataUrl(item.audio, 'audio')) return false;
+      }
     }
     return true;
   }
 
-  private base64ToBlob(base64: string): Promise<Blob> {
-    return fetch(base64).then(res => res.blob());
+  private async dataUrlToBlob(dataUrl: string): Promise<Blob> {
+    if (!this.isAllowedDataUrl(dataUrl)) {
+      throw new Error('Unsupported media data.');
+    }
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    if (blob.size > MAX_IMPORT_MEDIA_BYTES) {
+      throw new Error('Imported media is too large.');
+    }
+    return blob;
+  }
+
+  private isAllowedDataUrl(value: unknown, expectedKind?: 'image' | 'audio'): boolean {
+    if (typeof value !== 'string' || value.length > MAX_IMPORT_MEDIA_BYTES * 2) return false;
+    const match = value.match(/^data:([^;,]+)(?:;[^,]*)?;base64,([A-Za-z0-9+/=\s]+)$/i);
+    if (!match) return false;
+    const mimeType = match[1].toLowerCase();
+    if (expectedKind && !mimeType.startsWith(`${expectedKind}/`)) return false;
+    if (!ALLOWED_IMPORT_MEDIA_TYPES.test(mimeType)) return false;
+    return this.decodedBase64Length(match[2]) <= MAX_IMPORT_MEDIA_BYTES;
+  }
+
+  private decodedBase64Length(base64: string): number {
+    const normalized = String(base64 || '').replace(/\s/g, '');
+    const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
+    return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
   }
 }

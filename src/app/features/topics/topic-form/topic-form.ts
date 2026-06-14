@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { DbService } from '../../../core/db';
 import { db, Item } from '../../../core/db.model'; // import db and Item
 import { LicenseService } from '../../../core/license';
+import { BookLibraryService } from '../../../core/book-library';
 
 @Component({
   selector: 'app-topic-form',
@@ -12,19 +13,23 @@ import { LicenseService } from '../../../core/license';
   templateUrl: './topic-form.html',
   styleUrls: ['./topic-form.css']
 })
-export class TopicFormComponent implements OnInit {
+export class TopicFormComponent implements OnInit, AfterViewInit {
   topicForm: FormGroup;
   isEdit = false;
   topicId?: number;
+  returnToBookId = '';
+  returnToBookElementId = '';
   private expandedImageItems = new WeakSet<AbstractControl>();
   private expandedAudioItems = new WeakSet<AbstractControl>();
+  @ViewChild('topicNameInput') topicNameInput?: ElementRef<HTMLInputElement>;
 
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
     private dbService: DbService,
-    public licenseService: LicenseService
+    public licenseService: LicenseService,
+    private bookLibrary: BookLibraryService
   ) {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
@@ -44,6 +49,8 @@ export class TopicFormComponent implements OnInit {
     }
 
     const id = this.route.snapshot.paramMap.get('id');
+    this.returnToBookId = this.route.snapshot.queryParamMap.get('returnToBookId') || '';
+    this.returnToBookElementId = this.route.snapshot.queryParamMap.get('bookElementId') || '';
     if (id) {
       this.isEdit = true;
       this.topicId = +id;
@@ -51,6 +58,10 @@ export class TopicFormComponent implements OnInit {
     } else {
       this.addItem();
     }
+  }
+
+  ngAfterViewInit(): void {
+    window.setTimeout(() => this.topicNameInput?.nativeElement.focus(), 60);
   }
 
 async loadTopic(id: number) {
@@ -163,19 +174,78 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       audio: item.audio   
     })));
 
+    let savedTopicId = this.topicId || 0;
     if (this.isEdit && this.topicId) {
       await this.dbService.updateTopic(this.topicId, name);
       await this.dbService.updateItems(this.topicId, items);
-      this.router.navigate(['/topics', this.topicId, 'activities']);
+      savedTopicId = this.topicId;
     } else {
       const newId = await this.dbService.createTopic(name);
       await this.dbService.addItems(newId, items);
-      this.router.navigate(['/topics', newId, 'activities']);
+      savedTopicId = newId;
     }
+
+    if (this.returnToBookId && this.returnToBookElementId) {
+      const snapshotResult = await this.saveTopicInsideBook(savedTopicId);
+      this.router.navigate(['/books', this.returnToBookId, 'edit'], {
+        queryParams: {
+          linkedElementId: this.returnToBookElementId,
+          linkedTopicId: savedTopicId,
+          linkedTopicTitle: name,
+          bookTopicPath: snapshotResult?.relativePath || null
+        }
+      });
+      return;
+    }
+
+    this.router.navigate(['/topics', savedTopicId, 'activities']);
   }
 
   goBack() {
+    if (this.returnToBookId) {
+      this.router.navigate(['/books', this.returnToBookId, 'edit']);
+      return;
+    }
     this.router.navigate(['/topics']);
+  }
+
+  private async saveTopicInsideBook(topicId: number) {
+    if (!this.returnToBookId || !this.returnToBookElementId || !this.bookLibrary.isAvailable) {
+      return null;
+    }
+
+    const topic = await db.topics.get(topicId);
+    const items = await db.items.where('topicId').equals(topicId).sortBy('order');
+    if (!topic) {
+      return null;
+    }
+
+    const snapshot = {
+      version: '1.0',
+      topic: {
+        id: topic.id,
+        name: topic.name,
+        createdAt: topic.createdAt,
+        updatedAt: topic.updatedAt
+      },
+      items: await Promise.all(items.map(async (item) => ({
+        text: item.text || '',
+        image: item.image ? await this.blobToDataUrl(item.image) : null,
+        audio: item.audio ? await this.blobToDataUrl(item.audio) : null,
+        order: item.order
+      })))
+    };
+
+    return this.bookLibrary.saveTopicSnapshot(this.returnToBookId, this.returnToBookElementId, snapshot);
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error('Could not read media.'));
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.readAsDataURL(blob);
+    });
   }
 
 }

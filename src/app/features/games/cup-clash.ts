@@ -45,11 +45,16 @@ export class CupClashComponent implements OnInit, OnDestroy {
   rpsBlueChoice: string | null = null;
   rpsWinner: 'red' | 'blue' | null = null;
   rpsIsTie = false;
+  rpsClash = false;
+  rpsClashResult: 'red-wins' | 'blue-wins' | 'tie' | null = null;
   rpsRedDisplay = '?';
   rpsBlueDisplay = '?';
   rpsRedSpinning = false;
   rpsBlueSpinning = false;
   private rpsResetTimer: any = null;
+  private rpsRedSpinTimer: any = null;
+  private rpsBlueSpinTimer: any = null;
+  private readonly rpsIcons = ['\u270A', '\u270C\uFE0F', '\u270B'];
 
   // Layout
   readonly gridColumns = 6;
@@ -171,6 +176,7 @@ async ngOnInit() {
 
     this.clearDiceAnimationTimer();
     if (this.rpsResetTimer) clearTimeout(this.rpsResetTimer);
+    this.clearRpsSpinTimers();
   }
 
 
@@ -199,6 +205,7 @@ async ngOnInit() {
     this.deferUpdateItemsScrollState();
     // Show RPS to decide who goes first
     if (this.rpsResetTimer) { clearTimeout(this.rpsResetTimer); this.rpsResetTimer = null; }
+    this.clearRpsSpinTimers();
     this.showRpsModal = true;
     this.rpsRedChoice = null;
     this.rpsBlueChoice = null;
@@ -208,6 +215,8 @@ async ngOnInit() {
     this.rpsBlueDisplay = '?';
     this.rpsRedSpinning = false;
     this.rpsBlueSpinning = false;
+    this.rpsClash = false;
+    this.rpsClashResult = null;
     this.cdr.detectChanges();
   }
 
@@ -353,65 +362,108 @@ async ngOnInit() {
 
   rpsChoose(team: 'red' | 'blue') {
     if (this.rpsWinner) return;
-    if (team === 'red' && (this.rpsRedSpinning || !!this.rpsRedChoice)) return;
-    if (team === 'blue' && (this.rpsBlueSpinning || !!this.rpsBlueChoice)) return;
-    this.playSound(this.cashSound);
-    const icons = ['✊', '✌️', '✋'];
-    const finalChoice = icons[Math.floor(Math.random() * icons.length)];
-    this.spinAndReveal(team, finalChoice);
+    if (team === 'red' && this.rpsRedChoice) return;
+    if (team === 'blue' && this.rpsBlueChoice) return;
+
+    if ((team === 'red' && this.rpsRedSpinning) || (team === 'blue' && this.rpsBlueSpinning)) {
+      this.lockRpsChoice(team);
+      return;
+    }
+
+    this.startRpsSpin(team);
   }
 
-  private spinAndReveal(team: 'red' | 'blue', finalChoice: string) {
-    const icons = ['✊', '✌️', '✋'];
-    // Fast → slow frame timings (casino slot machine feel)
-    const frameTiming = [55, 60, 65, 72, 82, 98, 120, 150, 192, 248, 310];
-    let frameIndex = 0;
+  private startRpsSpin(team: 'red' | 'blue') {
+    this.playSound(this.cashSound);
 
-    if (team === 'red') this.rpsRedSpinning = true;
-    else this.rpsBlueSpinning = true;
-    this.cdr.detectChanges();
-
-    const spin = () => {
-      if (frameIndex < frameTiming.length) {
-        const icon = icons[Math.floor(Math.random() * icons.length)];
-        if (team === 'red') this.rpsRedDisplay = icon;
-        else this.rpsBlueDisplay = icon;
+    if (team === 'red') {
+      this.rpsRedSpinning = true;
+      this.rpsRedDisplay = this.randomRpsIcon();
+      this.rpsRedSpinTimer = setInterval(() => {
+        this.rpsRedDisplay = this.randomRpsIcon();
         this.cdr.detectChanges();
-        setTimeout(spin, frameTiming[frameIndex++]);
-      } else {
-        // Land on final choice with a small extra pause for drama
-        setTimeout(() => {
-          if (team === 'red') {
-            this.rpsRedDisplay = finalChoice;
-            this.rpsRedSpinning = false;
-            this.rpsRedChoice = finalChoice;
-          } else {
-            this.rpsBlueDisplay = finalChoice;
-            this.rpsBlueSpinning = false;
-            this.rpsBlueChoice = finalChoice;
-          }
-          this.cdr.detectChanges();
-          if (this.rpsRedChoice && this.rpsBlueChoice) {
-            this.resolveRps();
-          }
-        }, 160);
-      }
-    };
-    setTimeout(spin, frameTiming[frameIndex++]);
+      }, 70);
+    } else {
+      this.rpsBlueSpinning = true;
+      this.rpsBlueDisplay = this.randomRpsIcon();
+      this.rpsBlueSpinTimer = setInterval(() => {
+        this.rpsBlueDisplay = this.randomRpsIcon();
+        this.cdr.detectChanges();
+      }, 70);
+    }
+
+    this.cdr.detectChanges();
+  }
+
+  private lockRpsChoice(team: 'red' | 'blue') {
+    this.playSound(this.cashSound);
+
+    if (team === 'red') {
+      this.clearRpsSpin('red');
+      this.rpsRedSpinning = false;
+      this.rpsRedChoice = this.normaliseRpsChoice(this.rpsRedDisplay);
+      this.rpsRedDisplay = this.rpsRedChoice;
+    } else {
+      this.clearRpsSpin('blue');
+      this.rpsBlueSpinning = false;
+      this.rpsBlueChoice = this.normaliseRpsChoice(this.rpsBlueDisplay);
+      this.rpsBlueDisplay = this.rpsBlueChoice;
+    }
+
+    this.cdr.detectChanges();
+    if (this.rpsRedChoice && this.rpsBlueChoice) {
+      this.rpsClash = true;
+      this.cdr.detectChanges();
+      // Let the approach animation play before revealing the outcome
+      this.rpsResetTimer = setTimeout(() => this.resolveRps(), 400);
+    }
+  }
+
+  private randomRpsIcon(): string {
+    return this.rpsIcons[Math.floor(Math.random() * this.rpsIcons.length)];
+  }
+
+  private normaliseRpsChoice(display: string): string {
+    return this.rpsIcons.includes(display) ? display : this.randomRpsIcon();
+  }
+
+  private clearRpsSpin(team: 'red' | 'blue') {
+    if (team === 'red' && this.rpsRedSpinTimer) {
+      clearInterval(this.rpsRedSpinTimer);
+      this.rpsRedSpinTimer = null;
+    } else if (team === 'blue' && this.rpsBlueSpinTimer) {
+      clearInterval(this.rpsBlueSpinTimer);
+      this.rpsBlueSpinTimer = null;
+    }
+  }
+
+  private clearRpsSpinTimers() {
+    this.clearRpsSpin('red');
+    this.clearRpsSpin('blue');
   }
 
   private resolveRps() {
     const r = this.rpsRedChoice!;
     const b = this.rpsBlueChoice!;
     if (r === b) {
-      this.rpsIsTie = true;
+      this.rpsClashResult = 'tie';
+      this.cdr.detectChanges();
       this.rpsResetTimer = setTimeout(() => {
-        this.rpsIsTie = false;
-        this.rpsRedChoice = null;
-        this.rpsBlueChoice = null;
-        this.rpsRedDisplay = '?';
-        this.rpsBlueDisplay = '?';
+        this.rpsClash = false;
+        this.rpsClashResult = null;
+        this.rpsIsTie = true;
         this.cdr.detectChanges();
+        this.rpsResetTimer = setTimeout(() => {
+          this.rpsIsTie = false;
+          this.rpsRedChoice = null;
+          this.rpsBlueChoice = null;
+          this.rpsRedDisplay = '?';
+          this.rpsBlueDisplay = '?';
+          this.rpsRedSpinning = false;
+          this.rpsBlueSpinning = false;
+          this.clearRpsSpinTimers();
+          this.cdr.detectChanges();
+        }, 1600);
       }, 1600);
       return;
     }
@@ -419,16 +471,25 @@ async ngOnInit() {
       (r === '✊' && b === '✌️') ||
       (r === '✌️' && b === '✋') ||
       (r === '✋' && b === '✊');
-    this.rpsWinner = redWins ? 'red' : 'blue';
+    this.rpsClashResult = redWins ? 'red-wins' : 'blue-wins';
     this.cdr.detectChanges();
     this.rpsResetTimer = setTimeout(() => {
-      this.currentTurn = this.rpsWinner!;
-      this.showRpsModal = false;
-      this.rpsRedChoice = null;
-      this.rpsBlueChoice = null;
-      this.rpsWinner = null;
+      this.rpsClash = false;
+      this.rpsClashResult = null;
+      this.rpsWinner = redWins ? 'red' : 'blue';
       this.cdr.detectChanges();
-    }, 2000);
+      this.rpsResetTimer = setTimeout(() => {
+        this.currentTurn = this.rpsWinner!;
+        this.showRpsModal = false;
+        this.rpsRedChoice = null;
+        this.rpsBlueChoice = null;
+        this.rpsWinner = null;
+        this.rpsRedSpinning = false;
+        this.rpsBlueSpinning = false;
+        this.clearRpsSpinTimers();
+        this.cdr.detectChanges();
+      }, 2000);
+    }, 1300);
   }
 
   scrollItems(direction: 'left' | 'right') {

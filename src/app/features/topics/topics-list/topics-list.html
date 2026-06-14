@@ -2,14 +2,34 @@
   <div class="topics-shell mx-auto w-full max-w-screen-xl">
     <!-- Header -->
 <div class="topics-header flex flex-wrap lg:flex-nowrap justify-between items-center gap-3 mb-8">
-  <!-- Left side: title + search -->
-  <div class="flex items-center gap-4 min-w-0 flex-1">
+  <!-- Left side: title + category switch + search -->
+  <div class="topics-header-left flex items-center gap-4 min-w-0 flex-1">
     <h1 class="text-4xl font-extrabold leading-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 whitespace-nowrap">
-      {{ 'myTopics' | translate }}
+      NoPrep
     </h1>
+    <div class="library-category-switch" role="tablist" aria-label="Library category">
+      <button
+        type="button"
+        role="tab"
+        class="library-category-btn"
+        [class.active]="isTopicsCategory"
+        [attr.aria-selected]="isTopicsCategory"
+        (click)="setLibraryCategory('topics')">
+        {{ 'menuTopics' | translate }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="library-category-btn"
+        [class.active]="isBooksCategory"
+        [attr.aria-selected]="isBooksCategory"
+        (click)="setLibraryCategory('books')">
+        {{ 'bookSwitcherBooksTitle' | translate }}
+      </button>
+    </div>
     <div class="search-input-wrapper flex-shrink min-w-0">
       <span class="search-icon" aria-hidden="true">🔍</span>
-      <input id="topic-search" type="text" class="search-input w-full" [placeholder]="'searchTopics' | translate" [formControl]="searchControl">
+      <input id="topic-search" type="text" class="search-input w-full" [placeholder]="'searchPlaceholder' | translate" [formControl]="searchControl">
       <button *ngIf="searchControl.value" type="button" class="search-clear" (click)="clearSearch()" [attr.aria-label]="'clearSearch' | translate">
         ✕
       </button>
@@ -17,19 +37,20 @@
   </div>
 
   <!-- Right side: action buttons + flags -->
-  <div class="topics-actions flex flex-wrap lg:flex-nowrap items-center gap-2">
+  <div class="topics-actions flex flex-wrap lg:flex-nowrap items-center gap-2" [class.books-mode]="isBooksCategory">
     <!-- Combine button -->
-    <button (click)="canCombineTopics ? combineSelectedTopics() : (!fullAccess ? licenseService.requestReopen() : null)"
+    <button (click)="combineSelectedLibrary()"
             class="topics-action-btn bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
-            [class.btn-disabled]="!canCombineTopics">
+            [class.btn-disabled]="!canCombineLibrary">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path>
       </svg>
-      {{ 'combine' | translate }}{{ selectedTopicIds.size ? ' (' + selectedTopicIds.size + ')' : '' }}
+      {{ 'combine' | translate }}{{ selectedLibraryCount ? ' (' + selectedLibraryCount + ')' : '' }}
     </button>
 
     <!-- Export All -->
-    <button (click)="fullAccess ? exportAllTopics() : licenseService.requestReopen()"
+    <button *ngIf="isTopicsCategory"
+            (click)="fullAccess ? exportAllTopics() : licenseService.requestReopen()"
             class="topics-action-btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!fullAccess">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,9 +59,21 @@
       {{ 'exportAll' | translate }}
     </button>
 
+    <!-- Create Book -->
+    <button *ngIf="isBooksCategory"
+            (click)="fullAccess ? createBook() : licenseService.requestReopen()"
+            class="topics-action-btn book-create-action bg-sky-600 hover:bg-sky-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            [class.btn-disabled]="!fullAccess">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h9a3 3 0 013 3v17H8a3 3 0 01-3-3V4z"/>
+      </svg>
+      {{ 'createBook' | translate }}
+    </button>
+
     <!-- Import -->
-    <button (click)="fullAccess ? importTopics() : licenseService.requestReopen()"
-            class="topics-action-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+    <button (click)="fullAccess ? importLibrary() : licenseService.requestReopen()"
+            class="topics-action-btn library-import-action bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!fullAccess">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
@@ -49,7 +82,8 @@
     </button>
 
     <!-- New Topic -->
-    <button (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()"
+    <button *ngIf="isTopicsCategory"
+            (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()"
             class="topics-action-btn bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!fullAccess">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +93,7 @@
     </button>
 
 <!-- Language dropdown -->
-<div class="relative language-dropdown">
+<div class="relative language-dropdown library-language-action">
   <button (click)="toggleLanguageMenu()"
           class="w-10 h-10 rounded-full bg-gray-200 hover:bg-gray-300 transition flex items-center justify-center shadow-md"
           aria-label="Select language">
@@ -79,7 +113,7 @@
 
     <button
       type="button"
-      class="theme-trigger"
+      class="theme-trigger library-theme-action"
       (click)="openThemePicker()"
       aria-label="Choose background"
       title="Choose background">
@@ -90,12 +124,125 @@
 
     <app-theme-picker *ngIf="showThemePicker" (closed)="closeThemePicker()"></app-theme-picker>
 
+    <div class="book-progress-panel" *ngIf="bookProgress$ | async as progress">
+      <div class="book-progress-row">
+        <strong>{{ progress.phase }}</strong>
+        <span>{{ formatBookSize(progress.transferredBytes) }} / {{ formatBookSize(progress.totalBytes) }}</span>
+      </div>
+      <div class="book-progress-track">
+        <div class="book-progress-fill" [style.width.%]="progress.totalBytes ? (progress.transferredBytes / progress.totalBytes) * 100 : 0"></div>
+      </div>
+    </div>
+
+    <!-- Books Section -->
+    <ng-container *ngIf="isBooksCategory">
+    <section class="library-section">
+      <div *ngIf="visibleBooks.length; else noBooks"
+           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div *ngFor="let book of visibleBooks; trackBy: trackByBookId"
+             (click)="onBookClick(book.id)"
+             class="topics-card book-card group relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+             [class.topic-armed]="isBookArmed(book.id)"
+             [class.book-locked]="!fullAccess">
+          <div *ngIf="!fullAccess" class="book-lock-badge" title="{{ 'license.title' | translate }}">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 10-8 0v2"/>
+            </svg>
+          </div>
+          <label class="absolute top-3 left-3 flex items-center bg-white/90 p-2 rounded-full shadow z-20"
+                 (click)="$event.stopPropagation()">
+            <input #bookSelectionCheckbox
+                   type="checkbox"
+                   class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                   [checked]="selectedBookIds.has(book.id)"
+                   (change)="toggleBookSelection(book.id, bookSelectionCheckbox.checked)">
+          </label>
+
+          <div class="topic-actions absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+            <button (click)="$event.stopPropagation(); fullAccess ? copyBook(book.id) : licenseService.requestReopen()"
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-full shadow-md"
+                    [class.btn-disabled]="!fullAccess"
+                    title="Copy book">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7H5a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-4"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5h11a2 2 0 012 2v11a2 2 0 01-2 2H8a2 2 0 01-2-2V7a2 2 0 012-2z"/>
+              </svg>
+            </button>
+            <button (click)="$event.stopPropagation(); fullAccess ? editBook(book.id) : licenseService.requestReopen()"
+                    class="bg-yellow-400 hover:bg-yellow-500 text-white p-2 rounded-full shadow-md"
+                    [class.btn-disabled]="!fullAccess"
+                    title="Edit book">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+              </svg>
+            </button>
+            <button (click)="$event.stopPropagation(); fullAccess ? exportBook(book.id) : licenseService.requestReopen()"
+                    class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-md"
+                    [class.btn-disabled]="!fullAccess"
+                    title="Export book folder to Desktop">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+            </button>
+            <button (click)="$event.stopPropagation(); fullAccess ? deleteBook(book.id) : licenseService.requestReopen()"
+                    class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md"
+                    [class.btn-disabled]="!fullAccess"
+                    title="Delete book">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="book-cover" [class.has-cover]="!!book.coverPath">
+            <img *ngIf="book.coverPath" [src]="getBookCoverUrl(book)" [alt]="book.title + ' cover'" loading="lazy">
+            <span *ngIf="!book.coverPath">Book</span>
+          </div>
+
+          <div class="cursor-pointer p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                {{ book.title.charAt(0).toUpperCase() }}
+              </div>
+              <span class="text-xs text-gray-400">{{ book.updatedAt | date:'mediumDate' }}</span>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">{{ book.title }}</h3>
+            <div class="book-meta">
+              <span>{{ book.pageCount }} pages</span>
+              <span>{{ formatBookSize(book.sizeBytes) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #noBooks>
+        <div class="empty-books text-center py-20">
+          <div class="empty-books-icon" aria-hidden="true">
+            <span class="book-stack book-stack-back"></span>
+            <span class="book-stack book-stack-middle"></span>
+            <span class="book-stack book-stack-front"></span>
+          </div>
+          <h2 class="text-2xl font-semibold text-gray-600 mb-2">{{ 'noBooksYet' | translate }}</h2>
+          <p class="text-gray-500 mb-6">{{ 'createFirstBook' | translate }}</p>
+          <button
+            type="button"
+            (click)="fullAccess ? createBook() : licenseService.requestReopen()"
+            class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105"
+            [class.btn-disabled]="!fullAccess">
+            + {{ 'createBook' | translate }}
+          </button>
+        </div>
+      </ng-template>
+    </section>
+    </ng-container>
+
     <!-- Topics Grid -->
+    <ng-container *ngIf="isTopicsCategory">
     <div *ngIf="(filteredTopics$ | async)?.length; else emptyOrNoMatch"
          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       <div *ngFor="let topic of filteredTopics$ | async; trackBy: trackByTopicId"
            (click)="onTopicClick(topic.id!)"
-           class="topics-card group relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+           class="topics-card topic-card group relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
            [class.topic-armed]="isTopicArmed(topic.id!)">
         <label class="absolute top-3 left-3 flex items-center bg-white/90 p-2 rounded-full shadow z-20"
                (click)="$event.stopPropagation()">
@@ -143,6 +290,11 @@
           </button>
         </div>
 
+        <div class="topic-cover" [class.has-cover]="!!getTopicCoverUrl(topic)">
+          <img *ngIf="getTopicCoverUrl(topic)" [src]="getTopicCoverUrl(topic)" [alt]="topic.name + ' cover'">
+          <span *ngIf="!getTopicCoverUrl(topic)">{{ topic.name.charAt(0).toUpperCase() }}</span>
+        </div>
+
         <!-- Topic Content -->
         <div class="cursor-pointer p-6">
           <div class="flex items-center justify-between mb-4">
@@ -183,6 +335,7 @@
         </button>
       </div>
     </ng-template>
+    </ng-container>
   </div>
 
   <!-- Platform Footer -->

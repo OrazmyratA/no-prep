@@ -1,0 +1,5 @@
+<div class="pdf-canvas-host">
+  <canvas #canvas [class.ready]="canvasReady"></canvas>
+  <div class="pdf-status loading" *ngIf="loading && !canvasReady">{{ 'pdfRenderingPage' | translate }}</div>
+  <div class="pdf-status error" *ngIf="error && !canvasReady">{{ error }}</div>
+</div>
