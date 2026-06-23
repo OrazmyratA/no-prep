@@ -9,6 +9,7 @@ import { ConfirmationService } from './confirmation';
 import { TranslatePipe } from './translate-pipe';
 import { AudioUploaderComponent } from './audio-uploader';
 import { ThemePickerComponent } from './theme-picker';
+import { SwipeDirective } from './swipe.directive';
 
 @NgModule({
   declarations: [
@@ -18,7 +19,7 @@ import { ThemePickerComponent } from './theme-picker';
     ConfirmationModalComponent,
     AudioUploaderComponent,
     ThemePickerComponent,
-    
+    SwipeDirective,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -31,7 +32,8 @@ import { ThemePickerComponent } from './theme-picker';
     SandwichMenuComponent,
     SettingsPanelComponent,
     AudioUploaderComponent,
-    ThemePickerComponent
+    ThemePickerComponent,
+    SwipeDirective
   ]
 })
 export class SharedModule { }

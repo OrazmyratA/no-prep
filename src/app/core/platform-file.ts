@@ -9,6 +9,13 @@ interface PublicDownloadsPlugin {
     filename: string;
     content: string;
     mimeType: string;
+    relativePath?: string;
+  }): Promise<{ uri: string }>;
+  saveBase64File(options: {
+    filename: string;
+    data: string;
+    mimeType: string;
+    relativePath?: string;
   }): Promise<{ uri: string }>;
 }
 
@@ -23,7 +30,7 @@ export class PlatformFileService {
     const json = JSON.stringify(data, null, 2);
 
     if (this.platform.isAndroid()) {
-      await this.saveAndroidJson(json, safeFilename);
+      await this.saveAndroidText(json, safeFilename, 'application/json');
       return;
     }
 
@@ -35,11 +42,74 @@ export class PlatformFileService {
     this.downloadBrowserJson(json, safeFilename);
   }
 
-  private async saveAndroidJson(json: string, filename: string): Promise<void> {
-    await PublicDownloads.saveTextFile({
+  async saveTextToDownloads(
+    content: string,
+    filename: string,
+    mimeType = 'text/plain',
+    relativePath?: string
+  ): Promise<string | null> {
+    const safeFilename = this.sanitizeFilename(filename);
+    if (this.platform.isAndroid()) {
+      const result = await this.saveAndroidText(content, safeFilename, mimeType, relativePath);
+      return result.uri;
+    }
+
+    if (this.platform.isNative()) {
+      const result = await Filesystem.writeFile({
+        path: safeFilename,
+        data: content,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8
+      });
+      return result.uri;
+    }
+
+    this.downloadBrowserText(content, safeFilename, mimeType);
+    return null;
+  }
+
+  async saveDataUrlToDownloads(dataUrl: string, filename: string, relativePath?: string): Promise<string | null> {
+    const safeFilename = this.sanitizeFilename(filename);
+    const parsed = this.parseDataUrl(dataUrl);
+    if (!parsed) {
+      throw new Error('Invalid data URL.');
+    }
+
+    if (this.platform.isAndroid()) {
+      const result = await PublicDownloads.saveBase64File({
+        filename: safeFilename,
+        data: parsed.base64,
+        mimeType: parsed.mimeType,
+        relativePath
+      });
+      return result.uri;
+    }
+
+    if (this.platform.isNative()) {
+      const result = await Filesystem.writeFile({
+        path: safeFilename,
+        data: parsed.base64,
+        directory: Directory.Cache
+      });
+      await Share.share({ title: safeFilename, url: result.uri });
+      return result.uri;
+    }
+
+    this.downloadBrowserDataUrl(dataUrl, safeFilename);
+    return null;
+  }
+
+  private async saveAndroidText(
+    content: string,
+    filename: string,
+    mimeType: string,
+    relativePath?: string
+  ): Promise<{ uri: string }> {
+    return PublicDownloads.saveTextFile({
       filename,
-      content: json,
-      mimeType: 'application/json'
+      content,
+      mimeType,
+      relativePath
     });
   }
 
@@ -60,19 +130,41 @@ export class PlatformFileService {
   }
 
   private downloadBrowserJson(json: string, filename: string): void {
-    const blob = new Blob([json], { type: 'application/json' });
+    this.downloadBrowserText(json, filename, 'application/json');
+  }
+
+  private downloadBrowserText(content: string, filename: string, mimeType: string): void {
+    const blob = new Blob([content], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
+    this.downloadBrowserDataUrl(url, filename, true);
+  }
+
+  private downloadBrowserDataUrl(url: string, filename: string, revokeUrl = false): void {
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    if (revokeUrl) {
+      window.URL.revokeObjectURL(url);
+    }
   }
 
   private sanitizeFilename(filename: string): string {
     const normalized = filename.trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
     return normalized || `no-prep-export-${Date.now()}.json`;
+  }
+
+  private parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
+    const match = /^data:([^;,]+)?(;base64)?,(.*)$/i.exec(dataUrl);
+    if (!match) return null;
+    const mimeType = match[1] || 'application/octet-stream';
+    const isBase64 = !!match[2];
+    const payload = match[3] || '';
+    return {
+      mimeType,
+      base64: isBase64 ? payload : btoa(decodeURIComponent(payload))
+    };
   }
 }

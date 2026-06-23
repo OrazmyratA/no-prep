@@ -329,13 +329,13 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     let options: ReturnType<typeof this.buildOptions> = null;
     if (!this.forceSimpleMode) {
       options = this.reverseMode
-        ? this.buildImageOptions(item)
-        : this.buildOptions(correctAnswer);
+        ? this.buildOptions(correctAnswer)
+        : this.buildImageOptions(item);
     }
     this.simpleConfirmMode = this.forceSimpleMode || options === null;
     this.currentQuiz = {
       team,
-      itemImageSrc: this.reverseMode ? null : itemImageSrc,
+      itemImageSrc: this.reverseMode ? itemImageSrc : null,
       options: options ?? [],
       correctAnswer,
       locked: false

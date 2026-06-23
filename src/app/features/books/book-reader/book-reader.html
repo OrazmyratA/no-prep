@@ -66,6 +66,7 @@
             type="button"
             class="color-dot"
             [class.selected]="color === penColor"
+            [class.light-dot]="color === '#ffffff'"
             [style.background]="color"
             (click)="penColor = color"
             [title]="'readerPenColor' | translate: {color: color}">
@@ -73,6 +74,31 @@
           <label class="pen-size" [title]="'readerPenSize' | translate">
             <span>{{ 'sizeLabel' | translate }}</span>
             <input type="range" min="2" max="18" step="1" [(ngModel)]="penWidth">
+          </label>
+        </div>
+        <button
+          type="button"
+          class="tool-btn icon-reader-btn"
+          [class.active]="highlighterMode"
+          (click)="toggleHighlighterMode()"
+          title="Highlighter"
+          aria-label="Highlighter">
+          <img src="assets/images/book/highlighter.png" alt="">
+        </button>
+        <div class="pen-controls highlighter-controls" *ngIf="highlighterMode">
+          <button
+            *ngFor="let color of highlighterColors"
+            type="button"
+            class="color-dot highlighter-color-dot"
+            [class.selected]="color === highlighterColor"
+            [class.light-dot]="color === '#ffffff'"
+            [style.background]="color"
+            (click)="highlighterColor = color"
+            [title]="color">
+          </button>
+          <label class="pen-size" title="Highlighter size">
+            <span>{{ 'sizeLabel' | translate }}</span>
+            <input type="range" min="16" max="48" step="2" [(ngModel)]="highlighterWidth">
           </label>
         </div>
         <button type="button" class="tool-btn icon-reader-btn" [class.active]="textMode" [title]="'addTextLabel' | translate" (click)="addTemporaryText()" [attr.aria-label]="'addTextLabel' | translate">
@@ -128,48 +154,55 @@
     </div>
 
     <div class="reader-actions reader-toolbar-right">
-      <div class="guide-audio-controls" *ngIf="guideAudioVisible" [attr.aria-label]="'readerTeacherAudioControls' | translate">
-        <button
-          type="button"
-          class="tool-btn guide-play-btn"
-          (click)="toggleGuideAudioPlayback()"
-          [attr.aria-label]="(guideAudioPaused ? 'readerPlayTeacherAudio' : 'readerPauseTeacherAudio') | translate"
-          [title]="(guideAudioPaused ? 'playLabel' : 'pauseLabel') | translate">
-          <img [src]="guideAudioPaused ? 'assets/images/book/play.png' : 'assets/images/book/pause.png'" alt="">
-        </button>
-        <input
-          class="guide-progress"
-          type="range"
-          min="0"
-          [max]="guideAudioDuration || 1"
-          step="0.01"
-          [ngModel]="guideAudioCurrentTime"
-          (input)="seekGuideAudio($event)"
-          [attr.aria-label]="'readerTeacherAudioProgress' | translate">
-        <input
-          class="guide-volume"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          [ngModel]="guideAudioVolume"
-          (input)="setGuideAudioVolume($event)"
-          [attr.aria-label]="'readerTeacherAudioVolume' | translate">
-        <button
-          type="button"
-          class="tool-btn icon-reader-btn speed-btn guide-speed-btn"
-          [title]="'readerTeacherAudioSpeed' | translate"
-          [attr.aria-label]="'readerTeacherAudioSpeed' | translate"
-          (click)="cycleSpeechSpeed()">
-          <img src="assets/images/book/speed.png" alt="">
-          <span>{{ currentSpeechSpeed }}x</span>
-        </button>
-      </div>
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn check-answer-btn"
+        (click)="checkVisibleTaskAnswers()"
+        [disabled]="!hasVisibleTasks()"
+        title="Check answers"
+        aria-label="Check answers">
+        <img src="assets/images/book/check.png" alt="">
+      </button>
       <button type="button" class="tool-btn icon-reader-btn" (click)="edit()" [title]="'editTopic' | translate" [attr.aria-label]="'editTopic' | translate">
         <img src="assets/images/book/edit.png" alt="">
       </button>
     </div>
   </header>
+
+  <div
+    class="task-response-dock"
+    *ngIf="activeTaskElement && shouldUseTaskDock(activeTaskElement)">
+    <input
+      type="text"
+      [ngModel]="getTaskResponseValue(activeTaskElement)"
+      (ngModelChange)="updateActiveTaskResponse($event)"
+      (keydown.enter)="closeTaskInput()"
+      aria-label="Student answer">
+    <button type="button" (click)="closeTaskInput()" title="Close answer input" aria-label="Close answer input">
+      <img src="assets/images/book/close.png" alt="">
+    </button>
+  </div>
+
+  <div
+    class="word-bank-overlay"
+    *ngIf="activeTaskElement?.type === 'choiceTask'"
+    (click)="closeTaskInput()">
+    <section class="word-bank-dialog" (click)="$event.stopPropagation()" aria-label="Choose an answer">
+      <div class="word-bank-options">
+        <button
+          *ngFor="let option of getActiveWordBankOptions()"
+          type="button"
+          class="word-bank-option"
+          [class.selected]="isActiveChoiceOptionSelected(option.id)"
+          (click)="selectActiveChoiceOption(option.id)">
+          {{ option.text }}
+        </button>
+      </div>
+      <button type="button" class="word-bank-close" (click)="closeTaskInput()" title="Close word bank" aria-label="Close word bank">
+        <img src="assets/images/book/close.png" alt="">
+      </button>
+    </section>
+  </div>
 
   <main #readerStage class="reader-stage" [class.drawer-open]="pageDrawerOpen">
     <aside class="reader-page-drawer" *ngIf="pageDrawerOpen" (scroll)="onReaderThumbScroll($event)">
@@ -226,8 +259,11 @@
         [class.delete-mode]="deleteMode"
         [class.focus-crop-page]="isFocusCropActive(currentPage)"
         (click)="onPageFrameClick($event)"
-        (pointerdown)="onSwipeAreaPointerDown($event)"
-        (pointerup)="onPageFramePointerUp($event); onSwipeAreaPointerUp($event)"
+        appSwipe
+        [swipeDisabled]="isInkModeActive() || textMode"
+        (swipeLeft)="nextPage()"
+        (swipeRight)="previousPage()"
+        (pointerup)="onPageFramePointerUp($event)"
         [attr.data-page-id]="currentPage.id"
         [style.aspect-ratio]="getPageAspectRatioFor(currentPage)"
         [style.background]="currentPage.backgroundColor || '#ffffff'">
@@ -246,7 +282,7 @@
             #drawingCanvas
             class="drawing-layer"
             [attr.data-page-id]="currentPage.id"
-            [class.active]="drawMode"
+            [class.active]="isInkModeActive()"
             (pointerdown)="startDrawing($event)"
             (pointermove)="continueDrawing($event)"
             (pointerup)="stopDrawing()"
@@ -318,6 +354,19 @@
             vector-effect="non-scaling-stroke"></polyline>
         </svg>
 
+        <svg class="match-line-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+          <line
+            *ngFor="let line of getMatchLines(currentPage); trackBy: trackByMatchLine"
+            [class.correct]="line.result === 'correct'"
+            [class.incorrect]="line.result === 'incorrect'"
+            [attr.x1]="getMatchEndpointCenterX(line.source)"
+            [attr.y1]="getMatchEndpointCenterY(line.source)"
+            [attr.x2]="getMatchEndpointCenterX(line.target)"
+            [attr.y2]="getMatchEndpointCenterY(line.target)"
+            vector-effect="non-scaling-stroke">
+          </line>
+        </svg>
+
         <div
           *ngFor="let element of currentPage.elements; trackBy: trackByElementId"
           class="reader-element"
@@ -325,10 +374,24 @@
           [class.focus-visible]="focusMode && element.type === 'focus'"
           [class.dot-element]="element.type === 'guideDot'"
           [class.dot-disabled]="element.type === 'guideDot' && !isGuideDotEnabled(element, currentPage)"
-          [class.dot-playing]="element.id === playingGuideElementId"
           [class.dot-paused]="element.id === pausedGuideElementId"
           [class.note-element]="element.type === 'note'"
+          [class.answer-key-element]="element.type === 'answerKey'"
           [class.game-element]="element.type === 'game'"
+          [class.text-task-element]="element.type === 'textTask'"
+          [class.choice-task-element]="element.type === 'choiceTask'"
+          [class.circle-task-element]="element.type === 'circleTask'"
+          [class.circle-selected]="element.type === 'circleTask' && isCircleTaskSelected(element)"
+          [class.match-task-element]="element.type === 'matchTask'"
+          [class.match-side-a]="element.type === 'matchTask' && element.data['side'] === 'A'"
+          [class.match-side-b]="element.type === 'matchTask' && element.data['side'] === 'B'"
+          [class.match-selected]="element.type === 'matchTask' && isMatchEndpointSelected(element, currentPage)"
+          [class.match-available]="element.type === 'matchTask' && isMatchEndpointAvailable(element, currentPage)"
+          [class.match-connected]="element.type === 'matchTask' && isMatchEndpointConnected(element, currentPage)"
+          [class.match-missing]="element.type === 'matchTask' && isMatchEndpointMissing(element, currentPage)"
+          [class.task-active]="(element.type === 'textTask' || element.type === 'choiceTask') && activeTaskElement?.id === element.id"
+          [class.task-correct]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && getTaskResult(element) === 'correct'"
+          [class.task-incorrect]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && getTaskResult(element) === 'incorrect'"
           [class.hidden-focus]="element.type === 'focus' && !focusMode"
           [style.left.%]="element.x * 100"
           [style.top.%]="element.y * 100"
@@ -343,6 +406,50 @@
           <span *ngIf="element.type === 'note'" class="note-marker">
             <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
           </span>
+          <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
+          <input
+            *ngIf="element.type === 'textTask' && !shouldUseTaskDock(element)"
+            type="text"
+            class="text-task-input"
+            [ngModel]="getTaskResponseValue(element)"
+            (focus)="activateTextTask(element, currentPage, $event)"
+            (click)="$event.stopPropagation()"
+            (ngModelChange)="updateTaskResponse(element, currentPage, $event)"
+            aria-label="Student answer">
+          <button
+            *ngIf="element.type === 'textTask' && shouldUseTaskDock(element)"
+            type="button"
+            class="text-task-tap"
+            (click)="activateTextTask(element, currentPage, $event)"
+            aria-label="Enter student answer">
+            <span>{{ getTaskResponseValue(element) }}</span>
+          </button>
+          <button
+            *ngIf="element.type === 'choiceTask'"
+            type="button"
+            class="choice-task-tap"
+            (click)="activateChoiceTask(element, currentPage, $event)"
+            aria-label="Choose a word-bank answer">
+            <span>{{ getChoiceTaskDisplayValue(element, currentPage) }}</span>
+          </button>
+          <button
+            *ngIf="element.type === 'circleTask'"
+            type="button"
+            class="circle-task-tap"
+            [attr.aria-pressed]="isCircleTaskSelected(element)"
+            (click)="toggleCircleTask(element, currentPage, $event)"
+            aria-label="Select circling answer">
+          </button>
+          <button
+            *ngIf="element.type === 'matchTask'"
+            type="button"
+            class="match-task-tap"
+            [attr.aria-pressed]="isMatchEndpointSelected(element, currentPage)"
+            [attr.aria-disabled]="!isMatchEndpointAvailable(element, currentPage)"
+            (click)="activateMatchEndpoint(element, currentPage, $event)"
+            aria-label="Select matching endpoint">
+            <span></span>
+          </button>
         </div>
 
           <button
@@ -362,8 +469,11 @@
         class="page-frame companion-page-frame"
         [class.delete-mode]="deleteMode"
         (click)="onPageFrameClick($event)"
-        (pointerdown)="onSwipeAreaPointerDown($event)"
-        (pointerup)="onPageFramePointerUp($event); onSwipeAreaPointerUp($event)"
+        appSwipe
+        [swipeDisabled]="isInkModeActive() || textMode"
+        (swipeLeft)="nextPage()"
+        (swipeRight)="previousPage()"
+        (pointerup)="onPageFramePointerUp($event)"
         [attr.data-page-id]="sidePage.id"
         [style.aspect-ratio]="pageAspectRatio"
         [style.background]="sidePage.backgroundColor || '#ffffff'">
@@ -381,7 +491,7 @@
             #drawingCanvas
             class="drawing-layer"
             [attr.data-page-id]="sidePage.id"
-            [class.active]="drawMode"
+            [class.active]="isInkModeActive()"
             (pointerdown)="startDrawing($event)"
             (pointermove)="continueDrawing($event)"
             (pointerup)="stopDrawing()"
@@ -453,6 +563,19 @@
             vector-effect="non-scaling-stroke"></polyline>
         </svg>
 
+        <svg class="match-line-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+          <line
+            *ngFor="let line of getMatchLines(sidePage); trackBy: trackByMatchLine"
+            [class.correct]="line.result === 'correct'"
+            [class.incorrect]="line.result === 'incorrect'"
+            [attr.x1]="getMatchEndpointCenterX(line.source)"
+            [attr.y1]="getMatchEndpointCenterY(line.source)"
+            [attr.x2]="getMatchEndpointCenterX(line.target)"
+            [attr.y2]="getMatchEndpointCenterY(line.target)"
+            vector-effect="non-scaling-stroke">
+          </line>
+        </svg>
+
           <div
             *ngFor="let element of sidePage.elements; trackBy: trackByElementId"
             class="reader-element companion-element"
@@ -460,10 +583,24 @@
             [class.focus-visible]="focusMode && element.type === 'focus'"
             [class.dot-element]="element.type === 'guideDot'"
             [class.dot-disabled]="element.type === 'guideDot' && !isGuideDotEnabled(element, sidePage)"
-            [class.dot-playing]="element.id === playingGuideElementId"
             [class.dot-paused]="element.id === pausedGuideElementId"
             [class.note-element]="element.type === 'note'"
+            [class.answer-key-element]="element.type === 'answerKey'"
             [class.game-element]="element.type === 'game'"
+            [class.text-task-element]="element.type === 'textTask'"
+            [class.choice-task-element]="element.type === 'choiceTask'"
+            [class.circle-task-element]="element.type === 'circleTask'"
+            [class.circle-selected]="element.type === 'circleTask' && isCircleTaskSelected(element)"
+            [class.match-task-element]="element.type === 'matchTask'"
+            [class.match-side-a]="element.type === 'matchTask' && element.data['side'] === 'A'"
+            [class.match-side-b]="element.type === 'matchTask' && element.data['side'] === 'B'"
+            [class.match-selected]="element.type === 'matchTask' && isMatchEndpointSelected(element, sidePage)"
+            [class.match-available]="element.type === 'matchTask' && isMatchEndpointAvailable(element, sidePage)"
+            [class.match-connected]="element.type === 'matchTask' && isMatchEndpointConnected(element, sidePage)"
+            [class.match-missing]="element.type === 'matchTask' && isMatchEndpointMissing(element, sidePage)"
+            [class.task-active]="(element.type === 'textTask' || element.type === 'choiceTask') && activeTaskElement?.id === element.id"
+            [class.task-correct]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && getTaskResult(element) === 'correct'"
+            [class.task-incorrect]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && getTaskResult(element) === 'incorrect'"
             [class.hidden-focus]="element.type === 'focus' && !focusMode"
             [style.left.%]="element.x * 100"
             [style.top.%]="element.y * 100"
@@ -478,6 +615,50 @@
             <span *ngIf="element.type === 'note'" class="note-marker">
               <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
             </span>
+            <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
+            <input
+              *ngIf="element.type === 'textTask' && !shouldUseTaskDock(element)"
+              type="text"
+              class="text-task-input"
+              [ngModel]="getTaskResponseValue(element)"
+              (focus)="activateTextTask(element, sidePage, $event)"
+              (click)="$event.stopPropagation()"
+              (ngModelChange)="updateTaskResponse(element, sidePage, $event)"
+              aria-label="Student answer">
+            <button
+              *ngIf="element.type === 'textTask' && shouldUseTaskDock(element)"
+              type="button"
+              class="text-task-tap"
+              (click)="activateTextTask(element, sidePage, $event)"
+              aria-label="Enter student answer">
+              <span>{{ getTaskResponseValue(element) }}</span>
+            </button>
+            <button
+              *ngIf="element.type === 'choiceTask'"
+              type="button"
+              class="choice-task-tap"
+              (click)="activateChoiceTask(element, sidePage, $event)"
+              aria-label="Choose a word-bank answer">
+              <span>{{ getChoiceTaskDisplayValue(element, sidePage) }}</span>
+            </button>
+            <button
+              *ngIf="element.type === 'circleTask'"
+              type="button"
+              class="circle-task-tap"
+              [attr.aria-pressed]="isCircleTaskSelected(element)"
+              (click)="toggleCircleTask(element, sidePage, $event)"
+              aria-label="Select circling answer">
+            </button>
+            <button
+              *ngIf="element.type === 'matchTask'"
+              type="button"
+              class="match-task-tap"
+              [attr.aria-pressed]="isMatchEndpointSelected(element, sidePage)"
+              [attr.aria-disabled]="!isMatchEndpointAvailable(element, sidePage)"
+              (click)="activateMatchEndpoint(element, sidePage, $event)"
+              aria-label="Select matching endpoint">
+              <span></span>
+            </button>
           </div>
         </div>
       </div>
@@ -494,6 +675,15 @@
     </div>
   </main>
 
+  <div
+    class="guide-pin-media-overlay"
+    [class.visible]="guideOverlayVisible"
+    *ngIf="guideOverlayImageUrl">
+    <div #guidePinMediaFrame class="guide-pin-media-frame">
+      <img [src]="guideOverlayImageUrl" alt="">
+    </div>
+  </div>
+
   <img
     class="owl-guide"
     [class.teaching]="owlTeaching"
@@ -502,28 +692,54 @@
     [style.top.px]="owlY"
     [attr.alt]="'readerTeacherOwl' | translate">
 
-  <div class="reader-popover-backdrop" *ngIf="expandedElement" (click)="closeExpandedElement()">
-    <div class="reader-popover" (click)="$event.stopPropagation()">
+  <div class="reader-popover-backdrop" [class.video-fullscreen]="videoFullscreen" *ngIf="expandedElement" (click)="closeExpandedElement()">
+    <div class="reader-popover" [class.video-fullscreen]="videoFullscreen" (click)="$event.stopPropagation()">
       <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>
-      <video
-        #expandedVideo
-        *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)"
-        [src]="getElementMediaUrl(expandedElement)"
-        controls
-        autoplay>
-      </video>
+      <div
+        #expandedVideoFrame
+        class="expanded-video-frame"
+        [class.video-fullscreen]="videoFullscreen"
+        *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)">
+        <video
+          #expandedVideo
+          [src]="getElementMediaUrl(expandedElement)"
+          controls
+          autoplay>
+        </video>
+        <button
+          type="button"
+          class="expanded-video-fullscreen"
+          (click)="toggleExpandedVideoFullscreen($event)"
+          [attr.title]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)"
+          [attr.aria-label]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)">
+          <img src="assets/images/maximize.png" alt="">
+        </button>
+      </div>
       <div class="video-seek-controls" *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)">
         <button type="button" (click)="skipExpandedVideo(-10)">-10s</button>
         <button type="button" (click)="skipExpandedVideo(10)">+10s</button>
       </div>
-      <iframe
-        *ngIf="expandedElement.type === 'video' && isYouTubeVideo(expandedElement)"
-        [src]="getYouTubeEmbedUrl(expandedElement)"
-        [attr.title]="'readerYoutubeVideo' | translate"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        referrerpolicy="strict-origin-when-cross-origin"
-        allowfullscreen>
-      </iframe>
+      <div
+        #expandedVideoFrame
+        class="expanded-video-frame youtube-video-frame"
+        [class.video-fullscreen]="videoFullscreen"
+        *ngIf="expandedElement.type === 'video' && isYouTubeVideo(expandedElement)">
+        <iframe
+          [src]="getYouTubeEmbedUrl(expandedElement)"
+          [attr.title]="'readerYoutubeVideo' | translate"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen>
+        </iframe>
+        <button
+          type="button"
+          class="expanded-video-fullscreen"
+          (click)="toggleExpandedVideoFullscreen($event)"
+          [attr.title]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)"
+          [attr.aria-label]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)">
+          <img src="assets/images/maximize.png" alt="">
+        </button>
+      </div>
       <div class="youtube-fallback" *ngIf="expandedElement.type === 'video' && isYouTubeVideo(expandedElement)">
         <button type="button" (click)="openVideoExternally(expandedElement)">
           {{ 'readerWatchYoutube' | translate }}
@@ -531,6 +747,12 @@
       </div>
       <div class="expanded-note" *ngIf="expandedElement.type === 'note'">
         {{ getElementText(expandedElement) }}
+      </div>
+      <div class="expanded-answer-key" *ngIf="expandedElement.type === 'answerKey'">
+        <img *ngIf="expandedElement.data['src']; else answerKeyUnavailable" [src]="getElementAssetUrl(expandedElement)" alt="Answer key">
+        <ng-template #answerKeyUnavailable>
+          <div class="answer-key-unavailable">Answer image unavailable.</div>
+        </ng-template>
       </div>
     </div>
   </div>
@@ -551,4 +773,32 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="guide-audio-controls" *ngIf="guideAudioVisible" [attr.aria-label]="'readerTeacherAudioControls' | translate">
+  <button
+    type="button"
+    class="guide-play-btn"
+    (click)="toggleGuideAudioPlayback()"
+    [attr.aria-label]="(guideAudioPaused ? 'readerPlayTeacherAudio' : 'readerPauseTeacherAudio') | translate"
+    [title]="(guideAudioPaused ? 'playLabel' : 'pauseLabel') | translate">
+    <img [src]="guideAudioPaused ? 'assets/images/book/play.png' : 'assets/images/book/pause.png'" alt="">
+  </button>
+  <input
+    class="guide-progress"
+    type="range"
+    min="0"
+    [max]="guideAudioDuration || 1"
+    step="0.01"
+    [ngModel]="guideAudioCurrentTime"
+    (input)="seekGuideAudio($event)"
+    [attr.aria-label]="'readerTeacherAudioProgress' | translate">
+  <button
+    type="button"
+    class="guide-speed-btn"
+    [title]="'readerTeacherAudioSpeed' | translate"
+    [attr.aria-label]="'readerTeacherAudioSpeed' | translate"
+    (click)="cycleSpeechSpeed()">
+    {{ currentSpeechSpeed }}x
+  </button>
 </div>

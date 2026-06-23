@@ -149,14 +149,13 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
 
-    this.route.queryParams.subscribe(params => {
-      const rawTeamCount = Number(params['teamCount'] ?? 1);
-      this.teamCount = Math.min(4, Math.max(1, Number.isFinite(rawTeamCount) ? rawTeamCount : 1));
-      this.teamMode = this.teamCount > 1;
-      this.reverseMode = params['reverseMode'] === 'true';
-      this.forceSimpleMode = params['simpleMode'] !== 'false';
-      this.initGame();
-    });
+    const params = this.route.snapshot.queryParams;
+    const rawTeamCount = Number(params['teamCount'] ?? 1);
+    this.teamCount = Math.min(4, Math.max(1, Number.isFinite(rawTeamCount) ? rawTeamCount : 1));
+    this.teamMode = this.teamCount > 1;
+    this.reverseMode = params['reverseMode'] === 'true';
+    this.forceSimpleMode = params['simpleMode'] !== 'false';
+    this.initGame();
   }
 
   private async initGame() {
@@ -669,9 +668,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         this.dropGiftAndRevealReward(team.id);
       }
     } else if (this.teamCount === 2 && this.teamMode) {
+      this.rpsWinnerTeamId = null;
       const t = setTimeout(() => {
         this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
-        this.rpsWinnerTeamId = null;
         this.startRpsPhase();
       }, 1000);
       this.rpsMiscTimers.push(t);
@@ -708,7 +707,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onConfirmOk(teamId = 0) {
     const team = this.getTeam(teamId);
-    if (!team?.showQuiz || !team.selectedItem) return;
+    if (!team?.showQuiz || !team.selectedItem || team.quizClosing) return;
     const index = team.selectedBalloonIndex;
     this.playSound(this.correctSound);
     team.quizClosing = true;
@@ -725,7 +724,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onConfirmOops(teamId = 0) {
     const team = this.getTeam(teamId);
-    if (!team?.showQuiz) return;
+    if (!team?.showQuiz || team.quizClosing) return;
     this.playSound(this.buzzSound);
     team.quizClosing = true;
     team.quizOverlayVisible = false;

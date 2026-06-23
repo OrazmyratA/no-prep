@@ -216,7 +216,9 @@ private createTeamButtons() {
     btn.style.transition = 'transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease';
     btn.style.overflow = 'hidden';
 
-    btn.innerHTML = `<span>${team.score}</span>`;
+    const scoreSpan = document.createElement('span');
+    scoreSpan.textContent = String(team.score);
+    btn.appendChild(scoreSpan);
     btn.setAttribute('data-team-id', String(team.id));
 
     if (this.teams.length === 1) {
@@ -248,7 +250,12 @@ private updateTeamButtons() {
     const teamId = Number(btn.getAttribute('data-team-id'));
     const team = this.teams.find(t => t.id === teamId);
     if (team) {
-      btn.innerHTML = `<span style="font-size:1.7rem; font-weight:900;">${team.score}</span>`;
+      btn.textContent = '';
+      const scoreSpan = document.createElement('span');
+      scoreSpan.style.fontSize = '1.7rem';
+      scoreSpan.style.fontWeight = '900';
+      scoreSpan.textContent = String(team.score);
+      btn.appendChild(scoreSpan);
       btn.setAttribute('aria-label', `${team.name} ${team.score}`);
     }
     btn.classList.remove('team-btn-active');
@@ -427,7 +434,7 @@ private updateTeamButtons() {
   }
 
   onConfirmOk() {
-    if (!this.showQuiz || !this.currentItem) return;
+    if (!this.showQuiz || !this.currentItem || this.quizAnswerLocked) return;
     this.quizAnswerLocked = true;
     this.transitionLock = true;
     this.collectSound?.play();

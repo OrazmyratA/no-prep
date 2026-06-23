@@ -5,8 +5,10 @@ import {
   Input,
   Output,
   EventEmitter,
+  OnChanges,
   OnInit,
   OnDestroy,
+  SimpleChanges,
   ViewChild
 } from '@angular/core';
 import { FormBuilder, FormControl } from '@angular/forms';
@@ -23,8 +25,15 @@ import { PlatformService } from '../core/platform';
   standalone: false,
   templateUrl: `./image-uploader.html`
 })
-export class ImageUploaderComponent implements OnInit, OnDestroy {
+export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   @Input() initialImage: Blob | null = null;
+  @Input() contextKey = '';
+  @Input() maxSizeMB = 0.2;
+  @Input() maxWidthOrHeight = 800;
+  @Input() compressionFileType = 'image/jpeg';
+  @Input() textImageWidth = 640;
+  @Input() textImageHeight = 360;
+  @Input() compactSearchPanel = false;
   @Output() imageSelected = new EventEmitter<Blob | null>();
 
   private static activePasteTarget: ImageUploaderComponent | null = null;
@@ -123,6 +132,13 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
         this.searching = false;
       }
     });
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    const contextChange = changes['contextKey'];
+    if (contextChange && !contextChange.firstChange) {
+      this.resetContextPreview();
+    }
   }
 
   ngOnDestroy() {
@@ -454,10 +470,10 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
 
   private async compressImage(file: File): Promise<Blob> {
     const options = {
-      maxSizeMB: 0.2,
-      maxWidthOrHeight: 800,
+      maxSizeMB: this.maxSizeMB,
+      maxWidthOrHeight: this.maxWidthOrHeight,
       useWebWorker: true,
-      fileType: 'image/jpeg'
+      fileType: this.compressionFileType
     };
     return await imageCompression(file, options);
   }
@@ -495,6 +511,19 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
     if (this.preview) URL.revokeObjectURL(this.preview);
     this.preview = URL.createObjectURL(blob);
     this.objectUrls.push(this.preview);
+  }
+
+  private resetContextPreview() {
+    if (this.preview) {
+      URL.revokeObjectURL(this.preview);
+    }
+    this.preview = null;
+    this.selectedImageId = null;
+    this.activeTab = 'upload';
+    this.isSearchFullscreen = false;
+    this.pasteImportError = null;
+    this.cameraError = null;
+    this.closeCamera();
   }
 
   async openCamera() {
@@ -695,8 +724,8 @@ export class ImageUploaderComponent implements OnInit, OnDestroy {
   }
 
   private async renderTextAsImage(text: string): Promise<Blob> {
-    const width = 640;
-    const height = 360;
+    const width = this.textImageWidth;
+    const height = this.textImageHeight;
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;

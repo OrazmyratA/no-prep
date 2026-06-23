@@ -37,6 +37,11 @@
                 "glob": "pdf.worker.mjs",
                 "input": "node_modules/pdfjs-dist/legacy/build",
                 "output": "assets/pdfjs"
+              },
+              {
+                "glob": "soundtouch-processor.js",
+                "input": "node_modules/@soundtouchjs/audio-worklet/.dist",
+                "output": "assets/soundtouch"
               }
             ],
             "styles": [
@@ -57,7 +62,15 @@
                   "maximumError": "2MB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": false
+                },
+                "fonts": false
+              }
             },
             "development": {
               "optimization": false,

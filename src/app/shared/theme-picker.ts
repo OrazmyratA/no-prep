@@ -1,5 +1,4 @@
 import { Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
-import { FormControl } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import {
   ColorThemeOption,
@@ -9,7 +8,6 @@ import {
 } from '../core/theme';
 import { showAppNotification } from '../core/notification';
 import { LanguageService } from '../core/language';
-import { PlatformService } from '../core/platform';
 
 @Component({
   selector: 'app-theme-picker',
@@ -24,22 +22,14 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
   selection: ThemeSelection = { type: 'default', dim: 0.45 };
   dimPercent = 45;
   customColor = '#3b82f6';
-  uploading = false;
-  googlePasteReady = false;
-  pastingBackground = false;
-  androidBgUrlControl = new FormControl<string | null>('');
+  addingBackgroundFromTool = false;
 
   private subscription = new Subscription();
 
   constructor(
     public themeService: ThemeService,
-    private langService: LanguageService,
-    private platform: PlatformService
+    private langService: LanguageService
   ) {}
-
-  get isAndroid(): boolean {
-    return this.platform.isAndroid();
-  }
 
   ngOnInit() {
     this.subscription.add(
@@ -95,127 +85,6 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
     this.themeService.setPreviewDim(this.dimPercent / 100);
   }
 
-  async onFileSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-
-    this.uploading = true;
-    try {
-      const background = await this.themeService.addBackground(file);
-      this.previewImage(background);
-    } catch (error) {
-      const message = this.themeErrorMessage(error);
-      showAppNotification(message, 'error');
-    } finally {
-      this.uploading = false;
-    }
-  }
-
-  openGoogleImages() {
-    this.googlePasteReady = true;
-    const url = 'https://www.google.com/search?tbm=isch';
-
-    if (this.platform.isElectron()) {
-      (window as any).electronAPI.openExternalUrl(url);
-    } else {
-      window.open(url, '_blank', 'noopener');
-    }
-
-    if (this.platform.isAndroid()) {
-      this.scheduleClipboardReadOnResume();
-    }
-  }
-
-  private scheduleClipboardReadOnResume() {
-    const handler = async () => {
-      if (document.hidden) return;
-      document.removeEventListener('visibilitychange', handler);
-      // Give the WebView a moment to fully regain focus before reading clipboard
-      await new Promise(resolve => setTimeout(resolve, 400));
-      await this.pasteBackgroundFromClipboard();
-    };
-    document.addEventListener('visibilitychange', handler);
-  }
-
-  async pasteBackgroundFromClipboard() {
-    this.pastingBackground = true;
-
-    // Android WebView: clipboard.read() hangs forever — use readText() with timeout
-    if (this.platform.isAndroid()) {
-      try {
-        const text = await Promise.race<string>([
-          navigator.clipboard.readText(),
-          new Promise<string>((_, reject) =>
-            setTimeout(() => reject(new Error('clipboard-timeout')), 3000)
-          )
-        ]);
-        if (text?.trim() && this.isHttpUrl(text.trim())) {
-          await this.importBackgroundUrl(text.trim());
-          return;
-        }
-      } catch {
-        // timed out or readText failed
-      }
-      showAppNotification(this.langService.translate('androidPasteFallback'), 'error');
-      this.pastingBackground = false;
-      return;
-    }
-
-    if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
-      showAppNotification(this.langService.translate('pasteButtonFallback'), 'error');
-      this.pastingBackground = false;
-      return;
-    }
-
-    try {
-      const clipboardItems = await navigator.clipboard.read();
-      for (const clipboardItem of clipboardItems) {
-        const imageType = clipboardItem.types.find(type => type.startsWith('image/'));
-        if (!imageType) continue;
-        const blob = await clipboardItem.getType(imageType);
-        const file = new File([blob], `google-background-${Date.now()}.${this.extensionForType(imageType)}`, {
-          type: imageType
-        });
-        await this.addBackgroundFile(file);
-        return;
-      }
-      const text = await navigator.clipboard.readText().catch(() => '');
-      if (text.trim() && this.isHttpUrl(text.trim())) {
-        await this.importBackgroundUrl(text.trim());
-        return;
-      }
-      showAppNotification(this.langService.translate('pasteImageFallback'), 'error');
-    } catch (error) {
-      console.error('Theme background paste failed', error);
-      showAppNotification(this.langService.translate('pasteButtonFallback'), 'error');
-    } finally {
-      this.pastingBackground = false;
-    }
-  }
-
-  // Android: auto-import when user pastes a URL into the input field
-  async onAndroidBgUrlPaste(event: ClipboardEvent): Promise<void> {
-    const text = event.clipboardData?.getData('text/plain')?.trim() ?? '';
-    if (text && this.isHttpUrl(text)) {
-      event.preventDefault();
-      this.androidBgUrlControl.setValue(text);
-      await this.importBackgroundUrl(text);
-    }
-  }
-
-  // Android: import from the URL input when user taps the Import button
-  async importAndroidBgUrl(): Promise<void> {
-    const url = this.androidBgUrlControl.value?.trim() ?? '';
-    if (!url) return;
-    if (!this.isHttpUrl(url)) {
-      showAppNotification(this.langService.translate('pasteImageFallback'), 'error');
-      return;
-    }
-    await this.importBackgroundUrl(url);
-  }
-
   async deleteBackground(event: Event, background: ThemeBackgroundView) {
     event.stopPropagation();
     if (background.id === undefined) return;
@@ -248,6 +117,20 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
     return this.langService.translate(`themeColor${this.capitalize(color.id)}`);
   }
 
+  async onBackgroundImageSelected(blob: Blob | null) {
+    if (!blob || this.addingBackgroundFromTool) return;
+
+    this.addingBackgroundFromTool = true;
+    const type = blob.type || 'image/png';
+    const file = new File([blob], `theme-background-${Date.now()}.${this.extensionForType(type)}`, { type });
+
+    try {
+      await this.addBackgroundFile(file);
+    } finally {
+      this.addingBackgroundFromTool = false;
+    }
+  }
+
   private capitalize(value: string): string {
     return value.charAt(0).toUpperCase() + value.slice(1);
   }
@@ -259,38 +142,6 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
     } catch (error) {
       const message = this.themeErrorMessage(error);
       showAppNotification(message, 'error');
-    }
-  }
-
-  private async importBackgroundUrl(url: string) {
-    try {
-      const response = await fetch(url, { referrerPolicy: 'no-referrer' });
-      if (!response.ok) {
-        throw new Error(`Image request failed with ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const type = blob.type || 'image/jpeg';
-      if (!type.startsWith('image/')) {
-        throw new Error('Pasted URL did not return an image');
-      }
-
-      const file = new File([blob], `google-background-${Date.now()}.${this.extensionForType(type)}`, {
-        type
-      });
-      await this.addBackgroundFile(file);
-    } catch (error) {
-      console.error('Theme background URL import failed', error);
-      showAppNotification(this.langService.translate('pasteImageFallback'), 'error');
-    }
-  }
-
-  private isHttpUrl(value: string): boolean {
-    try {
-      const url = new URL(value);
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
     }
   }
 

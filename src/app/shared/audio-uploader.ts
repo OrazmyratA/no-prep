@@ -93,7 +93,12 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    this.isStartingRecording = true;
+    this.cdr.detectChanges();
+
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      this.isStartingRecording = false;
+      this.cdr.detectChanges();
       alert('Microphone recording is not supported on this device.');
       return;
     }
@@ -104,6 +109,8 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
       this.recordingPermission = true;
     } catch {
       this.recordingPermission = false;
+      this.isStartingRecording = false;
+      this.cdr.detectChanges();
       alert('Please give microphone permission to record audio. You can still upload an audio file instead.');
       return;
     }
@@ -113,11 +120,16 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     this.mediaRecorder.ondataavailable = e => this.chunks.push(e.data);
     this.mediaRecorder.onstop = () => {
       const blob = new Blob(this.chunks, { type: 'audio/webm' });
-      this.setAudioBlob(blob);
-      stream.getTracks().forEach(track => track.stop());
+      this.zone.run(() => {
+        this.setAudioBlob(blob);
+        stream.getTracks().forEach(track => track.stop());
+        this.cdr.detectChanges();
+      });
     };
     this.mediaRecorder.start();
     this.isRecording = true;
+    this.isStartingRecording = false;
+    this.cdr.detectChanges();
   }
 
   async stopRecording() {

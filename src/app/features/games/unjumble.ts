@@ -294,7 +294,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   }
 
   selectWordByClick(word: WordTile, wordIndex: number) {
-    // The next position in target should be at targetWords.length
+    if (this.animatingTiles.has(word.id)) return;
     const nextTargetIndex = this.targetWords.length;
 
     // Get the word that should be at this position
@@ -313,7 +313,8 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
     // After animation, remove from source and add to target
     setTimeout(() => {
-      this.sourceWords.splice(wordIndex, 1);
+      const currentIdx = this.sourceWords.findIndex(w => w.id === word.id);
+      if (currentIdx !== -1) this.sourceWords.splice(currentIdx, 1);
       this.targetWords.push(word);
       this.animatingTiles.delete(word.id);
       this.cdr.detectChanges();

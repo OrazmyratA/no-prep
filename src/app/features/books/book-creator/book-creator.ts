@@ -1,20 +1,40 @@
-import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { SwipeDirective } from '../../../shared/swipe.directive';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
+import { GuidePitchService } from '../../../core/guide-pitch';
 import { DbService } from '../../../core/db';
 import { LanguageService } from '../../../core/language';
 import { Topic } from '../../../core/db.model';
 import {
   BookElement,
   BookElementType,
+  GuideAudioTrack,
+  GuideTimelinePin,
   BookWorkbook,
   WorkbookLink,
   BookOperationProgress,
   BookPage,
+  BookWordBank,
+  BookWordBankOption,
   InteractiveBook
 } from '../../../core/book.model';
+import {
+  getChoiceTaskBankId,
+  getMatchTaskGroupId,
+  getMatchTaskPairId,
+  getMatchTaskSide,
+  getPageWordBank
+} from '../../../core/book-tasks';
+import {
+  getGuideTracks,
+  getOrderedGuidePins,
+  normalizeBookGuideTimelines,
+  syncLegacyGuideAudioFiles
+} from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
+import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -27,6 +47,7 @@ const GUIDE_RECORDING_TIMESLICE_MS = 1000;
 })
 export class BookCreatorComponent implements OnInit, OnDestroy {
   @ViewChild('editorCanvas') editorCanvas?: ElementRef<HTMLElement>;
+  @ViewChild(SwipeDirective) swipeDir?: SwipeDirective;
 
   book: InteractiveBook | null = null;
   selectedPageIndex = 0;
@@ -34,9 +55,6 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   pageStripOpen = false;
   pageStripCollapsed = false;
   inspectorOpen = false;
-  private swipeStartX = 0;
-  private swipeStartY = 0;
-  private swipeActive = false;
   loading = true;
   selectedPdfUrl = '';
   pageAspectRatio = '3 / 4';
@@ -53,7 +71,25 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   previewGuideElementId: string | null = null;
   previewBubbleText = '';
   previewOwlImage = 'assets/gifs/owl-corner.gif';
+  previewGuideImageUrl = '';
+  previewGuideX = 0.5;
+  previewGuideY = 0.5;
+  previewGuideCurrentTime = 0;
+  previewGuideDuration = 0;
+  previewGuidePaused = true;
   recordingGuideElementId: string | null = null;
+  requestingMicPermission = false;
+  savingRecording = false;
+  selectedGuideTrackId: string | null = null;
+  selectedGuidePinId: string | null = null;
+  placingGuidePin = false;
+  placingTextTask = false;
+  placingChoiceTask = false;
+  placingCircleTask = false;
+  placingMatchTask = false;
+  activeChoiceWordBankId: string | null = null;
+  activeMatchGroupId: string | null = null;
+  pendingMatchEndpointId: string | null = null;
   readonly virtualThumbBuffer = 8;
   private readonly maxUndoSnapshotBytes = 2_500_000;
   creatorThumbScrollTop = 0;
@@ -67,10 +103,34 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   private assetUrlCache = new Map<string, string>();
   private bypassUnsavedGuard = false;
   private copiedElement: BookElement | null = null;
+  private copiedWordBank: BookWordBank | null = null;
   private activePreviewAudio: HTMLAudioElement | null = null;
+  private previewPitchCleanup: (() => void) | null = null;
   private previewToken = 0;
   private draggedPageIndex: number | null = null;
   private draggedAudioIndex: number | null = null;
+  previewGuideTrackId: string | null = null;
+  private timelinePinDragState: {
+    elementId: string;
+    trackId: string;
+    pinId: string;
+    left: number;
+    width: number;
+    duration: number;
+  } | null = null;
+  private pagePinDragState: {
+    elementId: string;
+    pinId: string;
+  } | null = null;
+  private taskDrawState: {
+    elementId: string;
+    startX: number;
+    startY: number;
+    type: 'textTask' | 'choiceTask' | 'circleTask';
+  } | null = null;
+  private lastTaskDrawAt = 0;
+  private guidePinDragFrame = 0;
+  private pendingGuidePinPointer: { x: number; y: number } | null = null;
   private mediaRecorder: MediaRecorder | null = null;
   private recordedChunks: Blob[] = [];
   private recordingTimeoutId: number | null = null;
@@ -87,13 +147,16 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     canvasWidth: number;
     canvasHeight: number;
   } | null = null;
+  get isDragging(): boolean { return !!this.dragState; }
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     public bookLibrary: BookLibraryService,
     private db: DbService,
-    private languageService: LanguageService
+    private languageService: LanguageService,
+    private guidePitch: GuidePitchService,
+    private cdr: ChangeDetectorRef
   ) {
     this.progress$ = this.bookLibrary.progress$;
     this.topics$ = this.db.topics$;
@@ -110,6 +173,9 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.stopGuideDotRecording();
     this.clearRecordingTimeout();
     this.stopGuidePreview();
+    if (this.guidePinDragFrame) {
+      cancelAnimationFrame(this.guidePinDragFrame);
+    }
   }
 
   private async loadBook(bookId: string | null): Promise<void> {
@@ -448,23 +514,91 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.addElement('note', { content: 'Note' }, 0.08, 0.08);
   }
 
+  addAnswerKey(): void {
+    this.captureHistory();
+    this.addElement('answerKey', { src: '', label: 'Answer key' }, 0.08, 0.08);
+  }
+
+  toggleTextTaskTool(): void {
+    this.discardPendingMatchEndpoint();
+    this.placingTextTask = !this.placingTextTask;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = null;
+    this.placingGuidePin = false;
+    this.selectedElementId = null;
+  }
+
+  toggleChoiceTaskTool(): void {
+    this.discardPendingMatchEndpoint();
+    const activating = !this.placingChoiceTask;
+    this.placingChoiceTask = activating;
+    this.placingTextTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.activeChoiceWordBankId = activating ? this.createId('word-bank') : null;
+    this.activeMatchGroupId = null;
+    this.placingGuidePin = false;
+    this.selectedElementId = null;
+  }
+
+  toggleCircleTaskTool(): void {
+    this.discardPendingMatchEndpoint();
+    const activating = !this.placingCircleTask;
+    this.placingCircleTask = activating;
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingMatchTask = false;
+    this.placingGuidePin = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = null;
+    this.selectedElementId = null;
+  }
+
+  toggleMatchTaskTool(): void {
+    const activating = !this.placingMatchTask;
+    this.discardPendingMatchEndpoint();
+    this.placingMatchTask = activating;
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingGuidePin = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = activating ? this.createId('match-group') : null;
+    this.selectedElementId = null;
+  }
+
+  @HostListener('document:keydown.escape')
+  finishTaskPlacement(): void {
+    this.discardPendingMatchEndpoint();
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = null;
+  }
+
   addGuideDot(): void {
     this.captureHistory();
-    this.addElement('guideDot', { text: '', audioFiles: [] }, 0.08, 0.08);
+    this.addElement('guideDot', { text: '', audioFiles: [], guideTracks: [] }, 0.08, 0.08);
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'image') return;
+    if (!this.book || (element.type !== 'image' && element.type !== 'answerKey')) return;
     this.captureHistory();
 
     if (!blob) {
       element.data['src'] = '';
-      element.data['label'] = 'Image';
+      element.data['label'] = element.type === 'answerKey' ? 'Answer key' : 'Image';
       return;
     }
 
     const dataUrl = await this.blobToDataUrl(blob);
-    const saved = await this.bookLibrary.saveAssetData(this.book.id, 'images', dataUrl, 'image');
+    const prefix = element.type === 'answerKey' ? 'answer-key' : 'image';
+    const saved = await this.bookLibrary.saveAssetData(this.book.id, 'images', dataUrl, prefix);
     if (!saved) return;
     element.data['src'] = saved.relativePath;
     element.data['label'] = saved.fileName;
@@ -495,25 +629,40 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     ]);
     if (!asset) return;
     this.captureHistory();
-    const audioFiles = Array.isArray(element.data['audioFiles']) ? element.data['audioFiles'] : [];
-    audioFiles.push(asset.relativePath);
-    element.data['audioFiles'] = audioFiles;
+    const track: GuideAudioTrack = {
+      id: this.createId('guide-track'),
+      src: asset.relativePath,
+      pins: []
+    };
+    this.getGuideDotTracks(element).push(track);
+    syncLegacyGuideAudioFiles(element);
+    this.selectGuideTrack(element, track);
+    void this.ensureGuideTrackDuration(track);
   }
 
-  removeGuideDotAudio(element: BookElement, index: number): void {
-    const audioFiles = this.getGuideDotAudioFiles(element);
-    if (index < 0 || index >= audioFiles.length) return;
+  deleteSelectedGuideTrack(element: BookElement): void {
+    const tracks = this.getGuideDotTracks(element);
+    const index = tracks.findIndex((track) => track.id === this.selectedGuideTrackId);
+    if (index < 0) return;
+    if (!window.confirm('Delete this audio track and all of its pins?')) return;
     this.captureHistory();
-    audioFiles.splice(index, 1);
-    element.data['audioFiles'] = audioFiles;
+    const [removed] = tracks.splice(index, 1);
+    syncLegacyGuideAudioFiles(element);
+    if (removed.id === this.previewGuideTrackId) {
+      this.stopGuidePreview();
+    }
+    const nextTrack = tracks[Math.min(index, tracks.length - 1)] ?? null;
+    this.selectedGuideTrackId = nextTrack?.id ?? null;
+    this.selectedGuidePinId = null;
   }
 
   moveGuideDotAudio(element: BookElement, index: number, direction: -1 | 1): void {
-    const audioFiles = this.getGuideDotAudioFiles(element);
+    const tracks = this.getGuideDotTracks(element);
     const nextIndex = index + direction;
-    if (index < 0 || nextIndex < 0 || index >= audioFiles.length || nextIndex >= audioFiles.length) return;
-    [audioFiles[index], audioFiles[nextIndex]] = [audioFiles[nextIndex], audioFiles[index]];
-    element.data['audioFiles'] = audioFiles;
+    if (index < 0 || nextIndex < 0 || index >= tracks.length || nextIndex >= tracks.length) return;
+    this.captureHistory();
+    [tracks[index], tracks[nextIndex]] = [tracks[nextIndex], tracks[index]];
+    syncLegacyGuideAudioFiles(element);
   }
 
   onGuideAudioDragStart(index: number, event: DragEvent): void {
@@ -535,14 +684,14 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     event.preventDefault();
     const sourceIndex = this.draggedAudioIndex ?? Number(event.dataTransfer?.getData('text/plain'));
     this.draggedAudioIndex = null;
-    const audioFiles = this.getGuideDotAudioFiles(element);
-    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= audioFiles.length || sourceIndex === targetIndex) {
+    const tracks = this.getGuideDotTracks(element);
+    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= tracks.length || sourceIndex === targetIndex) {
       return;
     }
     this.captureHistory();
-    const [audioFile] = audioFiles.splice(sourceIndex, 1);
-    audioFiles.splice(targetIndex, 0, audioFile);
-    element.data['audioFiles'] = audioFiles;
+    const [track] = tracks.splice(sourceIndex, 1);
+    tracks.splice(targetIndex, 0, track);
+    syncLegacyGuideAudioFiles(element);
   }
 
   async toggleGuideDotRecording(element: BookElement): Promise<void> {
@@ -551,56 +700,83 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       this.stopGuideDotRecording();
       return;
     }
+    if (this.requestingMicPermission) return;
 
+    let stream: MediaStream | null = null;
     try {
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
         throw new Error('Recorder API unavailable.');
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Show immediate feedback before the permission dialog appears
+      this.requestingMicPermission = true;
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.requestingMicPermission = false;
+      this.cdr.detectChanges();
+
       this.recordedChunks = [];
       this.recordingGuideElementId = element.id;
       const recorder = this.createMediaRecorder(stream);
       this.mediaRecorder = recorder;
+      const chunks: Blob[] = this.recordedChunks;
+
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          this.recordedChunks.push(event.data);
-        }
+        if (event.data.size > 0) chunks.push(event.data);
       };
       recorder.onerror = () => {
         this.clearRecordingTimeout();
-        stream.getTracks().forEach((track) => track.stop());
+        stream?.getTracks().forEach((t) => t.stop());
         this.mediaRecorder = null;
         this.recordingGuideElementId = null;
         window.alert(this.languageService.translate('creatorMicRecordingFailed'));
       };
       recorder.onstop = async () => {
         this.clearRecordingTimeout();
-        stream.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(this.recordedChunks, { type: recorder.mimeType || 'audio/webm' });
-        this.mediaRecorder = null;
-        this.recordingGuideElementId = null;
+        stream?.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/mp4' });
         if (!blob.size || !this.book) return;
-        const dataUrl = await this.blobToDataUrl(blob);
-        const saved = await this.bookLibrary.saveAudioRecording(this.book.id, dataUrl);
-        if (!saved) return;
-        this.captureHistory();
-        const audioFiles = this.getGuideDotAudioFiles(element);
-        audioFiles.push(saved.relativePath);
-        element.data['audioFiles'] = audioFiles;
+        this.savingRecording = true;
+        try {
+          const dataUrl = await this.blobToDataUrl(blob);
+          const saved = await this.bookLibrary.saveAudioRecording(this.book.id, dataUrl);
+          if (!saved) return;
+          this.captureHistory();
+          const track: GuideAudioTrack = {
+            id: this.createId('guide-track'),
+            src: saved.relativePath,
+            pins: []
+          };
+          const elementId = element.id;
+          const livePage = this.book.pages.find((p) => p.elements.some((e) => e.id === elementId));
+          const liveElement = livePage?.elements.find((e) => e.id === elementId);
+          if (!liveElement) return;
+          this.getGuideDotTracks(liveElement).push(track);
+          syncLegacyGuideAudioFiles(liveElement);
+          this.selectGuideTrack(liveElement, track);
+          void this.ensureGuideTrackDuration(track);
+        } finally {
+          this.savingRecording = false;
+        }
       };
       recorder.start(GUIDE_RECORDING_TIMESLICE_MS);
       this.recordingTimeoutId = window.setTimeout(() => this.stopGuideDotRecording(), MAX_GUIDE_RECORDING_MS);
     } catch {
+      this.requestingMicPermission = false;
+      this.cdr.detectChanges();
       this.clearRecordingTimeout();
       this.recordingGuideElementId = null;
+      try { stream?.getTracks().forEach((t) => t.stop()); } catch { /* already stopped */ }
       window.alert(this.languageService.translate('creatorMicRecordingUnavailable'));
     }
   }
 
   private stopGuideDotRecording(): void {
+    // Clear state immediately so the button snaps back — onstop will save in background
+    this.clearRecordingTimeout();
+    this.recordingGuideElementId = null;
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.stop();
     }
+    this.mediaRecorder = null;
   }
 
   private clearRecordingTimeout(): void {
@@ -612,6 +788,9 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   private createMediaRecorder(stream: MediaStream): MediaRecorder {
     const mimeTypes = [
+      'audio/mp4;codecs=mp4a.40.2',
+      'audio/mp4',
+      'audio/aac',
       'audio/webm;codecs=opus',
       'audio/webm',
       'audio/ogg;codecs=opus',
@@ -621,27 +800,22 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
   }
 
-  async previewGuideDot(element: BookElement): Promise<void> {
+  async toggleGuideTrackPreview(element: BookElement): Promise<void> {
     if (!this.book || element.type !== 'guideDot') return;
-    this.stopGuidePreview();
-    const token = ++this.previewToken;
-    this.previewGuideElementId = element.id;
-    this.previewBubbleText = String(element.data['text'] || '');
-    this.previewOwlImage = 'assets/gifs/owl-teaching.gif';
+    const track = this.getSelectedGuideTrack(element) ?? this.getGuideDotTracks(element)[0];
+    if (!track) return;
+    this.selectGuideTrack(element, track);
 
-    const audioFiles = this.getGuideDotAudioFiles(element);
-    if (audioFiles.length) {
-      for (const audioFile of audioFiles) {
-        if (token !== this.previewToken) return;
-        await this.playPreviewAudio(audioFile);
+    if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
+      if (this.activePreviewAudio.paused) {
+        await this.activePreviewAudio.play().catch(() => {});
+      } else {
+        this.activePreviewAudio.pause();
       }
-    } else {
-      await this.wait(this.getGuideTextDelay(this.previewBubbleText));
+      return;
     }
 
-    if (token === this.previewToken) {
-      this.stopGuidePreview();
-    }
+    this.startGuideTrackPreview(element, track, 0);
   }
 
   stopGuidePreview(): void {
@@ -650,14 +824,164 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       this.activePreviewAudio.pause();
       this.activePreviewAudio = null;
     }
+    this.previewPitchCleanup?.();
+    this.previewPitchCleanup = null;
     this.previewGuideElementId = null;
+    this.previewGuideTrackId = null;
     this.previewBubbleText = '';
+    this.previewGuideImageUrl = '';
+    this.previewGuideCurrentTime = 0;
+    this.previewGuideDuration = 0;
+    this.previewGuidePaused = true;
     this.previewOwlImage = 'assets/gifs/owl-corner.gif';
+  }
+
+  selectGuideTrack(element: BookElement, track: GuideAudioTrack): void {
+    if (element.type !== 'guideDot') return;
+    if (this.activePreviewAudio && this.previewGuideTrackId !== track.id) {
+      this.stopGuidePreview();
+    }
+    const wasPreviewingTrack = this.previewGuideTrackId === track.id;
+    this.selectedGuideTrackId = track.id;
+    this.selectedGuidePinId = null;
+    this.placingGuidePin = false;
+    this.previewGuideCurrentTime = wasPreviewingTrack
+      ? this.activePreviewAudio?.currentTime ?? this.previewGuideCurrentTime
+      : 0;
+    this.previewGuideDuration = track.duration || 0;
+    void this.ensureGuideTrackDuration(track);
+  }
+
+  setGuideTrackPitch(element: BookElement, track: GuideAudioTrack, event: Event): void {
+    const semitones = Number((event.target as HTMLInputElement).value);
+    this.captureHistory();
+    track.pitchSemitones = semitones || undefined;
+    this.markBookDirty();
+    if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
+      this.stopGuidePreview();
+      this.startGuideTrackPreview(element, track, this.previewGuideCurrentTime);
+    }
+  }
+
+  getGuideTrackPitch(track: GuideAudioTrack): number {
+    return track.pitchSemitones ?? 0;
+  }
+
+  selectGuidePin(element: BookElement, track: GuideAudioTrack, pin: GuideTimelinePin, event?: Event): void {
+    event?.stopPropagation();
+    this.selectedGuideTrackId = track.id;
+    this.selectedGuidePinId = pin.id;
+    this.placingGuidePin = false;
+    this.seekGuideTrackTo(element, track, pin.time);
+  }
+
+  armGuidePinPlacement(element: BookElement): void {
+    const track = this.getSelectedGuideTrack(element);
+    if (!track) return;
+    if (this.activePreviewAudio && !this.activePreviewAudio.paused) {
+      this.activePreviewAudio.pause();
+    }
+    this.placingGuidePin = !this.placingGuidePin;
+  }
+
+  deleteSelectedGuidePin(element: BookElement): void {
+    const track = this.getSelectedGuideTrack(element);
+    const pinIndex = track?.pins.findIndex((pin) => pin.id === this.selectedGuidePinId) ?? -1;
+    if (!track || pinIndex < 0) return;
+    this.captureHistory();
+    track.pins.splice(pinIndex, 1);
+    this.selectedGuidePinId = null;
+    this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
+  }
+
+  adjustSelectedGuidePinTime(element: BookElement, delta: number): void {
+    const track = this.getSelectedGuideTrack(element);
+    const pin = this.getSelectedGuidePin(element);
+    if (!track || !pin) return;
+    this.captureHistory();
+    pin.time = this.clamp(pin.time + delta, 0, this.getGuideTrackDuration(track));
+    this.sortGuidePins(track);
+    this.previewGuideCurrentTime = pin.time;
+    this.seekGuideTrackTo(element, track, pin.time);
+  }
+
+  async onGuidePinImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
+    if (!this.book) return;
+    const pin = this.getSelectedGuidePin(element);
+    if (!pin) return;
+    if (!blob) {
+      this.captureHistory();
+      delete pin.imageSrc;
+      this.previewGuideImageUrl = '';
+      return;
+    }
+    const dataUrl = await this.blobToDataUrl(blob);
+    const saved = await this.bookLibrary.saveAssetData(this.book.id, 'images', dataUrl, 'guide-pin');
+    if (!saved) return;
+    this.captureHistory();
+    pin.imageSrc = saved.relativePath;
+    this.previewGuideImageUrl = saved.assetUrl || this.getCachedAssetUrl(saved.relativePath);
+  }
+
+  getGuidePinImageUrl(pin: GuideTimelinePin | null): string {
+    return pin?.imageSrc ? this.getCachedAssetUrl(pin.imageSrc) : '';
   }
 
   addGameMarker(): void {
     this.captureHistory();
-    this.addElement('game', { label: 'Game', gameId: 'anagram', topicId: null }, 0.12, 0.1);
+    this.addElement('game', {
+      label: 'Game',
+      gameId: 'anagram',
+      topicId: null,
+      activityMode: 'all',
+      allowedActivityIds: []
+    }, 0.12, 0.1);
+  }
+
+  isGameActivityRestricted(element: BookElement): boolean {
+    return element.type === 'game' && element.data['activityMode'] === 'selected';
+  }
+
+  setGameActivityRestriction(element: BookElement, restricted: boolean): void {
+    if (element.type !== 'game' || restricted === this.isGameActivityRestricted(element)) return;
+    this.captureHistory();
+    element.data['activityMode'] = restricted ? 'selected' : 'all';
+    if (restricted && !this.getAllowedGameActivityIds(element).length) {
+      element.data['allowedActivityIds'] = this.games.map((game) => game.id);
+    }
+  }
+
+  isGameActivityAllowed(element: BookElement, gameId: string): boolean {
+    return !this.isGameActivityRestricted(element) || this.getAllowedGameActivityIds(element).includes(gameId);
+  }
+
+  canToggleGameActivity(element: BookElement, gameId: string): boolean {
+    const allowed = this.getAllowedGameActivityIds(element);
+    return !allowed.includes(gameId) || allowed.length > 1;
+  }
+
+  toggleGameActivity(element: BookElement, gameId: string): void {
+    if (element.type !== 'game' || !this.isGameActivityRestricted(element)) return;
+    const validGameIds = new Set(this.games.map((game) => game.id));
+    if (!validGameIds.has(gameId)) return;
+    const allowed = new Set(this.getAllowedGameActivityIds(element));
+    if (allowed.has(gameId)) {
+      if (allowed.size <= 1) return;
+      allowed.delete(gameId);
+    } else {
+      allowed.add(gameId);
+    }
+    this.captureHistory();
+    element.data['allowedActivityIds'] = this.games
+      .map((game) => game.id)
+      .filter((id) => allowed.has(id));
+  }
+
+  getAllowedGameActivityIds(element: BookElement): string[] {
+    const rawIds = Array.isArray(element.data['allowedActivityIds'])
+      ? element.data['allowedActivityIds']
+      : [];
+    return normalizeAllowedActivityIds(rawIds);
   }
 
   async createTopicForGame(element: BookElement): Promise<void> {
@@ -707,6 +1031,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     element.data['topicId'] = null;
     element.data['topicName'] = '';
     element.data['bookTopicPath'] = '';
+    element.data['activityMode'] = 'all';
+    element.data['allowedActivityIds'] = [];
   }
 
   async onGameTopicSelected(element: BookElement, topicIdValue: unknown): Promise<void> {
@@ -732,6 +1058,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     element.data['topicId'] = null;
     element.data['topicName'] = '';
     element.data['bookTopicPath'] = '';
+    element.data['activityMode'] = 'all';
+    element.data['allowedActivityIds'] = [];
   }
 
   deleteSelectedPage(): void {
@@ -759,6 +1087,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
     this.captureHistory();
     page.elements = [];
+    page.wordBanks = [];
+    this.pendingMatchEndpointId = null;
     this.selectedElementId = null;
   }
 
@@ -794,6 +1124,13 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.book.workbookLinks = {};
     this.selectedPageIndex = 0;
     this.selectedElementId = null;
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = null;
+    this.pendingMatchEndpointId = null;
     this.linkingMainPageId = null;
     this.pageJumpValue = '1';
     this.refreshSelectedPageRender();
@@ -845,8 +1182,21 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   deleteSelectedElement(): void {
     const page = this.selectedPage;
     if (!page || !this.selectedElementId) return;
+    const selected = page.elements.find((element) => element.id === this.selectedElementId) ?? null;
     this.captureHistory();
-    page.elements = page.elements.filter((element) => element.id !== this.selectedElementId);
+    if (selected?.type === 'matchTask') {
+      const pairId = getMatchTaskPairId(selected);
+      const groupId = getMatchTaskGroupId(selected);
+      page.elements = page.elements.filter((element) =>
+        element.type !== 'matchTask'
+        || getMatchTaskPairId(element) !== pairId
+        || getMatchTaskGroupId(element) !== groupId
+      );
+      this.pendingMatchEndpointId = null;
+    } else {
+      page.elements = page.elements.filter((element) => element.id !== this.selectedElementId);
+    }
+    this.pruneUnusedWordBanks(page);
     this.selectedElementId = null;
   }
 
@@ -861,6 +1211,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     const element = this.selectedElement;
     if (!element) return;
     this.copiedElement = this.cloneElement(element);
+    const bank = element.type === 'choiceTask' ? this.getChoiceTaskBank(element) : null;
+    this.copiedWordBank = bank ? JSON.parse(JSON.stringify(bank)) as BookWordBank : null;
   }
 
   pasteCopiedElement(): void {
@@ -897,9 +1249,9 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   async replaceElementAsset(element: BookElement): Promise<void> {
-    if (!this.book || (element.type !== 'image' && element.type !== 'video')) return;
+    if (!this.book || (element.type !== 'image' && element.type !== 'video' && element.type !== 'answerKey')) return;
 
-    const isImage = element.type === 'image';
+    const isImage = element.type === 'image' || element.type === 'answerKey';
     const asset = await this.bookLibrary.addAsset(
       this.book.id,
       isImage ? 'images' : 'videos',
@@ -916,14 +1268,51 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   selectElement(elementId: string): void {
     this.selectedElementId = elementId;
+    const element = this.selectedElement;
+    if (element?.type === 'guideDot') {
+      const tracks = this.getGuideDotTracks(element);
+      if (!tracks.some((track) => track.id === this.selectedGuideTrackId)) {
+        this.selectedGuideTrackId = tracks[0]?.id ?? null;
+        this.selectedGuidePinId = null;
+      }
+    } else {
+      this.selectedGuideTrackId = null;
+      this.selectedGuidePinId = null;
+      this.placingGuidePin = false;
+    }
     if (this.isPhoneLayout()) {
       this.inspectorOpen = true;
       this.pageStripOpen = false;
     }
   }
 
-  onCanvasBackgroundClick(): void {
+  onCanvasBackgroundClick(event?: MouseEvent): void {
+    if (Date.now() - this.lastTaskDrawAt < 250) return;
+    const element = this.selectedElement;
+    const track = element?.type === 'guideDot' ? this.getSelectedGuideTrack(element) : null;
+    if (event && element && track && this.placingGuidePin && this.editorCanvas) {
+      const rect = this.editorCanvas.nativeElement.getBoundingClientRect();
+      if (rect.width && rect.height) {
+        this.captureHistory();
+        const pin: GuideTimelinePin = {
+          id: this.createId('guide-pin'),
+          time: this.clamp(this.previewGuideCurrentTime, 0, this.getGuideTrackDuration(track)),
+          x: this.clamp((event.clientX - rect.left) / rect.width, 0, 1),
+          y: this.clamp((event.clientY - rect.top) / rect.height, 0, 1),
+          text: ''
+        };
+        track.pins.push(pin);
+        this.sortGuidePins(track);
+        this.selectedGuidePinId = pin.id;
+        this.placingGuidePin = false;
+        this.applyCreatorGuideState(element, track, pin.time);
+        return;
+      }
+    }
     this.selectedElementId = null;
+    this.selectedGuideTrackId = null;
+    this.selectedGuidePinId = null;
+    this.placingGuidePin = false;
     if (this.isPhoneLayout() && !this.inspectorOpen) {
       this.inspectorOpen = true;
     }
@@ -953,27 +1342,62 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return window.innerWidth <= 960;
   }
 
-  onSwipeAreaPointerDown(event: PointerEvent): void {
-    this.swipeActive = false;
-    if (event.pointerType !== 'touch') return;
-    if (this.dragState) return;
-    this.swipeStartX = event.clientX;
-    this.swipeStartY = event.clientY;
-    this.swipeActive = true;
+  onCanvasPointerDown(event: PointerEvent): void {
+    if (!event.isPrimary) return;
+    if (this.placingMatchTask) {
+      this.placeMatchEndpoint(event);
+      return;
+    }
+    if (this.placingTextTask || this.placingChoiceTask || this.placingCircleTask) {
+      const type = this.placingCircleTask ? 'circleTask' : this.placingChoiceTask ? 'choiceTask' : 'textTask';
+      this.startTaskDraw(event, type);
+    }
   }
 
-  onSwipeAreaPointerUp(event: PointerEvent): void {
-    if (!this.swipeActive) return;
-    this.swipeActive = false;
-    const dx = event.clientX - this.swipeStartX;
-    const dy = event.clientY - this.swipeStartY;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      this.selectPage(this.activePageIndex + (dx > 0 ? -1 : 1));
+  private placeMatchEndpoint(event: PointerEvent): void {
+    const page = this.selectedPage;
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    if (!page || !rect?.width || !rect.height) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    let pending = this.pendingMatchEndpointId
+      ? page.elements.find((element) => element.id === this.pendingMatchEndpointId && element.type === 'matchTask') ?? null
+      : null;
+    if (this.pendingMatchEndpointId && !pending) {
+      this.discardPendingMatchEndpoint();
+      pending = null;
     }
+
+    this.activeMatchGroupId ||= this.createId('match-group');
+    const pairId = pending ? getMatchTaskPairId(pending) : this.createId('match-pair');
+    const side = pending ? 'B' : 'A';
+    const width = 0.034;
+    const height = this.clamp(width * rect.width / rect.height, 0.022, 0.06);
+    const centerX = this.clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const centerY = this.clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    const element: BookElement = {
+      id: this.createId('match-endpoint'),
+      type: 'matchTask',
+      x: this.clamp(centerX - width / 2, 0, 1 - width),
+      y: this.clamp(centerY - height / 2, 0, 1 - height),
+      width,
+      height,
+      data: { groupId: this.activeMatchGroupId, pairId, side }
+    };
+    this.captureHistory();
+    page.elements.push(element);
+    this.selectedElementId = element.id;
+    this.pendingMatchEndpointId = side === 'A' ? element.id : null;
+    this.lastTaskDrawAt = Date.now();
   }
 
   trackByElementId(_index: number, element: BookElement): string {
     return element.id;
+  }
+
+  trackByIndex(index: number): number {
+    return index;
   }
 
   startElementDrag(event: PointerEvent, element: BookElement): void {
@@ -1020,6 +1444,17 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   @HostListener('document:pointermove', ['$event'])
   onDocumentPointerMove(event: PointerEvent): void {
+    if (this.taskDrawState) {
+      event.preventDefault();
+      this.updateTaskDraw(event.clientX, event.clientY);
+      return;
+    }
+    if (this.timelinePinDragState || this.pagePinDragState) {
+      event.preventDefault();
+      this.pendingGuidePinPointer = { x: event.clientX, y: event.clientY };
+      this.scheduleGuidePinDragFrame();
+      return;
+    }
     if (!this.dragState || !this.editorCanvas) return;
     const element = this.selectedElement;
     if (!element) return;
@@ -1053,12 +1488,92 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return { width: rect.width, height: rect.height };
   }
 
-  @HostListener('document:pointerup')
-  onDocumentPointerUp(): void {
-    if (this.dragState) {
+  private startTaskDraw(event: PointerEvent, type: 'textTask' | 'choiceTask' | 'circleTask'): void {
+    const page = this.selectedPage;
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    if (!page || !rect?.width || !rect.height) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = this.clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const startY = this.clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    this.beginHistoryCapture();
+    const wordBank = type === 'choiceTask' ? this.ensureActiveChoiceWordBank(page) : null;
+    const element: BookElement = {
+      id: this.createId(type === 'choiceTask' ? 'choice-task' : type === 'circleTask' ? 'circle-task' : 'text-task'),
+      type,
+      x: startX,
+      y: startY,
+      width: 0.08,
+      height: 0.035,
+      data: type === 'choiceTask'
+        ? { wordBankId: wordBank?.id || '', correctOptionId: '' }
+        : type === 'circleTask'
+          ? { correct: false }
+          : { acceptedAnswers: [''] }
+    };
+    page.elements.push(element);
+    this.selectedElementId = element.id;
+    this.taskDrawState = { elementId: element.id, startX, startY, type };
+  }
+
+  private updateTaskDraw(clientX: number, clientY: number): void {
+    const state = this.taskDrawState;
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    const element = this.selectedElement;
+    if (!state || !rect?.width || !rect.height || !element || element.id !== state.elementId) return;
+    const currentX = this.clamp((clientX - rect.left) / rect.width, 0, 1);
+    const currentY = this.clamp((clientY - rect.top) / rect.height, 0, 1);
+    const minWidth = 0.055;
+    const minHeight = 0.025;
+    const left = Math.min(state.startX, currentX);
+    const top = Math.min(state.startY, currentY);
+    element.x = this.clamp(left, 0, 1 - minWidth);
+    element.y = this.clamp(top, 0, 1 - minHeight);
+    element.width = this.clamp(Math.max(minWidth, Math.abs(currentX - state.startX)), minWidth, 1 - element.x);
+    element.height = this.clamp(Math.max(minHeight, Math.abs(currentY - state.startY)), minHeight, 1 - element.y);
+  }
+
+  @HostListener('document:pointerup', ['$event'])
+  onDocumentPointerUp(event: PointerEvent): void {
+    if (this.taskDrawState) {
+      this.updateTaskDraw(event?.clientX ?? 0, event?.clientY ?? 0);
+      this.commitHistoryCapture();
+      this.taskDrawState = null;
+      this.lastTaskDrawAt = Date.now();
+    }
+    this.flushGuidePinDragFrame();
+    if (this.timelinePinDragState) {
+      const element = this.selectedElement;
+      const track = element
+        ? this.getGuideDotTracks(element).find((item) => item.id === this.timelinePinDragState?.trackId)
+        : null;
+      if (track) this.sortGuidePins(track);
+    }
+    if (this.dragState || this.timelinePinDragState || this.pagePinDragState) {
       this.commitHistoryCapture();
     }
     this.dragState = null;
+    this.timelinePinDragState = null;
+    this.pagePinDragState = null;
+    this.pendingGuidePinPointer = null;
+  }
+
+  @HostListener('document:pointercancel')
+  onDocumentPointerCancel(): void {
+    this.swipeDir?.cancel();
+    if (this.taskDrawState) {
+      this.commitHistoryCapture();
+      this.taskDrawState = null;
+      this.lastTaskDrawAt = Date.now();
+    }
+    this.flushGuidePinDragFrame();
+    if (this.dragState || this.timelinePinDragState || this.pagePinDragState) {
+      this.commitHistoryCapture();
+    }
+    this.dragState = null;
+    this.timelinePinDragState = null;
+    this.pagePinDragState = null;
+    this.pendingGuidePinPointer = null;
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -1077,6 +1592,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   async save(): Promise<boolean> {
     if (!this.book) return true;
+    this.discardPendingMatchEndpoint();
     const saved = await this.bookLibrary.saveBook(this.book);
     if (saved) {
       this.book.updatedAt = saved.updatedAt;
@@ -1241,6 +1757,11 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       case 'video': return this.languageService.translate('videoLabel');
       case 'game': return this.languageService.translate('gameLabel');
       case 'note': return this.languageService.translate('noteLabel');
+      case 'answerKey': return 'Answer Key';
+      case 'textTask': return 'Text Task';
+      case 'choiceTask': return 'Word Bank Gap';
+      case 'circleTask': return 'Circling Choice';
+      case 'matchTask': return 'Matching Pair';
       default: return type.charAt(0).toUpperCase() + type.slice(1);
     }
   }
@@ -1377,7 +1898,255 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   getGuideDotAudioFiles(element: BookElement): string[] {
-    return Array.isArray(element.data['audioFiles']) ? element.data['audioFiles'] : [];
+    return this.getGuideDotTracks(element).map((track) => track.src);
+  }
+
+  getTextTaskAnswers(element: BookElement): string[] {
+    if (element.type !== 'textTask') return [];
+    return Array.isArray(element.data['acceptedAnswers'])
+      ? element.data['acceptedAnswers'] as string[]
+      : [];
+  }
+
+  updateTextTaskAnswer(element: BookElement, index: number, value: string): void {
+    if (element.type !== 'textTask') return;
+    const answers = this.getTextTaskAnswers(element);
+    answers[index] = value;
+    while (answers.length > 1 && !answers[answers.length - 1] && !answers[answers.length - 2]) {
+      answers.pop();
+    }
+    if (answers[answers.length - 1] !== '') answers.push('');
+    element.data['acceptedAnswers'] = answers;
+    this.markBookDirty();
+  }
+
+  removeTextTaskAnswer(element: BookElement, index: number): void {
+    if (element.type !== 'textTask') return;
+    this.captureHistory();
+    const answers = this.getTextTaskAnswers(element);
+    answers.splice(index, 1);
+    if (!answers.length || answers[answers.length - 1] !== '') answers.push('');
+    element.data['acceptedAnswers'] = answers;
+  }
+
+  getChoiceTaskBanks(): BookWordBank[] {
+    return this.selectedPage?.wordBanks || [];
+  }
+
+  getChoiceTaskBank(element: BookElement): BookWordBank | null {
+    return getPageWordBank(this.selectedPage, getChoiceTaskBankId(element));
+  }
+
+  getChoiceTaskCorrectText(element: BookElement): string {
+    const bank = this.getChoiceTaskBank(element);
+    const optionId = String(element.data['correctOptionId'] || '');
+    return bank?.options.find((option) => option.id === optionId)?.text || '';
+  }
+
+  getWordBankOptions(bank: BookWordBank): BookWordBankOption[] {
+    return bank.options || [];
+  }
+
+  getWordBankLabel(bank: BookWordBank): string {
+    const index = this.getChoiceTaskBanks().findIndex((item) => item.id === bank.id);
+    return `Word bank ${Math.max(0, index) + 1}`;
+  }
+
+  createWordBankForTask(element: BookElement): void {
+    if (element.type !== 'choiceTask') return;
+    this.discardPendingMatchEndpoint();
+    this.activeChoiceWordBankId = this.createId('word-bank');
+    this.placingChoiceTask = true;
+    this.placingTextTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.placingGuidePin = false;
+    this.activeMatchGroupId = null;
+    this.selectedElementId = null;
+  }
+
+  selectChoiceTaskBank(element: BookElement, bankId: string): void {
+    if (element.type !== 'choiceTask' || getChoiceTaskBankId(element) === bankId) return;
+    this.captureHistory();
+    element.data['wordBankId'] = bankId;
+    element.data['correctOptionId'] = '';
+  }
+
+  updateWordBankOption(bank: BookWordBank, index: number, value: string): void {
+    const option = bank.options[index];
+    if (!option) return;
+    option.text = value;
+    while (bank.options.length > 1 && !bank.options.at(-1)?.text && !bank.options.at(-2)?.text) {
+      bank.options.pop();
+    }
+    if (bank.options.at(-1)?.text) {
+      bank.options.push({ id: this.createId('word-option'), text: '' });
+    }
+    this.markBookDirty();
+  }
+
+  removeWordBankOption(bank: BookWordBank, index: number): void {
+    const page = this.selectedPage;
+    const option = bank.options[index];
+    if (!page || !option) return;
+    this.captureHistory();
+    bank.options.splice(index, 1);
+    if (!bank.options.length || bank.options.at(-1)?.text) {
+      bank.options.push({ id: this.createId('word-option'), text: '' });
+    }
+    for (const gap of page.elements) {
+      if (gap.type === 'choiceTask' && gap.data['correctOptionId'] === option.id) {
+        gap.data['correctOptionId'] = '';
+      }
+    }
+  }
+
+  setChoiceTaskCorrectOption(element: BookElement, optionId: string): void {
+    if (element.type !== 'choiceTask' || element.data['correctOptionId'] === optionId) return;
+    this.captureHistory();
+    element.data['correctOptionId'] = optionId;
+  }
+
+  setCircleTaskCorrect(element: BookElement, correct: boolean): void {
+    if (element.type !== 'circleTask' || element.data['correct'] === correct) return;
+    this.captureHistory();
+    element.data['correct'] = correct;
+  }
+
+  getMatchTaskGroupIds(): string[] {
+    const groupIds = (this.selectedPage?.elements || [])
+      .filter((element) => element.type === 'matchTask')
+      .map((element) => getMatchTaskGroupId(element))
+      .filter(Boolean);
+    return Array.from(new Set(groupIds));
+  }
+
+  getMatchTaskGroupLabel(groupId: string): string {
+    const index = this.getMatchTaskGroupIds().indexOf(groupId);
+    return `Matching ${Math.max(0, index) + 1}`;
+  }
+
+  getMatchTaskPairNumber(element: BookElement): number {
+    const groupId = getMatchTaskGroupId(element);
+    const pairIds = (this.selectedPage?.elements || [])
+      .filter((item) => item.type === 'matchTask' && getMatchTaskGroupId(item) === groupId)
+      .map((item) => getMatchTaskPairId(item));
+    return Math.max(0, Array.from(new Set(pairIds)).indexOf(getMatchTaskPairId(element))) + 1;
+  }
+
+  getMatchTaskSideLabel(element: BookElement): string {
+    return getMatchTaskSide(element) || '';
+  }
+
+  isPendingMatchEndpoint(element: BookElement): boolean {
+    return element.type === 'matchTask' && element.id === this.pendingMatchEndpointId;
+  }
+
+  setMatchTaskGroup(element: BookElement, groupId: string): void {
+    const page = this.selectedPage;
+    if (!page || element.type !== 'matchTask' || !groupId || getMatchTaskGroupId(element) === groupId) return;
+    this.captureHistory();
+    const pairId = getMatchTaskPairId(element);
+    for (const endpoint of page.elements) {
+      if (endpoint.type === 'matchTask' && getMatchTaskPairId(endpoint) === pairId) {
+        endpoint.data['groupId'] = groupId;
+      }
+    }
+    this.activeMatchGroupId = groupId;
+  }
+
+  createMatchTaskGroup(element: BookElement): void {
+    if (element.type !== 'matchTask') return;
+    this.discardPendingMatchEndpoint();
+    this.activeMatchGroupId = this.createId('match-group');
+    this.placingMatchTask = true;
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingGuidePin = false;
+    this.activeChoiceWordBankId = null;
+    this.selectedElementId = null;
+  }
+
+  getGuideDotTracks(element: BookElement): GuideAudioTrack[] {
+    return getGuideTracks(element);
+  }
+
+  getSelectedGuideTrack(element: BookElement): GuideAudioTrack | null {
+    const tracks = this.getGuideDotTracks(element);
+    return tracks.find((track) => track.id === this.selectedGuideTrackId) ?? tracks[0] ?? null;
+  }
+
+  getSelectedGuidePin(element: BookElement): GuideTimelinePin | null {
+    const track = this.getSelectedGuideTrack(element);
+    return track?.pins.find((pin) => pin.id === this.selectedGuidePinId) ?? null;
+  }
+
+  getGuidePinSequence(element: BookElement) {
+    return getOrderedGuidePins(element);
+  }
+
+  getGuideTrackDuration(track: GuideAudioTrack): number {
+    const duration = Number(track.duration || (this.previewGuideTrackId === track.id ? this.previewGuideDuration : 0));
+    const lastPinTime = Math.max(0, ...(track.pins || []).map((pin) => Number(pin.time) || 0));
+    return Math.max(1, Number.isFinite(duration) ? duration : 0, lastPinTime);
+  }
+
+  formatGuideTime(value: number): string {
+    const safe = Math.max(0, Number(value) || 0);
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe - minutes * 60;
+    return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
+  }
+
+  trackByGuideTrackId(_index: number, track: GuideAudioTrack): string {
+    return track.id;
+  }
+
+  trackByGuidePinId(_index: number, item: { pin: GuideTimelinePin }): string {
+    return item.pin.id;
+  }
+
+  seekGuideTrack(event: Event, element: BookElement, track: GuideAudioTrack): void {
+    const input = event.target as HTMLInputElement;
+    this.selectGuideTrack(element, track);
+    this.seekGuideTrackTo(element, track, Number(input.value));
+  }
+
+  startGuideTimelinePinDrag(
+    event: PointerEvent,
+    element: BookElement,
+    track: GuideAudioTrack,
+    pin: GuideTimelinePin
+  ): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const timeline = (event.currentTarget as HTMLElement).closest<HTMLElement>('.guide-track-timeline');
+    const rect = timeline?.getBoundingClientRect();
+    if (!rect?.width) return;
+    this.selectGuidePin(element, track, pin);
+    this.activePreviewAudio?.pause();
+    this.beginHistoryCapture();
+    this.timelinePinDragState = {
+      elementId: element.id,
+      trackId: track.id,
+      pinId: pin.id,
+      left: rect.left,
+      width: rect.width,
+      duration: this.getGuideTrackDuration(track)
+    };
+    this.updateTimelinePinFromPointer(event.clientX);
+  }
+
+  startGuidePagePinDrag(event: PointerEvent, element: BookElement, pin: GuideTimelinePin): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const track = this.getGuideDotTracks(element).find((item) => item.pins.some((candidate) => candidate.id === pin.id));
+    if (!track) return;
+    this.selectGuidePin(element, track, pin);
+    this.beginHistoryCapture();
+    this.pagePinDragState = { elementId: element.id, pinId: pin.id };
+    this.updatePagePinFromPointer(event.clientX, event.clientY);
   }
 
   getAssetFileName(relativePath: string): string {
@@ -1489,6 +2258,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   private clonePage(page: BookPage): BookPage {
     return {
       ...page,
+      wordBanks: JSON.parse(JSON.stringify(page.wordBanks || [])) as BookWordBank[],
       elements: page.elements.map((element) => ({
         ...this.cloneElement(element),
         id: this.createId(element.type)
@@ -1559,6 +2329,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     if (selectedElementId && this.selectedPage?.elements.some((element) => element.id === selectedElementId)) {
       this.selectedElementId = selectedElementId;
     }
+    this.syncPendingMatchEndpoint();
     this.markBookDirty();
   }
 
@@ -1574,6 +2345,10 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     if (!page) return;
 
     const copy = this.cloneElement(source);
+    if (copy.type === 'choiceTask' && this.copiedWordBank && !getPageWordBank(page, getChoiceTaskBankId(copy))) {
+      page.wordBanks ??= [];
+      page.wordBanks.push(JSON.parse(JSON.stringify(this.copiedWordBank)) as BookWordBank);
+    }
     copy.id = this.createId(source.type);
     copy.x = this.clamp((source.x || 0) + offset, 0, 1 - (source.width || 0.08));
     copy.y = this.clamp((source.y || 0) + offset, 0, 1 - (source.height || 0.08));
@@ -1591,15 +2366,239 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     };
   }
 
-  private playPreviewAudio(relativePath: string): Promise<void> {
-    if (!this.book) return Promise.resolve();
-    return new Promise((resolve) => {
-      const audio = new Audio(this.bookLibrary.getAssetUrl(this.book!.id, relativePath));
-      this.activePreviewAudio = audio;
-      audio.onended = () => resolve();
-      audio.onerror = () => resolve();
-      void audio.play().catch(() => resolve());
+  private ensureActiveChoiceWordBank(page: BookPage): BookWordBank {
+    page.wordBanks ??= [];
+    this.activeChoiceWordBankId ||= this.createId('word-bank');
+    return page.wordBanks.find((bank) => bank.id === this.activeChoiceWordBankId)
+      || this.createWordBank(page, this.activeChoiceWordBankId);
+  }
+
+  private createWordBank(page: BookPage, id = this.createId('word-bank')): BookWordBank {
+    page.wordBanks ??= [];
+    const bank: BookWordBank = {
+      id,
+      options: [{ id: this.createId('word-option'), text: '' }]
+    };
+    page.wordBanks.push(bank);
+    return bank;
+  }
+
+  private pruneUnusedWordBanks(page: BookPage): void {
+    if (!page.wordBanks?.length) return;
+    const usedBankIds = new Set(
+      page.elements
+        .filter((element) => element.type === 'choiceTask')
+        .map((element) => getChoiceTaskBankId(element))
+        .filter(Boolean)
+    );
+    page.wordBanks = page.wordBanks.filter((bank) => usedBankIds.has(bank.id));
+  }
+
+  private discardPendingMatchEndpoint(): void {
+    if (!this.pendingMatchEndpointId || !this.book) return;
+    const pendingId = this.pendingMatchEndpointId;
+    for (const page of this.getAllCreatorPages()) {
+      const previousLength = page.elements.length;
+      page.elements = page.elements.filter((element) => element.id !== pendingId);
+      if (page.elements.length !== previousLength) {
+        this.markBookDirty();
+      }
+    }
+    if (this.selectedElementId === pendingId) this.selectedElementId = null;
+    this.pendingMatchEndpointId = null;
+  }
+
+  private syncPendingMatchEndpoint(): void {
+    this.pendingMatchEndpointId = null;
+    if (!this.placingMatchTask || !this.activeMatchGroupId) return;
+    for (const page of this.getAllCreatorPages()) {
+      const endpoints = page.elements.filter((element) =>
+        element.type === 'matchTask' && getMatchTaskGroupId(element) === this.activeMatchGroupId
+      );
+      const completedPairIds = new Set(
+        endpoints.filter((element) => getMatchTaskSide(element) === 'B').map((element) => getMatchTaskPairId(element))
+      );
+      const pending = [...endpoints].reverse().find((element) =>
+        getMatchTaskSide(element) === 'A' && !completedPairIds.has(getMatchTaskPairId(element))
+      );
+      if (pending) {
+        this.pendingMatchEndpointId = pending.id;
+        return;
+      }
+    }
+  }
+
+  private getAllCreatorPages(): BookPage[] {
+    if (!this.book) return [];
+    return [
+      ...this.book.pages,
+      ...(this.book.workbooks || []).flatMap((workbook) => workbook.pages || [])
+    ];
+  }
+
+  private startGuideTrackPreview(element: BookElement, track: GuideAudioTrack, startTime: number): void {
+    if (!this.book) return;
+    this.stopGuidePreview();
+    const token = ++this.previewToken;
+    const audio = new Audio(this.bookLibrary.getAssetUrl(this.book.id, track.src));
+    this.activePreviewAudio = audio;
+    this.previewGuideTrackId = track.id;
+    const semitones = track.pitchSemitones ?? 0;
+    if (semitones) {
+      void this.guidePitch.connect(audio, semitones).then((cleanup) => {
+        if (this.previewGuideTrackId === track.id) {
+          this.previewPitchCleanup = cleanup;
+        } else {
+          cleanup();
+        }
+      });
+    }
+    this.previewGuideElementId = element.id;
+    this.previewOwlImage = 'assets/gifs/owl-teaching.gif';
+    this.previewGuidePaused = false;
+    this.previewGuideDuration = track.duration || 0;
+    this.previewGuideCurrentTime = Math.max(0, startTime);
+    this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
+
+    audio.onloadedmetadata = () => {
+      if (token !== this.previewToken) return;
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      if (duration > 0) {
+        track.duration = duration;
+        this.previewGuideDuration = duration;
+        audio.currentTime = this.clamp(startTime, 0, duration);
+      }
+    };
+    audio.ontimeupdate = () => {
+      if (token !== this.previewToken) return;
+      this.previewGuideCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      this.previewGuideDuration = Number.isFinite(audio.duration) ? audio.duration : this.previewGuideDuration;
+      this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
+    };
+    audio.onplay = () => {
+      if (token === this.previewToken) this.previewGuidePaused = false;
+    };
+    audio.onpause = () => {
+      if (token === this.previewToken && !audio.ended) this.previewGuidePaused = true;
+    };
+    audio.onended = () => {
+      if (token !== this.previewToken) return;
+      this.previewGuidePaused = true;
+      this.previewGuideCurrentTime = this.previewGuideDuration;
+    };
+    audio.onerror = () => {
+      if (token === this.previewToken) this.previewGuidePaused = true;
+    };
+    void audio.play().catch(() => {
+      if (token === this.previewToken) this.previewGuidePaused = true;
     });
+  }
+
+  private seekGuideTrackTo(element: BookElement, track: GuideAudioTrack, value: number): void {
+    const time = this.clamp(Number(value) || 0, 0, this.getGuideTrackDuration(track));
+    const isActiveTrack = this.previewGuideTrackId === track.id;
+    this.previewGuideCurrentTime = time;
+    this.previewGuideDuration = this.getGuideTrackDuration(track);
+    this.previewGuideElementId = element.id;
+    this.previewGuideTrackId = track.id;
+    this.previewOwlImage = 'assets/gifs/owl-teaching.gif';
+    if (this.activePreviewAudio && isActiveTrack) {
+      this.activePreviewAudio.currentTime = time;
+    }
+    this.applyCreatorGuideState(element, track, time);
+  }
+
+  private applyCreatorGuideState(element: BookElement, track: GuideAudioTrack, time: number): void {
+    const pin = [...(track.pins || [])]
+      .sort((a, b) => a.time - b.time)
+      .filter((candidate) => candidate.time <= time + 0.01)
+      .pop() ?? null;
+    this.previewGuideX = pin?.x ?? element.x + (element.width || 0.08) / 2;
+    this.previewGuideY = pin?.y ?? element.y + (element.height || 0.08) / 2;
+    this.previewBubbleText = pin?.text || '';
+    this.previewGuideImageUrl = pin?.imageSrc ? this.getCachedAssetUrl(pin.imageSrc) : '';
+  }
+
+  private async ensureGuideTrackDuration(track: GuideAudioTrack): Promise<void> {
+    if (!this.book || (track.duration || 0) > 0) return;
+    const audio = new Audio(this.bookLibrary.getAssetUrl(this.book.id, track.src));
+    await new Promise<void>((resolve) => {
+      audio.preload = 'metadata';
+      audio.onloadedmetadata = () => {
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          track.duration = audio.duration;
+          if (this.selectedGuideTrackId === track.id) {
+            this.previewGuideDuration = audio.duration;
+          }
+        }
+        resolve();
+      };
+      audio.onerror = () => resolve();
+    });
+  }
+
+  private updateTimelinePinFromPointer(clientX: number): void {
+    const drag = this.timelinePinDragState;
+    const element = this.selectedElement;
+    if (!drag || !element || element.id !== drag.elementId) return;
+    const track = this.getGuideDotTracks(element).find((item) => item.id === drag.trackId);
+    const pin = track?.pins.find((item) => item.id === drag.pinId);
+    if (!track || !pin) return;
+    const ratio = this.clamp((clientX - drag.left) / drag.width, 0, 1);
+    pin.time = ratio * drag.duration;
+    this.previewGuideCurrentTime = pin.time;
+    if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
+      this.activePreviewAudio.currentTime = pin.time;
+    }
+    this.applyCreatorGuideState(element, track, pin.time);
+  }
+
+  private updatePagePinFromPointer(clientX: number, clientY: number): void {
+    const drag = this.pagePinDragState;
+    const element = this.selectedElement;
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    if (!drag || !element || element.id !== drag.elementId || !rect?.width || !rect.height) return;
+    const pin = this.getOrderedGuidePinById(element, drag.pinId);
+    if (!pin) return;
+    pin.x = this.clamp((clientX - rect.left) / rect.width, 0, 1);
+    pin.y = this.clamp((clientY - rect.top) / rect.height, 0, 1);
+    this.previewGuideX = pin.x;
+    this.previewGuideY = pin.y;
+  }
+
+  private scheduleGuidePinDragFrame(): void {
+    if (this.guidePinDragFrame) return;
+    this.guidePinDragFrame = requestAnimationFrame(() => {
+      this.guidePinDragFrame = 0;
+      this.applyPendingGuidePinPointer();
+    });
+  }
+
+  private flushGuidePinDragFrame(): void {
+    if (this.guidePinDragFrame) {
+      cancelAnimationFrame(this.guidePinDragFrame);
+      this.guidePinDragFrame = 0;
+    }
+    this.applyPendingGuidePinPointer();
+  }
+
+  private applyPendingGuidePinPointer(): void {
+    const point = this.pendingGuidePinPointer;
+    if (!point) return;
+    this.pendingGuidePinPointer = null;
+    if (this.timelinePinDragState) {
+      this.updateTimelinePinFromPointer(point.x);
+    } else if (this.pagePinDragState) {
+      this.updatePagePinFromPointer(point.x, point.y);
+    }
+  }
+
+  private getOrderedGuidePinById(element: BookElement, pinId: string): GuideTimelinePin | null {
+    return getOrderedGuidePins(element).find((item) => item.pin.id === pinId)?.pin ?? null;
+  }
+
+  private sortGuidePins(track: GuideAudioTrack): void {
+    track.pins.sort((a, b) => a.time - b.time);
   }
 
   private wait(ms: number): Promise<void> {
@@ -1811,10 +2810,18 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   private applyLoadedBook(book: InteractiveBook | null): void {
+    normalizeBookGuideTimelines(book);
     this.book = book;
     this.assetUrlCache.clear();
     this.selectedPageIndex = 0;
     this.selectedElementId = null;
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = null;
+    this.pendingMatchEndpointId = null;
     this.pageJumpValue = '1';
     this.activePageSource = 'main';
     this.activeWorkbookId = null;

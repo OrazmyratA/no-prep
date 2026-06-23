@@ -29,6 +29,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   private buzzSound: HTMLAudioElement | null = null;
   private rewardSound: HTMLAudioElement | null = null;
   private victoryTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private confirmTimerId: ReturnType<typeof setTimeout> | null = null;
   private imageUrls = new Map<number, string>();
   quizOverlayVisible = false;
   useTextOnWheel = false;
@@ -150,6 +151,7 @@ private resizeCanvas() {
   ngOnDestroy() {
     this.layoutSubscription?.unsubscribe();
     this.clearVictoryTimeout();
+    if (this.confirmTimerId !== null) { clearTimeout(this.confirmTimerId); this.confirmTimerId = null; }
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.images.clear();
     this.imageLoadQueue.clear();
@@ -528,11 +530,12 @@ onQuizAnswer(selected: Item) {
   }
 }
   onConfirmOk() {
-    if (!this.selectedItem || this.gameFinished) return;
+    if (!this.selectedItem || this.gameFinished || this.eliminationLong) return;
     this.playSound(this.collectSound);
     this.eliminationLong = true;
     this.cdr.detectChanges();
-    setTimeout(() => {
+    this.confirmTimerId = setTimeout(() => {
+      this.confirmTimerId = null;
       const idx = this.currentItems.findIndex(i => i.id === this.selectedItem?.id);
       if (idx !== -1) this.currentItems.splice(idx, 1);
       this.showQuiz = false;
@@ -546,6 +549,7 @@ onQuizAnswer(selected: Item) {
   }
 
   onConfirmOops() {
+    if (!this.simpleConfirmMode) return;
     this.playSound(this.buzzSound, 0.5);
     this.showQuiz = false;
     this.quizOverlayVisible = false;

@@ -201,10 +201,14 @@ async function getAvailableBytes(targetPath) {
   }
 
   const root = path.parse(path.resolve(targetPath)).root.replace(/\\$/, '');
+  const driveLetter = root.replace(':', '');
+  if (!/^[A-Za-z]$/.test(driveLetter)) {
+    return null;
+  }
   return new Promise((resolve) => {
     execFile(
       'powershell.exe',
-      ['-NoProfile', '-Command', `$d = Get-PSDrive -Name '${root.replace(':', '')}'; [int64]$d.Free`],
+      ['-NoProfile', '-Command', `$d = Get-PSDrive -Name '${driveLetter}'; [int64]$d.Free`],
       { windowsHide: true },
       (error, stdout) => {
         if (error) {
@@ -1139,13 +1143,37 @@ function createWindow() {
     }
   );
 
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          "default-src 'self' noprep-book:; " +
+          "script-src 'self' 'unsafe-inline'; " +
+          "style-src 'self' 'unsafe-inline'; " +
+          "img-src 'self' noprep-book: data: blob: https://i.ytimg.com https://*.ytimg.com; " +
+          "media-src 'self' noprep-book: blob: data:; " +
+          "frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
+          "connect-src 'self' noprep-book: blob:; " +
+          "font-src 'self' data:; " +
+          "object-src 'none';"
+        ]
+      }
+    });
+  });
+
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
-  // Open whitelisted external URLs (e.g. Google Images) in the system browser
+  const ALLOWED_EXTERNAL_HOSTS = new Set([
+    'www.youtube.com', 'youtube.com', 'youtu.be',
+    'www.youtube-nocookie.com', 'youtube-nocookie.com'
+  ]);
+
+  // Open whitelisted external URLs in the system browser
   ipcMain.handle('open-external-url', (_event, url) => {
     try {
       const parsed = new URL(String(url ?? ''));
-      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      if ((parsed.protocol === 'https:' || parsed.protocol === 'http:') && ALLOWED_EXTERNAL_HOSTS.has(parsed.hostname)) {
         shell.openExternal(parsed.href);
       }
     } catch {
@@ -1250,8 +1278,10 @@ ipcMain.handle('enter-license-content', async (event, content) => {
   }
 });
 
+const ALLOWED_SECURE_FEATURES = new Set(['ai', 'editing', 'export', 'import', 'premium']);
+
 ipcMain.handle('run-secure-feature', async (event, featureName, input) => {
-  if (typeof featureName !== 'string') {
+  if (typeof featureName !== 'string' || !ALLOWED_SECURE_FEATURES.has(featureName)) {
     return { ok: false, error: 'INVALID_FEATURE' };
   }
   return runSecureFeature(featureName, input ?? {});

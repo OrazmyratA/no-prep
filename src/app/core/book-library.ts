@@ -15,6 +15,7 @@ import { db, StoredBook } from './db.model';
 import { PlatformService } from './platform';
 import { showAppNotification } from './notification';
 import { LanguageService } from './language';
+import { PlatformFileService } from './platform-file';
 
 declare const window: any;
 
@@ -34,7 +35,11 @@ export class BookLibraryService {
   readonly progress$ = this.progressSubject.asObservable();
   private localAssetCache = new Map<string, string>();
 
-  constructor(private platform: PlatformService, private languageService: LanguageService) {
+  constructor(
+    private platform: PlatformService,
+    private languageService: LanguageService,
+    private platformFile: PlatformFileService
+  ) {
     this.connectProgressEvents();
     void this.refresh();
   }
@@ -180,7 +185,7 @@ export class BookLibraryService {
 
   async exportBookToDesktop(bookId: string): Promise<void> {
     if (!this.isDesktopAvailable) {
-      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotExportBook'));
+      await this.exportLocalBookToDownloads(bookId);
       return;
     }
 
@@ -239,6 +244,7 @@ export class BookLibraryService {
     if (this.isDesktopAvailable) {
       const response = await this.invoke<void>('deleteBook', { bookId });
       if (response.ok) {
+        await db.bookTaskResponses.where('bookId').equals(bookId).delete();
         showAppNotification(this.t('bookLibBookDeleted'), 'success');
         await this.refresh();
         return true;
@@ -248,6 +254,7 @@ export class BookLibraryService {
     }
 
     await db.books.delete(bookId);
+    await db.bookTaskResponses.where('bookId').equals(bookId).delete();
     try {
       await db.bookAnnotations.delete(bookId);
     } catch (error) {
@@ -574,6 +581,19 @@ export class BookLibraryService {
     return null;
   }
 
+  private async checkStorageQuota(requiredBytes: number): Promise<void> {
+    if (typeof navigator?.storage?.estimate !== 'function') return;
+    const { quota = 0, usage = 0 } = await navigator.storage.estimate();
+    const available = quota - usage;
+    const minRequired = Math.max(requiredBytes * 3, 20 * 1024 * 1024);
+    if (available < minRequired) {
+      const availableMb = (available / 1024 / 1024).toFixed(1);
+      throw new Error(
+        `${this.t('bookLibNotEnoughStorage') || 'Not enough browser storage'} (${availableMb} MB available). Delete old books or clear browser data to continue.`
+      );
+    }
+  }
+
   private async saveLocalBook(book: InteractiveBook, showRefresh = true): Promise<BookRegistryItem> {
     const current = await db.books.get(book.id);
     const now = new Date().toISOString();
@@ -591,6 +611,7 @@ export class BookLibraryService {
       updatedAt: nextBook.updatedAt
     };
 
+    await this.checkStorageQuota(entry.sizeBytes);
     await db.books.put(entry);
     if (showRefresh) {
       await this.refresh();
@@ -605,6 +626,197 @@ export class BookLibraryService {
     for (const asset of assets) {
       this.localAssetCache.set(asset.relativePath, asset.dataUrl);
     }
+  }
+
+  private async exportLocalBookToDownloads(bookId: string): Promise<void> {
+    if (!this.isLocalStorageAvailable()) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotExportBook'));
+      return;
+    }
+
+    const book = await this.getBook(bookId);
+    if (!book) {
+      showAppNotification(this.t('bookLibCouldNotLoadBook'), 'error');
+      return;
+    }
+
+    this.showImmediateProgress('export', this.t('bookLibPreparingExport'));
+    try {
+      const exportFolder = `No-Prep Books/${this.sanitizePathSegment(book.title || 'Book')}`;
+      const exportedBook = this.cloneBook(book);
+
+      // Promise-based dedup: stores in-flight writes so concurrent callers await
+      // the same write instead of writing the same blob twice.
+      const exportedAssets = new Map<string, Promise<string>>();
+      const writeDataUrl = (dataUrl: string, relativePath: string): Promise<string> => {
+        if (!this.isInlineDataUrl(dataUrl)) {
+          return Promise.resolve(dataUrl);
+        }
+        const pending = exportedAssets.get(dataUrl);
+        if (pending) return pending;
+        const promise = this.platformFile
+          .saveDataUrlToDownloads(dataUrl, this.fileNameFromRelativePath(relativePath), `${exportFolder}/${this.dirname(relativePath)}`)
+          .then(() => relativePath);
+        exportedAssets.set(dataUrl, promise);
+        return promise;
+      };
+
+      const totalPages =
+        exportedBook.pages.length +
+        (exportedBook.workbooks ?? []).reduce((sum, wb) => sum + wb.pages.length, 0);
+      let exportedPageCount = 0;
+
+      const exportOnePage = async (page: BookPage, sourcePdfPath: string): Promise<void> => {
+        if (page.sourcePdf) {
+          page.sourcePdf = await writeDataUrl(page.sourcePdf, sourcePdfPath);
+        }
+        await this.exportPageElementAssets(bookId, page, writeDataUrl);
+        exportedPageCount++;
+        this.progressSubject.next({
+          operationId: 'export',
+          type: 'export',
+          phase: `${this.t('bookLibPreparingExport')} (${exportedPageCount}/${totalPages})`,
+          transferredBytes: exportedPageCount,
+          totalBytes: totalPages
+        });
+      };
+
+      if (exportedBook.sourcePdf) {
+        exportedBook.sourcePdf = await writeDataUrl(exportedBook.sourcePdf, 'student-book/source.pdf');
+      }
+
+      await Promise.all(
+        exportedBook.pages.map((page, i) =>
+          exportOnePage(page, `student-book/page-${page.pdfPage || i + 1}.pdf`)
+        )
+      );
+
+      await Promise.all(
+        (exportedBook.workbooks ?? []).map(async (workbook, workbookIndex) => {
+          const workbookFolder = `workbook-${workbookIndex + 1}`;
+          if (workbook.sourcePdf) {
+            workbook.sourcePdf = await writeDataUrl(workbook.sourcePdf, `${workbookFolder}/source.pdf`);
+          }
+          await Promise.all(
+            workbook.pages.map((page, i) =>
+              exportOnePage(page, `${workbookFolder}/page-${page.pdfPage || i + 1}.pdf`)
+            )
+          );
+        })
+      );
+
+      const annotations = await db.bookAnnotations.get(bookId);
+      if (annotations?.annotations) {
+        await this.platformFile.saveTextToDownloads(
+          JSON.stringify(annotations.annotations, null, 2),
+          'book-annotations.json',
+          'application/json',
+          `${exportFolder}/annotations`
+        );
+      }
+
+      await this.platformFile.saveTextToDownloads(
+        JSON.stringify(exportedBook, null, 2),
+        'book.json',
+        'application/json',
+        exportFolder
+      );
+
+      showAppNotification('Book folder exported to Downloads/No-Prep Books.', 'success');
+    } catch (error) {
+      console.debug('Local book export failed', error);
+      showAppNotification(this.t('bookLibCouldNotExportBook'), 'error');
+    } finally {
+      this.progressSubject.next(null);
+    }
+  }
+
+  private async exportPageElementAssets(
+    bookId: string,
+    page: BookPage,
+    writeDataUrl: (dataUrl: string, relativePath: string) => Promise<string>
+  ): Promise<void> {
+    await Promise.all(page.elements.map(async (element, index) => {
+      const prefix = `${page.id || 'page'}/${index + 1}-${element.id || element.type}`;
+      const src = String(element.data?.['src'] || '');
+      if (src) {
+        const dataUrl = await this.resolveLocalAssetDataUrl(bookId, src);
+        if (dataUrl) {
+          const folder = this.assetFolderForElementType(element.type);
+          element.data['src'] = await writeDataUrl(dataUrl, `${folder}/${prefix}${this.extensionFromDataUrl(dataUrl)}`);
+        }
+      }
+
+      const topicPath = String(element.data?.['bookTopicPath'] || '');
+      if (topicPath) {
+        const dataUrl = await this.resolveLocalAssetDataUrl(bookId, topicPath);
+        if (dataUrl) {
+          element.data['bookTopicPath'] = await writeDataUrl(dataUrl, `topics/${prefix}.json`);
+        }
+      }
+
+      if (Array.isArray(element.data?.['guideTracks'])) {
+        const tracks = element.data['guideTracks'] as Array<{
+          src?: string;
+          pins?: Array<{ imageSrc?: string }>;
+        }>;
+        await Promise.all(tracks.map(async (track, trackIndex) => {
+          const audioSource = String(track.src || '');
+          if (audioSource) {
+            const dataUrl = await this.resolveLocalAssetDataUrl(bookId, audioSource);
+            if (dataUrl) {
+              track.src = await writeDataUrl(
+                dataUrl,
+                `audio/${prefix}-${trackIndex + 1}${this.extensionFromDataUrl(dataUrl)}`
+              );
+            }
+          }
+          await Promise.all((track.pins || []).map(async (pin, pinIndex) => {
+            const imageSource = String(pin.imageSrc || '');
+            if (!imageSource) return;
+            const dataUrl = await this.resolveLocalAssetDataUrl(bookId, imageSource);
+            if (dataUrl) {
+              pin.imageSrc = await writeDataUrl(
+                dataUrl,
+                `images/${prefix}-track-${trackIndex + 1}-pin-${pinIndex + 1}${this.extensionFromDataUrl(dataUrl)}`
+              );
+            }
+          }));
+        }));
+        element.data['audioFiles'] = tracks.map((track) => String(track.src || '')).filter(Boolean);
+      } else if (Array.isArray(element.data?.['audioFiles'])) {
+        const audioFiles = element.data['audioFiles'] as string[];
+        const exportedAudio: string[] = await Promise.all(
+          audioFiles.map(async (audioFile, audioIndex) => {
+            const dataUrl = await this.resolveLocalAssetDataUrl(bookId, String(audioFile));
+            if (dataUrl) {
+              return writeDataUrl(dataUrl, `audio/${prefix}-${audioIndex + 1}${this.extensionFromDataUrl(dataUrl)}`);
+            }
+            return String(audioFile);
+          })
+        );
+        element.data['audioFiles'] = exportedAudio;
+      }
+    }));
+  }
+
+  private async resolveLocalAssetDataUrl(bookId: string, value: string): Promise<string | null> {
+    if (this.isInlineDataUrl(value)) {
+      return value;
+    }
+    if (!value.startsWith('local-book-asset://')) {
+      return null;
+    }
+    const cached = this.localAssetCache.get(value);
+    if (cached) {
+      return cached;
+    }
+    const asset = await db.bookAssets.get(value);
+    if (asset?.bookId === bookId && asset.dataUrl) {
+      this.localAssetCache.set(value, asset.dataUrl);
+      return asset.dataUrl;
+    }
+    return null;
   }
 
   private toRegistryItem(entry: StoredBook): BookRegistryItem {
@@ -680,35 +892,55 @@ export class BookLibraryService {
       input.style.opacity = '0';
       document.body.appendChild(input);
 
+      let settled = false;
+      const settle = (value: BookFilePick | null) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(value);
+      };
+
       const cleanup = () => {
         input.remove();
         window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.clearTimeout(hardTimeoutId);
       };
+
       const onFocus = () => {
         window.setTimeout(() => {
-          if (!input.files?.length) {
-            cleanup();
-            resolve(null);
-          }
+          if (!input.files?.length) settle(null);
         }, 800);
       };
 
+      const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          window.setTimeout(() => {
+            if (!input.files?.length) settle(null);
+          }, 500);
+        }
+      };
+
+      // Hard timeout: if neither focus nor visibilitychange fires (some mobile browsers), resolve after 60 s
+      const hardTimeoutId = window.setTimeout(() => settle(null), 60_000);
+
       input.addEventListener('change', async () => {
         const file = input.files?.[0] ?? null;
-        cleanup();
         if (!file) {
-          resolve(null);
+          settle(null);
           return;
         }
-        resolve({
+        const pick: BookFilePick = {
           dataUrl: await this.fileToDataUrl(file),
           fileName: file.name || 'asset',
           mimeType: file.type || '',
           size: file.size || 0
-        });
+        };
+        settle(pick);
       }, { once: true });
 
       window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onVisibilityChange);
       input.click();
     });
   }
@@ -780,6 +1012,45 @@ export class BookLibraryService {
 
   private isInlineOrRemoteAsset(value: string): boolean {
     return /^(data:|blob:|https?:)/i.test(value);
+  }
+
+  private isInlineDataUrl(value: string): boolean {
+    return /^data:/i.test(value);
+  }
+
+  private extensionFromDataUrl(dataUrl: string): string {
+    const mime = /^data:([^;,]+)/i.exec(dataUrl)?.[1]?.toLowerCase() || '';
+    if (mime.includes('pdf')) return '.pdf';
+    if (mime.includes('png')) return '.png';
+    if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
+    if (mime.includes('webp')) return '.webp';
+    if (mime.includes('gif')) return '.gif';
+    if (mime.includes('mp4')) return '.mp4';
+    if (mime.includes('webm')) return '.webm';
+    if (mime.includes('mpeg')) return '.mp3';
+    if (mime.includes('wav')) return '.wav';
+    if (mime.includes('json')) return '.json';
+    return '.bin';
+  }
+
+  private assetFolderForElementType(type: string): string {
+    if (type === 'video') return 'videos';
+    if (type === 'image') return 'images';
+    return 'assets';
+  }
+
+  private sanitizePathSegment(value: string): string {
+    return String(value || 'Book').trim().replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_') || 'Book';
+  }
+
+  private fileNameFromRelativePath(relativePath: string): string {
+    return relativePath.split('/').filter(Boolean).pop() || `file-${Date.now()}`;
+  }
+
+  private dirname(relativePath: string): string {
+    const parts = relativePath.split('/').filter(Boolean);
+    parts.pop();
+    return parts.join('/');
   }
 
   private titleFromFileName(fileName: string): string {

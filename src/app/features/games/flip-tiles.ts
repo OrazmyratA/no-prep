@@ -407,11 +407,14 @@ private rebuildCards(items: Item[]) {
 
   // ... fullscreen methods (unchanged) ...
   openFullscreen(event: Event, index: number) {
+    event.preventDefault();
     event.stopPropagation();
     this.stopActiveAudio();
     this.fullscreenIndex = index;
     this.fullscreenItem = this.cards[index];
     this.fullscreenVisible = true;
+    this.cdr.detectChanges();
+    requestAnimationFrame(() => this.cdr.detectChanges());
   }
 
   closeFullscreen(event: MouseEvent) {

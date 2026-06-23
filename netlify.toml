@@ -1,7 +1,11 @@
 [build]
-  command = "npm run build"
+  command = "npm run build:prod"
   publish = "dist/no-prep/browser"
 
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback — hash routing handles routes client-side
 [[redirects]]
   from = "/*"
   to = "/index.html"

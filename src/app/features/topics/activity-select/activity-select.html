@@ -15,7 +15,7 @@
     </div>
 
     <!-- Games Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div *ngIf="games.length; else noLinkedActivities" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       <!-- Game card with conditional behavior for AI game -->
       <div *ngFor="let game of games"
            (click)="onGameClick(game)"
@@ -46,6 +46,14 @@
         </div>
       </div>
     </div>
+
+    <ng-template #noLinkedActivities>
+      <div class="empty-activity-state">
+        <span aria-hidden="true">&#9888;</span>
+        <strong>No activities are linked to this book marker.</strong>
+        <button type="button" (click)="goBack()">{{ 'readerBack' | translate }}</button>
+      </div>
+    </ng-template>
 
     <!-- Backdrop — clicking outside the panel closes it -->
     <div *ngIf="selectedGame && showSettings"

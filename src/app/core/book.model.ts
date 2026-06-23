@@ -1,5 +1,32 @@
 export type BookPageType = 'pdf' | 'blank';
-export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note';
+export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note' | 'answerKey' | 'textTask' | 'choiceTask' | 'circleTask' | 'matchTask';
+
+export interface BookWordBankOption {
+  id: string;
+  text: string;
+}
+
+export interface BookWordBank {
+  id: string;
+  options: BookWordBankOption[];
+}
+
+export interface GuideTimelinePin {
+  id: string;
+  time: number;
+  x: number;
+  y: number;
+  text: string;
+  imageSrc?: string;
+}
+
+export interface GuideAudioTrack {
+  id: string;
+  src: string;
+  duration?: number;
+  pitchSemitones?: number;
+  pins: GuideTimelinePin[];
+}
 
 export interface BookElement {
   id: string;
@@ -18,6 +45,7 @@ export interface BookPage {
   sourcePdf?: string;
   backgroundColor?: string;
   hidden?: boolean;
+  wordBanks?: BookWordBank[];
   elements: BookElement[];
 }
 
@@ -102,6 +130,7 @@ export interface BookAnnotationText {
 export interface BookAnnotationStroke {
   id: string;
   pageId: string;
+  kind?: 'pen' | 'highlighter';
   color: string;
   width: number;
   points: { x: number; y: number }[];
@@ -117,5 +146,19 @@ export interface BookAnnotations {
   version: string;
   bookId: string;
   pages: Record<string, BookPageAnnotations>;
+  updatedAt: string;
+}
+
+export type BookTaskResult = 'unchecked' | 'correct' | 'incorrect';
+
+export interface BookTaskResponse {
+  key: string;
+  profileId: string;
+  bookId: string;
+  pageId: string;
+  taskId: string;
+  value: string;
+  result: BookTaskResult;
+  attempts: number;
   updatedAt: string;
 }

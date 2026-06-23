@@ -40,6 +40,8 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   private imageUrls = new Map<number, string>();
   private drawFrame: number | null = null;
   private layoutSubscription?: Subscription;
+  private activeAudio: HTMLAudioElement | null = null;
+  private activeAudioUrl: string | null = null;
 
 
   constructor(
@@ -64,12 +66,8 @@ export class SpotlightComponent implements OnInit, OnDestroy {
       this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
 
-    // Read spotlight size from query params
-    this.route.queryParams.subscribe(params => {
-      if (params['spotlightSize']) {
-        this.spotlightSize = Number(params['spotlightSize']);
-      }
-    });
+    const spotlightParam = this.route.snapshot.queryParams['spotlightSize'];
+    if (spotlightParam) this.spotlightSize = Number(spotlightParam);
 
      try {
       this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -93,6 +91,7 @@ export class SpotlightComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.clearTimer();
+    this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
     this.layoutSubscription?.unsubscribe();
@@ -119,19 +118,35 @@ private loadItem(index: number) {
   }
 
   playCurrentItemSound() {
-  if (!this.currentItem?.audio) return;
-  const url = URL.createObjectURL(this.currentItem.audio);
-  const audio = new Audio(url);
-  audio.play().catch(e => console.debug('Audio play error:', e));
-  audio.onended = () => URL.revokeObjectURL(url);
-}
+    if (!this.currentItem?.audio) return;
+    this.stopActiveAudio();
+    const url = URL.createObjectURL(this.currentItem.audio);
+    const audio = new Audio(url);
+    this.activeAudio = audio;
+    this.activeAudioUrl = url;
+    audio.play().catch(e => console.debug('Audio play error:', e));
+    audio.onended = () => this.stopActiveAudio();
+  }
+
+  private stopActiveAudio() {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio.onended = null;
+      this.activeAudio = null;
+    }
+    if (this.activeAudioUrl) {
+      URL.revokeObjectURL(this.activeAudioUrl);
+      this.activeAudioUrl = null;
+    }
+  }
   private moveSpotlightToCorner(corner: 'center' | 'top-left', runChecks = true) {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    const marginX = Math.min(60, Math.max(10, rect.width * 0.05));
-    const marginY = Math.min(60, Math.max(10, rect.height * 0.05));
+    const radius = this.spotlightSize / 2;
+    const marginX = Math.max(radius, Math.min(rect.width * 0.12, 80));
+    const marginY = Math.max(radius, Math.min(rect.height * 0.12, 80));
     const cssX = corner === 'center' ? rect.width / 2 : marginX;
     const cssY = corner === 'center' ? rect.height / 2 : marginY;
     const scaleX = rect.width ? canvas.width / rect.width : 1;

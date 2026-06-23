@@ -1,34 +1,68 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import { SwipeDirective } from '../../../shared/swipe.directive';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
+import html2canvas from 'html2canvas';
 import { Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
+import { GuidePitchService } from '../../../core/guide-pitch';
 import { DbService } from '../../../core/db';
 import { LanguageService } from '../../../core/language';
 import { showAppNotification } from '../../../core/notification';
+import { PlatformFileService } from '../../../core/platform-file';
+import { BookTaskResponseService } from '../../../core/book-task-responses';
+import {
+  getAvailableWordBankOptions,
+  getChoiceTaskBankId,
+  getMatchTaskGroupElements,
+  getMatchTaskGroupId,
+  getMatchTaskSide,
+  getPageWordBank,
+  isBookTaskElement,
+  isChoiceTaskAnswerCorrect,
+  isCircleTaskCorrectTarget,
+  isMatchTaskConnectionCorrect,
+  isTextTaskAnswerCorrect
+} from '../../../core/book-tasks';
 import {
   BookAnnotationStroke,
   BookAnnotationText,
   BookAnnotations,
   BookElement,
+  BookTaskResponse,
+  GuideAudioTrack,
+  GuideTimelinePin,
   BookWorkbook,
   BookPage,
   BookPageAnnotations,
+  BookWordBankOption,
   WorkbookLink,
   InteractiveBook
 } from '../../../core/book.model';
+import {
+  getGuideTracks,
+  getOrderedGuidePins,
+  normalizeBookGuideTimelines
+} from '../../../core/guide-timeline';
+import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 
 type ReaderAnnotationAction =
   | { kind: 'add-text'; pageId: string; item: BookAnnotationText }
   | { kind: 'delete-text'; pageId: string; item: BookAnnotationText }
   | { kind: 'add-stroke'; pageId: string; item: BookAnnotationStroke }
   | { kind: 'delete-stroke'; pageId: string; item: BookAnnotationStroke }
-  | { kind: 'clear'; pages: { pageId: string; before: BookPageAnnotations }[] };
+  | { kind: 'clear'; pages: { pageId: string; before: BookPageAnnotations; responses: BookTaskResponse[] }[] };
 
 type BakedDrawingCanvas = {
   canvas: HTMLCanvasElement;
   width: number;
   height: number;
+};
+
+type ReaderMatchLine = {
+  source: BookElement;
+  target: BookElement;
+  result: 'unchecked' | 'correct' | 'incorrect';
 };
 
 const MAX_BOOK_TOPIC_SNAPSHOT_BYTES = 100 * 1024 * 1024;
@@ -42,12 +76,15 @@ const MAX_BOOK_TOPIC_MEDIA_BYTES = 25 * 1024 * 1024;
   styleUrls: ['./book-reader.css']
 })
 export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild(SwipeDirective) swipeDir?: SwipeDirective;
   @ViewChild('drawingCanvas') drawingCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChildren('drawingCanvas') drawingCanvases?: QueryList<ElementRef<HTMLCanvasElement>>;
   @ViewChild('pageFrame') pageFrame?: ElementRef<HTMLElement>;
   @ViewChild('readerSpread') readerSpread?: ElementRef<HTMLElement>;
   @ViewChild('readerStage') readerStage?: ElementRef<HTMLElement>;
   @ViewChild('expandedVideo') expandedVideo?: ElementRef<HTMLVideoElement>;
+  @ViewChild('expandedVideoFrame') expandedVideoFrame?: ElementRef<HTMLElement>;
+  @ViewChild('guidePinMediaFrame') guidePinMediaFrame?: ElementRef<HTMLElement>;
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -64,17 +101,19 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   loading = true;
   focusMode = false;
   drawMode = false;
+  highlighterMode = false;
   textMode = false;
   deleteMode = false;
-  private swipeStartX = 0;
-  private swipeStartY = 0;
-  private swipeActive = false;
   pageJumpValue = '1';
   penColor = '#ef4444';
   penWidth = 6;
-  penColors = ['#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#111827'];
+  highlighterColor = '#fde047';
+  highlighterWidth = 28;
   textColor = '#111827';
-  textColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#ffffff'];
+  readonly annotationColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ffffff'];
+  get penColors() { return this.annotationColors; }
+  get highlighterColors() { return this.annotationColors; }
+  get textColors() { return this.annotationColors; }
   speechSpeeds = [1, 1.5, 2, 0.5];
   speechSpeedIndex = 0;
   annotations: BookAnnotations | null = null;
@@ -88,6 +127,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   guideAudioCurrentTime = 0;
   guideAudioDuration = 0;
   guideAudioVolume = 1;
+  guideOverlayImageUrl = '';
+  guideOverlayVisible = false;
   owlImage = 'assets/gifs/owl-corner.gif';
   owlX = 0;
   owlY = 0;
@@ -99,20 +140,33 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   readerThumbViewportHeight = 720;
   readerThumbItemHeight = 305;
   expandedElement: BookElement | null = null;
+  videoFullscreen = false;
   expandedFocusElement: BookElement | null = null;
   expandedFocusPage: BookPage | null = null;
   activeTextInput: { pageId: string; textId?: string; x: number; y: number; width: number; height: number; value: string; color: string; createdAt?: number } | null = null;
   selectedText: { pageId: string; textId: string } | null = null;
+  taskResponses = new Map<string, BookTaskResponse>();
+  activeTaskElement: BookElement | null = null;
+  activeTaskPageId: string | null = null;
+  activeMatchEndpoint: { elementId: string; pageId: string } | null = null;
   undoStack: ReaderAnnotationAction[] = [];
   redoStack: ReaderAnnotationAction[] = [];
   private textDrag: { pageId: string; textId?: string } | null = null;
   private drawing = false;
+  private drawingStartedInInkMode = false;
   private activeStroke: BookAnnotationStroke | null = null;
   private activeAudio: HTMLAudioElement | null = null;
+  private activePitchCleanup: (() => void) | null = null;
   private guidePlaybackToken = 0;
   private guideAudioResolver: (() => void) | null = null;
   private guideSegmentIndex = -1;
   private guideSegmentCount = 0;
+  private activeGuideElement: BookElement | null = null;
+  private activeGuidePage: BookPage | null = null;
+  private activeGuideTrackIndex = -1;
+  private activeGuidePinId: string | null = null;
+  private guideOverlayTimer: number | null = null;
+  private guideOverlayPositionFrame = 0;
   private routeSubscription?: Subscription;
   private lastTextPlacementAt = 0;
   private annotationSaveTimer: number | null = null;
@@ -125,6 +179,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private bakedDrawingCanvases = new Map<string, BakedDrawingCanvas>();
   private visiblePagesCache: BookPage[] = [];
   private visiblePagesDirty = true;
+  private taskResponseSaveTimer: number | null = null;
+  private pendingTaskResponseIds = new Set<string>();
 
   constructor(
     private route: ActivatedRoute,
@@ -134,7 +190,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef,
     private zone: NgZone,
-    private languageService: LanguageService
+    private languageService: LanguageService,
+    private platformFile: PlatformFileService,
+    private taskResponseService: BookTaskResponseService,
+    private guidePitch: GuidePitchService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -152,6 +211,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.routeSubscription?.unsubscribe();
     this.stopGuideAudio();
     void this.flushAnnotationsNow();
+    void this.flushTaskResponses();
     if (this.readerLayoutFrame) {
       cancelAnimationFrame(this.readerLayoutFrame);
     }
@@ -161,8 +221,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.guideAudioUiFrame) {
       cancelAnimationFrame(this.guideAudioUiFrame);
     }
+    if (this.guideOverlayPositionFrame) {
+      cancelAnimationFrame(this.guideOverlayPositionFrame);
+    }
     if (this.resizeTimer !== null) {
       window.clearTimeout(this.resizeTimer);
+    }
+    if (this.guideOverlayTimer !== null) {
+      window.clearTimeout(this.guideOverlayTimer);
     }
   }
 
@@ -173,6 +239,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     await this.flushAnnotationsNow();
+    await this.flushTaskResponses();
     this.stopGuideAudio();
     this.loading = true;
     this.assetUrlCache.clear();
@@ -188,14 +255,25 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.markVisiblePagesDirty();
     this.pdfUrl = '';
     this.annotations = null;
+    this.taskResponses.clear();
+    this.activeTaskElement = null;
+    this.activeTaskPageId = null;
+    this.activeMatchEndpoint = null;
     this.guideProgress = {};
     this.undoStack = [];
     this.redoStack = [];
     this.resetDrawingCanvas();
 
     this.book = await this.bookLibrary.getBook(bookId);
+    normalizeBookGuideTimelines(this.book);
     this.markVisiblePagesDirty();
     this.annotations = await this.bookLibrary.getBookAnnotations(bookId) ?? this.createEmptyAnnotations(bookId);
+    const responses = await this.taskResponseService.loadBook(bookId);
+    this.taskResponses = new Map(responses.map((response) => [response.taskId, response]));
+    const validTaskIds = new Set(this.getAllBookPages().flatMap((page) =>
+      page.elements.filter(isBookTaskElement).map((element) => element.id)
+    ));
+    await this.taskResponseService.cleanupBook(bookId, validTaskIds);
     this.applyNavigationPageState();
     this.loading = false;
     this.syncPageJumpValue();
@@ -297,6 +375,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   goToPage(index: number, closeDrawer = false): void {
     if (index < 0 || index >= this.visiblePages.length) return;
+    this.swipeDir?.cancel();
     this.stopGuideAudioAndReturnHome();
     this.closeExpandedFocus();
     this.currentPageIndex = index;
@@ -305,6 +384,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.syncPageJumpValue();
     this.selectedText = null;
     this.activeTextInput = null;
+    this.closeTaskInput();
+    this.activeMatchEndpoint = null;
     this.updateReaderSpreadWidth();
     if (closeDrawer) this.pageDrawerOpen = false;
   }
@@ -323,6 +404,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleLinkedWorkbook(): void {
     if (!this.book) return;
+    this.closeTaskInput();
     this.stopGuideAudioAndReturnHome();
     if (this.pageSource === 'workbook') {
       const mainPageId = this.workbookSession?.mainPageId || '';
@@ -389,6 +471,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.twoPageMode = !this.twoPageMode;
     this.selectedText = null;
     this.activeTextInput = null;
+    this.closeTaskInput();
     this.updateReaderSpreadWidth();
     if (this.twoPageMode && this.zoom > 1) {
       this.anchorTwoPageZoomToTopLeft();
@@ -396,6 +479,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   toggleFocusMode(): void {
+    this.closeTaskInput();
     if (this.expandedFocusElement) {
       this.closeExpandedFocus();
       this.focusMode = true;
@@ -407,16 +491,32 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   toggleDrawMode(): void {
     this.drawMode = !this.drawMode;
     if (this.drawMode) {
+      this.highlighterMode = false;
       this.textMode = false;
       this.deleteMode = false;
       this.selectedText = null;
     }
   }
 
+  toggleHighlighterMode(): void {
+    this.highlighterMode = !this.highlighterMode;
+    if (this.highlighterMode) {
+      this.drawMode = false;
+      this.textMode = false;
+      this.deleteMode = false;
+      this.selectedText = null;
+    }
+  }
+
+  isInkModeActive(): boolean {
+    return this.drawMode || this.highlighterMode;
+  }
+
   addTemporaryText(): void {
     this.textMode = !this.textMode;
     if (this.textMode) {
       this.drawMode = false;
+      this.highlighterMode = false;
       this.deleteMode = false;
       this.selectedText = null;
     }
@@ -428,6 +528,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.deleteMode) {
       this.textMode = false;
       this.drawMode = false;
+      this.highlighterMode = false;
       this.selectedText = null;
     }
   }
@@ -470,29 +571,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onPageFramePointerUp(event: PointerEvent): void {
     this.placeTextFromPointer(event);
-  }
-
-  onSwipeAreaPointerDown(event: PointerEvent): void {
-    this.swipeActive = false;
-    if (event.pointerType !== 'touch') return;
-    if (this.drawMode || this.textMode) return;
-    this.swipeStartX = event.clientX;
-    this.swipeStartY = event.clientY;
-    this.swipeActive = true;
-  }
-
-  onSwipeAreaPointerUp(event: PointerEvent): void {
-    if (!this.swipeActive) return;
-    this.swipeActive = false;
-    const dx = event.clientX - this.swipeStartX;
-    const dy = event.clientY - this.swipeStartY;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      if (dx > 0) {
-        this.previousPage();
-      } else {
-        this.nextPage();
-      }
-    }
   }
 
   placeTextFromEvent(event: PointerEvent): void {
@@ -597,6 +675,350 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return pageId ? this.getPageAnnotations(pageId).strokes : [];
   }
 
+  getTaskResponseValue(element: BookElement | null): string {
+    return element ? this.taskResponses.get(element.id)?.value ?? '' : '';
+  }
+
+  getTaskResult(element: BookElement): 'unchecked' | 'correct' | 'incorrect' {
+    return this.taskResponses.get(element.id)?.result ?? 'unchecked';
+  }
+
+  shouldUseTaskDock(_element: BookElement): boolean {
+    return _element.type === 'textTask';
+  }
+
+  activateTextTask(element: BookElement, page: BookPage, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (element.type !== 'textTask') return;
+    this.activeTaskElement = element;
+    this.activeTaskPageId = page.id;
+    this.drawMode = false;
+    this.highlighterMode = false;
+    this.textMode = false;
+    this.deleteMode = false;
+    this.forceUiRefresh();
+    window.setTimeout(() => {
+      this.readerStage?.nativeElement.ownerDocument
+        .querySelector<HTMLInputElement>('.task-response-dock input')
+        ?.focus();
+    });
+  }
+
+  activateChoiceTask(element: BookElement, page: BookPage, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (element.type !== 'choiceTask') return;
+    this.activeTaskElement = element;
+    this.activeTaskPageId = page.id;
+    this.drawMode = false;
+    this.highlighterMode = false;
+    this.textMode = false;
+    this.deleteMode = false;
+    this.forceUiRefresh();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentTaskOutsideClick(event: MouseEvent): void {
+    if (!this.activeTaskElement) return;
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest('.text-task-element') ||
+      target?.closest('.choice-task-element') ||
+      target?.closest('.task-response-dock') ||
+      target?.closest('.word-bank-dialog')
+    ) return;
+    this.closeTaskInput();
+  }
+
+  closeTaskInput(): void {
+    this.activeTaskElement = null;
+    this.activeTaskPageId = null;
+  }
+
+  updateTaskResponse(element: BookElement, page: BookPage, value: string): void {
+    if (!this.book || !isBookTaskElement(element)) return;
+    const existing = this.taskResponses.get(element.id);
+    const response: BookTaskResponse = {
+      key: this.taskResponseService.makeKey(this.book.id, element.id),
+      profileId: this.taskResponseService.defaultProfileId,
+      bookId: this.book.id,
+      pageId: page.id,
+      taskId: element.id,
+      value,
+      result: 'unchecked',
+      attempts: existing?.attempts ?? 0,
+      updatedAt: new Date().toISOString()
+    };
+    this.taskResponses.set(element.id, response);
+    this.pendingTaskResponseIds.add(element.id);
+    this.scheduleTaskResponseSave();
+  }
+
+  updateActiveTaskResponse(value: string): void {
+    const element = this.activeTaskElement;
+    const page = this.activeTaskPageId ? this.getVisiblePageById(this.activeTaskPageId) : null;
+    if (element && page) this.updateTaskResponse(element, page, value);
+  }
+
+  getChoiceTaskDisplayValue(element: BookElement, page: BookPage): string {
+    if (element.type !== 'choiceTask') return '';
+    const optionId = this.getTaskResponseValue(element);
+    return getPageWordBank(page, getChoiceTaskBankId(element))
+      ?.options.find((option) => option.id === optionId)?.text || '';
+  }
+
+  getActiveWordBankOptions(): BookWordBankOption[] {
+    const element = this.activeTaskElement;
+    const page = this.activeTaskPageId ? this.getVisiblePageById(this.activeTaskPageId) : null;
+    if (!element || element.type !== 'choiceTask' || !page) return [];
+    return getAvailableWordBankOptions(page, getChoiceTaskBankId(element));
+  }
+
+  isActiveChoiceOptionSelected(optionId: string): boolean {
+    return this.activeTaskElement?.type === 'choiceTask' && this.getTaskResponseValue(this.activeTaskElement) === optionId;
+  }
+
+  selectActiveChoiceOption(optionId: string): void {
+    const element = this.activeTaskElement;
+    const page = this.activeTaskPageId ? this.getVisiblePageById(this.activeTaskPageId) : null;
+    if (!element || element.type !== 'choiceTask' || !page) return;
+    if (!this.getActiveWordBankOptions().some((option) => option.id === optionId)) return;
+    this.updateTaskResponse(element, page, optionId);
+    this.closeTaskInput();
+    this.forceUiRefresh();
+  }
+
+  isCircleTaskSelected(element: BookElement): boolean {
+    return element.type === 'circleTask' && this.getTaskResponseValue(element) === 'selected';
+  }
+
+  toggleCircleTask(element: BookElement, page: BookPage, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.book || element.type !== 'circleTask') return;
+    this.closeTaskInput();
+    this.drawMode = false;
+    this.highlighterMode = false;
+    this.textMode = false;
+    this.deleteMode = false;
+    const selectTarget = !this.isCircleTaskSelected(element);
+    const existing = this.taskResponses.get(element.id);
+    const response: BookTaskResponse = {
+      key: this.taskResponseService.makeKey(this.book.id, element.id),
+      profileId: this.taskResponseService.defaultProfileId,
+      bookId: this.book.id,
+      pageId: page.id,
+      taskId: element.id,
+      value: selectTarget ? 'selected' : '',
+      result: 'unchecked',
+      attempts: existing?.attempts ?? 0,
+      updatedAt: new Date().toISOString()
+    };
+    this.taskResponses.set(element.id, response);
+    this.pendingTaskResponseIds.add(element.id);
+    this.scheduleTaskResponseSave();
+    this.forceUiRefresh();
+  }
+
+  getMatchLines(page: BookPage): ReaderMatchLine[] {
+    const endpoints = page.elements.filter((element) => element.type === 'matchTask');
+    const endpointById = new Map(endpoints.map((element) => [element.id, element]));
+    return endpoints
+      .filter((element) => getMatchTaskSide(element) === 'A')
+      .map((source) => {
+        const response = this.taskResponses.get(source.id);
+        const target = endpointById.get(response?.value || '') ?? null;
+        return target && getMatchTaskSide(target) === 'B'
+          ? { source, target, result: response?.result ?? 'unchecked' }
+          : null;
+      })
+      .filter((line): line is ReaderMatchLine => !!line);
+  }
+
+  trackByMatchLine(_index: number, line: ReaderMatchLine): string {
+    return line.source.id;
+  }
+
+  getMatchEndpointCenterX(element: BookElement): number {
+    return element.x + (element.width || 0.034) / 2;
+  }
+
+  getMatchEndpointCenterY(element: BookElement): number {
+    return element.y + (element.height || 0.024) / 2;
+  }
+
+  isMatchEndpointSelected(element: BookElement, page: BookPage): boolean {
+    return this.activeMatchEndpoint?.elementId === element.id && this.activeMatchEndpoint.pageId === page.id;
+  }
+
+  isMatchEndpointAvailable(element: BookElement, page: BookPage): boolean {
+    if (!this.activeMatchEndpoint) return true;
+    if (this.isMatchEndpointSelected(element, page)) return true;
+    if (this.activeMatchEndpoint.pageId !== page.id) return false;
+    const active = page.elements.find((item) => item.id === this.activeMatchEndpoint?.elementId) ?? null;
+    return !!active
+      && getMatchTaskGroupId(active) === getMatchTaskGroupId(element)
+      && getMatchTaskSide(active) !== getMatchTaskSide(element);
+  }
+
+  isMatchEndpointConnected(element: BookElement, page: BookPage): boolean {
+    if (element.type !== 'matchTask') return false;
+    if (getMatchTaskSide(element) === 'A') return !!this.taskResponses.get(element.id)?.value;
+    return page.elements
+      .filter((source) => source.type === 'matchTask' && getMatchTaskSide(source) === 'A')
+      .some((source) => this.taskResponses.get(source.id)?.value === element.id);
+  }
+
+  isMatchEndpointMissing(element: BookElement, page: BookPage): boolean {
+    if (element.type !== 'matchTask' || this.isMatchEndpointConnected(element, page)) return false;
+    const group = getMatchTaskGroupElements(page, getMatchTaskGroupId(element));
+    return group
+      .filter((endpoint) => getMatchTaskSide(endpoint) === 'A')
+      .some((source) => this.getTaskResult(source) !== 'unchecked');
+  }
+
+  activateMatchEndpoint(element: BookElement, page: BookPage, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (element.type !== 'matchTask') return;
+    this.closeTaskInput();
+    this.drawMode = false;
+    this.highlighterMode = false;
+    this.textMode = false;
+    this.deleteMode = false;
+
+    if (!this.activeMatchEndpoint) {
+      this.activeMatchEndpoint = { elementId: element.id, pageId: page.id };
+      this.forceUiRefresh();
+      return;
+    }
+    if (this.isMatchEndpointSelected(element, page)) {
+      this.activeMatchEndpoint = null;
+      this.forceUiRefresh();
+      return;
+    }
+    if (!this.isMatchEndpointAvailable(element, page)) return;
+
+    const active = page.elements.find((item) => item.id === this.activeMatchEndpoint?.elementId) ?? null;
+    if (!active) {
+      this.activeMatchEndpoint = null;
+      return;
+    }
+    const source = getMatchTaskSide(active) === 'A' ? active : element;
+    const target = getMatchTaskSide(active) === 'B' ? active : element;
+    this.setMatchConnection(page, source, target);
+    this.activeMatchEndpoint = null;
+    this.forceUiRefresh();
+  }
+
+  private setMatchConnection(page: BookPage, source: BookElement, target: BookElement): void {
+    if (!this.book || getMatchTaskSide(source) !== 'A' || getMatchTaskSide(target) !== 'B') return;
+    const group = getMatchTaskGroupElements(page, getMatchTaskGroupId(source));
+    for (const endpoint of group.filter((item) => getMatchTaskSide(item) === 'A')) {
+      const existing = this.taskResponses.get(endpoint.id);
+      const response: BookTaskResponse = {
+        key: this.taskResponseService.makeKey(this.book.id, endpoint.id),
+        profileId: this.taskResponseService.defaultProfileId,
+        bookId: this.book.id,
+        pageId: page.id,
+        taskId: endpoint.id,
+        value: endpoint.id === source.id
+          ? target.id
+          : existing?.value === target.id ? '' : existing?.value ?? '',
+        result: 'unchecked',
+        attempts: existing?.attempts ?? 0,
+        updatedAt: new Date().toISOString()
+      };
+      this.taskResponses.set(endpoint.id, response);
+      this.pendingTaskResponseIds.add(endpoint.id);
+    }
+    this.scheduleTaskResponseSave();
+  }
+
+  hasVisibleTasks(): boolean {
+    return this.getVisibleTaskEntries().length > 0;
+  }
+
+  checkVisibleTaskAnswers(): void {
+    if (!this.book) return;
+    const entries = this.getVisibleTaskEntries();
+    const changed: BookTaskResponse[] = [];
+    for (const { page, element } of entries.filter((entry) =>
+      entry.element.type !== 'circleTask' && entry.element.type !== 'matchTask'
+    )) {
+      const existing = this.taskResponses.get(element.id);
+      const value = existing?.value ?? '';
+      const correct = element.type === 'choiceTask'
+        ? isChoiceTaskAnswerCorrect(element, value)
+        : isTextTaskAnswerCorrect(element, value);
+      const response: BookTaskResponse = {
+        key: this.taskResponseService.makeKey(this.book.id, element.id),
+        profileId: this.taskResponseService.defaultProfileId,
+        bookId: this.book.id,
+        pageId: page.id,
+        taskId: element.id,
+        value,
+        result: correct ? 'correct' : 'incorrect',
+        attempts: (existing?.attempts ?? 0) + 1,
+        updatedAt: new Date().toISOString()
+      };
+      this.taskResponses.set(element.id, response);
+      changed.push(response);
+      this.pendingTaskResponseIds.delete(element.id);
+    }
+    for (const { page, element } of entries.filter((entry) => entry.element.type === 'circleTask')) {
+      const existing = this.taskResponses.get(element.id);
+      const selected = this.isCircleTaskSelected(element);
+      const response: BookTaskResponse = {
+        key: this.taskResponseService.makeKey(this.book.id, element.id),
+        profileId: this.taskResponseService.defaultProfileId,
+        bookId: this.book.id,
+        pageId: page.id,
+        taskId: element.id,
+        value: existing?.value ?? '',
+        result: selected ? (isCircleTaskCorrectTarget(element) ? 'correct' : 'incorrect') : 'unchecked',
+        attempts: (existing?.attempts ?? 0) + 1,
+        updatedAt: new Date().toISOString()
+      };
+      this.taskResponses.set(element.id, response);
+      changed.push(response);
+      this.pendingTaskResponseIds.delete(element.id);
+    }
+    const matchGroups = new Map<string, { page: BookPage; elements: BookElement[] }>();
+    for (const { page, element } of entries.filter((entry) => entry.element.type === 'matchTask')) {
+      const key = `${page.id}:${getMatchTaskGroupId(element)}`;
+      const group = matchGroups.get(key) || { page, elements: [] };
+      group.elements.push(element);
+      matchGroups.set(key, group);
+    }
+    for (const { page, elements } of matchGroups.values()) {
+      const endpointById = new Map(elements.map((element) => [element.id, element]));
+      for (const source of elements.filter((element) => getMatchTaskSide(element) === 'A')) {
+        const existing = this.taskResponses.get(source.id);
+        const value = existing?.value ?? '';
+        const correct = isMatchTaskConnectionCorrect(source, endpointById.get(value) ?? null);
+        const response: BookTaskResponse = {
+          key: this.taskResponseService.makeKey(this.book.id, source.id),
+          profileId: this.taskResponseService.defaultProfileId,
+          bookId: this.book.id,
+          pageId: page.id,
+          taskId: source.id,
+          value,
+          result: correct ? 'correct' : 'incorrect',
+          attempts: (existing?.attempts ?? 0) + 1,
+          updatedAt: new Date().toISOString()
+        };
+        this.taskResponses.set(source.id, response);
+        changed.push(response);
+        this.pendingTaskResponseIds.delete(source.id);
+      }
+    }
+    this.activeMatchEndpoint = null;
+    void this.taskResponseService.saveMany(changed);
+    this.forceUiRefresh();
+  }
+
   getStrokeBounds(stroke: BookAnnotationStroke): { x: number; y: number; width: number; height: number } {
     if (!stroke.points.length) return { x: 0, y: 0, width: 0.04, height: 0.04 };
     const xs = stroke.points.map((point) => point.x);
@@ -632,6 +1054,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.textMode = false;
     this.drawMode = false;
+    this.highlighterMode = false;
     this.activeTextInput = null;
     this.selectedText = { pageId: page.id, textId: text.id };
     this.textColor = text.color || this.textColor;
@@ -711,16 +1134,18 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const pageFrame = this.getPageFrameFromEvent(event);
     const page = pageFrame ? this.getVisiblePageById(pageFrame.dataset['pageId'] || '') : this.currentPage;
     const canvas = this.getCanvasFromEvent(event);
-    if (!this.drawMode || !canvas || !page || !this.annotations) return;
+    if (!this.isInkModeActive() || !canvas || !page || !this.annotations) return;
     event.preventDefault();
     canvas.setPointerCapture?.(event.pointerId);
     this.drawing = true;
+    this.drawingStartedInInkMode = true;
     const point = this.getCanvasPoint(event, canvas);
     this.activeStroke = {
       id: this.createId('stroke'),
       pageId: page.id,
-      color: this.penColor,
-      width: this.penWidth,
+      kind: this.highlighterMode ? 'highlighter' : 'pen',
+      color: this.highlighterMode ? this.highlighterColor : this.penColor,
+      width: this.highlighterMode ? this.highlighterWidth : this.penWidth,
       points: [point],
       createdAt: Date.now()
     };
@@ -728,7 +1153,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   continueDrawing(event: PointerEvent): void {
-    if (!this.drawMode || !this.drawing || !this.activeStroke) return;
+    if (!this.drawingStartedInInkMode || !this.drawing || !this.activeStroke) return;
     const canvas = this.getCanvasFromEvent(event) ?? this.getCanvasForPageId(this.activeStroke.pageId);
     if (!canvas) return;
     event.preventDefault();
@@ -750,6 +1175,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       void this.saveAnnotations();
     }
     this.drawing = false;
+    this.drawingStartedInInkMode = false;
   }
 
   canUndoAnnotation(): boolean {
@@ -766,7 +1192,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   canClearPageAnnotations(): boolean {
-    return this.canUndoAnnotation();
+    const pageIds = new Set(this.getActiveAnnotationPageIds());
+    return this.canUndoAnnotation() || Array.from(this.taskResponses.values()).some((response) =>
+      pageIds.has(response.pageId) && (!!response.value || response.result !== 'unchecked')
+    );
   }
 
   undoAnnotation(): void {
@@ -802,19 +1231,27 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   clearPageAnnotations(): void {
     const pages = this.getActiveAnnotationPages();
     if (!pages.length || !this.canClearPageAnnotations()) return;
-    const confirmed = window.confirm(this.languageService.translate(this.twoPageMode && this.companionPage ? 'readerConfirmClearTwoPages' : 'readerConfirmClearPage'));
-    if (!confirmed) return;
     const action: ReaderAnnotationAction = {
       kind: 'clear',
       pages: pages.map((page) => ({
         pageId: page.id,
-        before: this.clonePageAnnotations(this.getPageAnnotations(page.id))
+        before: this.clonePageAnnotations(this.getPageAnnotations(page.id)),
+        responses: Array.from(this.taskResponses.values())
+          .filter((response) => response.pageId === page.id)
+          .map((response) => ({ ...response }))
       }))
     };
     for (const page of pages) {
       this.annotations!.pages[page.id] = { texts: [], strokes: [] };
       this.invalidateDrawingCache(page.id);
     }
+    const pageIds = pages.map((page) => page.id);
+    for (const [taskId, response] of this.taskResponses) {
+      if (pageIds.includes(response.pageId)) this.taskResponses.delete(taskId);
+    }
+    this.closeTaskInput();
+    this.activeMatchEndpoint = null;
+    void this.taskResponseService.deleteForPages(this.book!.id, pageIds);
     this.pushUndoAction(action);
     this.selectedText = null;
     this.redrawDrawingCanvas();
@@ -858,6 +1295,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!Number.isFinite(value)) return;
     this.activeAudio.currentTime = this.clamp(value, 0, this.guideAudioDuration || this.activeAudio.duration || 0);
     this.guideAudioCurrentTime = this.activeAudio.currentTime;
+    if (this.activeGuideElement && this.activeGuidePage && this.activeGuideTrackIndex >= 0) {
+      this.applyReaderGuideState(
+        this.activeGuideElement,
+        this.activeGuidePage,
+        this.activeGuideTrackIndex,
+        this.guideAudioCurrentTime,
+        true
+      );
+    }
     this.forceUiRefresh();
   }
 
@@ -907,20 +1353,38 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         return;
       }
-      showAppNotification(this.languageService.translate('readerScreenshotDesktopOnly'), 'error');
+
+      const canvas = await html2canvas(target, {
+        backgroundColor: null,
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+        logging: false
+      });
+      await this.platformFile.saveDataUrlToDownloads(
+        canvas.toDataURL('image/png'),
+        fileName,
+        'No-Prep Screenshots'
+      );
+      showAppNotification('Screenshot saved to Downloads/No-Prep Screenshots.', 'success');
     } finally {
       this.screenshotting = false;
     }
   }
 
   async playGuideDot(element: BookElement, page = this.currentPage): Promise<void> {
-    if (element.type !== 'guideDot' || !this.isGuideDotEnabled(element, page)) return;
+    if (!page || element.type !== 'guideDot' || !this.isGuideDotEnabled(element, page)) return;
     this.stopGuideAudio();
     const token = ++this.guidePlaybackToken;
     this.playingGuideElementId = element.id;
     this.pausedGuideElementId = null;
-    this.guideBubbleText = String(element.data['text'] || '');
+    const tracks = getGuideTracks(element);
+    const hasTimedPins = getOrderedGuidePins(element).length > 0;
+    this.guideBubbleText = hasTimedPins ? '' : String(element.data['text'] || '');
     this.guideBubbleExpanded = false;
+    this.activeGuideElement = element;
+    this.activeGuidePage = page;
+    this.activeGuidePinId = null;
+    this.setGuideOverlayImage('');
     this.moveOwlToElement(element, page);
     this.owlTeaching = true;
     this.owlImage = 'assets/gifs/owl-teaching.gif';
@@ -928,14 +1392,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.wait(360);
     if (token !== this.guidePlaybackToken) return;
 
-    const audioFiles = Array.isArray(element.data['audioFiles']) ? element.data['audioFiles'] as string[] : [];
-    this.guideSegmentCount = audioFiles.length;
+    this.guideSegmentCount = tracks.length;
     this.guideSegmentIndex = -1;
-    if (audioFiles.length) {
-      for (const [index, audioFile] of audioFiles.entries()) {
+    if (tracks.length) {
+      for (const [index, track] of tracks.entries()) {
         if (token !== this.guidePlaybackToken) return;
         this.guideSegmentIndex = index;
-        await this.playAudioFile(audioFile, token);
+        this.activeGuideTrackIndex = index;
+        this.applyReaderGuideState(element, page, index, 0, true);
+        await this.playAudioTrack(track, element, page, index, token);
       }
     } else {
       await this.wait(this.getGuideTextDelay(this.guideBubbleText));
@@ -946,6 +1411,22 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async activateElement(element: BookElement, event?: MouseEvent, page = this.currentPage): Promise<void> {
+    if (element.type === 'textTask' && page) {
+      this.activateTextTask(element, page, event);
+      return;
+    }
+    if (element.type === 'choiceTask' && page) {
+      this.activateChoiceTask(element, page, event);
+      return;
+    }
+    if (element.type === 'circleTask' && page) {
+      this.toggleCircleTask(element, page, event);
+      return;
+    }
+    if (element.type === 'matchTask' && page) {
+      this.activateMatchEndpoint(element, page, event);
+      return;
+    }
     if (element.type === 'focus') {
       if (this.focusMode) {
         const pageIndex = page ? this.visiblePages.findIndex((item) => item.id === page.id) : -1;
@@ -964,7 +1445,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    if (element.type === 'video' || element.type === 'note') {
+    if (element.type === 'video' || element.type === 'note' || element.type === 'answerKey') {
       this.stopGuideAudioAndReturnHome();
       this.expandedElement = element;
       return;
@@ -985,7 +1466,55 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   closeExpandedElement(): void {
+    void this.exitExpandedVideoFullscreen();
     this.expandedElement = null;
+  }
+
+  async toggleExpandedVideoFullscreen(event?: Event): Promise<void> {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.videoFullscreen) {
+      await this.exitExpandedVideoFullscreen();
+      return;
+    }
+
+    this.videoFullscreen = true;
+    this.forceUiRefresh();
+    const frame = this.expandedVideoFrame?.nativeElement as (HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    }) | undefined;
+    try {
+      if (frame?.requestFullscreen) {
+        await frame.requestFullscreen();
+      } else {
+        await frame?.webkitRequestFullscreen?.();
+      }
+    } catch {
+      // The fixed viewport layout remains as a platform-independent fallback.
+    }
+  }
+
+  @HostListener('document:fullscreenchange')
+  onExpandedVideoFullscreenChange(): void {
+    if (this.videoFullscreen && !document.fullscreenElement) {
+      this.videoFullscreen = false;
+      this.forceUiRefresh();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onExpandedVideoEscape(): void {
+    if (this.videoFullscreen) void this.exitExpandedVideoFullscreen();
+  }
+
+  private async exitExpandedVideoFullscreen(): Promise<void> {
+    this.videoFullscreen = false;
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    } catch {
+      // CSS fullscreen has already been removed.
+    }
+    this.forceUiRefresh();
   }
 
   skipExpandedVideo(seconds: number): void {
@@ -1140,14 +1669,30 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const activityParams = this.getGameActivityQueryParams(element);
+    if (element.data['activityMode'] === 'selected' && !activityParams['bookAllowedActivityIds']) {
+      window.alert('No activities have been selected for this game.');
+      return;
+    }
+
     await this.router.navigate(['/topics', topicId, 'activities'], {
       queryParams: {
         returnToBookId: this.book?.id || '',
         returnToBookPageId: page?.id || this.currentPage?.id || '',
         returnToBookPageSource: this.pageSource,
-        returnToWorkbookId: this.activeWorkbookId || ''
+        returnToWorkbookId: this.activeWorkbookId || '',
+        ...activityParams
       }
     });
+  }
+
+  private getGameActivityQueryParams(element: BookElement): Record<string, string> {
+    if (element.data['activityMode'] !== 'selected') return {};
+    const ids = normalizeAllowedActivityIds(element.data['allowedActivityIds']).slice(0, 64);
+    return {
+      bookActivityMode: 'selected',
+      bookAllowedActivityIds: ids.join(',')
+    };
   }
 
   private async ensureGameTopicAvailable(element: BookElement, topicId: number): Promise<number> {
@@ -1409,16 +1954,19 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private drawStroke(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, stroke: BookAnnotationStroke): void {
     if (stroke.points.length < 1) return;
+    context.save();
     context.beginPath();
     context.lineWidth = stroke.width * (window.devicePixelRatio || 1);
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.strokeStyle = stroke.color;
+    context.globalAlpha = stroke.kind === 'highlighter' ? 0.36 : 1;
     context.moveTo(stroke.points[0].x * canvas.width, stroke.points[0].y * canvas.height);
     for (const point of stroke.points.slice(1)) {
       context.lineTo(point.x * canvas.width, point.y * canvas.height);
     }
     context.stroke();
+    context.restore();
   }
 
   private getPageAnnotations(pageId: string): BookPageAnnotations {
@@ -1442,6 +1990,33 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getActiveAnnotationPageIds(): string[] {
     return this.getActiveAnnotationPages().map((page) => page.id);
+  }
+
+  private getVisibleTaskEntries(): Array<{ page: BookPage; element: BookElement }> {
+    const focus = this.expandedFocusElement ? this.getClampedFocusRect(this.expandedFocusElement) : null;
+    return this.getActiveAnnotationPages().flatMap((page) =>
+      page.elements
+        .filter(isBookTaskElement)
+        .filter((element) => !focus || this.elementIntersectsRect(element, focus))
+        .map((element) => ({ page, element }))
+    );
+  }
+
+  private elementIntersectsRect(
+    element: BookElement,
+    rect: { x: number; y: number; width: number; height: number }
+  ): boolean {
+    const right = element.x + (element.width || 0);
+    const bottom = element.y + (element.height || 0);
+    return right >= rect.x && element.x <= rect.x + rect.width && bottom >= rect.y && element.y <= rect.y + rect.height;
+  }
+
+  private getAllBookPages(): BookPage[] {
+    if (!this.book) return [];
+    return [
+      ...(this.book.pages || []),
+      ...(this.book.workbooks || []).flatMap((workbook) => workbook.pages || [])
+    ];
   }
 
   private pushUndoAction(action: ReaderAnnotationAction): void {
@@ -1487,6 +2062,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.annotations!.pages[page.pageId] = { texts: [], strokes: [] };
       this.invalidateDrawingCache(page.pageId);
     }
+    const pageIds = action.pages.map((page) => page.pageId);
+    for (const [taskId, response] of this.taskResponses) {
+      if (pageIds.includes(response.pageId)) this.taskResponses.delete(taskId);
+    }
+    if (this.book) void this.taskResponseService.deleteForPages(this.book.id, pageIds);
   }
 
   private revertAnnotationAction(action: ReaderAnnotationAction): void {
@@ -1512,7 +2092,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     for (const page of action.pages) {
       this.annotations!.pages[page.pageId] = this.clonePageAnnotations(page.before);
       this.invalidateDrawingCache(page.pageId);
+      for (const response of page.responses) {
+        this.taskResponses.set(response.taskId, { ...response });
+      }
     }
+    void this.taskResponseService.saveMany(action.pages.flatMap((page) => page.responses));
   }
 
   private createLegacyUndoAction(pageIds: string[]): ReaderAnnotationAction | null {
@@ -1661,6 +2245,28 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.bookLibrary.saveBookAnnotations(this.annotations);
   }
 
+  private scheduleTaskResponseSave(): void {
+    if (this.taskResponseSaveTimer !== null) {
+      window.clearTimeout(this.taskResponseSaveTimer);
+    }
+    this.taskResponseSaveTimer = window.setTimeout(() => {
+      void this.flushTaskResponses();
+    }, 500);
+  }
+
+  private async flushTaskResponses(): Promise<void> {
+    if (this.taskResponseSaveTimer !== null) {
+      window.clearTimeout(this.taskResponseSaveTimer);
+      this.taskResponseSaveTimer = null;
+    }
+    if (!this.pendingTaskResponseIds.size) return;
+    const responses = Array.from(this.pendingTaskResponseIds)
+      .map((taskId) => this.taskResponses.get(taskId))
+      .filter((response): response is BookTaskResponse => !!response);
+    this.pendingTaskResponseIds.clear();
+    await this.taskResponseService.saveMany(responses);
+  }
+
   private createEmptyAnnotations(bookId: string): BookAnnotations {
     return {
       version: '1.0',
@@ -1701,13 +2307,28 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopDrawing();
   }
 
-  private playAudioFile(relativePath: string, token = this.guidePlaybackToken): Promise<void> {
-    if (!this.book) return Promise.resolve();
+  private async playAudioTrack(
+    track: GuideAudioTrack,
+    element: BookElement,
+    page: BookPage,
+    trackIndex: number,
+    token = this.guidePlaybackToken
+  ): Promise<void> {
+    if (!this.book) return;
+
+    const audio = new Audio(this.getCachedAssetFileUrl(track.src));
+    audio.playbackRate = this.currentSpeechSpeed;
+    audio.volume = this.guideAudioVolume;
+
+    const semitones = track.pitchSemitones ?? 0;
+    if (semitones) {
+      const cleanup = await this.guidePitch.connect(audio, semitones, this.currentSpeechSpeed);
+      if (this.guidePlaybackToken !== token) { cleanup(); return; }
+      this.activePitchCleanup = cleanup;
+    }
+
+    this.activeAudio = audio;
     return new Promise((resolve) => {
-      const audio = new Audio(this.getCachedAssetFileUrl(relativePath));
-      audio.playbackRate = this.currentSpeechSpeed;
-      audio.volume = this.guideAudioVolume;
-      this.activeAudio = audio;
       this.guideAudioVisible = true;
       this.guideAudioPaused = false;
       this.guideAudioCurrentTime = 0;
@@ -1716,6 +2337,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       audio.onloadedmetadata = () => {
         if (token !== this.guidePlaybackToken) return;
         this.guideAudioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        if (this.guideAudioDuration > 0) {
+          track.duration = this.guideAudioDuration;
+        }
         this.refreshGuideAudioControls();
       };
       audio.ontimeupdate = () => {
@@ -1724,6 +2348,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!this.guideAudioDuration && Number.isFinite(audio.duration)) {
           this.guideAudioDuration = audio.duration;
         }
+        this.applyReaderGuideState(element, page, trackIndex, this.guideAudioCurrentTime);
         this.refreshGuideAudioControls();
       };
       audio.onplay = () => {
@@ -1740,6 +2365,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       };
       audio.onended = () => {
         if (token !== this.guidePlaybackToken) return;
+        this.applyReaderGuideState(element, page, trackIndex, audio.duration || this.guideAudioDuration, true);
         this.guideAudioResolver = null;
         this.activeAudio = null;
         this.guideAudioCurrentTime = 0;
@@ -1766,6 +2392,115 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         resolve();
       });
     });
+  }
+
+  private applyReaderGuideState(
+    element: BookElement,
+    page: BookPage,
+    trackIndex: number,
+    time: number,
+    force = false
+  ): void {
+    const tracks = getGuideTracks(element);
+    let activePin: GuideTimelinePin | null = null;
+    for (let index = 0; index <= trackIndex && index < tracks.length; index++) {
+      const limit = index < trackIndex ? Number.POSITIVE_INFINITY : time + 0.01;
+      const pin = [...(tracks[index].pins || [])]
+        .sort((a, b) => a.time - b.time)
+        .filter((candidate) => candidate.time <= limit)
+        .pop();
+      if (pin) activePin = pin;
+    }
+
+    if (!activePin) {
+      if (!getOrderedGuidePins(element).length) {
+        this.guideBubbleText = String(element.data['text'] || '');
+      } else {
+        this.guideBubbleText = '';
+      }
+      this.guideBubbleExpanded = false;
+      this.setGuideOverlayImage('');
+      this.moveOwlToElement(element, page);
+      this.activeGuidePinId = null;
+      return;
+    }
+
+    if (!force && activePin.id === this.activeGuidePinId) return;
+    this.activeGuidePinId = activePin.id;
+    this.guideBubbleText = activePin.text || '';
+    this.guideBubbleExpanded = false;
+    const imageUrl = activePin.imageSrc ? this.getCachedAssetUrl(activePin.imageSrc) : '';
+    if (imageUrl) {
+      this.setGuideOverlayImage(imageUrl);
+    } else {
+      this.cancelGuideOverlayPositionFrame();
+      this.moveOwlToGuidePin(activePin, page);
+      this.setGuideOverlayImage('');
+    }
+    this.forceUiRefresh();
+  }
+
+  private setGuideOverlayImage(url: string): void {
+    if (this.guideOverlayTimer !== null) {
+      window.clearTimeout(this.guideOverlayTimer);
+      this.guideOverlayTimer = null;
+    }
+    if (!url) {
+      this.cancelGuideOverlayPositionFrame();
+      this.guideOverlayVisible = false;
+      if (this.guideOverlayImageUrl) {
+        this.guideOverlayTimer = window.setTimeout(() => {
+          this.guideOverlayTimer = null;
+          this.guideOverlayImageUrl = '';
+          this.forceUiRefresh();
+        }, 240);
+      }
+      return;
+    }
+    if (url === this.guideOverlayImageUrl) {
+      this.guideOverlayVisible = true;
+      this.forceUiRefresh();
+      this.scheduleOwlAtGuideOverlayCorner();
+      return;
+    }
+    this.guideOverlayVisible = false;
+    this.guideOverlayTimer = window.setTimeout(() => {
+      this.guideOverlayTimer = null;
+      this.guideOverlayImageUrl = url;
+      this.guideOverlayVisible = true;
+      this.forceUiRefresh();
+      this.scheduleOwlAtGuideOverlayCorner();
+    }, 120);
+  }
+
+  private scheduleOwlAtGuideOverlayCorner(): void {
+    this.cancelGuideOverlayPositionFrame();
+    this.guideOverlayPositionFrame = requestAnimationFrame(() => {
+      this.guideOverlayPositionFrame = requestAnimationFrame(() => {
+        this.guideOverlayPositionFrame = 0;
+        this.moveOwlToGuideOverlayCorner();
+      });
+    });
+  }
+
+  private cancelGuideOverlayPositionFrame(): void {
+    if (!this.guideOverlayPositionFrame) return;
+    cancelAnimationFrame(this.guideOverlayPositionFrame);
+    this.guideOverlayPositionFrame = 0;
+  }
+
+  private moveOwlToGuideOverlayCorner(): void {
+    const frame = this.guidePinMediaFrame?.nativeElement;
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const owlSize = this.clamp(window.innerWidth * 0.09, 68, 112);
+    const bounds = this.getOwlVisibleBounds(true);
+    const targetX = rect.left + owlSize * 0.3;
+    const targetY = rect.bottom + owlSize * 0.12;
+    this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
+    this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);
+    this.forceUiRefresh();
   }
 
   private finishGuideDot(element: BookElement, page = this.currentPage): void {
@@ -1818,6 +2553,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.activeAudio.pause();
       this.activeAudio = null;
     }
+    this.activePitchCleanup?.();
+    this.activePitchCleanup = null;
     this.guideAudioResolver?.();
     this.guideAudioResolver = null;
     this.playingGuideElementId = null;
@@ -1830,6 +2567,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.guideAudioDuration = 0;
     this.guideSegmentIndex = -1;
     this.guideSegmentCount = 0;
+    this.activeGuideElement = null;
+    this.activeGuidePage = null;
+    this.activeGuideTrackIndex = -1;
+    this.activeGuidePinId = null;
+    this.setGuideOverlayImage('');
   }
 
   private stopGuideAudioAndReturnHome(): void {
@@ -1857,9 +2599,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.resizeTimer = window.setTimeout(() => {
       this.resizeTimer = null;
       this.updateReaderSpreadWidth();
-      if (!this.owlTeaching) {
-        this.moveOwlToCorner();
-      }
+      this.moveOwlToCorner();
     }, 120);
   }
 
@@ -1902,6 +2642,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  @HostListener('document:pointercancel')
+  onDocumentPointerCancel(): void {
+    this.swipeDir?.cancel();
+    if (this.textDrag) {
+      this.textDrag = null;
+      this.syncActiveTextEditorSize();
+    }
+  }
+
   private moveOwlToElement(element: BookElement, page = this.currentPage): void {
     const frame = page ? this.getPageFrameForPageId(page.id) ?? this.pageFrame?.nativeElement : this.pageFrame?.nativeElement;
     if (!frame) {
@@ -1914,6 +2663,20 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const elementHeight = element.height || 0.06;
     const targetX = rect.left + (element.x + elementWidth / 2) * rect.width;
     const targetY = rect.top + (element.y + elementHeight / 2) * rect.height;
+    const bounds = this.getOwlVisibleBounds(true);
+    this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
+    this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);
+  }
+
+  private moveOwlToGuidePin(pin: GuideTimelinePin, page = this.currentPage): void {
+    const frame = page ? this.getPageFrameForPageId(page.id) ?? this.pageFrame?.nativeElement : this.pageFrame?.nativeElement;
+    if (!frame) {
+      this.moveOwlToCorner();
+      return;
+    }
+    const rect = frame.getBoundingClientRect();
+    const targetX = rect.left + this.clamp(pin.x, 0, 1) * rect.width;
+    const targetY = rect.top + this.clamp(pin.y, 0, 1) * rect.height;
     const bounds = this.getOwlVisibleBounds(true);
     this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
     this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);

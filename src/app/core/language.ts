@@ -7183,6 +7183,18 @@ private translations: TranslationDictionary = {
     sa: 'تعذر حفظ هذا الموضوع داخل الكتاب.',
   },
 
+  'bookLibNotEnoughStorage': {
+    en: 'Not enough browser storage space.',
+    tk: 'Brauzer ýadynda ýer ýok.',
+    ru: 'Недостаточно места в хранилище браузера.',
+    cn: '浏览器存储空间不足。',
+    cde: 'Nicht genug Browserspeicher.',
+    es: 'No hay suficiente espacio de almacenamiento en el navegador.',
+    fr: 'Espace de stockage du navigateur insuffisant.',
+    kr: '브라우저 저장 공간이 부족합니다.',
+    sa: 'مساحة تخزين المتصفح غير كافية.',
+  },
+
   'bookLibCouldNotSaveRecording': {
     en: 'Could not save this recording.',
     tk: 'Bu ses ýazgysyny ýatda saklap bolmady.',

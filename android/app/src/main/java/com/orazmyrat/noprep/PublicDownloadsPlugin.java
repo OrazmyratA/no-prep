@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Base64;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -25,6 +26,7 @@ public class PublicDownloadsPlugin extends Plugin {
         String filename = call.getString("filename");
         String content = call.getString("content");
         String mimeType = call.getString("mimeType", "application/json");
+        String relativePath = call.getString("relativePath", Environment.DIRECTORY_DOWNLOADS);
 
         if (filename == null || filename.trim().isEmpty()) {
             call.reject("filename is required");
@@ -38,8 +40,8 @@ public class PublicDownloadsPlugin extends Plugin {
 
         try {
             Uri uri = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                ? saveWithMediaStore(filename, content, mimeType)
-                : saveLegacyDownload(filename, content);
+                ? saveWithMediaStore(filename, content.getBytes(StandardCharsets.UTF_8), mimeType, relativePath)
+                : saveLegacyDownload(filename, content.getBytes(StandardCharsets.UTF_8), relativePath);
 
             JSObject result = new JSObject();
             result.put("uri", uri.toString());
@@ -49,12 +51,43 @@ public class PublicDownloadsPlugin extends Plugin {
         }
     }
 
-    private Uri saveWithMediaStore(String filename, String content, String mimeType) throws Exception {
+    @PluginMethod
+    public void saveBase64File(PluginCall call) {
+        String filename = call.getString("filename");
+        String data = call.getString("data");
+        String mimeType = call.getString("mimeType", "application/octet-stream");
+        String relativePath = call.getString("relativePath", Environment.DIRECTORY_DOWNLOADS);
+
+        if (filename == null || filename.trim().isEmpty()) {
+            call.reject("filename is required");
+            return;
+        }
+
+        if (data == null) {
+            call.reject("data is required");
+            return;
+        }
+
+        try {
+            byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+            Uri uri = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                ? saveWithMediaStore(filename, bytes, mimeType, relativePath)
+                : saveLegacyDownload(filename, bytes, relativePath);
+
+            JSObject result = new JSObject();
+            result.put("uri", uri.toString());
+            call.resolve(result);
+        } catch (Exception error) {
+            call.reject("Unable to save file to Downloads", error);
+        }
+    }
+
+    private Uri saveWithMediaStore(String filename, byte[] content, String mimeType, String relativePath) throws Exception {
         ContentResolver resolver = getContext().getContentResolver();
         ContentValues values = new ContentValues();
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, filename);
         values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
-        values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+        values.put(MediaStore.MediaColumns.RELATIVE_PATH, sanitizeRelativePath(relativePath));
         values.put(MediaStore.MediaColumns.IS_PENDING, 1);
 
         Uri uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
@@ -66,7 +99,7 @@ public class PublicDownloadsPlugin extends Plugin {
             if (stream == null) {
                 throw new IllegalStateException("Could not open Downloads entry");
             }
-            stream.write(content.getBytes(StandardCharsets.UTF_8));
+            stream.write(content);
         }
 
         values.clear();
@@ -75,17 +108,50 @@ public class PublicDownloadsPlugin extends Plugin {
         return uri;
     }
 
-    private Uri saveLegacyDownload(String filename, String content) throws Exception {
+    private Uri saveLegacyDownload(String filename, byte[] content, String relativePath) throws Exception {
         File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        if (!downloads.exists() && !downloads.mkdirs()) {
+        File targetDirectory = legacyDirectory(downloads, relativePath);
+        if (!targetDirectory.exists() && !targetDirectory.mkdirs()) {
             throw new IllegalStateException("Could not create Downloads directory");
         }
 
-        File file = uniqueFile(downloads, filename);
+        File file = uniqueFile(targetDirectory, filename);
         try (FileOutputStream stream = new FileOutputStream(file)) {
-            stream.write(content.getBytes(StandardCharsets.UTF_8));
+            stream.write(content);
         }
         return Uri.fromFile(file);
+    }
+
+    private String sanitizeRelativePath(String relativePath) {
+        String fallback = Environment.DIRECTORY_DOWNLOADS;
+        String input = relativePath == null || relativePath.trim().isEmpty() ? fallback : relativePath.trim();
+        input = input.replace("\\", "/");
+        // Iteratively remove ".." to prevent bypass via "..../" sequences
+        String previous;
+        do {
+            previous = input;
+            input = input.replace("..", "");
+        } while (!input.equals(previous));
+        if (!input.startsWith(Environment.DIRECTORY_DOWNLOADS)) {
+            input = Environment.DIRECTORY_DOWNLOADS + "/" + input;
+        }
+        return input;
+    }
+
+    private File legacyDirectory(File downloads, String relativePath) throws java.io.IOException {
+        String sanitized = sanitizeRelativePath(relativePath).replace("\\", "/");
+        String prefix = Environment.DIRECTORY_DOWNLOADS;
+        if (sanitized.equals(prefix)) {
+            return downloads;
+        }
+        String suffix = sanitized.startsWith(prefix + "/") ? sanitized.substring(prefix.length() + 1) : sanitized;
+        File resolved = new File(downloads, suffix).getCanonicalFile();
+        String downloadsCanonical = downloads.getCanonicalPath();
+        if (!resolved.getAbsolutePath().startsWith(downloadsCanonical + File.separator)
+                && !resolved.getAbsolutePath().equals(downloadsCanonical)) {
+            throw new SecurityException("Path traversal detected");
+        }
+        return resolved;
     }
 
     private File uniqueFile(File directory, String filename) {

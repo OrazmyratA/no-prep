@@ -4,12 +4,19 @@ import { Subscription } from 'rxjs';
 import { GAMES, GameConfig } from '../games.config';
 import { db } from '../../../core/db.model'; // Direct Dexie import
 import { ResizeService } from '../../../core/resize';
+import {
+  ActivityAccessMode,
+  filterGamesByActivityRestriction,
+  normalizeAllowedActivityIds
+} from './activity-restriction';
 
 type BookActivityReturnContext = {
   bookId: string;
   pageId: string;
   pageSource: 'main' | 'workbook';
   workbookId: string;
+  activityMode: ActivityAccessMode;
+  allowedActivityIds: string[];
 };
 
 @Component({
@@ -39,6 +46,10 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
   async ngOnInit() {
     this.topicId = Number(this.route.snapshot.paramMap.get('id'));
     this.bookReturnContext = this.loadBookReturnContext();
+    this.games = filterGamesByActivityRestriction(
+      this.bookReturnContext?.activityMode || 'all',
+      this.bookReturnContext?.allowedActivityIds || []
+    );
     const topic = await db.topics.get(this.topicId);
     this.topicName = topic?.name || 'Topic';
   }
@@ -61,6 +72,7 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   onGameClick(game: GameConfig) {
+    if (!this.games.some((allowedGame) => allowedGame.id === game.id)) return;
     if (this.selectedGame === game) {
       this.startGame();
     } else {
@@ -78,7 +90,7 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   startGame() {
-    if (!this.selectedGame) return;
+    if (!this.selectedGame || !this.games.some((game) => game.id === this.selectedGame?.id)) return;
     this.router.navigate(['/topics', this.topicId, 'play', this.selectedGame.id], {
       queryParams: {
         ...this.settings,
@@ -121,7 +133,9 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
         bookId,
         pageId: query.get('returnToBookPageId') || '',
         pageSource: query.get('returnToBookPageSource') === 'workbook' ? 'workbook' : 'main',
-        workbookId: query.get('returnToWorkbookId') || ''
+        workbookId: query.get('returnToWorkbookId') || '',
+        activityMode: query.get('bookActivityMode') === 'selected' ? 'selected' : 'all',
+        allowedActivityIds: normalizeAllowedActivityIds(query.get('bookAllowedActivityIds'))
       };
       this.saveBookReturnContext(context);
       return context;
@@ -133,12 +147,17 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
   private getBookReturnQueryParams(): Record<string, string> {
     const context = this.bookReturnContext;
     if (!context?.bookId) return {};
-    return {
+    const params: Record<string, string> = {
       returnToBookId: context.bookId,
       returnToBookPageId: context.pageId,
       returnToBookPageSource: context.pageSource,
       returnToWorkbookId: context.workbookId
     };
+    if (context.activityMode === 'selected') {
+      params['bookActivityMode'] = 'selected';
+      params['bookAllowedActivityIds'] = context.allowedActivityIds.join(',');
+    }
+    return params;
   }
 
   private saveBookReturnContext(context: BookActivityReturnContext): void {
@@ -165,7 +184,9 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
         bookId: saved.bookId,
         pageId: saved.pageId || '',
         pageSource: saved.pageSource === 'workbook' ? 'workbook' : 'main',
-        workbookId: saved.workbookId || ''
+        workbookId: saved.workbookId || '',
+        activityMode: saved.activityMode === 'selected' ? 'selected' : 'all',
+        allowedActivityIds: normalizeAllowedActivityIds(saved.allowedActivityIds)
       };
     } catch {
       return null;
@@ -183,4 +204,5 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
   private bookReturnStorageKey(): string {
     return `noprep-book-activity-return:${this.topicId}`;
   }
+
 }

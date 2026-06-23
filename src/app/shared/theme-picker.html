@@ -52,36 +52,21 @@
       <span>{{ backgrounds.length }}/{{ themeService.maxBackgrounds }}</span>
     </div>
 
-    <div class="theme-background-grid">
-      <button
-        type="button"
-        class="theme-upload"
-        (click)="fileInput.click()"
-        [disabled]="uploading || backgrounds.length >= themeService.maxBackgrounds">
-        <span class="theme-upload-icon">📷</span>
-        <span>{{ (uploading ? 'themeAdding' : 'upload') | translate }}</span>
-      </button>
+    <div class="theme-image-workbench" [class.busy]="addingBackgroundFromTool">
+      <app-image-uploader
+        [maxSizeMB]="1.2"
+        [maxWidthOrHeight]="1920"
+        [textImageWidth]="1920"
+        [textImageHeight]="1080"
+        [compactSearchPanel]="true"
+        (imageSelected)="onBackgroundImageSelected($event)">
+      </app-image-uploader>
+      <div class="theme-tool-busy" *ngIf="addingBackgroundFromTool">
+        {{ 'themeAdding' | translate }}
+      </div>
+    </div>
 
-      <button
-        type="button"
-        class="theme-upload theme-google"
-        (click)="openGoogleImages()"
-        [disabled]="backgrounds.length >= themeService.maxBackgrounds">
-        <span class="theme-upload-icon">G</span>
-        <span>{{ 'copyImageFromGoogle' | translate }}</span>
-      </button>
-
-      <!-- Desktop / Electron: clipboard.read() works fine -->
-      <button
-        *ngIf="googlePasteReady && !isAndroid"
-        type="button"
-        class="theme-upload theme-paste"
-        (click)="pasteBackgroundFromClipboard()"
-        [disabled]="pastingBackground || uploading || backgrounds.length >= themeService.maxBackgrounds">
-        <span class="theme-upload-icon">+</span>
-        <span>{{ (pastingBackground ? 'importingPastedImage' : 'pasteImageButton') | translate }}</span>
-      </button>
-
+    <div class="theme-background-grid" *ngIf="backgrounds.length">
       <div
         *ngFor="let background of backgrounds"
         class="theme-background"
@@ -97,32 +82,10 @@
           class="theme-delete"
           (click)="deleteBackground($event, background)"
           [attr.aria-label]="'themeDeleteBackground' | translate">
-          ×
+          x
         </button>
       </div>
     </div>
-
-    <!-- Android: URL input replaces the paste button (clipboard.read() hangs in WebView) -->
-    <div *ngIf="googlePasteReady && isAndroid" class="theme-android-url">
-      <input type="url"
-             [formControl]="androidBgUrlControl"
-             placeholder="https://..."
-             (paste)="onAndroidBgUrlPaste($event)"
-             class="theme-android-url-input">
-      <button type="button"
-              (click)="importAndroidBgUrl()"
-              [disabled]="pastingBackground || uploading || backgrounds.length >= themeService.maxBackgrounds"
-              class="theme-android-url-btn">
-        {{ (pastingBackground ? 'importingPastedImage' : 'import') | translate }}
-      </button>
-    </div>
-
-    <input
-      #fileInput
-      type="file"
-      accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/gif"
-      hidden
-      (change)="onFileSelected($event)">
 
     <p class="theme-note">{{ 'themeUploadNote' | translate }}</p>
   </div>

@@ -122,10 +122,16 @@ button.quiz-option.fade-out {
   min-height: 0;
 }
 
-.spin-layout button:disabled {
+.spin-layout button:not(.spin-btn):disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
+}
+
+.spin-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: translate(-50%, calc(-25% - 25px));
 }
 
 /* Quiz overlay background */

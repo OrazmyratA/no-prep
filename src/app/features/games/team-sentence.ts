@@ -120,11 +120,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
         this.router.navigate(['/topics', this.topicId, 'activities']);
         return;
       }
-      this.allWords = [];
-      for (const sentence of this.sentences) {
-        const words = sentence.split(/\s+/);
-        this.allWords.push(...words);
-      }
+      this.allWords = this.reverseMode
+        ? [...this.sentences]
+        : this.sentences.flatMap(sentence => sentence.split(/\s+/).filter(Boolean));
 
       this.correctSound = new Audio('assets/sound/collect.mp3');
       this.correctSound.load();
@@ -179,14 +177,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private filterEligibleItems(items: Item[]): Item[] {
     return items.filter(item => {
       const text = item.text?.trim();
-      if (!text) return false;
-      if (this.reverseMode && !this.sentenceHasImages(text)) return false;
-      return true;
+      if (!text || item.id === undefined) return false;
+      return this.reverseMode ? !!item.image : true;
     });
-  }
-
-  private sentenceHasImages(sentence: string): boolean {
-    return sentence.split(/\s+/).every(word => this.wordImages.has(this.normalizeWord(word)));
   }
 
   private recalculateLayout() {
@@ -213,6 +206,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
 
   private startGame() {
     const initFloating = (): WordTile[] => {
+      if (this.reverseMode) {
+        return this.eligibleItems.map((item, idx) => this.createFloatingImageTile(item, idx));
+      }
       return this.allWords.map((word, idx) => this.createFloatingTile(word, idx));
     };
     const initMines = (): Mine[] => {
@@ -257,6 +253,19 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       word,
       image: imageMatch?.image,
       itemId: imageMatch?.itemId,
+      top: 20 + Math.random() * 60,
+      left: 10 + Math.random() * 80,
+      vx: (Math.random() - 0.5) * 3 * this.speed,
+      vy: (Math.random() - 0.5) * 3 * this.speed
+    };
+  }
+
+  private createFloatingImageTile(item: Item, id: number = Date.now() + Math.random()): WordTile {
+    return {
+      id,
+      word: item.text!.trim(),
+      image: item.image,
+      itemId: item.id,
       top: 20 + Math.random() * 60,
       left: 10 + Math.random() * 80,
       vx: (Math.random() - 0.5) * 3 * this.speed,
@@ -505,26 +514,16 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     if (!this.cardItem || !this.gameActive) return;
     this.playSound(this.captureSound);
     this.cardFlipped = !this.cardFlipped;
-    if (this.cardFlipped && !this.currentSoundSentence && !this.cardItem.audio) {
-      // No audio — unlock words immediately on flip
-      this.currentSoundSentence = this.cardItem.text?.trim() ?? '';
-      this.currentSoundWords = this.currentSoundSentence.split(/\s+/);
-      this.cdr.detectChanges();
-    }
+    this.unlockCurrentCardSentence();
   }
 
   onCardSpeakerClick(event: Event) {
     event.stopPropagation();
-    if (!this.cardItem?.audio) return;
-    this.playTrackedAudio(this.cardItem.audio);
-    // Unlock words the first time the teacher plays the audio
-    if (!this.currentSoundSentence) {
-      this.currentSoundSentence = this.cardItem.text?.trim() ?? '';
-      this.currentSoundWords = this.currentSoundSentence.split(/\s+/);
-      this.cdr.detectChanges();
+    if (this.cardItem?.audio) {
+      this.playTrackedAudio(this.cardItem.audio);
     }
+    this.unlockCurrentCardSentence();
   }
-
   get cardHasAudio(): boolean {
     return !!this.cardItem?.audio;
   }
@@ -606,7 +605,16 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   }
 
   private normalizeWord(word: string): string {
-    return word.trim().toLowerCase();
+    return word.trim().toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  }
+
+  private unlockCurrentCardSentence(): void {
+    if (!this.cardItem || this.currentSoundSentence) return;
+    this.currentSoundSentence = this.cardItem.text?.trim() ?? '';
+    this.currentSoundWords = this.reverseMode
+      ? [this.currentSoundSentence]
+      : this.currentSoundSentence.split(/\s+/).filter(Boolean);
+    this.cdr.detectChanges();
   }
 
   resetGame() {

@@ -79,6 +79,47 @@
         <button type="button" class="icon-tool-btn" (click)="addNote()" [title]="'noteLabel' | translate" [attr.aria-label]="'creatorAddNote' | translate">
           <img src="assets/images/book/note.png" alt="">
         </button>
+        <button type="button" class="icon-tool-btn" (click)="addAnswerKey()" title="Answer key" aria-label="Add answer key">
+          <img src="assets/images/book/answer key.png" alt="">
+        </button>
+      </div>
+      <div class="toolbar-group task-insert-group">
+        <button
+          type="button"
+          class="icon-tool-btn"
+          [class.active]="placingMatchTask"
+          (click)="toggleMatchTaskTool()"
+          title="Matching task"
+          aria-label="Place matching pairs">
+          <img src="assets/images/book/match.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="icon-tool-btn"
+          [class.active]="placingTextTask"
+          (click)="toggleTextTaskTool()"
+          title="Text task"
+          aria-label="Draw a text answer task">
+          <img src="assets/images/book/input.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="icon-tool-btn"
+          [class.active]="placingChoiceTask"
+          (click)="toggleChoiceTaskTool()"
+          title="Word-bank gap"
+          aria-label="Draw a word-bank gap">
+          <img src="assets/images/book/multiple-choice.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="icon-tool-btn"
+          [class.active]="placingCircleTask"
+          (click)="toggleCircleTaskTool()"
+          title="Circling task"
+          aria-label="Draw circling choices">
+          <img src="assets/images/book/circle.png" alt="">
+        </button>
       </div>
     </div>
 
@@ -257,9 +298,12 @@
         [style.aspect-ratio]="pageAspectRatio"
         [style.background]="selectedPage?.backgroundColor || '#f8fafc'"
         (wheel)="onEditorWheel($event)"
-        (click)="onCanvasBackgroundClick()"
-        (pointerdown)="onSwipeAreaPointerDown($event)"
-        (pointerup)="onSwipeAreaPointerUp($event)">
+        (click)="onCanvasBackgroundClick($event)"
+        appSwipe
+        [swipeDisabled]="!!placingMatchTask || !!placingTextTask || !!placingChoiceTask || !!placingCircleTask || isDragging"
+        (swipeLeft)="selectPage(activePageIndex + 1)"
+        (swipeRight)="selectPage(activePageIndex - 1)"
+        (pointerdown)="onCanvasPointerDown($event)">
         <app-pdf-page-canvas
           *ngIf="selectedPage?.type === 'pdf' && selectedPdfUrl"
           [sourceUrl]="selectedPdfUrl"
@@ -289,8 +333,17 @@
           [class.dot-element]="element.type === 'guideDot'"
           [class.image-element]="element.type === 'image'"
           [class.note-element]="element.type === 'note'"
+          [class.answer-key-element]="element.type === 'answerKey'"
           [class.game-element]="element.type === 'game'"
           [class.video-element]="element.type === 'video'"
+          [class.text-task-element]="element.type === 'textTask'"
+          [class.choice-task-element]="element.type === 'choiceTask'"
+          [class.circle-task-element]="element.type === 'circleTask'"
+          [class.correct-target]="element.type === 'circleTask' && element.data['correct'] === true"
+          [class.match-task-element]="element.type === 'matchTask'"
+          [class.match-side-a]="element.type === 'matchTask' && element.data['side'] === 'A'"
+          [class.match-side-b]="element.type === 'matchTask' && element.data['side'] === 'B'"
+          [class.pending-match-endpoint]="element.type === 'matchTask' && isPendingMatchEndpoint(element)"
           [style.left.%]="element.x * 100"
           [style.top.%]="element.y * 100"
           [style.width.%]="(element.width || 0.08) * 100"
@@ -306,23 +359,51 @@
           <span *ngIf="element.type === 'note'" class="note-marker">
             <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
           </span>
+          <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
+          <span *ngIf="element.type === 'textTask'" class="text-task-line"></span>
+          <span *ngIf="element.type === 'choiceTask'" class="choice-task-line">{{ getChoiceTaskCorrectText(element) }}</span>
+          <span *ngIf="element.type === 'matchTask'" class="match-task-dot">
+            <span>{{ getMatchTaskPairNumber(element) }}</span>
+            <small>{{ getMatchTaskSideLabel(element) }}</small>
+          </span>
           <span
-            *ngIf="element.id === selectedElementId"
+            *ngIf="element.id === selectedElementId && element.type !== 'matchTask'"
             class="resize-handle"
             (pointerdown)="startElementResize($event, element)">
           </span>
         </div>
 
+        <ng-container *ngIf="selectedElement as guideElement">
+          <button
+            *ngFor="let item of getGuidePinSequence(guideElement); trackBy: trackByGuidePinId"
+            type="button"
+            class="creator-guide-pin"
+            [class.selected]="item.pin.id === selectedGuidePinId"
+            [style.left.%]="item.pin.x * 100"
+            [style.top.%]="item.pin.y * 100"
+            (click)="selectGuidePin(guideElement, item.track, item.pin, $event)"
+            (pointerdown)="startGuidePagePinDrag($event, guideElement, item.pin)"
+            [attr.aria-label]="'Guide position ' + item.sequence">
+            <img src="assets/images/book/pin.png" alt="">
+            <span>{{ item.sequence }}</span>
+          </button>
+        </ng-container>
+
         <div
           *ngIf="selectedElement as previewElement"
           class="guide-preview"
           [class.active]="previewGuideElementId === previewElement.id"
-          [style.left.%]="(previewElement.x + (previewElement.width || 0.06) / 2) * 100"
-          [style.top.%]="previewElement.y * 100">
+          [style.left.%]="previewGuideX * 100"
+          [style.top.%]="previewGuideY * 100">
           <img *ngIf="previewGuideElementId === previewElement.id" [src]="previewOwlImage" [attr.alt]="'creatorTeacherOwlPreview' | translate">
           <div class="guide-preview-bubble" *ngIf="previewGuideElementId === previewElement.id && previewBubbleText">
             {{ previewBubbleText }}
           </div>
+          <img
+            *ngIf="previewGuideElementId === previewElement.id && previewGuideImageUrl"
+            class="guide-preview-media"
+            [src]="previewGuideImageUrl"
+            alt="">
         </div>
       </div>
     </main>
@@ -375,13 +456,13 @@
       <div class="element-inspector" *ngIf="selectedElement as element">
         <h2>{{ getSelectedElementTypeLabel() }}</h2>
         <div class="element-action-grid">
-          <button type="button" class="mini-icon-btn" (click)="duplicateSelectedElement()" [title]="'duplicateLabel' | translate" [attr.aria-label]="'duplicateLabel' | translate">
+          <button *ngIf="element.type !== 'matchTask'" type="button" class="mini-icon-btn" (click)="duplicateSelectedElement()" [title]="'duplicateLabel' | translate" [attr.aria-label]="'duplicateLabel' | translate">
             <img src="assets/images/book/duplicate.png" alt="">
           </button>
-          <button type="button" class="mini-icon-btn" (click)="copySelectedElement()" [title]="'copyLabel' | translate" [attr.aria-label]="'copyLabel' | translate">
+          <button *ngIf="element.type !== 'matchTask'" type="button" class="mini-icon-btn" (click)="copySelectedElement()" [title]="'copyLabel' | translate" [attr.aria-label]="'copyLabel' | translate">
             <img src="assets/images/book/copy.png" alt="">
           </button>
-          <button type="button" class="mini-icon-btn" (click)="pasteCopiedElement()" [disabled]="!hasCopiedElement()" [title]="'pasteLabel' | translate" [attr.aria-label]="'pasteLabel' | translate">
+          <button *ngIf="element.type !== 'matchTask'" type="button" class="mini-icon-btn" (click)="pasteCopiedElement()" [disabled]="!hasCopiedElement()" [title]="'pasteLabel' | translate" [attr.aria-label]="'pasteLabel' | translate">
             <img src="assets/images/book/paste.png" alt="">
           </button>
           <button type="button" class="mini-icon-btn danger" (click)="deleteSelectedElement()" [title]="'creatorDeleteSelectedElement' | translate" [attr.aria-label]="'creatorDeleteSelectedElement' | translate">
@@ -396,14 +477,14 @@
           <button
             type="button"
             class="mini-icon-btn"
-            *ngIf="element.type === 'image' || element.type === 'video'"
+            *ngIf="element.type === 'image' || element.type === 'video' || element.type === 'answerKey'"
             (click)="replaceElementAsset(element)"
             [title]="'replaceLabel' | translate"
             [attr.aria-label]="'replaceLabel' | translate">
             <img src="assets/images/book/replace.png" alt="">
           </button>
         </div>
-        <label *ngIf="element.type === 'note' || element.type === 'guideDot'">
+        <label *ngIf="element.type === 'note'">
           {{ 'textOptional' | translate }}
           <textarea
             rows="3"
@@ -412,14 +493,113 @@
             (ngModelChange)="markBookDirty()"
             (blur)="commitHistoryCapture()"
             *ngIf="element.type === 'note'"></textarea>
-          <textarea
-            rows="3"
-            [(ngModel)]="element.data['text']"
-            (focus)="beginHistoryCapture()"
-            (ngModelChange)="markBookDirty()"
-            (blur)="commitHistoryCapture()"
-            *ngIf="element.type === 'guideDot'"></textarea>
         </label>
+        <div class="text-task-settings" *ngIf="element.type === 'textTask'">
+          <div
+            class="text-task-answer-row"
+            [class.pending]="last && !answer"
+            *ngFor="let answer of getTextTaskAnswers(element); let i = index; let last = last; trackBy: trackByIndex">
+            <input
+              type="text"
+              [ngModel]="answer"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateTextTaskAnswer(element, i, $event)"
+              (blur)="commitHistoryCapture()"
+              [attr.aria-label]="'Accepted answer ' + (i + 1)">
+            <button
+              type="button"
+              class="mini-icon-btn danger"
+              *ngIf="getTextTaskAnswers(element).length > 1 && (!last || !!answer)"
+              (click)="removeTextTaskAnswer(element, i)"
+              title="Delete accepted answer"
+              aria-label="Delete accepted answer">
+              <img src="assets/images/book/delete.png" alt="">
+            </button>
+          </div>
+        </div>
+        <div class="choice-task-settings" *ngIf="element.type === 'choiceTask'">
+          <div class="choice-bank-picker">
+            <label>
+              <span>Word bank</span>
+              <select
+                [ngModel]="element.data['wordBankId']"
+                (ngModelChange)="selectChoiceTaskBank(element, $event)">
+                <option *ngFor="let bank of getChoiceTaskBanks()" [value]="bank.id">{{ getWordBankLabel(bank) }}</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="mini-icon-btn"
+              (click)="createWordBankForTask(element)"
+              title="Create another word bank"
+              aria-label="Create another word bank">+</button>
+          </div>
+          <ng-container *ngIf="getChoiceTaskBank(element) as bank">
+            <div
+              class="text-task-answer-row choice-option-row"
+              [class.pending]="last && !option.text"
+              *ngFor="let option of getWordBankOptions(bank); let i = index; let last = last; trackBy: trackByIndex">
+              <input
+                type="text"
+                [ngModel]="option.text"
+                (focus)="beginHistoryCapture()"
+                (ngModelChange)="updateWordBankOption(bank, i, $event)"
+                (blur)="commitHistoryCapture()"
+                [attr.aria-label]="'Word-bank option ' + (i + 1)">
+              <button
+                type="button"
+                class="mini-icon-btn danger"
+                *ngIf="getWordBankOptions(bank).length > 1 && (!last || !!option.text)"
+                (click)="removeWordBankOption(bank, i)"
+                title="Delete word-bank option"
+                aria-label="Delete word-bank option">
+                <img src="assets/images/book/delete.png" alt="">
+              </button>
+            </div>
+            <label class="choice-correct-answer">
+              <span>Correct answer</span>
+              <select
+                [ngModel]="element.data['correctOptionId']"
+                (ngModelChange)="setChoiceTaskCorrectOption(element, $event)">
+                <option value=""></option>
+                <option *ngFor="let option of getWordBankOptions(bank)" [value]="option.id" [disabled]="!option.text.trim()">
+                  {{ option.text }}
+                </option>
+              </select>
+            </label>
+          </ng-container>
+        </div>
+        <div class="circle-task-settings" *ngIf="element.type === 'circleTask'">
+          <label class="circle-correct-toggle">
+            <input
+              type="checkbox"
+              [ngModel]="element.data['correct'] === true"
+              (ngModelChange)="setCircleTaskCorrect(element, $event)">
+            <span>Correct answer</span>
+          </label>
+        </div>
+        <div class="match-task-settings" *ngIf="element.type === 'matchTask'">
+          <div class="choice-bank-picker">
+            <label>
+              <span>Matching</span>
+              <select
+                [ngModel]="element.data['groupId']"
+                (ngModelChange)="setMatchTaskGroup(element, $event)">
+                <option *ngFor="let groupId of getMatchTaskGroupIds()" [value]="groupId">{{ getMatchTaskGroupLabel(groupId) }}</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="mini-icon-btn"
+              (click)="createMatchTaskGroup(element)"
+              title="Create another matching group"
+              aria-label="Create another matching group">+</button>
+          </div>
+          <div class="match-pair-summary">
+            <span>{{ getMatchTaskSideLabel(element) }}</span>
+            <strong>{{ getMatchTaskPairNumber(element) }}</strong>
+          </div>
+        </div>
         <div class="game-link-panel" *ngIf="element.type === 'game'">
           <div class="linked-topic-card" *ngIf="element.data['topicId']; else noLinkedTopic">
             <span>{{ 'creatorLinkedTopic' | translate }}</span>
@@ -444,9 +624,42 @@
               <option *ngFor="let topic of topics$ | async" [ngValue]="topic.id">{{ topic.name }}</option>
             </select>
           </label>
+          <div class="game-activity-panel" *ngIf="element.data['topicId']">
+            <div class="game-activity-heading">
+              <strong>{{ 'activitiesLabel' | translate }}</strong>
+              <span *ngIf="isGameActivityRestricted(element)">{{ getAllowedGameActivityIds(element).length }} / {{ games.length }}</span>
+            </div>
+            <div class="game-activity-mode" role="group" aria-label="Activity access">
+              <button
+                type="button"
+                [class.active]="!isGameActivityRestricted(element)"
+                (click)="setGameActivityRestriction(element, false)">All</button>
+              <button
+                type="button"
+                [class.active]="isGameActivityRestricted(element)"
+                (click)="setGameActivityRestriction(element, true)">Selected</button>
+            </div>
+            <div class="game-activity-grid" *ngIf="isGameActivityRestricted(element)">
+              <button
+                *ngFor="let game of games"
+                type="button"
+                class="game-activity-option"
+                [class.selected]="isGameActivityAllowed(element, game.id)"
+                [disabled]="!canToggleGameActivity(element, game.id)"
+                (click)="toggleGameActivity(element, game.id)"
+                [title]="game.nameKey | translate"
+                [attr.aria-pressed]="isGameActivityAllowed(element, game.id)">
+                <span aria-hidden="true">{{ game.icon }}</span>
+                <small>{{ game.nameKey | translate }}</small>
+              </button>
+            </div>
+          </div>
         </div>
         <div class="image-settings-panel" *ngIf="element.type === 'image'">
           <app-image-uploader (imageSelected)="onBookImageSelected($event, element)"></app-image-uploader>
+        </div>
+        <div class="image-settings-panel" *ngIf="element.type === 'answerKey'">
+          <app-image-uploader [contextKey]="element.id" (imageSelected)="onBookImageSelected($event, element)"></app-image-uploader>
         </div>
         <div class="video-settings-panel" *ngIf="element.type === 'video'">
           <button type="button" class="mini-icon-btn wide" (click)="uploadVideoElement(element)" [title]="'creatorUploadVideo' | translate" [attr.aria-label]="'creatorUploadVideo' | translate">
@@ -465,12 +678,15 @@
           </label>
         </div>
         <div class="guide-audio-panel" *ngIf="element.type === 'guideDot'">
-          <div class="guide-preview-actions">
-            <button type="button" class="mini-icon-btn" (click)="previewGuideDot(element)" [title]="'previewLabel' | translate" [attr.aria-label]="'previewLabel' | translate">
-              <img src="assets/images/book/play.png" alt="">
+          <div class="guide-track-controls" *ngIf="getSelectedGuideTrack(element) as selectedTrack">
+            <button type="button" class="mini-icon-btn" (click)="toggleGuideTrackPreview(element)" title="Play or pause" aria-label="Play or pause selected track">
+              <img [src]="previewGuideTrackId === selectedTrack.id && !previewGuidePaused ? 'assets/images/book/pause.png' : 'assets/images/book/play.png'" alt="">
             </button>
-            <button type="button" class="mini-icon-btn" (click)="stopGuidePreview()" [disabled]="previewGuideElementId !== element.id" [title]="'stopLabel' | translate" [attr.aria-label]="'stopLabel' | translate">
-              <img src="assets/images/book/stop.png" alt="">
+            <button type="button" class="mini-icon-btn danger" (click)="deleteSelectedGuideTrack(element)" title="Delete audio track" aria-label="Delete selected audio track">
+              <img src="assets/images/book/delete.png" alt="">
+            </button>
+            <button type="button" class="mini-icon-btn" [class.active]="placingGuidePin" (click)="armGuidePinPlacement(element)" title="Place timed position" aria-label="Place a teacher position at the current time">
+              <img src="assets/images/book/pin.png" alt="">
             </button>
           </div>
           <div class="guide-audio-actions">
@@ -482,27 +698,92 @@
               type="button"
               class="mini-icon-btn wide"
               [class.recording]="recordingGuideElementId === element.id"
+              [class.pending]="requestingMicPermission"
               (click)="toggleGuideDotRecording(element)"
               [title]="'record' | translate"
               [attr.aria-label]="'record' | translate">
               <span class="record-dot" aria-hidden="true"></span>
-              <span>{{ (recordingGuideElementId === element.id ? 'stopLabel' : 'record') | translate }}</span>
+              <span *ngIf="!requestingMicPermission">{{ (recordingGuideElementId === element.id ? 'stopLabel' : 'record') | translate }}</span>
+              <span *ngIf="requestingMicPermission">…</span>
             </button>
+            <span class="recording-saving-hint" *ngIf="savingRecording">{{ 'save' | translate }}…</span>
           </div>
-          <span>{{ 'creatorAudioFileCount' | translate: {count: getGuideDotAudioFiles(element).length} }}</span>
-          <div class="audio-list" *ngIf="getGuideDotAudioFiles(element).length">
+          <div class="guide-place-hint" *ngIf="placingGuidePin">Click the book page to place this position.</div>
+          <div class="audio-list" *ngIf="getGuideDotTracks(element).length">
             <div
               class="audio-row"
-              *ngFor="let audioFile of getGuideDotAudioFiles(element); let i = index"
+              *ngFor="let track of getGuideDotTracks(element); let i = index; trackBy: trackByGuideTrackId"
+              [class.selected]="track.id === selectedGuideTrackId"
               draggable="true"
               (dragstart)="onGuideAudioDragStart(i, $event)"
               (dragover)="onGuideAudioDragOver($event)"
-              (drop)="onGuideAudioDrop(element, i, $event)">
-              <span>{{ getAssetFileName(audioFile) }}</span>
-              <div class="audio-actions">
-                <button type="button" class="tiny-btn danger" (click)="removeGuideDotAudio(element, i)" [title]="'creatorRemove' | translate">&#10060;</button>
+              (drop)="onGuideAudioDrop(element, i, $event)"
+              (click)="selectGuideTrack(element, track)">
+              <div class="guide-track-timeline">
+                <input
+                  type="range"
+                  min="0"
+                  [max]="getGuideTrackDuration(track)"
+                  step="0.01"
+                  [value]="previewGuideTrackId === track.id ? previewGuideCurrentTime : 0"
+                  (input)="seekGuideTrack($event, element, track)"
+                  aria-label="Audio track progress">
+                <button
+                  *ngFor="let pin of track.pins"
+                  type="button"
+                  draggable="false"
+                  class="guide-timeline-pin"
+                  [class.selected]="pin.id === selectedGuidePinId"
+                  [style.left.%]="pin.time / getGuideTrackDuration(track) * 100"
+                  (click)="selectGuidePin(element, track, pin, $event)"
+                  (pointerdown)="startGuideTimelinePinDrag($event, element, track, pin)"
+                  [title]="formatGuideTime(pin.time)"
+                  aria-label="Timed teacher position">
+                </button>
+              </div>
+              <div class="guide-pitch-row" *ngIf="track.id === selectedGuideTrackId" (click)="$event.stopPropagation()">
+                <span class="guide-pitch-label">♂</span>
+                <input
+                  type="range"
+                  class="guide-pitch-slider"
+                  min="-8"
+                  max="10"
+                  step="0.5"
+                  [value]="getGuideTrackPitch(track)"
+                  (input)="setGuideTrackPitch(element, track, $event)"
+                  aria-label="Voice pitch">
+                <span class="guide-pitch-label">♀</span>
+                <span class="guide-pitch-value shifted" *ngIf="getGuideTrackPitch(track) !== 0">
+                  {{ getGuideTrackPitch(track) > 0 ? '+' : '' }}{{ getGuideTrackPitch(track) }}
+                </span>
               </div>
             </div>
+          </div>
+
+          <div class="guide-pin-editor" *ngIf="getSelectedGuidePin(element) as selectedPin">
+            <div class="guide-pin-editor-head">
+              <button type="button" class="tiny-btn" (click)="adjustSelectedGuidePinTime(element, -0.1)">-0.1</button>
+              <button type="button" class="tiny-btn" (click)="adjustSelectedGuidePinTime(element, 0.1)">+0.1</button>
+              <button type="button" class="mini-icon-btn danger" (click)="deleteSelectedGuidePin(element)" title="Delete pin" aria-label="Delete selected pin">
+                <img src="assets/images/book/delete.png" alt="">
+              </button>
+            </div>
+            <label>
+              {{ 'textOptional' | translate }}
+              <textarea
+                rows="3"
+                [(ngModel)]="selectedPin.text"
+                (focus)="beginHistoryCapture()"
+                (ngModelChange)="markBookDirty()"
+                (blur)="commitHistoryCapture()"></textarea>
+            </label>
+            <div class="guide-pin-image" *ngIf="getGuidePinImageUrl(selectedPin) as pinImageUrl">
+              <img [src]="pinImageUrl" alt="">
+            </div>
+            <app-image-uploader
+              [contextKey]="selectedPin.id"
+              (imageSelected)="onGuidePinImageSelected($event, element)">
+            </app-image-uploader>
           </div>
         </div>
       </div>

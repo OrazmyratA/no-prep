@@ -355,12 +355,14 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   onConfirmOk() {
     if (!this.quizWinner) return;
+    const winner = this.quizWinner;
+    this.quizWinner = null;
     this.playSound(this.collectSound);
     this.quizOverlayVisible = false;
     this.cdr.detectChanges();
     this.setTrackedTimeout(() => {
       this.quizVisible = false;
-      const moveDuration = this.moveGiftToward(this.quizWinner!, true);
+      const moveDuration = this.moveGiftToward(winner, true);
       this.cdr.detectChanges();
       this.setTrackedTimeout(() => this.resetRound(), moveDuration + 600);
     }, quizFadeDelay());
@@ -368,12 +370,14 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   onConfirmOops() {
     if (!this.quizWinner) return;
+    const winner = this.quizWinner;
+    this.quizWinner = null;
     this.playSound(this.buzzSound);
     this.quizOverlayVisible = false;
     this.cdr.detectChanges();
     this.setTrackedTimeout(() => {
       this.quizVisible = false;
-      const opponent = this.quizWinner!.side === 'left' ? this.rightTeam : this.leftTeam;
+      const opponent = winner.side === 'left' ? this.rightTeam : this.leftTeam;
       const moveDuration = this.moveGiftToward(opponent, false);
       this.cdr.detectChanges();
       this.setTrackedTimeout(() => this.resetRound(), moveDuration + 600);

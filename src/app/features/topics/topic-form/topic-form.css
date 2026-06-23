@@ -110,10 +110,11 @@
 /* Insert-between zone */
 .insert-zone {
   position: absolute;
-  left: 0;
-  right: 10px;
+  left: 12px;
+  right: 0;
   height: 20px;
   display: flex;
+  flex-direction: row-reverse;
   align-items: center;
   z-index: 20;
   cursor: pointer;
@@ -143,7 +144,8 @@
 
 .insert-zone-line {
   flex: 1;
-  margin-left: 6px;
+  margin-left: 0;
+  margin-right: 6px;
   border-top: 2px dashed #d1d5db;
   transition: border-color 0.15s;
 }
