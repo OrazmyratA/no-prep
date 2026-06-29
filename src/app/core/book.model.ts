@@ -1,5 +1,5 @@
 export type BookPageType = 'pdf' | 'blank';
-export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note' | 'answerKey' | 'textTask' | 'choiceTask' | 'circleTask' | 'matchTask';
+export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note' | 'answerKey' | 'speakingAi' | 'ink' | 'highlighter' | 'text' | 'textTask' | 'choiceTask' | 'circleTask' | 'matchTask';
 
 export interface BookWordBankOption {
   id: string;
@@ -43,6 +43,7 @@ export interface BookPage {
   type: BookPageType;
   pdfPage?: number;
   sourcePdf?: string;
+  rotation?: number;
   backgroundColor?: string;
   hidden?: boolean;
   wordBanks?: BookWordBank[];
@@ -160,5 +161,29 @@ export interface BookTaskResponse {
   value: string;
   result: BookTaskResult;
   attempts: number;
+  updatedAt: string;
+}
+
+export interface BookSpeakingAttempt {
+  key: string;
+  profileId: string;
+  bookId: string;
+  pageId: string;
+  elementId: string;
+  attemptId: string;
+  sessionId?: string;
+  sessionName?: string;
+  turnIndex?: number;
+  startedAt: string;
+  endedAt?: string;
+  durationSeconds: number;
+  status: 'active' | 'saved';
+  transcript: string;
+  studentText?: string;
+  aiText?: string;
+  audio?: Blob;
+  audioMimeType?: string;
+  responseAudio?: Blob;
+  responseAudioMimeType?: string;
   updatedAt: string;
 }

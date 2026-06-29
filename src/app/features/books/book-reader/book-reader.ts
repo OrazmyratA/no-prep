@@ -11,6 +11,9 @@ import { LanguageService } from '../../../core/language';
 import { showAppNotification } from '../../../core/notification';
 import { PlatformFileService } from '../../../core/platform-file';
 import { BookTaskResponseService } from '../../../core/book-task-responses';
+import { BookSpeakingAttemptService } from '../../../core/book-speaking-attempts';
+import { AiLanguagePackService, InstalledAiLanguagePack } from '../../../core/ai-language-packs';
+import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus, AiSpeakingTaskConfig, AiSpeakingTurn } from '../../../core/ai-speaking-runtime';
 import {
   getAvailableWordBankOptions,
   getChoiceTaskBankId,
@@ -35,6 +38,7 @@ import {
   BookWorkbook,
   BookPage,
   BookPageAnnotations,
+  BookSpeakingAttempt,
   BookWordBankOption,
   WorkbookLink,
   InteractiveBook
@@ -65,6 +69,22 @@ type ReaderMatchLine = {
   result: 'unchecked' | 'correct' | 'incorrect';
 };
 
+type SpeakingSessionSummary = {
+  sessionId: string;
+  sessionName: string;
+  attempts: BookSpeakingAttempt[];
+  startedAt: string;
+  updatedAt: string;
+  durationSeconds: number;
+};
+
+type SpeakingChatTurn = {
+  id: string;
+  speaker: 'student' | 'ai';
+  text: string;
+  pending?: boolean;
+};
+
 const MAX_BOOK_TOPIC_SNAPSHOT_BYTES = 100 * 1024 * 1024;
 const MAX_BOOK_TOPIC_ITEMS = 2000;
 const MAX_BOOK_TOPIC_MEDIA_BYTES = 25 * 1024 * 1024;
@@ -82,9 +102,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('pageFrame') pageFrame?: ElementRef<HTMLElement>;
   @ViewChild('readerSpread') readerSpread?: ElementRef<HTMLElement>;
   @ViewChild('readerStage') readerStage?: ElementRef<HTMLElement>;
+  @ViewChild('readerCanvasShell') readerCanvasShell?: ElementRef<HTMLElement>;
   @ViewChild('expandedVideo') expandedVideo?: ElementRef<HTMLVideoElement>;
   @ViewChild('expandedVideoFrame') expandedVideoFrame?: ElementRef<HTMLElement>;
   @ViewChild('guidePinMediaFrame') guidePinMediaFrame?: ElementRef<HTMLElement>;
+  @ViewChild('speakingAiChat') speakingAiChat?: ElementRef<HTMLElement>;
+  @ViewChild('speakingRecordButton') speakingRecordButton?: ElementRef<HTMLButtonElement>;
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -95,6 +118,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   twoPageMode = false;
   readerSpreadWidthPx: number | null = null;
   private readerLayoutFrame = 0;
+  private readerInteractionFrame = 0;
   private drawingCanvasFrame = 0;
   pdfUrl = '';
   pageAspectRatio = '3 / 4';
@@ -129,6 +153,31 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   guideAudioVolume = 1;
   guideOverlayImageUrl = '';
   guideOverlayVisible = false;
+  activeSpeakingElement: BookElement | null = null;
+  activeSpeakingPage: BookPage | null = null;
+  speakingPanelExpanded = false;
+  speakingSessionActive = false;
+  activeSpeakingSessionId: string | null = null;
+  speakingConversationActive = false;
+  speakingSessionStartedAt = 0;
+  speakingAttemptStartedAt = 0;
+  speakingAttempts = new Map<string, BookSpeakingAttempt[]>();
+  speakingProgress: Record<string, number> = {};
+  playingSpeakingAttemptId: string | null = null;
+  speakingVoiceVolume = 1;
+  speakingRecordingLevel = 0;
+  speakingRecordingAuraScale = 1;
+  speakingRecordingRingScale = 1;
+  speakingRecordingAuraOpacity = 0.42;
+  speakingRecordingRingOpacity = 0.28;
+  speakingRecordingGlow = '0.9rem';
+  speakingRecordingOuterGlow = '1.5rem';
+  speakingRuntimeStatus: AiSpeakingRuntimeStatus | null = null;
+  checkingSpeakingRuntime = false;
+  importingSpeakingPack = false;
+  aiPackManagerOpen = false;
+  aiPackManagerBusy = false;
+  aiPackAdvancedOpen = false;
   owlImage = 'assets/gifs/owl-corner.gif';
   owlX = 0;
   owlY = 0;
@@ -141,6 +190,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   readerThumbItemHeight = 305;
   expandedElement: BookElement | null = null;
   videoFullscreen = false;
+  private electronVideoFullscreenFallbackActive = false;
+  private electronVideoFullscreenWasActive = false;
+  private lastVideoFullscreenHotspotAt = 0;
   expandedFocusElement: BookElement | null = null;
   expandedFocusPage: BookPage | null = null;
   activeTextInput: { pageId: string; textId?: string; x: number; y: number; width: number; height: number; value: string; color: string; createdAt?: number } | null = null;
@@ -172,6 +224,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private annotationSaveTimer: number | null = null;
   private resizeTimer: number | null = null;
   private guideAudioUiFrame = 0;
+  private speakingTimer: number | null = null;
+  private speakingMediaRecorder: MediaRecorder | null = null;
+  private speakingRecordingStream: MediaStream | null = null;
+  private speakingRecordedChunks: Blob[] = [];
+  private speakingActiveAttemptKey: string | null = null;
+  private speakingSaveOnStop = true;
+  private speakingTurnIndex = 0;
+  private speakingPlaybackAudio: HTMLAudioElement | null = null;
+  private speakingPlaybackFrame = 0;
+  private speakingSessionPlaybackUrl: string | null = null;
+  private speakingAttemptAudioUrls = new Map<string, string>();
+  private speakingSessionNameDrafts = new Map<string, string>();
+  private speakingRecordingAudioContext: AudioContext | null = null;
+  private speakingRecordingAnalyser: AnalyserNode | null = null;
+  private speakingRecordingLevelFrame = 0;
+  private speakingRecordingLevelData: Uint8Array<ArrayBuffer> | null = null;
+  private promptedSpeakingPackLinks = new Set<string>();
   private focusContentStyleCacheKey = '';
   private focusContentStyleCacheValue: Record<string, string> = {};
   private assetUrlCache = new Map<string, string>();
@@ -181,6 +250,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private visiblePagesDirty = true;
   private taskResponseSaveTimer: number | null = null;
   private pendingTaskResponseIds = new Set<string>();
+  private speakingChatScrollFrame = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -193,6 +263,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     private languageService: LanguageService,
     private platformFile: PlatformFileService,
     private taskResponseService: BookTaskResponseService,
+    private speakingAttemptService: BookSpeakingAttemptService,
+    private aiLanguagePacks: AiLanguagePackService,
+    private aiSpeakingRuntime: AiSpeakingRuntimeService,
     private guidePitch: GuidePitchService
   ) {}
 
@@ -210,10 +283,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
     this.stopGuideAudio();
+    void this.stopSpeakingConversation(false);
+    this.stopSpeakingRecordingLevelMeter();
+    this.stopSpeakingPlayback();
     void this.flushAnnotationsNow();
     void this.flushTaskResponses();
     if (this.readerLayoutFrame) {
       cancelAnimationFrame(this.readerLayoutFrame);
+    }
+    if (this.readerInteractionFrame) {
+      cancelAnimationFrame(this.readerInteractionFrame);
     }
     if (this.drawingCanvasFrame) {
       cancelAnimationFrame(this.drawingCanvasFrame);
@@ -221,6 +300,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.guideAudioUiFrame) {
       cancelAnimationFrame(this.guideAudioUiFrame);
     }
+    if (this.speakingTimer !== null) {
+      window.clearInterval(this.speakingTimer);
+    }
+    if (this.speakingPlaybackFrame) {
+      cancelAnimationFrame(this.speakingPlaybackFrame);
+    }
+    if (this.speakingChatScrollFrame) {
+      cancelAnimationFrame(this.speakingChatScrollFrame);
+    }
+    this.revokeSpeakingAttemptAudioUrls();
     if (this.guideOverlayPositionFrame) {
       cancelAnimationFrame(this.guideOverlayPositionFrame);
     }
@@ -241,6 +330,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.flushAnnotationsNow();
     await this.flushTaskResponses();
     this.stopGuideAudio();
+    await this.stopSpeakingConversation(false);
+    this.stopSpeakingPlayback();
+    this.revokeSpeakingAttemptAudioUrls();
     this.loading = true;
     this.assetUrlCache.clear();
     this.assetFileUrlCache.clear();
@@ -260,6 +352,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.activeTaskPageId = null;
     this.activeMatchEndpoint = null;
     this.guideProgress = {};
+    this.speakingProgress = {};
+    this.speakingAttempts.clear();
+    this.activeSpeakingElement = null;
+    this.activeSpeakingPage = null;
+    this.speakingRuntimeStatus = null;
+    this.checkingSpeakingRuntime = false;
+    this.speakingPanelExpanded = false;
+    this.resetSpeakingSessionState();
     this.undoStack = [];
     this.redoStack = [];
     this.resetDrawingCanvas();
@@ -274,6 +374,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       page.elements.filter(isBookTaskElement).map((element) => element.id)
     ));
     await this.taskResponseService.cleanupBook(bookId, validTaskIds);
+    await this.loadSpeakingAttempts(bookId);
     this.applyNavigationPageState();
     this.loading = false;
     this.syncPageJumpValue();
@@ -375,8 +476,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   goToPage(index: number, closeDrawer = false): void {
     if (index < 0 || index >= this.visiblePages.length) return;
+    if (!this.confirmStopSpeakingForInterruption()) return;
     this.swipeDir?.cancel();
     this.stopGuideAudioAndReturnHome();
+    if (this.activeSpeakingElement) {
+      this.activeSpeakingElement = null;
+      this.activeSpeakingPage = null;
+      this.speakingPanelExpanded = false;
+      this.resetSpeakingSessionState();
+    }
     this.closeExpandedFocus();
     this.currentPageIndex = index;
     this.refreshPdfUrl();
@@ -404,8 +512,13 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleLinkedWorkbook(): void {
     if (!this.book) return;
+    if (!this.confirmStopSpeakingForInterruption()) return;
     this.closeTaskInput();
     this.stopGuideAudioAndReturnHome();
+    this.activeSpeakingElement = null;
+    this.activeSpeakingPage = null;
+    this.speakingPanelExpanded = false;
+    this.resetSpeakingSessionState();
     if (this.pageSource === 'workbook') {
       const mainPageId = this.workbookSession?.mainPageId || '';
       this.pageSource = 'main';
@@ -457,24 +570,44 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   setZoom(value: number): void {
-    const previousZoom = this.zoom;
     this.zoom = Math.min(2, Math.max(0.5, value));
-    this.updateReaderSpreadWidth();
-    if (this.shouldAnchorTwoPageZoom(previousZoom)) {
-      this.anchorTwoPageZoomToTopLeft();
-    }
+    this.updateReaderSpreadWidth(() => {
+      if (this.zoom > 1) this.centerReaderZoom();
+    });
+  }
+
+  rotateCurrentPage(): void {
+    const page = this.currentPage;
+    if (!page) return;
+    this.closeExpandedFocus();
+    this.activeTextInput = null;
+    this.selectedText = null;
+    page.rotation = (this.getPageRotation(page) + 90) % 360;
+    this.invalidateDrawingCache(page.id);
+    this.resetDrawingCanvas();
+    this.updateReaderSpreadWidth(() => {
+      if (this.zoom > 1) this.centerReaderZoom();
+    });
+    void this.saveAnnotations();
   }
 
   toggleTwoPageMode(): void {
+    if (!this.confirmStopSpeakingForInterruption()) return;
     this.stopGuideAudioAndReturnHome();
+    this.activeSpeakingElement = null;
+    this.activeSpeakingPage = null;
+    this.speakingPanelExpanded = false;
+    this.resetSpeakingSessionState();
     this.closeExpandedFocus();
     this.twoPageMode = !this.twoPageMode;
     this.selectedText = null;
     this.activeTextInput = null;
     this.closeTaskInput();
-    this.updateReaderSpreadWidth();
+    this.updateReaderSpreadWidth(() => {
+      if (this.zoom > 1) this.centerReaderZoom();
+    });
     if (this.twoPageMode && this.zoom > 1) {
-      this.anchorTwoPageZoomToTopLeft();
+      this.centerReaderZoom();
     }
   }
 
@@ -720,12 +853,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentTaskOutsideClick(event: MouseEvent): void {
-    if (!this.activeTaskElement) return;
     const target = event.target as HTMLElement | null;
+    this.closeSpeakingPanelFromOutsideClick(target);
+    if (!this.activeTaskElement) return;
     if (
       target?.closest('.text-task-element') ||
       target?.closest('.choice-task-element') ||
       target?.closest('.task-response-dock') ||
+      target?.closest('.speaking-ai-dock') ||
+      target?.closest('.ai-pack-manager-backdrop') ||
       target?.closest('.word-bank-dialog')
     ) return;
     this.closeTaskInput();
@@ -734,6 +870,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   closeTaskInput(): void {
     this.activeTaskElement = null;
     this.activeTaskPageId = null;
+  }
+
+  private closeSpeakingPanelFromOutsideClick(target: HTMLElement | null): void {
+    if (!this.activeSpeakingElement) return;
+    if (this.speakingConversationActive || this.speakingSessionActive) return;
+    if (
+      target?.closest('.speaking-ai-dock') ||
+      target?.closest('.ai-pack-manager-backdrop') ||
+      target?.closest('.speaking-ai-element')
+    ) return;
+    this.activeSpeakingElement = null;
+    this.activeSpeakingPage = null;
+    this.speakingPanelExpanded = false;
+    this.speakingRuntimeStatus = null;
+    this.stopSpeakingPlayback();
+    this.moveOwlToCorner();
+    this.forceUiRefresh();
   }
 
   updateTaskResponse(element: BookElement, page: BookPage, value: string): void {
@@ -1038,6 +1191,13 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getStrokePolylinePoints(stroke: BookAnnotationStroke): string {
     return stroke.points.map((point) => `${this.clamp(point.x, 0, 1)},${this.clamp(point.y, 0, 1)}`).join(' ');
+  }
+
+  getElementPolylinePoints(element: BookElement): string {
+    const points = Array.isArray(element.data?.['points']) ? element.data['points'] : [];
+    return points
+      .map((point: { x: number; y: number }) => `${Number(point.x) || 0},${Number(point.y) || 0}`)
+      .join(' ');
   }
 
   isTextInputForPage(page: BookPage | null): boolean {
@@ -1446,6 +1606,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (element.type === 'video' || element.type === 'note' || element.type === 'answerKey') {
+      if (!this.confirmStopSpeakingForInterruption()) return;
       this.stopGuideAudioAndReturnHome();
       this.expandedElement = element;
       return;
@@ -1459,7 +1620,13 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    if (element.type === 'speakingAi') {
+      this.openSpeakingAi(element, page);
+      return;
+    }
+
     if (element.type === 'game') {
+      if (!this.confirmStopSpeakingForInterruption()) return;
       this.stopGuideAudioAndReturnHome();
       await this.openGameElement(element, page);
     }
@@ -1494,12 +1661,71 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  onExpandedVideoPointerUp(event: PointerEvent): void {
+    if (!this.isElectronRuntime() || this.videoFullscreen) return;
+    const video = this.expandedVideo?.nativeElement;
+    if (!video || !this.isPointInVideoFullscreenControl(event, video)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    void this.requestExpandedVideoFullscreen(video);
+  }
+
+  onExpandedVideoFullscreenHotspotClick(event: MouseEvent): void {
+    if (!this.shouldHandleVideoFullscreenHotspot(event)) return;
+    this.requestExpandedVideoFullscreenFromHotspot(event);
+  }
+
+  onExpandedVideoFullscreenHotspotPointerDown(event: PointerEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  onExpandedVideoFullscreenHotspotPointerUp(event: PointerEvent): void {
+    if (!this.shouldHandleVideoFullscreenHotspot(event)) return;
+    this.requestExpandedVideoFullscreenFromHotspot(event);
+  }
+
+  private shouldHandleVideoFullscreenHotspot(event: Event): boolean {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = Date.now();
+    if (now - this.lastVideoFullscreenHotspotAt < 450) {
+      return false;
+    }
+    this.lastVideoFullscreenHotspotAt = now;
+    return true;
+  }
+
+  private requestExpandedVideoFullscreenFromHotspot(event: Event): void {
+    if (this.videoFullscreen) {
+      void this.exitExpandedVideoFullscreen();
+      return;
+    }
+    if (this.isElectronRuntime()) {
+      void this.enterElectronVideoFullscreenFallback();
+      return;
+    }
+    const video = this.expandedVideo?.nativeElement;
+    if (video) {
+      void this.requestExpandedVideoFullscreen(video);
+      return;
+    }
+    void this.toggleExpandedVideoFullscreen(event);
+  }
+
   @HostListener('document:fullscreenchange')
   onExpandedVideoFullscreenChange(): void {
-    if (this.videoFullscreen && !document.fullscreenElement) {
-      this.videoFullscreen = false;
-      this.forceUiRefresh();
-    }
+    this.syncExpandedVideoFullscreenState();
+  }
+
+  @HostListener('document:webkitfullscreenchange')
+  onExpandedVideoWebkitFullscreenChange(): void {
+    this.syncExpandedVideoFullscreenState();
+  }
+
+  onExpandedNativeVideoFullscreenChange(): void {
+    this.syncExpandedVideoFullscreenState();
   }
 
   @HostListener('document:keydown.escape')
@@ -1511,9 +1737,114 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.videoFullscreen = false;
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
+      const webkitDocument = document as Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => Promise<void> | void };
+      if (webkitDocument.webkitFullscreenElement) await webkitDocument.webkitExitFullscreen?.();
     } catch {
       // CSS fullscreen has already been removed.
     }
+    await this.exitElectronVideoFullscreenFallback();
+    this.forceUiRefresh();
+  }
+
+  private async requestExpandedVideoFullscreen(video: HTMLVideoElement): Promise<void> {
+    const fullscreenVideo = video as HTMLVideoElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+      webkitEnterFullscreen?: () => void;
+    };
+    const frame = this.expandedVideoFrame?.nativeElement as (HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    }) | undefined;
+
+    try {
+      if (fullscreenVideo.requestFullscreen) {
+        await fullscreenVideo.requestFullscreen();
+      } else if (fullscreenVideo.webkitRequestFullscreen) {
+        await fullscreenVideo.webkitRequestFullscreen();
+      } else if (fullscreenVideo.webkitEnterFullscreen) {
+        fullscreenVideo.webkitEnterFullscreen();
+      } else if (frame?.requestFullscreen) {
+        await frame.requestFullscreen();
+      } else {
+        await frame?.webkitRequestFullscreen?.();
+      }
+      this.syncExpandedVideoFullscreenState();
+      this.ensureElectronVideoFullscreenFallback();
+    } catch {
+      void this.enterElectronVideoFullscreenFallback();
+    }
+  }
+
+  private ensureElectronVideoFullscreenFallback(): void {
+    if (!this.isElectronRuntime()) return;
+    requestAnimationFrame(() => {
+      const webkitDocument = document as Document & { webkitFullscreenElement?: Element | null };
+      if (document.fullscreenElement || webkitDocument.webkitFullscreenElement) return;
+      void this.enterElectronVideoFullscreenFallback();
+    });
+  }
+
+  private async enterElectronVideoFullscreenFallback(): Promise<void> {
+    const api = (window as any)?.electronAPI;
+    this.videoFullscreen = true;
+    this.forceUiRefresh();
+    if (!api?.setAppFullscreen) return;
+    try {
+      this.electronVideoFullscreenWasActive = typeof api.isAppFullscreen === 'function'
+        ? !!(await api.isAppFullscreen())
+        : false;
+      if (!this.electronVideoFullscreenWasActive) {
+        await api.setAppFullscreen(true);
+      }
+      this.electronVideoFullscreenFallbackActive = true;
+    } catch {
+      // The fixed viewport video layout remains usable even if the window cannot be promoted.
+    }
+  }
+
+  private async exitElectronVideoFullscreenFallback(): Promise<void> {
+    if (!this.electronVideoFullscreenFallbackActive) return;
+    const shouldRestoreWindow = !this.electronVideoFullscreenWasActive;
+    this.electronVideoFullscreenFallbackActive = false;
+    this.electronVideoFullscreenWasActive = false;
+    const api = (window as any)?.electronAPI;
+    if (!shouldRestoreWindow || !api?.setAppFullscreen) return;
+    try {
+      await api.setAppFullscreen(false);
+    } catch {
+      // Leaving the CSS fullscreen state is still enough to recover the reader layout.
+    }
+  }
+
+  private isPointInVideoFullscreenControl(event: PointerEvent, video: HTMLVideoElement): boolean {
+    const rect = video.getBoundingClientRect();
+    if (!rect.width || !rect.height) return false;
+    const controlHeight = this.clamp(rect.height * 0.16, 42, 58);
+    const controlWidth = this.clamp(rect.width * 0.12, 54, 78);
+    return event.clientX >= rect.right - controlWidth
+      && event.clientX <= rect.right
+      && event.clientY >= rect.bottom - controlHeight
+      && event.clientY <= rect.bottom;
+  }
+
+  isElectronRuntime(): boolean {
+    return !!(window as any)?.electronAPI;
+  }
+
+  private syncExpandedVideoFullscreenState(): void {
+    if (this.electronVideoFullscreenFallbackActive) {
+      this.videoFullscreen = true;
+      this.forceUiRefresh();
+      return;
+    }
+    const webkitDocument = document as Document & { webkitFullscreenElement?: Element | null };
+    const fullscreenElement = document.fullscreenElement || webkitDocument.webkitFullscreenElement || null;
+    const activeVideo = this.expandedVideo?.nativeElement;
+    const activeFrame = this.expandedVideoFrame?.nativeElement;
+    this.videoFullscreen = !!fullscreenElement && (
+      fullscreenElement === activeVideo ||
+      fullscreenElement === activeFrame ||
+      !!activeFrame?.contains(fullscreenElement)
+    );
     this.forceUiRefresh();
   }
 
@@ -1538,11 +1869,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getPageAspectRatioFor(page: BookPage | null): string {
     if (!this.isFocusCropActive(page)) {
-      return this.pageAspectRatio;
+      const aspect = this.getPageAspectRatioNumber(page);
+      return `${Math.max(0.05, aspect)} / 1`;
     }
     const focus = this.getClampedFocusRect(this.expandedFocusElement);
-    const pageAspect = this.getPageAspectRatioNumber();
+    const pageAspect = this.getPageAspectRatioNumber(page);
     return `${Math.max(0.05, pageAspect * focus.width)} / ${Math.max(0.05, focus.height)}`;
+  }
+
+  getPageRotation(page: BookPage | null | undefined): number {
+    return this.normalizePageRotation(page?.rotation);
   }
 
   getFocusContentStyle(page: BookPage | null): Record<string, string> {
@@ -1580,6 +1916,690 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const dots = this.getGuideDots(page);
     const index = dots.findIndex((dot) => dot.id === element.id);
     return index >= 0 && index <= (this.guideProgress[page.id] ?? 0);
+  }
+
+  isSpeakingAiEnabled(element: BookElement, page = this.currentPage): boolean {
+    if (!page || element.type !== 'speakingAi') return false;
+    if (this.isPageInActiveSpread(page)) {
+      const items = this.getActiveSpreadSpeakingAi();
+      const index = items.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
+      return index >= 0 && index <= (this.speakingProgress[this.getActiveSpreadSpeakingProgressKey()] ?? 0);
+    }
+    const items = this.getSpeakingAiElements(page);
+    const index = items.findIndex((item) => item.id === element.id);
+    return index >= 0 && index <= (this.speakingProgress[page.id] ?? 0);
+  }
+
+  getSpeakingAiTitle(element: BookElement | null): string {
+    if (!element) return 'AI Speaking';
+    return String(element.data['topic'] || element.data['label'] || 'AI Speaking');
+  }
+
+  getSpeakingAiLanguage(element: BookElement | null): string {
+    return String(element?.data?.['language'] || 'en').trim() || 'en';
+  }
+
+  getSpeakingAiPackLabel(element: BookElement | null): string {
+    const language = this.getSpeakingAiLanguage(element).toUpperCase();
+    return `${language} Speaking Pack`;
+  }
+
+  isSpeakingAiPackInstalled(element: BookElement | null): boolean {
+    return this.aiLanguagePacks.hasPackForLanguage(this.getSpeakingAiLanguage(element));
+  }
+
+  getSpeakingRequiredPackText(): string {
+    const message = this.speakingRuntimeStatus?.reason || 'Install the speaking pack for this language.';
+    return this.hasSpeakingPackUrl(this.activeSpeakingElement)
+      ? `${message} Use the teacher's pack link, then import it here.`
+      : message;
+  }
+
+  getSpeakingPackUrl(element: BookElement | null = this.activeSpeakingElement): string {
+    return String(element?.data?.['packUrl'] || element?.data?.['packSourceUrl'] || '').trim();
+  }
+
+  hasSpeakingPackUrl(element: BookElement | null = this.activeSpeakingElement): boolean {
+    return !!this.getSpeakingPackUrl(element);
+  }
+
+  openSpeakingPackUrl(element: BookElement | null = this.activeSpeakingElement): void {
+    const rawUrl = this.getSpeakingPackUrl(element);
+    if (!rawUrl) {
+      showAppNotification('No Speaking Pack download link was added to this task.', 'info');
+      return;
+    }
+    const url = this.normalizeExternalPackUrl(rawUrl);
+    if (!url) {
+      showAppNotification('The Speaking Pack download link is not a valid web URL.', 'error');
+      return;
+    }
+    const api = (window as any)?.electronAPI;
+    if (typeof api?.openExternalUrl === 'function') {
+      void api.openExternalUrl(url);
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  }
+
+  getSpeakingRuntimeStatusText(): string {
+    if (!this.speakingRuntimeStatus) return 'Checking speaking pack...';
+    if (this.speakingRuntimeStatus.conversationAvailable) return 'Speaking Pack is ready.';
+    if (this.speakingRuntimeStatus.reason) return this.speakingRuntimeStatus.reason;
+    if (this.speakingRuntimeStatus.pack) return 'Speaking Pack is not ready yet.';
+    if (this.speakingRuntimeStatus.recordingAvailable) return 'Recording is available, but the Speaking Pack is not ready.';
+    return 'Speaking practice is not available on this device.';
+  }
+
+  getSpeakingAttempts(element: BookElement | null): BookSpeakingAttempt[] {
+    if (!element) return [];
+    return this.speakingAttempts.get(element.id) ?? [];
+  }
+
+  trackBySpeakingAttemptId(_index: number, attempt: BookSpeakingAttempt): string {
+    return attempt.key;
+  }
+
+  trackBySpeakingSessionId(_index: number, session: SpeakingSessionSummary): string {
+    return session.sessionId;
+  }
+
+  trackBySpeakingChatTurnId(_index: number, turn: SpeakingChatTurn): string {
+    return turn.id;
+  }
+
+  getSpeakingSessions(element: BookElement | null): SpeakingSessionSummary[] {
+    const attempts = this.getSpeakingAttempts(element);
+    const groups = new Map<string, BookSpeakingAttempt[]>();
+    for (const attempt of attempts) {
+      const sessionId = attempt.sessionId || attempt.attemptId;
+      const list = groups.get(sessionId) ?? [];
+      list.push(attempt);
+      groups.set(sessionId, list);
+    }
+
+    return Array.from(groups.entries())
+      .map(([sessionId, list]) => {
+        const sorted = this.sortSpeakingAttemptsByTurn(list);
+        const startedAt = sorted[0]?.startedAt || '';
+        const sessionName = String(sorted.find((attempt) => attempt.sessionName)?.sessionName || '').trim();
+        const updatedAt = sorted.reduce((latest, attempt) => (
+          String(attempt.updatedAt || attempt.endedAt || attempt.startedAt).localeCompare(latest) > 0
+            ? String(attempt.updatedAt || attempt.endedAt || attempt.startedAt)
+            : latest
+        ), startedAt);
+        const durationSeconds = sorted.reduce((total, attempt) => total + Math.max(0, Math.round(attempt.durationSeconds || 0)), 0);
+        return { sessionId, sessionName, attempts: sorted, startedAt, updatedAt, durationSeconds };
+      })
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  }
+
+  getFinishedSpeakingSessions(element: BookElement | null): SpeakingSessionSummary[] {
+    return this.getSpeakingSessions(element)
+      .filter((session) => session.sessionId !== this.activeSpeakingSessionId);
+  }
+
+  getActiveSpeakingChatTurns(): SpeakingChatTurn[] {
+    if (!this.activeSpeakingElement || !this.activeSpeakingSessionId) return [];
+    const attempts = this.getSpeakingAttempts(this.activeSpeakingElement)
+      .filter((attempt) => (attempt.sessionId || attempt.attemptId) === this.activeSpeakingSessionId);
+    const turns: SpeakingChatTurn[] = [];
+    for (const attempt of this.sortSpeakingAttemptsByTurn(attempts)) {
+      const studentText = this.getSpeakingAttemptStudentText(attempt);
+      const aiText = this.getSpeakingAttemptAiText(attempt);
+      if (studentText) {
+        turns.push({
+          id: `${attempt.key}:student`,
+          speaker: 'student',
+          text: studentText
+        });
+      } else if (attempt.status !== 'active' && this.isSpeakingAttemptProcessing(attempt)) {
+        turns.push({
+          id: `${attempt.key}:student-processing`,
+          speaker: 'student',
+          text: '',
+          pending: true
+        });
+      }
+      if (aiText) {
+        turns.push({
+          id: `${attempt.key}:ai`,
+          speaker: 'ai',
+          text: aiText
+        });
+      } else if (studentText && this.isSpeakingAttemptProcessing(attempt)) {
+        turns.push({
+          id: `${attempt.key}:ai-thinking`,
+          speaker: 'ai',
+          text: '',
+          pending: true
+        });
+      }
+    }
+    return turns;
+  }
+
+  formatSpeakingSession(session: SpeakingSessionSummary): string {
+    if (session.sessionName.trim()) return session.sessionName.trim();
+    return this.formatSpeakingSessionDefaultName(session);
+  }
+
+  getSpeakingSessionDraft(session: SpeakingSessionSummary): string {
+    if (!this.speakingSessionNameDrafts.has(session.sessionId)) {
+      this.speakingSessionNameDrafts.set(session.sessionId, this.formatSpeakingSession(session));
+    }
+    return this.speakingSessionNameDrafts.get(session.sessionId) || '';
+  }
+
+  setSpeakingSessionDraft(session: SpeakingSessionSummary, value: string): void {
+    this.speakingSessionNameDrafts.set(session.sessionId, String(value ?? ''));
+  }
+
+  formatSpeakingSessionDefaultName(session: SpeakingSessionSummary): string {
+    const started = new Date(session.startedAt);
+    const time = Number.isNaN(started.getTime())
+      ? 'Conversation'
+      : started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const duration = Math.max(0, Math.round(session.durationSeconds || 0));
+    return `${time} - ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
+  }
+
+  formatSpeakingAttempt(attempt: BookSpeakingAttempt): string {
+    const started = new Date(attempt.startedAt);
+    const time = Number.isNaN(started.getTime())
+      ? 'Attempt'
+      : started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const duration = Math.max(0, Math.round(attempt.durationSeconds || 0));
+    const status = attempt.status === 'active'
+      ? 'Recording'
+      : `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
+    const turn = Number.isFinite(Number(attempt.turnIndex))
+      ? `Turn ${Number(attempt.turnIndex) + 1}`
+      : time;
+    return `${turn} - ${status}`;
+  }
+
+  getSpeakingPrimaryActionLabel(): string {
+    if (this.checkingSpeakingRuntime) return 'Checking';
+    if (this.speakingSessionActive) return 'Finish';
+    return 'Start';
+  }
+
+  getSpeakingTurnActionLabel(): string {
+    return this.speakingConversationActive ? 'Stop' : 'Speak';
+  }
+
+  toggleSpeakingConversation(): void {
+    if (this.speakingSessionActive) {
+      void this.finishSpeakingSessionAsync();
+      return;
+    }
+    void this.startSpeakingSession();
+  }
+
+  toggleSpeakingTurnRecording(): void {
+    void this.toggleSpeakingTurnRecordingAsync();
+  }
+
+  private async toggleSpeakingTurnRecordingAsync(): Promise<void> {
+    if (this.speakingConversationActive) {
+      void this.stopSpeakingConversation(true);
+      return;
+    }
+    if (!this.speakingSessionActive) {
+      await this.startSpeakingSession();
+    }
+    void this.startSpeakingConversation();
+  }
+
+  finishSpeakingSession(): void {
+    void this.finishSpeakingSessionAsync();
+  }
+
+  private async finishSpeakingSessionAsync(): Promise<void> {
+    if (this.speakingConversationActive) {
+      await this.stopSpeakingConversation(true);
+    }
+    this.resetSpeakingSessionState();
+    this.moveOwlToCorner();
+    showAppNotification('Speaking session finished.', 'success');
+    this.forceUiRefresh();
+  }
+
+  private async startSpeakingSession(): Promise<void> {
+    if (!this.book || !this.activeSpeakingElement) return;
+    const status = await this.refreshSpeakingRuntimeStatus();
+    if (!status.pack) {
+      this.maybePromptForSpeakingPackLink(this.activeSpeakingElement, status);
+      showAppNotification(status.reason || 'Import the required Speaking Pack first.', 'info');
+      return;
+    }
+    if (!status.recordingAvailable) {
+      this.maybePromptForSpeakingPackLink(this.activeSpeakingElement, status);
+      showAppNotification(status.reason || 'Speaking practice is not available on this device.', 'error');
+      return;
+    }
+    if (!status.conversationAvailable) {
+      this.maybePromptForSpeakingPackLink(this.activeSpeakingElement, status);
+    }
+    if (status.speechToTextAvailable && status.textToSpeechAvailable && !status.conversationAvailable) {
+      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
+    } else if (status.speechToTextAvailable && !status.conversationAvailable) {
+      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
+    } else if (!status.conversationAvailable) {
+      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet. Recording-only attempt will start.', 'info');
+    }
+    this.speakingSessionActive = true;
+    this.activeSpeakingSessionId = this.createId('speaking-session');
+    this.speakingSessionStartedAt = Date.now();
+    this.speakingTurnIndex = 0;
+    this.moveOwlToElement(this.activeSpeakingElement, this.activeSpeakingPage || undefined);
+    this.owlTeaching = true;
+    this.owlImage = 'assets/gifs/owl-teaching.gif';
+    this.forceUiRefresh();
+    showAppNotification('Speaking session started.', 'success');
+    this.forceUiRefresh();
+  }
+
+  getSpeakingAttemptProgress(attempt: BookSpeakingAttempt): number {
+    if (attempt.status === 'active') {
+      return 0;
+    }
+    if (this.playingSpeakingAttemptId?.startsWith(`${attempt.attemptId}:`)) {
+      return this.speakingProgress[this.playingSpeakingAttemptId] ?? 0;
+    }
+    return this.speakingProgress[attempt.attemptId] ?? 0;
+  }
+
+  setSpeakingVoiceVolume(value: number | string): void {
+    this.speakingVoiceVolume = this.clamp(Number(value) || 0, 0, 1);
+    if (this.speakingPlaybackAudio) {
+      this.speakingPlaybackAudio.volume = this.speakingVoiceVolume;
+    }
+  }
+
+  async importSpeakingAiPack(): Promise<void> {
+    if (this.importingSpeakingPack) return;
+    this.importingSpeakingPack = true;
+    try {
+      const installed = await this.aiLanguagePacks.importPackManifest();
+      if (!installed) return;
+      showAppNotification(`${installed.label} installed.`, 'success');
+      await this.refreshSpeakingRuntimeStatus();
+    } catch (error: any) {
+      showAppNotification(error?.message || 'Could not import Speaking Pack.', 'error');
+    } finally {
+      this.importingSpeakingPack = false;
+      this.forceUiRefresh();
+    }
+  }
+
+  async openAiPackManager(): Promise<void> {
+    this.aiPackManagerOpen = true;
+    this.aiPackManagerBusy = true;
+    this.aiPackAdvancedOpen = false;
+    this.forceUiRefresh();
+    try {
+      await this.aiLanguagePacks.refresh();
+      await this.refreshSpeakingRuntimeStatus().catch(() => this.speakingRuntimeStatus);
+    } finally {
+      this.aiPackManagerBusy = false;
+      this.forceUiRefresh();
+    }
+  }
+
+  closeAiPackManager(): void {
+    this.aiPackManagerOpen = false;
+    this.aiPackAdvancedOpen = false;
+  }
+
+  getInstalledAiPacks(): InstalledAiLanguagePack[] {
+    return [...this.aiLanguagePacks.getInstalledPacks()].sort((a, b) => (
+      this.aiLanguagePacks.getQualityRank(b) - this.aiLanguagePacks.getQualityRank(a)
+      || String(a.language).localeCompare(String(b.language))
+      || String(a.label).localeCompare(String(b.label))
+    ));
+  }
+
+  trackByAiPackId(_index: number, pack: InstalledAiLanguagePack): string {
+    return pack.id;
+  }
+
+  getAiPackQualityLabel(pack: InstalledAiLanguagePack): string {
+    return this.aiLanguagePacks.getQualityLabel(pack);
+  }
+
+  getAiPackFeatureLabels(pack: InstalledAiLanguagePack): string[] {
+    const features = new Set((pack.features ?? []).map((feature) => String(feature || '').trim().toLowerCase()));
+    return [
+      features.has('speech-to-text') ? 'Listening' : '',
+      features.has('local-dialogue') ? 'Conversation' : '',
+      features.has('text-to-speech') ? 'Voice' : ''
+    ].filter(Boolean);
+  }
+
+  getAiPackRuntimeSummary(pack: InstalledAiLanguagePack): string {
+    const files = pack.runtimeFiles;
+    if (!files) return 'Manifest only';
+    const parts = [
+      files.stt?.length ? `${files.stt.length} listening files` : '',
+      files.dialogue?.length ? `${files.dialogue.length} conversation files` : '',
+      files.tts?.length ? `${files.tts.length} voice files` : ''
+    ].filter(Boolean);
+    return parts.length ? parts.join(' · ') : 'No runtime files declared';
+  }
+
+  getAiPackRequirementText(pack: InstalledAiLanguagePack): string {
+    const requirements = pack.deviceRequirements;
+    if (!requirements) return '';
+    const parts = [
+      requirements.recommendedRamMb ? `${requirements.recommendedRamMb} MB RAM recommended` : '',
+      requirements.minRamMb ? `${requirements.minRamMb} MB RAM minimum` : '',
+      requirements.minStorageMb ? `${requirements.minStorageMb} MB storage` : '',
+      requirements.notes || ''
+    ].filter(Boolean);
+    return parts.join(' · ');
+  }
+
+  getAiPackSizeText(pack: InstalledAiLanguagePack): string {
+    const sizeBytes = Number((pack as InstalledAiLanguagePack & { sizeBytes?: number }).sizeBytes || 0);
+    if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = sizeBytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex++;
+    }
+    return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+  }
+
+  getAiPackSelectedRole(pack: InstalledAiLanguagePack): string {
+    const selected = this.speakingRuntimeStatus?.featurePacks;
+    const roles = [
+      selected?.speechToText?.id === pack.id ? 'Used for listening' : '',
+      selected?.dialogue?.id === pack.id ? 'Used for conversation' : '',
+      selected?.textToSpeech?.id === pack.id ? 'Used for voice' : ''
+    ].filter(Boolean);
+    return roles.join(' · ');
+  }
+
+  getAiPackManagerRows(): { label: string; pack: InstalledAiLanguagePack | null; ready: boolean }[] {
+    const status = this.speakingRuntimeStatus;
+    return [
+      { label: 'Listening', pack: status?.featurePacks.speechToText ?? null, ready: !!status?.speechToTextAvailable },
+      { label: 'Conversation', pack: status?.featurePacks.dialogue ?? null, ready: !!status?.dialogueAvailable },
+      { label: 'Voice', pack: status?.featurePacks.textToSpeech ?? null, ready: !!status?.textToSpeechAvailable }
+    ];
+  }
+
+  async removeAiPack(pack: InstalledAiLanguagePack): Promise<void> {
+    if (this.aiPackManagerBusy) return;
+    const confirmed = window.confirm(`Remove ${pack.label}?`);
+    if (!confirmed) return;
+    this.aiPackManagerBusy = true;
+    try {
+      await this.aiLanguagePacks.removePack(pack.id);
+      await this.refreshSpeakingRuntimeStatus().catch(() => this.speakingRuntimeStatus);
+      showAppNotification(`${pack.label} removed.`, 'success');
+    } catch (error: any) {
+      showAppNotification(error?.message || 'Could not remove Speaking Pack.', 'error');
+    } finally {
+      this.aiPackManagerBusy = false;
+      this.forceUiRefresh();
+    }
+  }
+
+  toggleSpeakingAttemptPlayback(attempt: BookSpeakingAttempt, source: 'student' | 'ai' = 'student'): void {
+    const playbackId = this.getSpeakingAttemptPlaybackId(attempt, source);
+    if (this.playingSpeakingAttemptId === playbackId) {
+      this.stopSpeakingPlayback();
+      return;
+    }
+    const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
+    if (!blob) {
+      if (source === 'ai' && attempt.audio) {
+        void this.processSpeakingAttemptAudio(attempt);
+        return;
+      }
+      showAppNotification(source === 'ai'
+        ? 'This attempt has no speaking response yet.'
+        : 'This attempt has no recorded audio yet.', 'info');
+      return;
+    }
+    this.stopSpeakingPlayback();
+    const audio = new Audio(this.getSpeakingAttemptAudioUrl(attempt, source));
+    audio.volume = this.speakingVoiceVolume;
+    this.speakingPlaybackAudio = audio;
+    this.playingSpeakingAttemptId = playbackId;
+    audio.onended = () => this.stopSpeakingPlayback();
+    audio.onerror = () => {
+      this.stopSpeakingPlayback();
+      showAppNotification(source === 'ai'
+        ? 'Could not play this speaking response.'
+        : 'Could not play this speaking attempt.', 'error');
+    };
+    void audio.play()
+      .then(() => this.updateSpeakingPlaybackProgress())
+      .catch(() => {
+        this.stopSpeakingPlayback();
+        showAppNotification(source === 'ai'
+          ? 'Could not play this speaking response.'
+          : 'Could not play this speaking attempt.', 'error');
+      });
+  }
+
+  private async processSpeakingAttemptAudio(attempt: BookSpeakingAttempt): Promise<void> {
+    if (!attempt.audio) {
+      showAppNotification('This attempt has no recorded audio yet.', 'info');
+      return;
+    }
+    attempt.transcript = 'Processing offline AI response...';
+    this.forceUiRefresh();
+    const status = await this.refreshSpeakingRuntimeStatus();
+    if (!status.speechToTextAvailable) {
+      attempt.transcript = status.reason || 'Offline speech recognition is not ready.';
+      await this.speakingAttemptService.save(attempt);
+      showAppNotification(attempt.transcript, 'error');
+      return;
+    }
+    await this.tryTranscribeSpeakingAttempt(attempt);
+    await this.speakingAttemptService.save(attempt);
+    this.forceUiRefresh();
+  }
+
+  async exportSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
+    if (!this.book) return;
+    try {
+      const element = this.findElementById(attempt.elementId);
+      const folder = 'No-Prep Speaking Attempts';
+      let audioFilename = '';
+      if (attempt.audio) {
+        const extension = this.getAudioExtension(attempt.audioMimeType || attempt.audio.type);
+        audioFilename = `speaking-attempt-${attempt.attemptId}.${extension}`;
+        await this.platformFile.saveBlobToDownloads(attempt.audio, audioFilename, folder);
+      }
+      let responseAudioFilename = '';
+      if (attempt.responseAudio) {
+        const extension = this.getAudioExtension(attempt.responseAudioMimeType || attempt.responseAudio.type);
+        responseAudioFilename = `speaking-attempt-${attempt.attemptId}-ai-response.${extension}`;
+        await this.platformFile.saveBlobToDownloads(attempt.responseAudio, responseAudioFilename, folder);
+      }
+      const report = [
+        '<!doctype html><html><head><meta charset="utf-8">',
+        '<title>NoPrep Speaking Attempt</title>',
+        '<style>body{font-family:Arial,sans-serif;max-width:760px;margin:32px auto;line-height:1.5;color:#111827}section{border:1px solid #d1d5db;border-radius:12px;padding:18px;margin:14px 0}h1{font-size:24px}dt{font-weight:700}dd{margin:0 0 10px}</style>',
+        '</head><body>',
+        `<h1>${this.escapeHtml(this.book.title || 'NoPrep Book')} Speaking Attempt</h1>`,
+        '<section>',
+        `<dl><dt>Task</dt><dd>${this.escapeHtml(this.getSpeakingAiTitle(element))}</dd>`,
+        `<dt>Language</dt><dd>${this.escapeHtml(this.getSpeakingAiLanguage(element))}</dd>`,
+        `<dt>Started</dt><dd>${this.escapeHtml(attempt.startedAt)}</dd>`,
+        `<dt>Duration</dt><dd>${Math.round(attempt.durationSeconds || 0)} seconds</dd>`,
+        `<dt>Student audio file</dt><dd>${audioFilename ? this.escapeHtml(audioFilename) : 'No audio recorded'}</dd>`,
+        `<dt>Teacher voice file</dt><dd>${responseAudioFilename ? this.escapeHtml(responseAudioFilename) : 'No speaking response recorded'}</dd></dl>`,
+        '</section>',
+        '<section><h2>Transcript</h2>',
+        `<p>${this.escapeHtml(attempt.transcript || 'Speech transcript will appear here after the Speaking Pack is ready.')}</p>`,
+        '</section></body></html>'
+      ].join('');
+      await this.platformFile.saveTextToDownloads(
+        report,
+        `speaking-attempt-${attempt.attemptId}.html`,
+        'text/html',
+        folder
+      );
+      showAppNotification('Speaking attempt exported.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not export speaking attempt.';
+      showAppNotification(`Export failed: ${message}`, 'error');
+    }
+  }
+
+  async exportSpeakingSession(session: SpeakingSessionSummary): Promise<void> {
+    if (!this.book) return;
+    try {
+      const firstAttempt = session.attempts[0];
+      const element = firstAttempt ? this.findElementById(firstAttempt.elementId) : this.activeSpeakingElement;
+      const safeSessionId = this.createSpeakingExportSlug(session);
+      const transcriptSections: string[] = [];
+      const conversationAudioFilename = 'conversation.wav';
+
+      const orderedAttempts = this.sortSpeakingAttemptsByTurn(session.attempts);
+      const conversationAudio = await this.createSpeakingSessionAudioBlob(orderedAttempts);
+
+      for (const [index, attempt] of orderedAttempts.entries()) {
+        const turnNumber = Number.isFinite(Number(attempt.turnIndex)) ? Number(attempt.turnIndex) + 1 : index + 1;
+        transcriptSections.push([
+          `<h3>Turn ${turnNumber}</h3>`,
+          `<p><strong>Student:</strong> ${this.escapeHtml(this.getSpeakingAttemptStudentText(attempt) || '[no speech detected]')}</p>`,
+          `<p><strong>AI:</strong> ${this.escapeHtml(this.getSpeakingAttemptAiText(attempt) || '[no AI response]')}</p>`
+        ].join(''));
+      }
+
+      const report = [
+        '<!doctype html><html><head><meta charset="utf-8">',
+        '<title>NoPrep Speaking Conversation</title>',
+        '<style>body{font-family:Arial,sans-serif;max-width:820px;margin:32px auto;line-height:1.5;color:#111827}section{border:1px solid #d1d5db;border-radius:12px;padding:18px;margin:14px 0}h1{font-size:24px}.files{white-space:pre-wrap;color:#475569}</style>',
+        '</head><body>',
+        `<h1>${this.escapeHtml(this.book.title || 'NoPrep Book')} Speaking Conversation</h1>`,
+        '<section>',
+        `<p><strong>Task:</strong> ${this.escapeHtml(this.getSpeakingAiTitle(element))}</p>`,
+        `<p><strong>Language:</strong> ${this.escapeHtml(this.getSpeakingAiLanguage(element))}</p>`,
+        `<p><strong>Started:</strong> ${this.escapeHtml(session.startedAt)}</p>`,
+        `<p><strong>Turns:</strong> ${session.attempts.length}</p>`,
+        `<p><strong>Total audio time:</strong> ${Math.round(session.durationSeconds || 0)} seconds</p>`,
+        `<p class="files"><strong>Conversation audio:</strong>\n${this.escapeHtml(conversationAudio ? conversationAudioFilename : 'No combined audio could be created')}</p>`,
+        '</section>',
+        `<section><h2>Conversation</h2>${transcriptSections.join('')}</section>`,
+        '</body></html>'
+      ].join('');
+
+      const packageBlob = await this.createZipBlob([
+        { name: 'conversation.html', data: report },
+        ...(conversationAudio ? [{ name: conversationAudioFilename, data: conversationAudio }] : [])
+      ]);
+      await this.platformFile.saveBlobToDownloads(packageBlob, `speaking-${safeSessionId}-conversation.zip`);
+      showAppNotification('Speaking conversation exported.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not export speaking conversation.';
+      showAppNotification(`Export failed: ${message}`, 'error');
+    }
+  }
+
+  async toggleSpeakingSessionPlayback(session: SpeakingSessionSummary): Promise<void> {
+    const playbackId = this.getSpeakingSessionPlaybackId(session);
+    if (this.playingSpeakingAttemptId === playbackId && this.speakingPlaybackAudio) {
+      if (this.speakingPlaybackAudio.paused) {
+        try {
+          await this.speakingPlaybackAudio.play();
+          this.updateSpeakingPlaybackProgress();
+        } catch {
+          this.stopSpeakingPlayback();
+          showAppNotification('Could not play this speaking conversation.', 'error');
+        }
+      } else {
+        this.pauseSpeakingPlayback();
+      }
+      this.forceUiRefresh();
+      return;
+    }
+
+    const conversationAudio = await this.createSpeakingSessionAudioBlob(this.sortSpeakingAttemptsByTurn(session.attempts));
+    if (!conversationAudio) {
+      showAppNotification('This conversation has no recorded audio yet.', 'info');
+      return;
+    }
+
+    this.stopSpeakingPlayback();
+    const url = URL.createObjectURL(conversationAudio);
+    const audio = new Audio(url);
+    audio.volume = this.speakingVoiceVolume;
+    this.speakingSessionPlaybackUrl = url;
+    this.speakingPlaybackAudio = audio;
+    this.playingSpeakingAttemptId = playbackId;
+    audio.onended = () => this.stopSpeakingPlayback();
+    audio.onerror = () => {
+      this.stopSpeakingPlayback();
+      showAppNotification('Could not play this speaking conversation.', 'error');
+    };
+    try {
+      await audio.play();
+      this.updateSpeakingPlaybackProgress();
+    } catch {
+      this.stopSpeakingPlayback();
+      showAppNotification('Could not play this speaking conversation.', 'error');
+    }
+  }
+
+  isSpeakingSessionPlaying(session: SpeakingSessionSummary): boolean {
+    return this.playingSpeakingAttemptId === this.getSpeakingSessionPlaybackId(session)
+      && !!this.speakingPlaybackAudio
+      && !this.speakingPlaybackAudio.paused;
+  }
+
+  async deleteSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
+    const attempts = this.speakingAttempts.get(attempt.elementId) ?? [];
+    this.speakingAttempts.set(attempt.elementId, attempts.filter((item) => item.key !== attempt.key));
+    if (this.playingSpeakingAttemptId?.startsWith(`${attempt.attemptId}:`)) this.stopSpeakingPlayback();
+    this.revokeSpeakingAttemptAudioUrl(attempt.key);
+    await this.speakingAttemptService.delete(attempt.key);
+    this.forceUiRefresh();
+  }
+
+  async deleteSpeakingSession(session: SpeakingSessionSummary): Promise<void> {
+    if (!session.attempts.length) return;
+    if (session.sessionId === this.activeSpeakingSessionId && !window.confirm('Delete the active speaking conversation?')) return;
+    if (this.playingSpeakingAttemptId === this.getSpeakingSessionPlaybackId(session)) this.stopSpeakingPlayback();
+    this.speakingSessionNameDrafts.delete(session.sessionId);
+    for (const attempt of session.attempts) {
+      const attempts = this.speakingAttempts.get(attempt.elementId) ?? [];
+      this.speakingAttempts.set(attempt.elementId, attempts.filter((item) => item.key !== attempt.key));
+      if (this.playingSpeakingAttemptId?.startsWith(`${attempt.attemptId}:`)) this.stopSpeakingPlayback();
+      this.revokeSpeakingAttemptAudioUrl(attempt.key);
+      await this.speakingAttemptService.delete(attempt.key);
+    }
+    if (session.sessionId === this.activeSpeakingSessionId) {
+      this.resetSpeakingSessionState();
+      this.moveOwlToCorner();
+    }
+    showAppNotification('Speaking conversation deleted.', 'success');
+    this.forceUiRefresh();
+  }
+
+  async renameSpeakingSession(session: SpeakingSessionSummary, value: string): Promise<void> {
+    const name = String(value || '').trim();
+    const currentName = session.sessionName.trim();
+    const defaultName = this.formatSpeakingSessionDefaultName(session);
+    const storedName = name && name !== defaultName ? name : '';
+    this.speakingSessionNameDrafts.set(session.sessionId, storedName || defaultName);
+    if (storedName === currentName) return;
+    session.sessionName = storedName;
+    for (const attempt of session.attempts) {
+      attempt.sessionName = storedName || undefined;
+      await this.speakingAttemptService.save(attempt);
+    }
+    this.forceUiRefresh();
   }
 
   getElementAssetUrl(element: BookElement): string {
@@ -1644,13 +2664,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async close(): Promise<void> {
+    if (!this.confirmStopSpeakingForInterruption()) return;
     this.stopGuideAudioAndReturnHome();
+    this.activeSpeakingElement = null;
+    this.activeSpeakingPage = null;
+    this.speakingPanelExpanded = false;
+    this.resetSpeakingSessionState();
     await this.router.navigate(['/topics']);
   }
 
   async edit(): Promise<void> {
     if (!this.book) return;
+    if (!this.confirmStopSpeakingForInterruption()) return;
     this.stopGuideAudioAndReturnHome();
+    this.activeSpeakingElement = null;
+    this.activeSpeakingPage = null;
+    this.speakingPanelExpanded = false;
+    this.resetSpeakingSessionState();
     await this.router.navigate(['/books', this.book.id, 'edit'], {
       state: {
         warmBook: this.book,
@@ -1696,12 +2726,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async ensureGameTopicAvailable(element: BookElement, topicId: number): Promise<number> {
-    if (Number.isFinite(topicId) && topicId > 0 && await this.db.getTopicById(topicId)) {
-      return topicId;
-    }
-
     const bookTopicPath = String(element.data['bookTopicPath'] || '');
     if (!this.book || !bookTopicPath) {
+      if (Number.isFinite(topicId) && topicId > 0 && await this.db.getTopicById(topicId)) {
+        return topicId;
+      }
       return topicId;
     }
 
@@ -1717,6 +2746,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const snapshot = JSON.parse(snapshotText);
       const name = String(snapshot?.topic?.name || element.data['label'] || 'Book Game Topic');
       const snapshotItems = this.getSafeBookTopicItems(snapshot);
+      if (Number.isFinite(topicId) && topicId > 0 && await this.doesTopicMatchSnapshot(topicId, name, snapshotItems)) {
+        return topicId;
+      }
       const newTopicId = await this.db.createTopic(name);
       const items = snapshotItems
         ? await Promise.all(snapshotItems.map(async (item: any) => ({
@@ -1727,10 +2759,27 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         : [{ text: name, image: undefined, audio: undefined }];
       await this.db.addItems(newTopicId, items);
       element.data['topicId'] = newTopicId;
+      element.data['topicName'] = name;
+      element.data['label'] = name;
       return newTopicId;
     } catch {
       return topicId;
     }
+  }
+
+  private async doesTopicMatchSnapshot(topicId: number, snapshotName: string, snapshotItems: any[] | null): Promise<boolean> {
+    const topic = await this.db.getTopicById(topicId);
+    if (!topic || String(topic.name || '') !== snapshotName) {
+      return false;
+    }
+    if (!snapshotItems) {
+      return true;
+    }
+    const items = await this.db.getItemsSnapshot(topicId);
+    if (items.length !== snapshotItems.length) {
+      return false;
+    }
+    return items.every((item, index) => String(item.text || '') === String(snapshotItems[index]?.text || ''));
   }
 
   private getSafeBookTopicItems(snapshot: any): any[] | null {
@@ -1824,8 +2873,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getPagePointFromEvent(frame: HTMLElement | null, event: MouseEvent | PointerEvent): { x: number; y: number } | null {
     if (!frame) return null;
-    const content = frame.querySelector<HTMLElement>('.page-content') ?? frame;
-    const rect = content.getBoundingClientRect();
+    const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     return {
       x: this.clamp((event.clientX - rect.left) / rect.width, 0, 1),
@@ -2496,8 +3544,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!rect.width || !rect.height) return;
     const owlSize = this.clamp(window.innerWidth * 0.09, 68, 112);
     const bounds = this.getOwlVisibleBounds(true);
-    const targetX = rect.left + owlSize * 0.3;
-    const targetY = rect.bottom + owlSize * 0.12;
+    const targetX = rect.left + owlSize * 0.5;
+    const targetY = rect.bottom;
     this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
     this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);
     this.forceUiRefresh();
@@ -2545,6 +3593,907 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getActiveSpreadGuideProgressKey(): string {
     return `spread:${this.pageSource}:${this.currentPage?.id || ''}:${this.companionPage?.id || ''}`;
+  }
+
+  private openSpeakingAi(element: BookElement, page = this.currentPage): void {
+    if (!page || element.type !== 'speakingAi' || !this.isSpeakingAiEnabled(element, page)) return;
+    this.stopGuideAudio();
+    this.unlockSpeakingAi(element, page);
+    if (this.activeSpeakingElement?.id !== element.id) {
+      this.resetSpeakingSessionState();
+    }
+    this.activeSpeakingElement = element;
+    this.activeSpeakingPage = page;
+    this.speakingPanelExpanded = true;
+    this.moveOwlToElement(element, page);
+    this.owlTeaching = false;
+    this.owlImage = 'assets/gifs/owl-corner.gif';
+    void this.refreshSpeakingRuntimeStatus(element).then((status) => this.maybePromptForSpeakingPackLink(element, status));
+    this.forceUiRefresh();
+  }
+
+  private async refreshSpeakingRuntimeStatus(element = this.activeSpeakingElement): Promise<AiSpeakingRuntimeStatus> {
+    const language = this.getSpeakingAiLanguage(element);
+    this.checkingSpeakingRuntime = true;
+    this.forceUiRefresh();
+    try {
+      this.speakingRuntimeStatus = await this.aiSpeakingRuntime.getStatusForLanguage(language);
+      return this.speakingRuntimeStatus;
+    } finally {
+      this.checkingSpeakingRuntime = false;
+      this.forceUiRefresh();
+    }
+  }
+
+  private maybePromptForSpeakingPackLink(element: BookElement | null, status: AiSpeakingRuntimeStatus | null): void {
+    if (!element || element.type !== 'speakingAi' || status?.conversationAvailable) return;
+    const rawUrl = this.getSpeakingPackUrl(element);
+    if (!rawUrl) return;
+    const url = this.normalizeExternalPackUrl(rawUrl);
+    if (!url) {
+      showAppNotification('The Speaking Pack download link for this task is not valid.', 'error');
+      return;
+    }
+    const key = `${element.id}:${url}`;
+    if (this.promptedSpeakingPackLinks.has(key)) return;
+    this.promptedSpeakingPackLinks.add(key);
+    const message = [
+      status?.reason || 'This speaking task needs a Speaking Pack.',
+      '',
+      'Get the language pack from the teacher link?',
+      url
+    ].join('\n');
+    if (window.confirm(message)) {
+      this.openSpeakingPackUrl(element);
+    }
+  }
+
+  private normalizeExternalPackUrl(rawUrl: string): string {
+    try {
+      const parsed = new URL(String(rawUrl || '').trim());
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : '';
+    } catch {
+      return '';
+    }
+  }
+
+  private async startSpeakingConversation(): Promise<void> {
+    if (!this.book || !this.activeSpeakingElement || !this.activeSpeakingPage) return;
+    await this.stopSpeakingConversation(false);
+    if (!this.speakingSessionActive || !this.activeSpeakingSessionId) {
+      this.speakingSessionActive = true;
+      this.activeSpeakingSessionId = this.createId('speaking-session');
+      this.speakingSessionStartedAt = Date.now();
+      this.speakingTurnIndex = this.getNextSpeakingTurnIndex(this.activeSpeakingElement);
+    }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      showAppNotification('Microphone recording is not available on this device.', 'error');
+      return;
+    }
+
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = this.createSpeakingMediaRecorder(stream);
+      const now = new Date();
+      const attemptId = this.createId('speaking-attempt');
+      const key = this.speakingAttemptService.makeKey(this.book.id, this.activeSpeakingElement.id, attemptId);
+      const attempt: BookSpeakingAttempt = {
+        key,
+        profileId: this.speakingAttemptService.defaultProfileId,
+        bookId: this.book.id,
+        pageId: this.activeSpeakingPage.id,
+        elementId: this.activeSpeakingElement.id,
+        attemptId,
+        sessionId: this.activeSpeakingSessionId,
+        turnIndex: this.speakingTurnIndex++,
+        startedAt: now.toISOString(),
+        durationSeconds: 0,
+        status: 'active',
+        transcript: 'Recording captured. Speech transcript will appear after the Speaking Pack is ready.',
+        updatedAt: now.toISOString()
+      };
+
+      this.speakingRecordedChunks = [];
+      this.speakingMediaRecorder = recorder;
+      this.speakingRecordingStream = stream;
+      this.speakingActiveAttemptKey = key;
+      this.startSpeakingRecordingLevelMeter(stream);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) this.speakingRecordedChunks.push(event.data);
+      };
+      recorder.onerror = () => {
+        showAppNotification('Speaking recording failed.', 'error');
+        void this.stopSpeakingConversation(true);
+      };
+      recorder.onstop = () => {
+        return this.finalizeSpeakingRecording(key, recorder.mimeType, this.speakingSaveOnStop);
+      };
+
+      this.speakingAttempts.set(this.activeSpeakingElement.id, [
+        attempt,
+        ...this.getSpeakingAttempts(this.activeSpeakingElement)
+      ]);
+      await this.speakingAttemptService.save(attempt);
+
+      this.speakingAttemptStartedAt = Date.now();
+      this.speakingConversationActive = true;
+      this.owlTeaching = true;
+      this.owlImage = 'assets/gifs/owl-teaching.gif';
+      recorder.start(1000);
+      this.playSpeakingUiSound('assets/sound/start.mp3');
+      this.forceUiRefresh();
+    } catch {
+      try { stream?.getTracks().forEach((track) => track.stop()); } catch { /* already stopped */ }
+      this.resetSpeakingRecorderState();
+      showAppNotification('Microphone permission is required for speaking practice.', 'error');
+    }
+  }
+
+  private async stopSpeakingConversation(saveAttempt: boolean): Promise<void> {
+    if (this.speakingTimer !== null) {
+      window.clearInterval(this.speakingTimer);
+      this.speakingTimer = null;
+    }
+    if (!this.speakingConversationActive && !this.speakingMediaRecorder) return;
+    const key = this.speakingActiveAttemptKey;
+    this.speakingConversationActive = false;
+    this.stopSpeakingRecordingLevelMeter();
+    this.speakingSaveOnStop = saveAttempt;
+    if (saveAttempt) this.playSpeakingUiSound('assets/sound/stop.mp3');
+
+    if (this.speakingMediaRecorder && this.speakingMediaRecorder.state !== 'inactive') {
+      const recorder = this.speakingMediaRecorder;
+      const stopped = new Promise<void>((resolve) => {
+        const onstop = recorder.onstop;
+        recorder.onstop = (event) => {
+          const result = onstop?.call(recorder, event);
+          void Promise.resolve(result).finally(resolve);
+        };
+      });
+      recorder.stop();
+      await stopped;
+    } else if (key) {
+      await this.finalizeSpeakingRecording(key, this.speakingMediaRecorder?.mimeType || '', saveAttempt);
+    }
+    if (saveAttempt && !this.speakingSessionActive) {
+      this.moveOwlToCorner();
+    }
+    this.forceUiRefresh();
+  }
+
+  private async finalizeSpeakingRecording(key: string, mimeType: string, saveAttempt: boolean): Promise<void> {
+    const activeElementId = this.activeSpeakingElement?.id;
+    const activeAttempt = activeElementId
+      ? (this.speakingAttempts.get(activeElementId) ?? []).find((attempt) => attempt.key === key)
+      : this.findSpeakingAttemptByKey(key);
+    try {
+      const durationSeconds = Math.max(1, Math.round((Date.now() - this.speakingAttemptStartedAt) / 1000));
+      if (activeAttempt) {
+        activeAttempt.durationSeconds = durationSeconds;
+        activeAttempt.endedAt = new Date().toISOString();
+        activeAttempt.status = 'saved';
+        activeAttempt.transcript = saveAttempt
+          ? activeAttempt.transcript
+          : 'Attempt stopped before the offline AI engine finished processing.';
+        const blob = this.speakingRecordedChunks.length
+          ? new Blob(this.speakingRecordedChunks, { type: mimeType || this.speakingMediaRecorder?.mimeType || 'audio/webm' })
+          : null;
+        if (blob?.size) {
+          activeAttempt.audio = blob;
+          activeAttempt.audioMimeType = blob.type || mimeType || 'audio/webm';
+          const attemptElement = this.findElementById(activeAttempt.elementId) ?? this.activeSpeakingElement;
+          await this.refreshSpeakingRuntimeStatus(attemptElement).catch(() => this.speakingRuntimeStatus);
+          if (this.speakingRuntimeStatus?.speechToTextAvailable) {
+            activeAttempt.transcript = 'Processing speech transcript...';
+            this.forceUiRefresh();
+          } else {
+            activeAttempt.transcript = this.speakingRuntimeStatus?.reason
+              ? `Recording captured. ${this.speakingRuntimeStatus.reason}`
+              : 'Recording captured. Offline AI processing is not ready yet.';
+          }
+          await this.tryTranscribeSpeakingAttempt(activeAttempt);
+        }
+        await this.speakingAttemptService.save(activeAttempt);
+      }
+    } finally {
+      this.resetSpeakingRecorderState();
+      this.forceUiRefresh();
+    }
+  }
+
+  private async tryTranscribeSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
+    const taskElement = this.activeSpeakingElement?.id === attempt.elementId
+      ? this.activeSpeakingElement
+      : this.findElementById(attempt.elementId);
+    if (!attempt.audio || !taskElement || !this.speakingRuntimeStatus?.speechToTextAvailable) return;
+    const sttPack = this.speakingRuntimeStatus.featurePacks.speechToText ?? this.speakingRuntimeStatus.pack;
+    const dialoguePack = this.speakingRuntimeStatus.featurePacks.dialogue ?? this.speakingRuntimeStatus.pack;
+    const ttsPack = this.speakingRuntimeStatus.featurePacks.textToSpeech ?? this.speakingRuntimeStatus.pack;
+    if (!sttPack) return;
+    try {
+      const transcript = await this.aiSpeakingRuntime.transcribeAudio({
+        audio: attempt.audio,
+        mimeType: attempt.audioMimeType || attempt.audio.type || 'audio/webm',
+        language: sttPack.language,
+        packId: sttPack.id
+      });
+      const lines = [
+        `Student: ${transcript.text || '[no speech detected]'}`
+      ];
+      attempt.studentText = transcript.text || '';
+      attempt.transcript = lines.join('\n\n');
+      this.forceUiRefresh();
+      let spokenResponse = '';
+      if (this.speakingRuntimeStatus.dialogueAvailable && dialoguePack) {
+        try {
+          const config = this.buildSpeakingTaskConfig(taskElement);
+          const dialogue = await this.aiSpeakingRuntime.generateDialogueResponse({
+            config,
+            history: this.buildSpeakingDialogueHistory(attempt, transcript.text),
+            latestStudentText: transcript.text,
+            sessionId: attempt.sessionId || this.activeSpeakingSessionId || undefined,
+            language: dialoguePack.language,
+            packId: dialoguePack.id
+          });
+          if (dialogue.responseText) lines.push(`AI: ${dialogue.responseText}`);
+          if (dialogue.feedback) lines.push(`Feedback: ${dialogue.feedback}`);
+          spokenResponse = dialogue.responseText || dialogue.feedback || '';
+          attempt.aiText = spokenResponse;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Offline dialogue failed.';
+          lines.push(`AI feedback unavailable: ${message}`);
+        }
+        if (!spokenResponse) {
+          spokenResponse = transcript.text
+            ? 'Thanks. Your speaking attempt has been saved. Please try one more sentence.'
+            : 'I could not hear speech clearly. Please try again when you are ready.';
+          lines.push(`AI: ${spokenResponse}`);
+          attempt.aiText = spokenResponse;
+        }
+      } else {
+        spokenResponse = transcript.text
+          ? 'Your speaking attempt has been saved. Your transcript is ready.'
+          : 'I could not hear speech clearly. Please try again when you are ready.';
+        lines.push(`AI: ${spokenResponse}`);
+        lines.push('Speaking feedback unavailable: Speaking Pack is not fully ready.');
+        attempt.aiText = spokenResponse;
+      }
+      attempt.transcript = lines.join('\n\n');
+      if (spokenResponse && this.speakingRuntimeStatus.textToSpeechAvailable && ttsPack) {
+        try {
+          const speech = await this.aiSpeakingRuntime.synthesizeSpeech({
+            text: spokenResponse,
+            language: ttsPack.language,
+            packId: ttsPack.id
+          });
+          attempt.responseAudio = speech.audio;
+          attempt.responseAudioMimeType = speech.mimeType;
+          this.forceUiRefresh();
+          this.playSpeakingAttemptAudio(attempt, 'ai');
+          showAppNotification('Speaking response is ready.', 'success');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Offline speech synthesis failed.';
+          attempt.transcript = `${attempt.transcript}\n\nSpeaking voice unavailable: ${message}`;
+          showAppNotification(`Speaking voice unavailable: ${message}`, 'error');
+        }
+      } else if (spokenResponse && !this.speakingRuntimeStatus.textToSpeechAvailable) {
+        const message = this.speakingRuntimeStatus.reason || 'Offline text-to-speech is not ready.';
+        attempt.transcript = `${attempt.transcript}\n\nSpeaking voice unavailable: ${message}`;
+      }
+    } catch (error) {
+      attempt.transcript = error instanceof Error
+        ? `Recording captured. Offline AI processing failed: ${error.message}`
+        : 'Recording captured. Offline AI processing failed.';
+      showAppNotification(attempt.transcript, 'error');
+    }
+  }
+
+  private buildSpeakingTaskConfig(element: BookElement): AiSpeakingTaskConfig {
+    return {
+      language: this.getSpeakingAiLanguage(element),
+      topic: String(element.data?.['topic'] || ''),
+      teacherPrompt: String(element.data?.['teacherPrompt'] || element.data?.['prompt'] || ''),
+      questions: Array.isArray(element.data?.['questions'])
+        ? element.data['questions'].map((item: unknown) => String(item || '').trim()).filter(Boolean)
+        : [],
+      vocabulary: String(element.data?.['vocabulary'] || ''),
+      sampleAnswer: String(element.data?.['sampleAnswer'] || ''),
+      maxDurationSeconds: 0
+    };
+  }
+
+  private buildSpeakingDialogueHistory(currentAttempt: BookSpeakingAttempt, latestStudentText: string): AiSpeakingTurn[] {
+    const sessionId = currentAttempt.sessionId || this.activeSpeakingSessionId;
+    const turns: AiSpeakingTurn[] = [];
+    const attempts = (this.speakingAttempts.get(currentAttempt.elementId) ?? [])
+      .filter((attempt) => attempt.key !== currentAttempt.key)
+      .filter((attempt) => sessionId ? attempt.sessionId === sessionId : true)
+      .sort((a, b) => this.compareSpeakingAttemptsByTurn(a, b));
+
+    for (const attempt of attempts) {
+      const studentText = this.getSpeakingAttemptStudentText(attempt);
+      const aiText = this.getSpeakingAttemptAiText(attempt);
+      if (studentText) {
+        turns.push({
+          speaker: 'student',
+          text: studentText,
+          startedAt: attempt.startedAt,
+          endedAt: attempt.endedAt
+        });
+      }
+      if (aiText) {
+        turns.push({
+          speaker: 'ai',
+          text: aiText,
+          startedAt: attempt.endedAt || attempt.startedAt
+        });
+      }
+    }
+
+    turns.push({
+      speaker: 'student',
+      text: latestStudentText || '[no speech detected]',
+      startedAt: currentAttempt.startedAt,
+      endedAt: currentAttempt.endedAt
+    });
+    return turns.slice(-12);
+  }
+
+  private getSpeakingAttemptStudentText(attempt: BookSpeakingAttempt): string {
+    if (attempt.studentText) return attempt.studentText;
+    const match = String(attempt.transcript || '').match(/(?:^|\n)Student:\s*([\s\S]*?)(?:\n\nAI:|\n\nFeedback:|$)/);
+    return match ? match[1].trim() : '';
+  }
+
+  private getSpeakingAttemptAiText(attempt: BookSpeakingAttempt): string {
+    if (attempt.aiText) return attempt.aiText;
+    const match = String(attempt.transcript || '').match(/(?:^|\n)AI:\s*([\s\S]*?)(?:\n\nFeedback:|\n\nAI voice unavailable:|\n\nSpeaking voice unavailable:|$)/);
+    const text = match ? match[1].trim() : '';
+    return /^(thinking|processing)/i.test(text) ? '' : text;
+  }
+
+  private isSpeakingAttemptProcessing(attempt: BookSpeakingAttempt): boolean {
+    const transcript = String(attempt.transcript || '').toLowerCase();
+    return attempt.status === 'active'
+      || transcript.includes('processing')
+      || transcript.includes('recording captured')
+      || (!!attempt.studentText && !attempt.aiText);
+  }
+
+  private getNextSpeakingTurnIndex(element: BookElement | null): number {
+    if (!element || !this.activeSpeakingSessionId) return 0;
+    const attempts = this.speakingAttempts.get(element.id) ?? [];
+    return attempts
+      .filter((attempt) => attempt.sessionId === this.activeSpeakingSessionId)
+      .reduce((max, attempt) => Math.max(max, Number(attempt.turnIndex ?? -1)), -1) + 1;
+  }
+
+  private sortSpeakingAttemptsByTurn(attempts: BookSpeakingAttempt[]): BookSpeakingAttempt[] {
+    return [...attempts].sort((a, b) => this.compareSpeakingAttemptsByTurn(a, b));
+  }
+
+  private compareSpeakingAttemptsByTurn(a: BookSpeakingAttempt, b: BookSpeakingAttempt): number {
+    const aTurn = Number(a.turnIndex);
+    const bTurn = Number(b.turnIndex);
+    if (Number.isFinite(aTurn) && Number.isFinite(bTurn) && aTurn !== bTurn) {
+      return aTurn - bTurn;
+    }
+    if (Number.isFinite(aTurn) && !Number.isFinite(bTurn)) return -1;
+    if (!Number.isFinite(aTurn) && Number.isFinite(bTurn)) return 1;
+    return String(a.startedAt).localeCompare(String(b.startedAt));
+  }
+
+  private findSpeakingAttemptByKey(key: string): BookSpeakingAttempt | null {
+    for (const attempts of this.speakingAttempts.values()) {
+      const found = attempts.find((attempt) => attempt.key === key);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  private resetSpeakingSessionState(): void {
+    const sessionId = this.activeSpeakingSessionId;
+    if (sessionId) {
+      void this.aiSpeakingRuntime.closeDialogueSession(sessionId);
+    }
+    this.speakingSessionActive = false;
+    this.activeSpeakingSessionId = null;
+    this.speakingSessionStartedAt = 0;
+    this.speakingTurnIndex = 0;
+  }
+
+  private resetSpeakingRecorderState(): void {
+    this.stopSpeakingRecordingLevelMeter();
+    try { this.speakingRecordingStream?.getTracks().forEach((track) => track.stop()); } catch { /* already stopped */ }
+    this.speakingMediaRecorder = null;
+    this.speakingRecordingStream = null;
+    this.speakingRecordedChunks = [];
+    this.speakingActiveAttemptKey = null;
+    this.speakingSaveOnStop = true;
+    this.speakingAttemptStartedAt = 0;
+  }
+
+  private startSpeakingRecordingLevelMeter(stream: MediaStream): void {
+    this.stopSpeakingRecordingLevelMeter();
+    try {
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const context = new AudioContextCtor() as AudioContext;
+      const source = context.createMediaStreamSource(stream);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.76;
+      source.connect(analyser);
+      this.speakingRecordingAudioContext = context;
+      this.speakingRecordingAnalyser = analyser;
+      this.speakingRecordingLevelData = new Uint8Array(analyser.frequencyBinCount);
+      this.updateSpeakingRecordingLevel();
+    } catch {
+      this.speakingRecordingLevel = 0;
+    }
+  }
+
+  private updateSpeakingRecordingLevel(): void {
+    const analyser = this.speakingRecordingAnalyser;
+    const data = this.speakingRecordingLevelData;
+    if (!analyser || !data) return;
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (const sample of data) {
+      const centered = (sample - 128) / 128;
+      sum += centered * centered;
+    }
+    const rms = Math.sqrt(sum / data.length);
+    this.speakingRecordingLevel = this.clamp(rms * 4.8, 0, 1);
+    this.setSpeakingRecordingVisualLevel(this.speakingRecordingLevel);
+    this.speakingRecordingLevelFrame = requestAnimationFrame(() => this.updateSpeakingRecordingLevel());
+  }
+
+  private stopSpeakingRecordingLevelMeter(): void {
+    if (this.speakingRecordingLevelFrame) {
+      cancelAnimationFrame(this.speakingRecordingLevelFrame);
+      this.speakingRecordingLevelFrame = 0;
+    }
+    this.speakingRecordingAnalyser = null;
+    this.speakingRecordingLevelData = null;
+    const context = this.speakingRecordingAudioContext;
+    this.speakingRecordingAudioContext = null;
+    this.setSpeakingRecordingVisualLevel(0);
+    if (context && context.state !== 'closed') {
+      void context.close().catch(() => undefined);
+    }
+  }
+
+  private setSpeakingRecordingVisualLevel(level: number): void {
+    const safeLevel = this.clamp(level, 0, 1);
+    this.speakingRecordingLevel = safeLevel;
+    this.speakingRecordingAuraScale = 0.92 + safeLevel * 0.36;
+    this.speakingRecordingRingScale = 1 + safeLevel * 0.38;
+    this.speakingRecordingAuraOpacity = 0.42 + safeLevel * 0.42;
+    this.speakingRecordingRingOpacity = 0.28 + safeLevel * 0.32;
+    const glow = 0.75 + safeLevel * 1.45;
+    this.speakingRecordingGlow = `${glow}rem`;
+    this.speakingRecordingOuterGlow = `${glow * 1.65}rem`;
+    const button = this.speakingRecordButton?.nativeElement;
+    if (button) {
+      button.style.setProperty('--voice-aura-scale', String(this.speakingRecordingAuraScale));
+      button.style.setProperty('--voice-ring-scale', String(this.speakingRecordingRingScale));
+      button.style.setProperty('--voice-aura-opacity', String(this.speakingRecordingAuraOpacity));
+      button.style.setProperty('--voice-ring-opacity', String(this.speakingRecordingRingOpacity));
+      button.style.setProperty('--voice-glow', this.speakingRecordingGlow);
+      button.style.setProperty('--voice-outer-glow', this.speakingRecordingOuterGlow);
+    }
+  }
+
+  private createSpeakingMediaRecorder(stream: MediaStream): MediaRecorder {
+    const mimeTypes = [
+      'audio/mp4;codecs=mp4a.40.2',
+      'audio/mp4',
+      'audio/aac',
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/ogg'
+    ];
+    const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+    return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  }
+
+  private stopSpeakingPlayback(): void {
+    if (this.speakingPlaybackFrame) {
+      cancelAnimationFrame(this.speakingPlaybackFrame);
+      this.speakingPlaybackFrame = 0;
+    }
+    if (this.speakingPlaybackAudio) {
+      this.speakingPlaybackAudio.pause();
+      this.speakingPlaybackAudio = null;
+    }
+    if (this.speakingSessionPlaybackUrl) {
+      URL.revokeObjectURL(this.speakingSessionPlaybackUrl);
+      this.speakingSessionPlaybackUrl = null;
+    }
+    this.playingSpeakingAttemptId = null;
+    this.forceUiRefresh();
+  }
+
+  private pauseSpeakingPlayback(): void {
+    if (this.speakingPlaybackFrame) {
+      cancelAnimationFrame(this.speakingPlaybackFrame);
+      this.speakingPlaybackFrame = 0;
+    }
+    this.speakingPlaybackAudio?.pause();
+  }
+
+  private playSpeakingAttemptAudio(attempt: BookSpeakingAttempt, source: 'student' | 'ai'): void {
+    const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
+    if (!blob) return;
+    const playbackId = this.getSpeakingAttemptPlaybackId(attempt, source);
+    this.stopSpeakingPlayback();
+    const audio = new Audio(this.getSpeakingAttemptAudioUrl(attempt, source));
+    audio.volume = this.speakingVoiceVolume;
+    this.speakingPlaybackAudio = audio;
+    this.playingSpeakingAttemptId = playbackId;
+    audio.onended = () => this.stopSpeakingPlayback();
+    audio.onerror = () => this.stopSpeakingPlayback();
+    void audio.play()
+      .then(() => this.updateSpeakingPlaybackProgress())
+      .catch(() => this.stopSpeakingPlayback());
+  }
+
+  private updateSpeakingPlaybackProgress(): void {
+    if (!this.speakingPlaybackAudio || !this.playingSpeakingAttemptId) return;
+    const audio = this.speakingPlaybackAudio;
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+    this.speakingProgress[this.playingSpeakingAttemptId] = duration ? (audio.currentTime / duration) * 100 : 0;
+    this.forceUiRefresh();
+    this.speakingPlaybackFrame = requestAnimationFrame(() => this.updateSpeakingPlaybackProgress());
+  }
+
+  private getSpeakingAttemptPlaybackId(attempt: BookSpeakingAttempt, source: 'student' | 'ai'): string {
+    return `${attempt.attemptId}:${source}`;
+  }
+
+  private getSpeakingSessionPlaybackId(session: SpeakingSessionSummary): string {
+    return `session:${session.sessionId}`;
+  }
+
+  private getSpeakingAttemptAudioCacheKey(attempt: BookSpeakingAttempt, source: 'student' | 'ai'): string {
+    return `${attempt.key}:${source}`;
+  }
+
+  private getSpeakingAttemptAudioUrl(attempt: BookSpeakingAttempt, source: 'student' | 'ai' = 'student'): string {
+    const key = this.getSpeakingAttemptAudioCacheKey(attempt, source);
+    const cached = this.speakingAttemptAudioUrls.get(key);
+    if (cached) return cached;
+    const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
+    const url = URL.createObjectURL(blob as Blob);
+    this.speakingAttemptAudioUrls.set(key, url);
+    return url;
+  }
+
+  private revokeSpeakingAttemptAudioUrl(key: string): void {
+    for (const [cacheKey, url] of Array.from(this.speakingAttemptAudioUrls.entries())) {
+      if (cacheKey === key || cacheKey.startsWith(`${key}:`)) {
+        URL.revokeObjectURL(url);
+        this.speakingAttemptAudioUrls.delete(cacheKey);
+      }
+    }
+  }
+
+  private revokeSpeakingAttemptAudioUrls(): void {
+    for (const url of this.speakingAttemptAudioUrls.values()) {
+      URL.revokeObjectURL(url);
+    }
+    this.speakingAttemptAudioUrls.clear();
+  }
+
+  private async blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  private getAudioExtension(mimeType: string | undefined): string {
+    const type = String(mimeType || '').toLowerCase();
+    if (type.includes('mp4') || type.includes('aac')) return 'm4a';
+    if (type.includes('ogg')) return 'ogg';
+    if (type.includes('wav')) return 'wav';
+    return 'webm';
+  }
+
+  private async createSpeakingSessionAudioBlob(attempts: BookSpeakingAttempt[]): Promise<Blob | null> {
+    const clips: Blob[] = [];
+    for (const attempt of attempts) {
+      if (attempt.audio) clips.push(attempt.audio);
+      if (attempt.responseAudio) clips.push(attempt.responseAudio);
+    }
+    if (!clips.length) return null;
+
+    const audioContext = new AudioContext();
+    try {
+      const decoded: AudioBuffer[] = [];
+      for (const clip of clips) {
+        try {
+          const buffer = await clip.arrayBuffer();
+          decoded.push(await audioContext.decodeAudioData(buffer.slice(0)));
+        } catch {
+          // Keep exporting the session report even if one clip cannot be decoded.
+        }
+      }
+      if (!decoded.length) return null;
+
+      const sampleRate = decoded[0].sampleRate || 44100;
+      const gapFrames = Math.round(sampleRate * 0.35);
+      const totalFrames = decoded.reduce((total, buffer, index) => (
+        total + this.resampledFrameCount(buffer, sampleRate) + (index > 0 ? gapFrames : 0)
+      ), 0);
+      const combined = audioContext.createBuffer(1, totalFrames, sampleRate);
+      const output = combined.getChannelData(0);
+      let offset = 0;
+
+      for (const [index, buffer] of decoded.entries()) {
+        if (index > 0) offset += gapFrames;
+        const mono = this.audioBufferToMono(buffer);
+        if (buffer.sampleRate === sampleRate) {
+          output.set(mono.subarray(0, Math.min(mono.length, output.length - offset)), offset);
+          offset += mono.length;
+        } else {
+          offset += this.writeResampledAudio(mono, buffer.sampleRate, output, offset, sampleRate);
+        }
+      }
+
+      return this.encodeWavBlob(output, sampleRate);
+    } finally {
+      void audioContext.close();
+    }
+  }
+
+  private audioBufferToMono(buffer: AudioBuffer): Float32Array {
+    const mono = new Float32Array(buffer.length);
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const data = buffer.getChannelData(channel);
+      for (let index = 0; index < data.length; index++) {
+        mono[index] += data[index] / buffer.numberOfChannels;
+      }
+    }
+    return mono;
+  }
+
+  private resampledFrameCount(buffer: AudioBuffer, targetSampleRate: number): number {
+    return buffer.sampleRate === targetSampleRate
+      ? buffer.length
+      : Math.ceil(buffer.length * targetSampleRate / buffer.sampleRate);
+  }
+
+  private writeResampledAudio(source: Float32Array, sourceSampleRate: number, target: Float32Array, offset: number, targetSampleRate: number): number {
+    const frameCount = Math.min(Math.ceil(source.length * targetSampleRate / sourceSampleRate), target.length - offset);
+    const ratio = sourceSampleRate / targetSampleRate;
+    for (let index = 0; index < frameCount; index++) {
+      const sourceIndex = index * ratio;
+      const left = Math.floor(sourceIndex);
+      const right = Math.min(left + 1, source.length - 1);
+      const amount = sourceIndex - left;
+      target[offset + index] = source[left] * (1 - amount) + source[right] * amount;
+    }
+    return frameCount;
+  }
+
+  private encodeWavBlob(samples: Float32Array, sampleRate: number): Blob {
+    const bytesPerSample = 2;
+    const headerBytes = 44;
+    const buffer = new ArrayBuffer(headerBytes + samples.length * bytesPerSample);
+    const view = new DataView(buffer);
+    this.writeAscii(view, 0, 'RIFF');
+    view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+    this.writeAscii(view, 8, 'WAVE');
+    this.writeAscii(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * bytesPerSample, true);
+    view.setUint16(32, bytesPerSample, true);
+    view.setUint16(34, 8 * bytesPerSample, true);
+    this.writeAscii(view, 36, 'data');
+    view.setUint32(40, samples.length * bytesPerSample, true);
+
+    let offset = headerBytes;
+    for (const sample of samples) {
+      const clamped = Math.max(-1, Math.min(1, sample));
+      view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+      offset += bytesPerSample;
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  private writeAscii(view: DataView, offset: number, value: string): void {
+    for (let index = 0; index < value.length; index++) {
+      view.setUint8(offset + index, value.charCodeAt(index));
+    }
+  }
+
+  private async createZipBlob(entries: { name: string; data: Blob | string }[]): Promise<Blob> {
+    const encoder = new TextEncoder();
+    const localParts: BlobPart[] = [];
+    const centralParts: BlobPart[] = [];
+    let offset = 0;
+
+    for (const entry of entries) {
+      const nameBytes = encoder.encode(this.sanitizeZipEntryName(entry.name));
+      const data = typeof entry.data === 'string'
+        ? encoder.encode(entry.data)
+        : new Uint8Array(await entry.data.arrayBuffer());
+      const crc = this.getCrc32(data);
+      const { dosTime, dosDate } = this.getZipTimestamp(new Date());
+
+      const localHeader = new Uint8Array(30 + nameBytes.length);
+      const localView = new DataView(localHeader.buffer);
+      localView.setUint32(0, 0x04034b50, true);
+      localView.setUint16(4, 20, true);
+      localView.setUint16(6, 0, true);
+      localView.setUint16(8, 0, true);
+      localView.setUint16(10, dosTime, true);
+      localView.setUint16(12, dosDate, true);
+      localView.setUint32(14, crc, true);
+      localView.setUint32(18, data.byteLength, true);
+      localView.setUint32(22, data.byteLength, true);
+      localView.setUint16(26, nameBytes.length, true);
+      localHeader.set(nameBytes, 30);
+      localParts.push(localHeader, data);
+
+      const centralHeader = new Uint8Array(46 + nameBytes.length);
+      const centralView = new DataView(centralHeader.buffer);
+      centralView.setUint32(0, 0x02014b50, true);
+      centralView.setUint16(4, 20, true);
+      centralView.setUint16(6, 20, true);
+      centralView.setUint16(8, 0, true);
+      centralView.setUint16(10, 0, true);
+      centralView.setUint16(12, dosTime, true);
+      centralView.setUint16(14, dosDate, true);
+      centralView.setUint32(16, crc, true);
+      centralView.setUint32(20, data.byteLength, true);
+      centralView.setUint32(24, data.byteLength, true);
+      centralView.setUint16(28, nameBytes.length, true);
+      centralView.setUint32(42, offset, true);
+      centralHeader.set(nameBytes, 46);
+      centralParts.push(centralHeader);
+
+      offset += localHeader.byteLength + data.byteLength;
+    }
+
+    const centralOffset = offset;
+    const centralSize = centralParts.reduce((total, part) => total + (part as Uint8Array).byteLength, 0);
+    const endRecord = new Uint8Array(22);
+    const endView = new DataView(endRecord.buffer);
+    endView.setUint32(0, 0x06054b50, true);
+    endView.setUint16(8, entries.length, true);
+    endView.setUint16(10, entries.length, true);
+    endView.setUint32(12, centralSize, true);
+    endView.setUint32(16, centralOffset, true);
+
+    return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/zip' });
+  }
+
+  private sanitizeZipEntryName(name: string): string {
+    return String(name || 'file')
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .replace(/\.\.\//g, '')
+      || 'file';
+  }
+
+  private getZipTimestamp(date: Date): { dosTime: number; dosDate: number } {
+    const year = Math.max(1980, date.getFullYear());
+    const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+    const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+    return { dosTime, dosDate };
+  }
+
+  private getCrc32(data: Uint8Array): number {
+    let crc = 0xffffffff;
+    for (const byte of data) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) {
+        crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+      }
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  private playSpeakingUiSound(src: string): void {
+    const audio = new Audio(src);
+    audio.volume = 0.85;
+    void audio.play().catch(() => undefined);
+  }
+
+  private createSpeakingExportSlug(session: SpeakingSessionSummary): string {
+    return this.formatSpeakingSession(session)
+      .replace(/[^0-9A-Za-z]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 64) || 'speaking-session';
+  }
+
+  private unlockSpeakingAi(element: BookElement, page: BookPage): void {
+    if (this.isPageInActiveSpread(page)) {
+      const items = this.getActiveSpreadSpeakingAi();
+      const index = items.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
+      if (index >= 0) {
+        const key = this.getActiveSpreadSpeakingProgressKey();
+        this.speakingProgress[key] = Math.max(this.speakingProgress[key] ?? 0, index + 1);
+      }
+    }
+
+    const items = this.getSpeakingAiElements(page);
+    const index = items.findIndex((item) => item.id === element.id);
+    if (index >= 0) {
+      this.speakingProgress[page.id] = Math.max(this.speakingProgress[page.id] ?? 0, index + 1);
+    }
+  }
+
+  private getSpeakingAiElements(page: BookPage): BookElement[] {
+    return page.elements
+      .map((element, index) => ({ element, index }))
+      .filter(({ element }) => element.type === 'speakingAi')
+      .sort((a, b) => Number(a.element.data['stepNumber'] ?? a.index) - Number(b.element.data['stepNumber'] ?? b.index))
+      .map(({ element }) => element);
+  }
+
+  private getActiveSpreadSpeakingAi(): { page: BookPage; element: BookElement }[] {
+    const pages = [this.currentPage, this.companionPage].filter((page): page is BookPage => !!page);
+    return pages.flatMap((page) => this.getSpeakingAiElements(page).map((element) => ({ page, element })));
+  }
+
+  private getActiveSpreadSpeakingProgressKey(): string {
+    return `speaking-spread:${this.pageSource}:${this.currentPage?.id || ''}:${this.companionPage?.id || ''}`;
+  }
+
+  private confirmStopSpeakingForInterruption(): boolean {
+    if (!this.speakingConversationActive && !this.speakingSessionActive) return true;
+    const confirmed = window.confirm('AI conversation is running. Stop and save it before leaving?');
+    if (confirmed) {
+      void this.stopSpeakingConversation(true);
+      this.resetSpeakingSessionState();
+      this.moveOwlToCorner();
+    }
+    return confirmed;
+  }
+
+  private async loadSpeakingAttempts(bookId: string): Promise<void> {
+    this.speakingAttempts.clear();
+    const validElementIds = new Set(this.getAllBookPages()
+      .flatMap((page) => page.elements)
+      .filter((element) => element.type === 'speakingAi')
+      .map((element) => element.id));
+    await this.speakingAttemptService.cleanupBook(bookId, validElementIds);
+    const attempts = await this.speakingAttemptService.loadBook(bookId);
+    for (const attempt of attempts) {
+      if (!validElementIds.has(attempt.elementId)) continue;
+      if (attempt.status === 'active') {
+        attempt.status = 'saved';
+      }
+      const list = this.speakingAttempts.get(attempt.elementId) ?? [];
+      list.push(attempt);
+      this.speakingAttempts.set(attempt.elementId, list);
+    }
+  }
+
+  private findElementById(elementId: string): BookElement | null {
+    return this.getAllBookPages()
+      .flatMap((page) => page.elements)
+      .find((element) => element.id === elementId) ?? null;
+  }
+
+  private escapeHtml(value: unknown): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   private stopGuideAudio(): void {
@@ -2614,6 +4563,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.activeTextInput && !drag.textId) {
       this.activeTextInput.x = x;
       this.activeTextInput.y = y;
+      this.scheduleReaderInteractionRefresh();
       return;
     }
     if (drag.textId) {
@@ -2621,7 +4571,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!text) return;
       text.x = x;
       text.y = y;
+      this.scheduleReaderInteractionRefresh();
     }
+  }
+
+  private scheduleReaderInteractionRefresh(): void {
+    if (this.readerInteractionFrame) return;
+    this.readerInteractionFrame = requestAnimationFrame(() => {
+      this.readerInteractionFrame = 0;
+      this.zone.run(() => this.cdr.detectChanges());
+    });
   }
 
   @HostListener('document:pointerup')
@@ -2652,34 +4611,50 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private moveOwlToElement(element: BookElement, page = this.currentPage): void {
-    const frame = page ? this.getPageFrameForPageId(page.id) ?? this.pageFrame?.nativeElement : this.pageFrame?.nativeElement;
-    if (!frame) {
+    const elementWidth = element.width || 0.06;
+    const elementHeight = element.height || 0.06;
+    const target = this.getPageCoordinateScreenPoint(
+      page,
+      element.x + elementWidth / 2,
+      element.y + elementHeight / 2
+    );
+    if (!target) {
       this.moveOwlToCorner();
       return;
     }
 
-    const rect = frame.getBoundingClientRect();
-    const elementWidth = element.width || 0.06;
-    const elementHeight = element.height || 0.06;
-    const targetX = rect.left + (element.x + elementWidth / 2) * rect.width;
-    const targetY = rect.top + (element.y + elementHeight / 2) * rect.height;
     const bounds = this.getOwlVisibleBounds(true);
-    this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
-    this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);
+    this.owlX = this.clamp(target.x, bounds.minX, bounds.maxX);
+    this.owlY = this.clamp(target.y, bounds.minY, bounds.maxY);
   }
 
   private moveOwlToGuidePin(pin: GuideTimelinePin, page = this.currentPage): void {
-    const frame = page ? this.getPageFrameForPageId(page.id) ?? this.pageFrame?.nativeElement : this.pageFrame?.nativeElement;
-    if (!frame) {
+    const target = this.getPageCoordinateScreenPoint(page, this.clamp(pin.x, 0, 1), this.clamp(pin.y, 0, 1));
+    if (!target) {
       this.moveOwlToCorner();
       return;
     }
-    const rect = frame.getBoundingClientRect();
-    const targetX = rect.left + this.clamp(pin.x, 0, 1) * rect.width;
-    const targetY = rect.top + this.clamp(pin.y, 0, 1) * rect.height;
     const bounds = this.getOwlVisibleBounds(true);
-    this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
-    this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);
+    this.owlX = this.clamp(target.x, bounds.minX, bounds.maxX);
+    this.owlY = this.clamp(target.y, bounds.minY, bounds.maxY);
+  }
+
+  private getPageCoordinateScreenPoint(page: BookPage | null, x: number, y: number): { x: number; y: number } | null {
+    const frame = page ? this.getPageFrameForPageId(page.id) ?? this.pageFrame?.nativeElement : this.pageFrame?.nativeElement;
+    if (!frame) return null;
+    const rect = frame.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    let visibleX = this.clamp(x, 0, 1);
+    let visibleY = this.clamp(y, 0, 1);
+    if (page && this.isFocusCropActive(page)) {
+      const focus = this.getClampedFocusRect(this.expandedFocusElement);
+      visibleX = (visibleX - focus.x) / focus.width;
+      visibleY = (visibleY - focus.y) / focus.height;
+    }
+    return {
+      x: rect.left + visibleX * rect.width,
+      y: rect.top + visibleY * rect.height
+    };
   }
 
   private moveOwlToCorner(): void {
@@ -2697,14 +4672,22 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getOwlVisibleBounds(teaching: boolean): { minX: number; maxX: number; minY: number; maxY: number } {
     const owlSize = this.clamp(window.innerWidth * 0.09, 68, 112);
+    if (teaching) {
+      const inset = 12;
+      return {
+        minX: owlSize * 0.5 + inset,
+        maxX: Math.max(owlSize * 0.5 + inset, window.innerWidth - owlSize * 0.5 - inset),
+        minY: owlSize + inset,
+        maxY: Math.max(owlSize + inset, window.innerHeight - inset)
+      };
+    }
     const sideInset = owlSize * 0.6 + 12;
-    const topInset = teaching ? owlSize * 0.92 + 12 : owlSize * 0.55 + 12;
-    const bottomInset = teaching ? owlSize * 0.28 + 12 : owlSize * 0.55 + 12;
+    const verticalInset = owlSize * 0.55 + 12;
     return {
       minX: sideInset,
       maxX: Math.max(sideInset, window.innerWidth - sideInset),
-      minY: topInset,
-      maxY: Math.max(topInset, window.innerHeight - bottomInset)
+      minY: verticalInset,
+      maxY: Math.max(verticalInset, window.innerHeight - verticalInset)
     };
   }
 
@@ -2723,7 +4706,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     pending.y = this.clamp((editorRect.top + editorRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
   }
 
-  private updateReaderSpreadWidth(): void {
+  private updateReaderSpreadWidth(afterLayout?: () => void): void {
     if (this.readerLayoutFrame) {
       cancelAnimationFrame(this.readerLayoutFrame);
     }
@@ -2746,11 +4729,49 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.readerSpreadWidthPx = Math.max(220, fitWidth * this.zoom);
       this.cdr.detectChanges();
       this.resetDrawingCanvas();
+      if (afterLayout) {
+        requestAnimationFrame(() => {
+          afterLayout();
+          requestAnimationFrame(afterLayout);
+        });
+      }
     });
   }
 
   private shouldAnchorTwoPageZoom(previousZoom: number): boolean {
     return this.twoPageMode && !!this.companionPage && this.zoom > 1 && this.zoom !== previousZoom;
+  }
+
+  private getSinglePageZoomAnchor(): { x: number; y: number } | null {
+    const stage = this.readerStage?.nativeElement;
+    const shell = this.readerCanvasShell?.nativeElement;
+    if (!stage || !shell || shell.offsetWidth <= 0 || shell.offsetHeight <= 0) return null;
+    return {
+      x: this.clamp((stage.scrollLeft + stage.clientWidth / 2 - shell.offsetLeft) / shell.offsetWidth, 0, 1),
+      y: this.clamp((stage.scrollTop + stage.clientHeight / 2 - shell.offsetTop) / shell.offsetHeight, 0, 1)
+    };
+  }
+
+  private restoreSinglePageZoomAnchor(anchor: { x: number; y: number }): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const stage = this.readerStage?.nativeElement;
+        const shell = this.readerCanvasShell?.nativeElement;
+        if (!stage || !shell || this.twoPageMode || this.zoom <= 1) return;
+        const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
+        const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
+        stage.scrollLeft = this.clamp(
+          shell.offsetLeft + shell.offsetWidth * anchor.x - stage.clientWidth / 2,
+          0,
+          maxLeft
+        );
+        stage.scrollTop = this.clamp(
+          shell.offsetTop + shell.offsetHeight * anchor.y - stage.clientHeight / 2,
+          0,
+          maxTop
+        );
+      });
+    });
   }
 
   private anchorTwoPageZoomToTopLeft(): void {
@@ -2764,7 +4785,26 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private getPageAspectRatioNumber(): number {
+  private centerReaderZoom(): void {
+    const stage = this.readerStage?.nativeElement;
+    const shell = this.readerCanvasShell?.nativeElement;
+    if (!stage || !shell) return;
+    const stageRect = stage.getBoundingClientRect();
+    const shellRect = shell.getBoundingClientRect();
+    const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
+    const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
+    const deltaX = shellRect.left + shellRect.width / 2 - (stageRect.left + stageRect.width / 2);
+    const deltaY = shellRect.top + shellRect.height / 2 - (stageRect.top + stageRect.height / 2);
+    stage.scrollLeft = this.clamp(stage.scrollLeft + deltaX, 0, maxLeft);
+    stage.scrollTop = this.clamp(stage.scrollTop + deltaY, 0, maxTop);
+  }
+
+  private getPageAspectRatioNumber(page = this.currentPage): number {
+    const baseAspect = this.getBasePageAspectRatioNumber();
+    return this.getRotatedAspectRatio(baseAspect, page);
+  }
+
+  private getBasePageAspectRatioNumber(): number {
     const match = this.pageAspectRatio.match(/([0-9.]+)\s*\/\s*([0-9.]+)/);
     if (!match) return 210 / 297;
     const width = Number(match[1]);
@@ -2774,10 +4814,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getCurrentFrameAspectRatioNumber(): number {
     if (!this.expandedFocusElement) {
-      return this.getPageAspectRatioNumber();
+      return this.getPageAspectRatioNumber(this.currentPage);
     }
     const focus = this.getClampedFocusRect(this.expandedFocusElement);
-    return Math.max(0.05, this.getPageAspectRatioNumber() * focus.width / focus.height);
+    return Math.max(0.05, this.getPageAspectRatioNumber(this.expandedFocusPage || this.currentPage) * focus.width / focus.height);
+  }
+
+  private getRotatedAspectRatio(baseAspect: number, page: BookPage | null | undefined): number {
+    return this.isSidewaysRotation(this.getPageRotation(page)) ? 1 / Math.max(0.05, baseAspect) : baseAspect;
+  }
+
+  private normalizePageRotation(value: unknown): number {
+    const rotation = Math.round((Number(value) || 0) / 90) * 90;
+    return ((rotation % 360) + 360) % 360;
+  }
+
+  private isSidewaysRotation(rotation: number): boolean {
+    return rotation === 90 || rotation === 270;
   }
 
   private getClampedFocusRect(element: BookElement | null): { x: number; y: number; width: number; height: number } {
@@ -2814,9 +4867,26 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private forceUiRefresh(): void {
     this.zone.run(() => {
       this.cdr.detectChanges();
+      this.scheduleSpeakingChatScrollToBottom();
       requestAnimationFrame(() => {
-        this.zone.run(() => this.cdr.detectChanges());
+        this.zone.run(() => {
+          this.cdr.detectChanges();
+          this.scheduleSpeakingChatScrollToBottom();
+        });
       });
+    });
+  }
+
+  private scheduleSpeakingChatScrollToBottom(): void {
+    if (!this.speakingSessionActive) return;
+    if (this.speakingChatScrollFrame) {
+      cancelAnimationFrame(this.speakingChatScrollFrame);
+    }
+    this.speakingChatScrollFrame = requestAnimationFrame(() => {
+      this.speakingChatScrollFrame = 0;
+      const chat = this.speakingAiChat?.nativeElement;
+      if (!chat) return;
+      chat.scrollTop = chat.scrollHeight;
     });
   }
 

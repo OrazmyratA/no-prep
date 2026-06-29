@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
 import { LicenseService, LicenseStatus } from './license';
 
 describe('LicenseService', () => {
@@ -30,12 +31,10 @@ describe('LicenseService', () => {
     expect(service.daysLeft).toBe(0);
   });
 
-  it('should request reopen events', (done) => {
-    service.reopen$.subscribe(() => {
-      expect(true).toBeTrue();
-      done();
-    });
+  it('should request reopen events', async () => {
+    const reopened = firstValueFrom(service.reopen$);
     service.requestReopen();
+    expect(await reopened).toBeUndefined();
   });
 
   it('should ask the Electron API for license status', async () => {

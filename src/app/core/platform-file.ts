@@ -99,6 +99,18 @@ export class PlatformFileService {
     return null;
   }
 
+  async saveBlobToDownloads(blob: Blob, filename: string, relativePath?: string): Promise<string | null> {
+    const safeFilename = this.sanitizeFilename(filename);
+
+    if (this.platform.isAndroid() || this.platform.isNative()) {
+      return this.saveDataUrlToDownloads(await this.blobToDataUrl(blob), safeFilename, relativePath);
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    this.downloadBrowserDataUrl(url, safeFilename, true);
+    return null;
+  }
+
   private async saveAndroidText(
     content: string,
     filename: string,
@@ -147,7 +159,7 @@ export class PlatformFileService {
     a.click();
     document.body.removeChild(a);
     if (revokeUrl) {
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     }
   }
 
@@ -166,5 +178,14 @@ export class PlatformFileService {
       mimeType,
       base64: isBase64 ? payload : btoa(decodeURIComponent(payload))
     };
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
   }
 }

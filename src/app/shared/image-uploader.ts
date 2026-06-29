@@ -12,6 +12,7 @@ import {
   ViewChild
 } from '@angular/core';
 import { FormBuilder, FormControl } from '@angular/forms';
+import { Browser } from '@capacitor/browser';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import imageCompression from 'browser-image-compression';
 import { PixabayResponse, PixabayService, PixabayImage } from '../core/pixabay';
@@ -182,10 +183,13 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     this.isSearchFullscreen = false;
   }
 
-  activateSearchMode() {
+  async activateSearchMode(openBrowser = false) {
     this.activeTab = 'search';
     this.isSearchFullscreen = true;
     this.markAsPasteTarget();
+    if (openBrowser) {
+      await this.openGoogleImages();
+    }
     setTimeout(() => this.pasteTarget?.nativeElement.focus(), 0);
   }
 
@@ -214,7 +218,7 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     this.pasteImportError = null;
   }
 
-  openGoogleImages() {
+  async openGoogleImages() {
     this.markAsPasteTarget();
     const query = this.googleSearchControl.value?.trim();
     const url = query
@@ -223,6 +227,8 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
 
     if (this.platform.isElectron()) {
       (window as any).electronAPI.openExternalUrl(url);
+    } else if (this.platform.isNative()) {
+      await Browser.open({ url });
     } else {
       window.open(url, '_blank', 'noopener');
     }

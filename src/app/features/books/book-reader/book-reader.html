@@ -16,7 +16,9 @@
           <img src="assets/images/book/content.png" alt="">
         </button>
         <div class="page-stepper" *ngIf="book && visiblePages.length">
-          <button type="button" class="tool-btn" (click)="previousPage()" [disabled]="currentPageIndex <= 0" [title]="'previousPage' | translate">&lt;</button>
+          <button type="button" class="tool-btn icon-turn-btn" (click)="previousPage()" [disabled]="currentPageIndex <= 0" [title]="'previousPage' | translate">
+            <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+          </button>
           <input
             type="number"
             min="1"
@@ -28,7 +30,9 @@
             (blur)="commitPageJump()"
             [attr.aria-label]="'readerGoToPage' | translate">
           <span>/ {{ visiblePages.length }}</span>
-          <button type="button" class="tool-btn" (click)="nextPage()" [disabled]="currentPageIndex >= visiblePages.length - 1" [title]="'nextPage' | translate">&gt;</button>
+          <button type="button" class="tool-btn icon-turn-btn" (click)="nextPage()" [disabled]="currentPageIndex >= visiblePages.length - 1" [title]="'nextPage' | translate">
+            <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+          </button>
         </div>
       </div>
 
@@ -50,6 +54,9 @@
         </button>
         <button type="button" class="tool-btn icon-reader-btn" (click)="setZoom(zoom - 0.1)" [title]="'zoomOut' | translate" [attr.aria-label]="'zoomOut' | translate">
           <img src="assets/images/book/zoom-out.png" alt="">
+        </button>
+        <button type="button" class="tool-btn icon-reader-btn" (click)="rotateCurrentPage()" [disabled]="!currentPage" title="Rotate page" aria-label="Rotate page">
+          <img src="assets/images/book/rotate-right.png" alt="">
         </button>
       </div>
 
@@ -204,8 +211,11 @@
     </section>
   </div>
 
-  <main #readerStage class="reader-stage" [class.drawer-open]="pageDrawerOpen">
+  <main #readerStage class="reader-stage" [class.drawer-open]="pageDrawerOpen" [class.zoomed]="zoom > 1">
     <aside class="reader-page-drawer" *ngIf="pageDrawerOpen" (scroll)="onReaderThumbScroll($event)">
+      <button type="button" class="reader-drawer-handle collapse" (click)="togglePageDrawer()" title="Hide pages" aria-label="Hide pages">
+        <img class="drawer-toggle-icon drawer-toggle-hide" src="assets/images/book/hide.png" alt="">
+      </button>
       <div class="virtual-spacer" [style.height.px]="readerVirtualTopPadding"></div>
       <button
         *ngFor="let item of readerVirtualPages; trackBy: trackByVirtualPageId"
@@ -219,6 +229,7 @@
             *ngIf="item.page.type === 'pdf' && getPagePdfUrl(item.page)"
             [sourceUrl]="getPagePdfUrl(item.page)"
             [pageNumber]="item.page.pdfPage || 1"
+            [rotation]="getPageRotation(item.page)"
             [renderScale]="0.22"
             [lazy]="true">
           </app-pdf-page-canvas>
@@ -235,7 +246,7 @@
     <div *ngIf="!loading && !book" class="reader-message">{{ 'readerBookNotFound' | translate }}</div>
     <div *ngIf="!loading && book && !currentPage" class="reader-message">{{ 'readerNoVisiblePages' | translate }}</div>
 
-    <div *ngIf="book && currentPage" class="reader-canvas-shell">
+    <div #readerCanvasShell *ngIf="book && currentPage" class="reader-canvas-shell">
       <button
         *ngIf="!expandedFocusElement"
         type="button"
@@ -243,7 +254,9 @@
         (click)="$event.stopPropagation(); previousPage()"
         [disabled]="currentPageIndex <= 0"
         [title]="'previousPage' | translate"
-        [attr.aria-label]="'previousPage' | translate">&lt;</button>
+        [attr.aria-label]="'previousPage' | translate">
+        <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+      </button>
 
       <div
         #readerSpread
@@ -267,11 +280,15 @@
         [attr.data-page-id]="currentPage.id"
         [style.aspect-ratio]="getPageAspectRatioFor(currentPage)"
         [style.background]="currentPage.backgroundColor || '#ffffff'">
-        <div class="page-content" [ngStyle]="getFocusContentStyle(currentPage)">
+        <div
+          class="page-content"
+          [class.focus-crop-content]="isFocusCropActive(currentPage)"
+          [ngStyle]="getFocusContentStyle(currentPage)">
           <app-pdf-page-canvas
             *ngIf="pdfUrl && currentPage.type === 'pdf'"
             [sourceUrl]="pdfUrl"
             [pageNumber]="currentPage.pdfPage || 1"
+            [rotation]="getPageRotation(currentPage)"
             [renderScale]="isFocusCropActive(currentPage) ? 2.6 : 1.7"
             (pageSize)="onPdfPageSize($event)">
           </app-pdf-page-canvas>
@@ -375,8 +392,14 @@
           [class.dot-element]="element.type === 'guideDot'"
           [class.dot-disabled]="element.type === 'guideDot' && !isGuideDotEnabled(element, currentPage)"
           [class.dot-paused]="element.id === pausedGuideElementId"
+          [class.speaking-ai-element]="element.type === 'speakingAi'"
+          [class.speaking-ai-disabled]="element.type === 'speakingAi' && !isSpeakingAiEnabled(element, currentPage)"
+          [class.speaking-ai-active]="element.type === 'speakingAi' && activeSpeakingElement?.id === element.id"
           [class.note-element]="element.type === 'note'"
           [class.answer-key-element]="element.type === 'answerKey'"
+          [class.ink-element]="element.type === 'ink'"
+          [class.highlighter-element]="element.type === 'highlighter'"
+          [class.text-mark-element]="element.type === 'text'"
           [class.game-element]="element.type === 'game'"
           [class.text-task-element]="element.type === 'textTask'"
           [class.choice-task-element]="element.type === 'choiceTask'"
@@ -403,8 +426,27 @@
           <span *ngIf="element.type === 'focus'" class="focus-label"></span>
           <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
           <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+          <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
+            <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
+          </span>
           <span *ngIf="element.type === 'note'" class="note-marker">
             <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+          </span>
+          <svg *ngIf="element.type === 'ink' && element.data['points']; else readerInkFallback" class="teacher-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+            <polyline [attr.points]="getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <ng-template #readerInkFallback>
+            <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
+          </ng-template>
+          <svg *ngIf="element.type === 'highlighter' && element.data['points']; else readerHighlighterFallback" class="teacher-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+            <polyline [attr.points]="getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <ng-template #readerHighlighterFallback>
+            <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>
+          </ng-template>
+          <span *ngIf="element.type === 'text'" class="teacher-text-mark" [style.color]="element.data['color'] || '#111827'">
+            <img *ngIf="element.data['imageDataUrl']" [src]="element.data['imageDataUrl']" alt="">
+            <span *ngIf="!element.data['imageDataUrl']">{{ element.data['text'] || 'Text' }}</span>
           </span>
           <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
           <input
@@ -475,13 +517,14 @@
         (swipeRight)="previousPage()"
         (pointerup)="onPageFramePointerUp($event)"
         [attr.data-page-id]="sidePage.id"
-        [style.aspect-ratio]="pageAspectRatio"
+        [style.aspect-ratio]="getPageAspectRatioFor(sidePage)"
         [style.background]="sidePage.backgroundColor || '#ffffff'">
         <div class="page-content">
           <app-pdf-page-canvas
             *ngIf="sidePage.type === 'pdf' && getPagePdfUrl(sidePage)"
             [sourceUrl]="getPagePdfUrl(sidePage)"
             [pageNumber]="sidePage.pdfPage || 1"
+            [rotation]="getPageRotation(sidePage)"
             [renderScale]="1.35">
           </app-pdf-page-canvas>
 
@@ -584,8 +627,14 @@
             [class.dot-element]="element.type === 'guideDot'"
             [class.dot-disabled]="element.type === 'guideDot' && !isGuideDotEnabled(element, sidePage)"
             [class.dot-paused]="element.id === pausedGuideElementId"
+            [class.speaking-ai-element]="element.type === 'speakingAi'"
+            [class.speaking-ai-disabled]="element.type === 'speakingAi' && !isSpeakingAiEnabled(element, sidePage)"
+            [class.speaking-ai-active]="element.type === 'speakingAi' && activeSpeakingElement?.id === element.id"
             [class.note-element]="element.type === 'note'"
             [class.answer-key-element]="element.type === 'answerKey'"
+            [class.ink-element]="element.type === 'ink'"
+            [class.highlighter-element]="element.type === 'highlighter'"
+            [class.text-mark-element]="element.type === 'text'"
             [class.game-element]="element.type === 'game'"
             [class.text-task-element]="element.type === 'textTask'"
             [class.choice-task-element]="element.type === 'choiceTask'"
@@ -612,8 +661,27 @@
             <span *ngIf="element.type === 'focus'" class="focus-label"></span>
             <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
             <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+            <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
+              <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
+            </span>
             <span *ngIf="element.type === 'note'" class="note-marker">
               <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+            </span>
+            <svg *ngIf="element.type === 'ink' && element.data['points']; else companionInkFallback" class="teacher-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+              <polyline [attr.points]="getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+            </svg>
+            <ng-template #companionInkFallback>
+              <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
+            </ng-template>
+            <svg *ngIf="element.type === 'highlighter' && element.data['points']; else companionHighlighterFallback" class="teacher-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+              <polyline [attr.points]="getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+            </svg>
+            <ng-template #companionHighlighterFallback>
+              <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>
+            </ng-template>
+            <span *ngIf="element.type === 'text'" class="teacher-text-mark" [style.color]="element.data['color'] || '#111827'">
+              <img *ngIf="element.data['imageDataUrl']" [src]="element.data['imageDataUrl']" alt="">
+              <span *ngIf="!element.data['imageDataUrl']">{{ element.data['text'] || 'Text' }}</span>
             </span>
             <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
             <input
@@ -671,7 +739,9 @@
         (click)="$event.stopPropagation(); nextPage()"
         [disabled]="currentPageIndex >= visiblePages.length - 1"
         [title]="'nextPage' | translate"
-        [attr.aria-label]="'nextPage' | translate">&gt;</button>
+        [attr.aria-label]="'nextPage' | translate">
+        <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+      </button>
     </div>
   </main>
 
@@ -699,25 +769,35 @@
         #expandedVideoFrame
         class="expanded-video-frame"
         [class.video-fullscreen]="videoFullscreen"
+        (click)="$event.stopPropagation()"
+        (pointerdown)="$event.stopPropagation()"
+        (pointerup)="onExpandedVideoPointerUp($event)"
         *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)">
         <video
           #expandedVideo
           [src]="getElementMediaUrl(expandedElement)"
           controls
-          autoplay>
+          controlsList="nodownload"
+          autoplay
+          (fullscreenchange)="onExpandedNativeVideoFullscreenChange()"
+          (webkitfullscreenchange)="onExpandedNativeVideoFullscreenChange()"
+          (webkitbeginfullscreen)="onExpandedNativeVideoFullscreenChange()"
+          (webkitendfullscreen)="onExpandedNativeVideoFullscreenChange()">
         </video>
-        <button
-          type="button"
-          class="expanded-video-fullscreen"
-          (click)="toggleExpandedVideoFullscreen($event)"
-          [attr.title]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)"
-          [attr.aria-label]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)">
-          <img src="assets/images/maximize.png" alt="">
-        </button>
       </div>
       <div class="video-seek-controls" *ngIf="expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)">
-        <button type="button" (click)="skipExpandedVideo(-10)">-10s</button>
-        <button type="button" (click)="skipExpandedVideo(10)">+10s</button>
+        <button type="button" (click)="skipExpandedVideo(-1)">-1s</button>
+        <button
+          type="button"
+          class="video-seek-fullscreen"
+          (pointerdown)="onExpandedVideoFullscreenHotspotPointerDown($event)"
+          (pointerup)="onExpandedVideoFullscreenHotspotPointerUp($event)"
+          (click)="onExpandedVideoFullscreenHotspotClick($event)"
+          aria-label="Fullscreen"
+          title="Fullscreen">
+          <img src="assets/images/maximize.png" alt="">
+        </button>
+        <button type="button" (click)="skipExpandedVideo(1)">+1s</button>
       </div>
       <div
         #expandedVideoFrame
@@ -727,18 +807,12 @@
         <iframe
           [src]="getYouTubeEmbedUrl(expandedElement)"
           [attr.title]="'readerYoutubeVideo' | translate"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share"
           referrerpolicy="strict-origin-when-cross-origin"
-          allowfullscreen>
+          allowfullscreen
+          webkitallowfullscreen
+          mozallowfullscreen>
         </iframe>
-        <button
-          type="button"
-          class="expanded-video-fullscreen"
-          (click)="toggleExpandedVideoFullscreen($event)"
-          [attr.title]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)"
-          [attr.aria-label]="videoFullscreen ? 'Exit fullscreen' : ('fullscreen' | translate)">
-          <img src="assets/images/maximize.png" alt="">
-        </button>
       </div>
       <div class="youtube-fallback" *ngIf="expandedElement.type === 'video' && isYouTubeVideo(expandedElement)">
         <button type="button" (click)="openVideoExternally(expandedElement)">
@@ -766,6 +840,7 @@
             *ngIf="expandedFocusPage?.type === 'pdf' && getPagePdfUrl(expandedFocusPage!)"
             [sourceUrl]="getPagePdfUrl(expandedFocusPage!)"
             [pageNumber]="expandedFocusPage?.pdfPage || 1"
+            [rotation]="getPageRotation(expandedFocusPage)"
             [renderScale]="2">
           </app-pdf-page-canvas>
           <div *ngIf="expandedFocusPage?.type === 'blank'" class="blank-page"></div>
@@ -801,4 +876,195 @@
     (click)="cycleSpeechSpeed()">
     {{ currentSpeechSpeed }}x
   </button>
+</div>
+
+<div class="speaking-ai-dock" *ngIf="activeSpeakingElement">
+  <div class="speaking-ai-main" *ngIf="isSpeakingAiPackInstalled(activeSpeakingElement) || checkingSpeakingRuntime; else missingSpeakingPack">
+    <button
+      type="button"
+      class="speaking-ai-start"
+      (click)="toggleSpeakingConversation()"
+      [disabled]="checkingSpeakingRuntime"
+      [attr.aria-label]="getSpeakingPrimaryActionLabel()"
+      [title]="getSpeakingPrimaryActionLabel()">
+      <img [src]="speakingSessionActive ? 'assets/images/book/close.png' : 'assets/images/book/ai start.png'" alt="">
+    </button>
+    <span class="speaking-ai-spacer" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="speaking-ai-expand"
+      (click)="speakingPanelExpanded = !speakingPanelExpanded"
+      [attr.aria-label]="speakingPanelExpanded ? 'Hide attempts' : 'Show attempts'">
+      <img [src]="speakingPanelExpanded ? 'assets/images/book/hide.png' : 'assets/images/book/show.png'" alt="">
+    </button>
+    <button
+      type="button"
+      class="speaking-ai-pack-button"
+      (click)="openAiPackManager()"
+      aria-label="Speaking Pack"
+      title="Speaking Pack">
+      AI
+    </button>
+  </div>
+  <ng-template #missingSpeakingPack>
+    <div class="speaking-ai-missing-pack">
+      <div>
+        <strong>{{ getSpeakingAiLanguage(activeSpeakingElement) | uppercase }} Speaking Pack required</strong>
+        <span>{{ getSpeakingRequiredPackText() }}</span>
+      </div>
+      <div class="speaking-ai-missing-actions">
+        <button
+          type="button"
+          class="speaking-ai-mini"
+          *ngIf="hasSpeakingPackUrl(activeSpeakingElement)"
+          (click)="openSpeakingPackUrl(activeSpeakingElement)">
+          Get Pack
+        </button>
+        <button type="button" class="speaking-ai-mini" (click)="importSpeakingAiPack()" [disabled]="importingSpeakingPack">
+          {{ importingSpeakingPack ? 'Importing' : 'Import Pack' }}
+        </button>
+        <button type="button" class="speaking-ai-pack-button" (click)="openAiPackManager()" aria-label="Speaking Pack" title="Speaking Pack">
+          AI
+        </button>
+      </div>
+    </div>
+  </ng-template>
+  <div class="speaking-ai-attempts" *ngIf="speakingPanelExpanded">
+    <ng-container *ngIf="speakingSessionActive; else speakingSessionHistory">
+      <div #speakingAiChat class="speaking-ai-chat">
+        <div class="speaking-ai-empty" *ngIf="!getActiveSpeakingChatTurns().length">
+          Tap the microphone to speak.
+        </div>
+        <div
+          class="speaking-ai-bubble"
+          *ngFor="let turn of getActiveSpeakingChatTurns(); trackBy: trackBySpeakingChatTurnId"
+          [class.student]="turn.speaker === 'student'"
+          [class.ai]="turn.speaker === 'ai'"
+          [class.pending]="turn.pending">
+          {{ turn.text }}
+        </div>
+      </div>
+      <button
+        #speakingRecordButton
+        type="button"
+        class="speaking-ai-speak"
+        [class.recording]="speakingConversationActive"
+        [style.--voice-aura-scale]="speakingRecordingAuraScale"
+        [style.--voice-ring-scale]="speakingRecordingRingScale"
+        [style.--voice-aura-opacity]="speakingRecordingAuraOpacity"
+        [style.--voice-ring-opacity]="speakingRecordingRingOpacity"
+        [style.--voice-glow]="speakingRecordingGlow"
+        [style.--voice-outer-glow]="speakingRecordingOuterGlow"
+        (click)="toggleSpeakingTurnRecording()"
+        [disabled]="checkingSpeakingRuntime"
+        [attr.aria-label]="getSpeakingTurnActionLabel()"
+        [title]="getSpeakingTurnActionLabel()">
+        <img [src]="speakingConversationActive ? 'assets/images/book/stop record.png' : 'assets/images/book/microphone.png'" alt="">
+      </button>
+    </ng-container>
+
+    <ng-template #speakingSessionHistory>
+      <div class="speaking-ai-session-list">
+        <div class="speaking-ai-empty" *ngIf="!getFinishedSpeakingSessions(activeSpeakingElement).length">
+          No conversations yet.
+        </div>
+        <div class="speaking-ai-session-row" *ngFor="let session of getFinishedSpeakingSessions(activeSpeakingElement); trackBy: trackBySpeakingSessionId">
+          <button
+            type="button"
+            class="speaking-ai-mini icon"
+            (click)="toggleSpeakingSessionPlayback(session)"
+            [attr.aria-label]="isSpeakingSessionPlaying(session) ? 'Pause speaking conversation' : 'Play speaking conversation'"
+            [title]="isSpeakingSessionPlaying(session) ? 'Pause' : 'Play'">
+            <img [src]="isSpeakingSessionPlaying(session) ? 'assets/images/book/pause.png' : 'assets/images/book/play.png'" alt="">
+          </button>
+          <div class="speaking-ai-session-title">
+            <input
+              type="text"
+              [ngModel]="getSpeakingSessionDraft(session)"
+              (ngModelChange)="setSpeakingSessionDraft(session, $event)"
+              (focus)="setSpeakingSessionDraft(session, getSpeakingSessionDraft(session))"
+              (blur)="renameSpeakingSession(session, getSpeakingSessionDraft(session))"
+              (click)="$event.stopPropagation()"
+              (keydown.enter)="renameSpeakingSession(session, getSpeakingSessionDraft(session)); $any($event.target).blur()"
+              aria-label="Speaking conversation name">
+          </div>
+          <button type="button" class="speaking-ai-mini icon" (click)="exportSpeakingSession(session)" aria-label="Export speaking conversation" title="Export">
+            <img src="assets/images/book/export.png" alt="">
+          </button>
+          <button type="button" class="speaking-ai-mini danger" (click)="deleteSpeakingSession(session)" aria-label="Delete speaking conversation">
+            <img src="assets/images/book/delete.png" alt="">
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div>
+
+<div class="ai-pack-manager-backdrop" *ngIf="aiPackManagerOpen" (click)="closeAiPackManager()">
+  <section class="ai-pack-manager" (click)="$event.stopPropagation()" aria-label="Speaking Pack">
+    <header>
+      <div>
+        <strong>Speaking Packs</strong>
+        <span>{{ getSpeakingAiLanguage(activeSpeakingElement) | uppercase }} language</span>
+      </div>
+      <button type="button" class="speaking-ai-mini danger" (click)="closeAiPackManager()" aria-label="Close Speaking Pack">
+        <img src="assets/images/book/close.png" alt="">
+      </button>
+    </header>
+
+    <div class="ai-pack-readiness">
+      <div
+        class="ai-pack-readiness-row"
+        *ngFor="let row of getAiPackManagerRows()"
+        [class.ready]="row.ready">
+        <span>{{ row.label }}</span>
+        <strong>{{ row.ready ? 'Ready' : 'Missing' }}</strong>
+      </div>
+    </div>
+
+    <p class="ai-pack-reason">{{ getSpeakingRuntimeStatusText() }}</p>
+
+    <div class="ai-pack-actions">
+      <button
+        type="button"
+        class="speaking-ai-mini"
+        *ngIf="hasSpeakingPackUrl(activeSpeakingElement)"
+        (click)="openSpeakingPackUrl(activeSpeakingElement)">
+        Get Pack
+      </button>
+      <button type="button" class="speaking-ai-mini" (click)="importSpeakingAiPack()" [disabled]="importingSpeakingPack || aiPackManagerBusy">
+        {{ importingSpeakingPack ? 'Importing' : 'Import Pack' }}
+      </button>
+      <button type="button" class="speaking-ai-mini" (click)="openAiPackManager()" [disabled]="aiPackManagerBusy">
+        {{ aiPackManagerBusy ? 'Checking' : 'Refresh' }}
+      </button>
+      <button type="button" class="speaking-ai-mini" (click)="aiPackAdvancedOpen = !aiPackAdvancedOpen">
+        {{ aiPackAdvancedOpen ? 'Hide Advanced' : 'Advanced' }}
+      </button>
+    </div>
+
+    <div class="ai-pack-list">
+      <div class="speaking-ai-empty" *ngIf="!getInstalledAiPacks().length">
+        No Speaking Packs installed.
+      </div>
+      <article class="ai-pack-card" *ngFor="let pack of getInstalledAiPacks(); trackBy: trackByAiPackId">
+        <div class="ai-pack-card-main">
+          <strong>{{ pack.label }}</strong>
+          <span>{{ pack.language | uppercase }} · {{ getAiPackQualityLabel(pack) }} Speaking Pack</span>
+          <em *ngIf="getAiPackSelectedRole(pack)">{{ getAiPackSelectedRole(pack) }}</em>
+          <div class="ai-pack-advanced" *ngIf="aiPackAdvancedOpen">
+            <small>{{ getAiPackRuntimeSummary(pack) }}<ng-container *ngIf="getAiPackSizeText(pack)"> · {{ getAiPackSizeText(pack) }}</ng-container></small>
+            <small *ngIf="pack.modelSizeLabel">{{ pack.modelSizeLabel }}</small>
+            <small *ngIf="getAiPackRequirementText(pack)">{{ getAiPackRequirementText(pack) }}</small>
+          </div>
+        </div>
+        <div class="ai-pack-feature-tags">
+          <span *ngFor="let feature of getAiPackFeatureLabels(pack)">{{ feature }}</span>
+        </div>
+        <button type="button" class="speaking-ai-mini danger" (click)="removeAiPack(pack)" [disabled]="aiPackManagerBusy" aria-label="Remove Speaking Pack">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+      </article>
+    </div>
+  </section>
 </div>

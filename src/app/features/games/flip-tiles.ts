@@ -417,12 +417,10 @@ private rebuildCards(items: Item[]) {
     requestAnimationFrame(() => this.cdr.detectChanges());
   }
 
-  closeFullscreen(event: MouseEvent) {
-    if ((event.target as HTMLElement).classList.contains('fullscreen-overlay')) {
-      this.stopActiveAudio();
-      this.fullscreenVisible = false;
-      this.fullscreenItem = null;
-    }
+  closeFullscreen() {
+    this.stopActiveAudio();
+    this.fullscreenVisible = false;
+    this.fullscreenItem = null;
   }
 
   navigateFullscreen(direction: number) {

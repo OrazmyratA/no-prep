@@ -88,7 +88,7 @@ describe('ImageUploaderComponent', () => {
     component.searchControl.setValue('dog');
     await vi.runAllTimersAsync();
 
-    expect(component.searchError).toBe('Pixabay search failed. Try again later.');
+    expect(component.searchError).toBe('Image search failed. Try again later.');
     expect(component.searchResults).toEqual([]);
   });
 

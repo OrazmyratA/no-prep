@@ -236,7 +236,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       })))
     };
 
-    return this.bookLibrary.saveTopicSnapshot(this.returnToBookId, this.returnToBookElementId, snapshot);
+    return this.bookLibrary.saveTopicSnapshot(this.returnToBookId, this.returnToBookElementId, snapshot, topic.name);
   }
 
   private blobToDataUrl(blob: Blob): Promise<string> {

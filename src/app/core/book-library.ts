@@ -458,12 +458,14 @@ export class BookLibraryService {
   async saveTopicSnapshot(
     bookId: string,
     elementId: string,
-    snapshot: Record<string, unknown>
+    snapshot: Record<string, unknown>,
+    topicName?: string
   ): Promise<BookTopicSnapshotResult | null> {
     if (this.isDesktopAvailable) {
       const response = await this.invoke<BookTopicSnapshotResult>('saveBookTopicSnapshot', {
         bookId,
         elementId,
+        topicName,
         snapshot
       });
       if (response.ok && response.result) {
@@ -473,7 +475,8 @@ export class BookLibraryService {
       return null;
     }
 
-    const relativePath = `local-book-asset://${bookId}/topics/${elementId}-${Date.now()}.json`;
+    const safeTopicName = this.sanitizeTopicSnapshotName(topicName || this.extractTopicSnapshotName(snapshot) || elementId || 'Game Topic');
+    const relativePath = `local-book-asset://${bookId}/assets/games/${safeTopicName}.json`;
     const json = JSON.stringify(snapshot);
     const dataUrl = `data:application/json;base64,${this.base64EncodeUtf8(json)}`;
     await db.bookAssets.put({
@@ -487,6 +490,18 @@ export class BookLibraryService {
       relativePath,
       assetUrl: dataUrl
     };
+  }
+
+  private extractTopicSnapshotName(snapshot: Record<string, unknown>): string {
+    const topic = snapshot['topic'];
+    if (!topic || typeof topic !== 'object') return '';
+    return String((topic as Record<string, unknown>)['name'] || '');
+  }
+
+  private sanitizeTopicSnapshotName(name: string): string {
+    return String(name || 'Game Topic')
+      .trim()
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_') || 'Game Topic';
   }
 
   async saveAudioRecording(bookId: string, dataUrl: string): Promise<BookAssetResult | null> {
@@ -751,7 +766,7 @@ export class BookLibraryService {
       if (topicPath) {
         const dataUrl = await this.resolveLocalAssetDataUrl(bookId, topicPath);
         if (dataUrl) {
-          element.data['bookTopicPath'] = await writeDataUrl(dataUrl, `topics/${prefix}.json`);
+          element.data['bookTopicPath'] = await writeDataUrl(dataUrl, `assets/games/${this.fileNameFromRelativePath(topicPath)}`);
         }
       }
 
@@ -836,6 +851,7 @@ export class BookLibraryService {
     return {
       id: this.createId('page'),
       type: 'blank',
+      rotation: 0,
       backgroundColor: '#f8fafc',
       elements: []
     };
@@ -847,6 +863,7 @@ export class BookLibraryService {
       type: 'pdf',
       pdfPage: index + 1,
       sourcePdf,
+      rotation: 0,
       elements: []
     }));
   }

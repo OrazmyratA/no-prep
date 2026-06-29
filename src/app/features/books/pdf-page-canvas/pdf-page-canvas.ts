@@ -29,6 +29,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
   @Input() sourceUrl = '';
   @Input() pageNumber = 1;
   @Input() renderScale = 1.5;
+  @Input() rotation = 0;
   @Input() lazy = false;
   @Input() lazyRootMargin = '450px';
   @Output() pageSize = new EventEmitter<{ width: number; height: number }>();
@@ -70,7 +71,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
         this.observeVisibility();
       }
     }
-    if ((changes['sourceUrl'] || changes['pageNumber'] || changes['renderScale']) && this.shouldRender) {
+    if ((changes['sourceUrl'] || changes['pageNumber'] || changes['renderScale'] || changes['rotation']) && this.shouldRender) {
       void this.renderPage();
     }
   }
@@ -156,7 +157,9 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     const page = await doc.getPage(safePageNumber);
     if (token !== this.renderToken) return;
 
-    const viewport = page.getViewport({ scale: Math.max(0.25, this.renderScale || 1) });
+    const scale = Math.max(0.25, this.renderScale || 1);
+    const baseViewport = page.getViewport({ scale });
+    const viewport = page.getViewport({ scale, rotation: this.normalizeRotation(this.rotation) });
     const canvas = this.canvasRef.nativeElement;
     const context = canvas.getContext('2d');
     if (!context) {
@@ -170,9 +173,14 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     if (token !== this.renderToken) return;
 
     this.canvasReady = true;
-    this.pageSize.emit({ width: viewport.width, height: viewport.height });
+    this.pageSize.emit({ width: baseViewport.width, height: baseViewport.height });
     this.cdr.detectChanges();
     requestAnimationFrame(() => this.cdr.detectChanges());
+  }
+
+  private normalizeRotation(value: number): number {
+    const normalized = Number(value) || 0;
+    return ((Math.round(normalized / 90) * 90) % 360 + 360) % 360;
   }
 
   private getDocument(source: Record<string, unknown>): Promise<PdfDocumentProxy> {

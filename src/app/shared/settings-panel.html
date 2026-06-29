@@ -366,9 +366,44 @@
 
     <!-- Team Sentence Settings -->
     <div *ngSwitchCase="'team-sentence'">
-      <label class="block mb-2">{{ 'settingsTeamSentenceSpeed' | translate }}</label>
-      <input type="range" formControlName="speed" min="0.3" max="3" step="0.1" class="w-full">
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-sm font-medium">{{ 'settingsTeamSentenceSpeed' | translate }}</label>
+        <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+          {{ settingsForm.get('speed')?.value }}
+        </span>
+      </div>
+      <input type="range" formControlName="speed" min="1" max="10" step="1" class="w-full h-2 rounded-full cursor-pointer accent-blue-600">
+      <div class="flex justify-between text-xs text-gray-400 mt-1">
+        <span>1</span>
+        <span>10</span>
+      </div>
       <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceSpeedHint' | translate }}</p>
+
+      <div class="mt-4">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsTeamSentenceTeamCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('teamCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="teamCount"
+          min="1" max="2" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>2</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceTeamCountHint' | translate }}</p>
+      </div>
+
+      <label class="flex items-center mt-4">
+        <input type="checkbox" formControlName="displayOneByOne" class="mr-2">
+        {{ 'settingsTeamSentenceDisplayOneByOne' | translate }}
+      </label>
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceDisplayOneByOneHint' | translate }}</p>
 
       <label class="flex items-center mt-4">
         <input type="checkbox" formControlName="reverseMode" class="mr-2">

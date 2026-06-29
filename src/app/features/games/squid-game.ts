@@ -67,6 +67,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   // Timers
   private dollTimer: any = null;
   private countdownInterval: any = null;
+  private miscTimers: any[] = [];
+  private isDestroyed = false;
 
   // Sounds
   private bgMusic: HTMLAudioElement | null = null;
@@ -156,13 +158,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private setupGame() {
-    clearTimeout(this.dollTimer);
-    this.dollTimer = null;
-    if (this.countdownInterval) {
-      clearInterval(this.countdownInterval);
-      this.countdownInterval = null;
-    }
-    this.stopBgMusic();
+    this.clearAllTimers();
+    this.stopAllAudio();
 
     this.teams = Array.from({ length: this.teamCount }, (_, i) => ({
       id: i + 1,
@@ -193,14 +190,14 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private startBgMusic() {
-    if (this.bgMusic) {
+    if (this.bgMusic && !this.isDestroyed) {
       this.bgMusic.currentTime = 0;
       this.bgMusic.play().catch(() => {});
     }
   }
 
   private stopBgMusic() {
-    this.bgMusic?.pause();
+    this.stopSound(this.bgMusic);
   }
 
   @HostListener('window:resize')
@@ -212,6 +209,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   private loadImageDimensions() {
     const img = new Image();
     img.onload = () => {
+      if (this.isDestroyed) return;
       this.imgNaturalW = img.naturalWidth;
       this.computeFinishLine();
       this.cdr.detectChanges();
@@ -236,14 +234,14 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private scheduleDollTurn() {
-    if (this.gameStatus !== 'running' || this.quizPaused) return;
+    if (this.isDestroyed || this.gameStatus !== 'running' || this.quizPaused) return;
     const range = Math.max(0, this.dollMaxTime - this.dollMinTime);
     const delay = this.dollMinTime * 1000 + Math.random() * range * 1000;
     this.dollTimer = setTimeout(() => this.startRedLight(), delay);
   }
 
   private startRedLight() {
-    if (this.gameStatus !== 'running') return;
+    if (this.isDestroyed || this.gameStatus !== 'running') return;
     this.dollLooking = true;
     this.stopBgMusic();
     this.playSound(this.redLightSound);
@@ -254,7 +252,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private endRedLight() {
-    if (this.gameStatus !== 'running') return;
+    if (this.isDestroyed || this.gameStatus !== 'running') return;
     this.dollLooking = false;
     // green light sound plays only after all quizzes are done
     this.cdr.detectChanges();
@@ -268,6 +266,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private announceGreenLight() {
+    if (this.isDestroyed || this.gameStatus !== 'running') return;
     this.playSound(this.greenLightSound);
     this.startBgMusic();
     this.scheduleDollTurn();
@@ -300,6 +299,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private processNextQuiz() {
+    if (this.isDestroyed || this.gameStatus !== 'running') return;
+
     if (this.quizQueue.length === 0) {
       this.quizPaused = false;
       this.announceGreenLight();
@@ -314,7 +315,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const correctAnswer = item.text!;
+    const correctAnswer = item.text?.trim() ?? '';
     let itemImageSrc: string | null = null;
 
     if (item.image && item.id !== undefined) {
@@ -327,15 +328,15 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     }
 
     let options: ReturnType<typeof this.buildOptions> = null;
-    if (!this.forceSimpleMode) {
+    if (!this.forceSimpleMode && correctAnswer) {
       options = this.reverseMode
-        ? this.buildOptions(correctAnswer)
-        : this.buildImageOptions(item);
+        ? this.buildImageOptions(item)
+        : this.buildOptions(correctAnswer);
     }
-    this.simpleConfirmMode = this.forceSimpleMode || options === null;
+    this.simpleConfirmMode = this.forceSimpleMode || !correctAnswer || options === null;
     this.currentQuiz = {
       team,
-      itemImageSrc: this.reverseMode ? itemImageSrc : null,
+      itemImageSrc,
       options: options ?? [],
       correctAnswer,
       locked: false
@@ -344,7 +345,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.quizOverlayVisible = false;
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setTrackedTimeout(() => {
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
     }, 50);
@@ -365,13 +366,13 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       team.showCorrect = true;
       this.cdr.detectChanges();
 
-      setTimeout(() => {
+      this.setTrackedTimeout(() => {
         team.showCorrect = false;
         this.quizVisible = false;
         this.quizOverlayVisible = false;
         this.currentQuiz = null;
         this.cdr.detectChanges();
-        setTimeout(() => this.processNextQuiz(), 300);
+        this.setTrackedTimeout(() => this.processNextQuiz(), 300);
       }, 1500);
     } else {
       option.state = 'wrong';
@@ -379,7 +380,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       this.playSound(this.buzzSound);
       this.cdr.detectChanges();
 
-      setTimeout(() => {
+      this.setTrackedTimeout(() => {
         team.caught = false;
         this.quizVisible = false;
         this.quizOverlayVisible = false;
@@ -395,12 +396,12 @@ export class SquidGameComponent implements OnInit, OnDestroy {
             remaining--;
             this.cdr.detectChanges();
             if (remaining > 0) {
-              setTimeout(stepDown, 380);
+              this.setTrackedTimeout(stepDown, 380);
             } else {
-              setTimeout(() => this.processNextQuiz(), 380);
+              this.setTrackedTimeout(() => this.processNextQuiz(), 380);
             }
           } else {
-            setTimeout(() => this.processNextQuiz(), 380);
+            this.setTrackedTimeout(() => this.processNextQuiz(), 380);
           }
         };
         stepDown();
@@ -420,10 +421,10 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.simpleConfirmMode = false;
     this.currentQuiz = null;
     this.cdr.detectChanges();
-    setTimeout(() => {
+    this.setTrackedTimeout(() => {
       team.showCorrect = false;
       this.cdr.detectChanges();
-      setTimeout(() => this.processNextQuiz(), 300);
+      this.setTrackedTimeout(() => this.processNextQuiz(), 300);
     }, 800);
   }
 
@@ -444,10 +445,10 @@ export class SquidGameComponent implements OnInit, OnDestroy {
         team.step--;
         remaining--;
         this.cdr.detectChanges();
-        if (remaining > 0) setTimeout(stepDown, 380);
-        else setTimeout(() => this.processNextQuiz(), 380);
+        if (remaining > 0) this.setTrackedTimeout(stepDown, 380);
+        else this.setTrackedTimeout(() => this.processNextQuiz(), 380);
       } else {
-        setTimeout(() => this.processNextQuiz(), 380);
+        this.setTrackedTimeout(() => this.processNextQuiz(), 380);
       }
     };
     stepDown();
@@ -484,7 +485,9 @@ export class SquidGameComponent implements OnInit, OnDestroy {
 
   private buildOptions(correct: string): QuizOption[] | null {
     const unique = [...new Set(
-      this.quizItems.map(i => i.text!).filter(t => t !== correct)
+      this.quizItems
+        .map(i => i.text?.trim())
+        .filter((t): t is string => Boolean(t) && t !== correct)
     )].sort(() => Math.random() - 0.5);
     if (unique.length < 2) return null; // not enough real distractors → fall back to OK/Oops
     return [correct, ...unique.slice(0, 2)]
@@ -509,13 +512,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.gameStatus = 'finished';
     this.resultVisible = false;
 
-    clearTimeout(this.dollTimer);
-    this.dollTimer = null;
-
-    if (this.countdownInterval) {
-      clearInterval(this.countdownInterval);
-      this.countdownInterval = null;
-    }
+    this.clearAllTimers();
 
     this.stopBgMusic();
     this.quizVisible = false;
@@ -523,7 +520,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     this.playSound(this.revealRewardSound);
-    setTimeout(() => {
+    this.setTrackedTimeout(() => {
       this.resultVisible = true;
       this.cdr.detectChanges();
     }, 3000);
@@ -537,21 +534,61 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   onMenuAction(action: string) {
-    if (action === 'activity') this.router.navigate(['/topics', this.topicId, 'activities']);
+    if (action === 'activity') {
+      this.isDestroyed = true;
+      this.clearAllTimers();
+      this.stopAllAudio();
+      this.router.navigate(['/topics', this.topicId, 'activities']);
+    }
     else if (action === 'startover') this.resetGame();
   }
 
   ngOnDestroy() {
-    clearTimeout(this.dollTimer);
-    if (this.countdownInterval) clearInterval(this.countdownInterval);
-    this.stopBgMusic();
+    this.isDestroyed = true;
+    this.clearAllTimers();
+    this.stopAllAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
+    this.quizImageUrls.clear();
+    this.objectUrls = [];
+  }
+
+  private clearAllTimers() {
+    clearTimeout(this.dollTimer);
+    this.dollTimer = null;
+
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
+    this.miscTimers.forEach(timer => clearTimeout(timer));
+    this.miscTimers = [];
+  }
+
+  private setTrackedTimeout(callback: () => void, delay: number): any {
+    const timer = setTimeout(() => {
+      this.miscTimers = this.miscTimers.filter(t => t !== timer);
+      if (!this.isDestroyed) callback();
+    }, delay);
+    this.miscTimers.push(timer);
+    return timer;
+  }
+
+  private stopAllAudio() {
     [this.bgMusic, this.greenLightSound, this.redLightSound, this.collectSound, this.buzzSound, this.revealRewardSound]
-      .forEach(s => s?.pause());
+      .forEach(sound => this.stopSound(sound));
+  }
+
+  private stopSound(sound: HTMLAudioElement | null) {
+    if (!sound) return;
+    sound.pause();
+    try {
+      sound.currentTime = 0;
+    } catch {}
   }
 
   private playSound(sound: HTMLAudioElement | null) {
-    if (sound) {
+    if (sound && !this.isDestroyed) {
       sound.currentTime = 0;
       sound.play().catch(() => {});
     }

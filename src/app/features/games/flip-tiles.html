@@ -97,19 +97,19 @@
 </div>
 
 <!-- Fullscreen Overlay Modal -->
-<div *ngIf="fullscreenVisible" class="fullscreen-overlay" (click)="closeFullscreen($event)">
-  <div class="fullscreen-content" (click)="$event.stopPropagation()">
+<div *ngIf="fullscreenVisible" class="fullscreen-overlay" (click)="closeFullscreen()">
+  <div class="fullscreen-content">
     
     <!-- Left navigation button -->
     <button class="fullscreen-nav-btn prev" 
-            (click)="navigateFullscreen(-1)" 
+            (click)="$event.stopPropagation(); navigateFullscreen(-1)" 
             [disabled]="fullscreenIndex === 0">
       ◀
     </button>
 
     <!-- Enlarged card -->
     <ng-container *ngIf="fullscreenItem as fItem">
-      <div class="fullscreen-card">
+      <div class="fullscreen-card" (click)="$event.stopPropagation()">
         <!-- Speaker button inside the card (top‑right) -->
         <button *ngIf="fItem.item.audio" 
                 class="fullscreen-speaker" 
@@ -129,7 +129,7 @@
 
     <!-- Right navigation button -->
     <button class="fullscreen-nav-btn next" 
-            (click)="navigateFullscreen(1)" 
+            (click)="$event.stopPropagation(); navigateFullscreen(1)" 
             [disabled]="fullscreenIndex === cards.length - 1">
       ▶
     </button>

@@ -87,15 +87,15 @@
 
       <!-- Selected item with pop-in animation -->
       <div class="flex justify-center mb-8">
-        <!-- Reverse mode: show text as question -->
-        <div *ngIf="reverseMode"
+        <!-- Reverse mode: show text as question when available -->
+        <div *ngIf="reverseMode && currentQuiz.correctAnswer"
              class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
           <span class="text-4xl font-black text-gray-900 text-center px-6 break-words">
             {{ currentQuiz.correctAnswer }}
           </span>
         </div>
-        <!-- Normal mode: show image -->
-        <div *ngIf="!reverseMode"
+        <!-- Normal mode, plus image-only reverse items: show image -->
+        <div *ngIf="!reverseMode || !currentQuiz.correctAnswer"
              class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
           <img *ngIf="currentQuiz.itemImageSrc"
                [src]="currentQuiz.itemImageSrc"

@@ -55,8 +55,10 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   winner: 'left' | 'right' | null = null;
   loading = true;
   private animationFrame: any;
-  private speed = 1;
+  private speed = 4;
   reverseMode = false;
+  teamCount = 2;
+  displayOneByOne = false;
   cardFlipped = false;
   cardItem: Item | null = null;
   currentSoundItem: Item | null = null;
@@ -81,9 +83,10 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
   private layoutSubscription?: Subscription;
+  currentItemIndex = 0;
 
-  @ViewChild('leftContainer') leftContainer!: ElementRef;
-  @ViewChild('rightContainer') rightContainer!: ElementRef;
+  @ViewChild('leftContainer') leftContainer?: ElementRef<HTMLElement>;
+  @ViewChild('rightContainer') rightContainer?: ElementRef<HTMLElement>;
 
   constructor(
     private route: ActivatedRoute,
@@ -98,8 +101,11 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.topicId = Number(idParam);
 
     this.route.queryParams.subscribe(params => {
-      if (params['speed']) this.speed = Number(params['speed']);
+      if (params['speed']) this.speed = this.clampSpeed(Number(params['speed']));
       this.reverseMode = String(params['reverseMode']).toLowerCase() === 'true';
+      const rawTeamCount = Number(params['teamCount'] ?? 2);
+      this.teamCount = rawTeamCount === 1 ? 1 : 2;
+      this.displayOneByOne = String(params['displayOneByOne']).toLowerCase() === 'true';
     });
 
     try {
@@ -142,14 +148,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       this.loading = false;
       this.cdr.detectChanges();
       setTimeout(() => {
-        if (this.leftContainer && this.rightContainer) {
-          this.teams.left.containerEl = this.leftContainer.nativeElement;
-          this.teams.right.containerEl = this.rightContainer.nativeElement;
-          this.startAnimation();
-          this.resizeService.requestLayoutRefresh();
-        } else {
-          console.warn('Containers not ready');
-        }
+        this.attachContainersAndStart();
       }, 100);
     }
 
@@ -183,7 +182,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   }
 
   private recalculateLayout() {
-    for (let team of [this.teams.left, this.teams.right]) {
+    for (let team of this.activeTeams()) {
       if (!team.containerEl) continue;
       const width = team.containerEl.clientWidth;
       const height = team.containerEl.clientHeight;
@@ -205,25 +204,19 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   }
 
   private startGame() {
-    const initFloating = (): WordTile[] => {
-      if (this.reverseMode) {
-        return this.eligibleItems.map((item, idx) => this.createFloatingImageTile(item, idx));
-      }
-      return this.allWords.map((word, idx) => this.createFloatingTile(word, idx));
-    };
     const initMines = (): Mine[] => {
       return [1, 2].map((i) => ({
         id: i,
         top: 20 + Math.random() * 60,
         left: 10 + Math.random() * 80,
-        vx: (Math.random() - 0.5) * 3 * this.speed,
-        vy: (Math.random() - 0.5) * 3 * this.speed
+        vx: this.randomVelocity(),
+        vy: this.randomVelocity()
       }));
     };
-    this.teams.left.floatingWords = initFloating();
-    this.teams.right.floatingWords = initFloating();
+    this.teams.left.floatingWords = this.displayOneByOne ? [] : this.createAllFloatingTiles();
+    this.teams.right.floatingWords = this.singleTeamMode ? [] : (this.displayOneByOne ? [] : this.createAllFloatingTiles());
     this.teams.left.mines = initMines();
-    this.teams.right.mines = initMines();
+    this.teams.right.mines = this.singleTeamMode ? [] : initMines();
     this.teams.left.sentenceWords = [];
     this.teams.right.sentenceWords = [];
     this.teams.left.score = 0;
@@ -242,8 +235,75 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.explodingTeam = null;
     this.cardFlipped = false;
     this.cardItem = null;
+    this.currentItemIndex = 0;
     this.cdr.detectChanges();
     this.pickNextCardItem();
+  }
+
+  get singleTeamMode(): boolean {
+    return this.teamCount === 1;
+  }
+
+  private activeTeamKeys(): Array<'left' | 'right'> {
+    return this.singleTeamMode ? ['left'] : ['left', 'right'];
+  }
+
+  private activeTeams(): Team[] {
+    return this.activeTeamKeys().map(key => this.teams[key]);
+  }
+
+  private createAllFloatingTiles(): WordTile[] {
+    if (this.reverseMode) {
+      return this.eligibleItems.map((item, idx) => this.createFloatingImageTile(item, idx));
+    }
+    return this.allWords.map((word, idx) => this.createFloatingTile(word, idx));
+  }
+
+  private createFloatingTilesForItem(item: Item): WordTile[] {
+    if (this.reverseMode) {
+      return [this.createFloatingImageTile(item, 0)];
+    }
+    return (item.text?.trim().split(/\s+/).filter(Boolean) ?? [])
+      .map((word, idx) => this.createFloatingTile(word, idx));
+  }
+
+  private refreshOneByOneFloatingTiles() {
+    if (!this.displayOneByOne || !this.cardItem) return;
+    for (const key of this.activeTeamKeys()) {
+      this.teams[key].sentenceWords = [];
+      this.teams[key].floatingWords = this.createFloatingTilesForItem(this.cardItem);
+    }
+    if (this.singleTeamMode) {
+      this.teams.right.sentenceWords = [];
+      this.teams.right.floatingWords = [];
+    }
+  }
+
+  private attachContainersAndStart() {
+    if (!this.leftContainer?.nativeElement || (!this.singleTeamMode && !this.rightContainer?.nativeElement)) {
+      console.warn('Containers not ready');
+      return;
+    }
+
+    this.teams.left.containerEl = this.leftContainer.nativeElement;
+    this.teams.right.containerEl = this.singleTeamMode ? null : this.rightContainer?.nativeElement ?? null;
+    this.startAnimation();
+    this.resizeService.requestLayoutRefresh();
+  }
+
+  private clampSpeed(value: number): number {
+    return Number.isFinite(value) ? Math.min(10, Math.max(1, value)) : 4;
+  }
+
+  private get movementScale(): number {
+    const normalized = this.clampSpeed(this.speed) / 10;
+    return 0.45 + Math.pow(normalized, 1.35) * 5.55;
+  }
+
+  private randomVelocity(baseSpeed: number = 2.2): number {
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    const strength = 0.35 + Math.random() * 0.65;
+    return direction * strength * baseSpeed * this.movementScale;
   }
 
   private createFloatingTile(word: string, id: number = Date.now() + Math.random()): WordTile {
@@ -255,8 +315,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       itemId: imageMatch?.itemId,
       top: 20 + Math.random() * 60,
       left: 10 + Math.random() * 80,
-      vx: (Math.random() - 0.5) * 3 * this.speed,
-      vy: (Math.random() - 0.5) * 3 * this.speed
+      vx: this.randomVelocity(),
+      vy: this.randomVelocity()
     };
   }
 
@@ -268,8 +328,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       itemId: item.id,
       top: 20 + Math.random() * 60,
       left: 10 + Math.random() * 80,
-      vx: (Math.random() - 0.5) * 3 * this.speed,
-      vy: (Math.random() - 0.5) * 3 * this.speed
+      vx: this.randomVelocity(),
+      vy: this.randomVelocity()
     };
   }
 
@@ -298,6 +358,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       const width = container.clientWidth;
       const height = container.clientHeight;
       if (width === 0 || height === 0) return;
+      const movementScale = this.movementScale;
 
       let avgTileWidth = 80;
       const sampleTile = container.querySelector('.floating-word');
@@ -320,8 +381,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
           if (distance > 1) {
             const nx = dx / distance;
             const ny = dy / distance;
-            tile.vx += nx * attractionStrength * this.speed;
-            tile.vy += ny * attractionStrength * this.speed;
+            tile.vx += nx * attractionStrength * movementScale;
+            tile.vy += ny * attractionStrength * movementScale;
           }
         } else if (tile.returningUntil) {
           tile.returningUntil = undefined; // end returning phase
@@ -341,9 +402,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
 
         // Reduce random variation during returning phase
         if (!tile.returningUntil) {
-          tile.vx += (Math.random() - 0.5) * 0.1 * this.speed;
-          tile.vy += (Math.random() - 0.5) * 0.1 * this.speed;
-          const maxSpeed = 3 * this.speed;
+          tile.vx += (Math.random() - 0.5) * 0.18 * movementScale;
+          tile.vy += (Math.random() - 0.5) * 0.18 * movementScale;
+          const maxSpeed = 3 * movementScale;
           tile.vx = Math.min(maxSpeed, Math.max(-maxSpeed, tile.vx));
           tile.vy = Math.min(maxSpeed, Math.max(-maxSpeed, tile.vy));
         }
@@ -365,15 +426,16 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
         mine.left = (x / width) * 100;
         mine.top = (y / height) * 100;
 
-        mine.vx += (Math.random() - 0.5) * 0.1 * this.speed;
-        mine.vy += (Math.random() - 0.5) * 0.1 * this.speed;
-        const maxSpeed = 3 * this.speed;
+        mine.vx += (Math.random() - 0.5) * 0.18 * movementScale;
+        mine.vy += (Math.random() - 0.5) * 0.18 * movementScale;
+        const maxSpeed = 3 * movementScale;
         mine.vx = Math.min(maxSpeed, Math.max(-maxSpeed, mine.vx));
         mine.vy = Math.min(maxSpeed, Math.max(-maxSpeed, mine.vy));
       }
     };
-    updateTeam(this.teams.left);
-    updateTeam(this.teams.right);
+    for (const team of this.activeTeams()) {
+      updateTeam(team);
+    }
     this.cdr.detectChanges();
   }
 
@@ -463,28 +525,31 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     if (isValid) {
       this.playSound(this.correctSound);
       this.correctTeam = team;
+      const completedItemId = this.cardItem?.id;
       setTimeout(() => {
         this.correctTeam = null;
         targetTeam.score++;
         targetTeam.sentenceWords = [];
-        if (this.cardItem?.id !== undefined) {
-          this.completedSoundItemIds.add(this.cardItem.id);
+        if (completedItemId !== undefined) {
+          this.completedSoundItemIds.add(completedItemId);
         }
         this.currentSoundItem = null;
         this.currentSoundSentence = '';
         this.currentSoundWords = [];
         this.stopActiveAudio();
-        const otherTeam = team === 'left' ? this.teams.right : this.teams.left;
-        const wordsToReturn = [...otherTeam.sentenceWords];
-        otherTeam.sentenceWords = [];
-        for (const word of wordsToReturn) {
-          otherTeam.floatingWords.push(this.createFloatingTile(word));
+        if (!this.displayOneByOne && !this.singleTeamMode) {
+          const otherTeam = team === 'left' ? this.teams.right : this.teams.left;
+          const wordsToReturn = [...otherTeam.sentenceWords];
+          otherTeam.sentenceWords = [];
+          for (const word of wordsToReturn) {
+            otherTeam.floatingWords.push(this.createFloatingTile(word));
+          }
         }
         this.cdr.detectChanges();
         if (this.remainingItems().length === 0) {
           this.gameActive = false;
           this.gameFinished = true;
-          this.winner = this.teams.left.score >= this.teams.right.score ? 'left' : 'right';
+          this.winner = this.singleTeamMode || this.teams.left.score >= this.teams.right.score ? 'left' : 'right';
           this.playSound(this.winSound);
         } else {
           this.pickNextCardItem();
@@ -550,6 +615,13 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       this.cardItem = null;
       return;
     }
+    if (this.displayOneByOne) {
+      const nextIndex = this.findNextUncompletedIndex(this.currentItemIndex - 1, 1)
+        ?? this.findNextUncompletedIndex(this.currentItemIndex, -1)
+        ?? 0;
+      this.loadOneByOneItem(nextIndex);
+      return;
+    }
     let next = remaining[0];
     if (remaining.length > 1) {
       let tries = 0;
@@ -564,6 +636,60 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.currentSoundSentence = '';
     this.currentSoundWords = [];
     this.cdr.detectChanges();
+  }
+
+  private loadOneByOneItem(index: number) {
+    if (index < 0 || index >= this.eligibleItems.length) return;
+    const item = this.eligibleItems[index];
+    if (item.id !== undefined && this.completedSoundItemIds.has(item.id)) return;
+    this.stopActiveAudio();
+    this.currentItemIndex = index;
+    this.cardItem = item;
+    this.cardFlipped = false;
+    this.currentSoundItem = item;
+    this.currentSoundSentence = '';
+    this.currentSoundWords = [];
+    this.correctTeam = null;
+    this.shakingTileIds.clear();
+    this.refreshOneByOneFloatingTiles();
+    this.cdr.detectChanges();
+  }
+
+  private findNextUncompletedIndex(fromIndex: number, direction: 1 | -1): number | null {
+    for (let i = fromIndex + direction; i >= 0 && i < this.eligibleItems.length; i += direction) {
+      const itemId = this.eligibleItems[i].id;
+      if (itemId === undefined || !this.completedSoundItemIds.has(itemId)) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  get hasPreviousOneByOneItem(): boolean {
+    return this.findNextUncompletedIndex(this.currentItemIndex, -1) !== null;
+  }
+
+  get hasNextOneByOneItem(): boolean {
+    return this.findNextUncompletedIndex(this.currentItemIndex, 1) !== null;
+  }
+
+  previousOneByOneItem() {
+    if (this.correctTeam !== null) return;
+    const previousIndex = this.findNextUncompletedIndex(this.currentItemIndex, -1);
+    if (previousIndex !== null) this.loadOneByOneItem(previousIndex);
+  }
+
+  nextOneByOneItem() {
+    if (this.correctTeam !== null) return;
+    const nextIndex = this.findNextUncompletedIndex(this.currentItemIndex, 1);
+    if (nextIndex !== null) this.loadOneByOneItem(nextIndex);
+  }
+
+  skipOneByOneItem() {
+    if (this.correctTeam !== null) return;
+    const nextIndex = this.findNextUncompletedIndex(this.currentItemIndex, 1)
+      ?? this.findNextUncompletedIndex(this.currentItemIndex, -1);
+    if (nextIndex !== null) this.loadOneByOneItem(nextIndex);
   }
 
   private playTrackedAudio(blob: Blob | undefined) {
@@ -620,7 +746,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   resetGame() {
     this.stopActiveAudio();
     this.startGame();
-    if (this.teams.left.containerEl && this.teams.right.containerEl) {
+    if (this.teams.left.containerEl && (this.singleTeamMode || this.teams.right.containerEl)) {
       this.startAnimation();
       this.resizeService.requestLayoutRefresh();
     }
@@ -659,8 +785,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       id: Date.now() + Math.random(),
       top: 20 + Math.random() * 60,
       left: 10 + Math.random() * 80,
-      vx: (Math.random() - 0.5) * 3 * this.speed,
-      vy: (Math.random() - 0.5) * 3 * this.speed
+      vx: this.randomVelocity(),
+      vy: this.randomVelocity()
     };
     targetTeam.mines.push(newMine);
 

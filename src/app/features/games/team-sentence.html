@@ -40,7 +40,7 @@
     </div>
 
     <!-- Left team side -->
-    <div class="team-side left" [class.frozen]="isLeftFrozen()">
+    <div class="team-side left" [class.single-team]="singleTeamMode" [class.frozen]="isLeftFrozen()">
       <div class="team-header">
         <h2><span class="score">{{ 'score' | translate }}: {{ teams.left.score }}</span></h2>
       </div>
@@ -80,13 +80,25 @@
       </div>
     </div>
 
+    <div *ngIf="displayOneByOne" class="one-by-one-controls">
+      <button type="button" class="nav-btn" (click)="previousOneByOneItem()" [disabled]="correctTeam !== null || !hasPreviousOneByOneItem">
+        &lt; {{ 'previous' | translate }}
+      </button>
+      <button type="button" class="nav-btn skip" (click)="skipOneByOneItem()" [disabled]="correctTeam !== null || (!hasPreviousOneByOneItem && !hasNextOneByOneItem)">
+        {{ 'teamSentenceSkip' | translate }}
+      </button>
+      <button type="button" class="nav-btn" (click)="nextOneByOneItem()" [disabled]="correctTeam !== null || !hasNextOneByOneItem">
+        {{ 'next' | translate }} &gt;
+      </button>
+    </div>
+
     <!-- Center anchor divider -->
-    <div class="center-divider">
+    <div *ngIf="!singleTeamMode" class="center-divider">
       <img src="assets/images/anchor.png" alt="anchor" class="anchor-image">
     </div>
 
     <!-- Right team side -->
-    <div class="team-side right" [class.frozen]="isRightFrozen()">
+    <div *ngIf="!singleTeamMode" class="team-side right" [class.frozen]="isRightFrozen()">
       <div class="team-header">
         <h2><span class="score">{{ 'score' | translate }}: {{ teams.right.score }}</span></h2>
       </div>

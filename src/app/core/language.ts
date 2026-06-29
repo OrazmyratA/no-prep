@@ -3683,6 +3683,66 @@ private translations: TranslationDictionary = {
   sa: 'مدى سرعة تحرك الكلمات على الشاشة.',
 },
 
+'settingsTeamSentenceTeamCount': {
+  en: 'Number of teams',
+  tk: 'Number of teams',
+  ru: 'Number of teams',
+  cn: 'Number of teams',
+  cde: 'Number of teams',
+  es: 'Number of teams',
+  fr: 'Number of teams',
+  kr: 'Number of teams',
+  sa: 'Number of teams',
+},
+
+'settingsTeamSentenceTeamCountHint': {
+  en: 'Choose one large shared area or the normal two-team race.',
+  tk: 'Choose one large shared area or the normal two-team race.',
+  ru: 'Choose one large shared area or the normal two-team race.',
+  cn: 'Choose one large shared area or the normal two-team race.',
+  cde: 'Choose one large shared area or the normal two-team race.',
+  es: 'Choose one large shared area or the normal two-team race.',
+  fr: 'Choose one large shared area or the normal two-team race.',
+  kr: 'Choose one large shared area or the normal two-team race.',
+  sa: 'Choose one large shared area or the normal two-team race.',
+},
+
+'settingsTeamSentenceDisplayOneByOne': {
+  en: 'Display one by one',
+  tk: 'Display one by one',
+  ru: 'Display one by one',
+  cn: 'Display one by one',
+  cde: 'Display one by one',
+  es: 'Display one by one',
+  fr: 'Display one by one',
+  kr: 'Display one by one',
+  sa: 'Display one by one',
+},
+
+'settingsTeamSentenceDisplayOneByOneHint': {
+  en: 'Show only the current item, with previous, skip, and next controls.',
+  tk: 'Show only the current item, with previous, skip, and next controls.',
+  ru: 'Show only the current item, with previous, skip, and next controls.',
+  cn: 'Show only the current item, with previous, skip, and next controls.',
+  cde: 'Show only the current item, with previous, skip, and next controls.',
+  es: 'Show only the current item, with previous, skip, and next controls.',
+  fr: 'Show only the current item, with previous, skip, and next controls.',
+  kr: 'Show only the current item, with previous, skip, and next controls.',
+  sa: 'Show only the current item, with previous, skip, and next controls.',
+},
+
+'teamSentenceSkip': {
+  en: 'Skip',
+  tk: 'Skip',
+  ru: 'Skip',
+  cn: 'Skip',
+  cde: 'Skip',
+  es: 'Skip',
+  fr: 'Skip',
+  kr: 'Skip',
+  sa: 'Skip',
+},
+
 'settingsTeamSentenceReverseMode': {
   en: 'Use images instead of words',
   tk: 'Sözleriň deregine suratlary ulan',

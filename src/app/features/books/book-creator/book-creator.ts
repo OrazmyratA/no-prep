@@ -1,11 +1,16 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import html2canvas from 'html2canvas';
 import { SwipeDirective } from '../../../shared/swipe.directive';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
+import { PlatformFileService } from '../../../core/platform-file';
 import { GuidePitchService } from '../../../core/guide-pitch';
 import { DbService } from '../../../core/db';
 import { LanguageService } from '../../../core/language';
+import { showAppNotification } from '../../../core/notification';
+import { InstalledAiLanguagePack } from '../../../core/ai-language-packs';
+import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus } from '../../../core/ai-speaking-runtime';
 import { Topic } from '../../../core/db.model';
 import {
   BookElement,
@@ -39,14 +44,22 @@ import { normalizeAllowedActivityIds } from '../../topics/activity-select/activi
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
 
+type SpeakingPreviewRow = {
+  label: string;
+  pack: InstalledAiLanguagePack | null;
+  ready: boolean;
+};
+
 @Component({
   selector: 'app-book-creator',
   standalone: false,
   templateUrl: './book-creator.html',
   styleUrls: ['./book-creator.css']
 })
-export class BookCreatorComponent implements OnInit, OnDestroy {
+export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('editorCanvas') editorCanvas?: ElementRef<HTMLElement>;
+  @ViewChild('editorCanvasShell') editorCanvasShell?: ElementRef<HTMLElement>;
+  @ViewChild('creatorDrawingCanvas') creatorDrawingCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild(SwipeDirective) swipeDir?: SwipeDirective;
 
   book: InteractiveBook | null = null;
@@ -55,9 +68,17 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   pageStripOpen = false;
   pageStripCollapsed = false;
   inspectorOpen = false;
+  inspectorCollapsed = false;
   loading = true;
   selectedPdfUrl = '';
   pageAspectRatio = '3 / 4';
+  creatorZoom = 1;
+  creatorCanvasWidthPx: number | null = null;
+  creatorScreenshotting = false;
+  creatorDrawMode = false;
+  creatorHighlighterMode = false;
+  creatorTextMode = false;
+  activeCreatorTextInput: { x: number; y: number; width: number; height: number; value: string; color: string } | null = null;
   pageJumpValue = '1';
   activePageSource: 'main' | 'workbook' = 'main';
   activeWorkbookId: string | null = null;
@@ -87,6 +108,45 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   placingChoiceTask = false;
   placingCircleTask = false;
   placingMatchTask = false;
+  speakingPreviewElementId: string | null = null;
+  speakingPreviewStatus: AiSpeakingRuntimeStatus | null = null;
+  checkingSpeakingPreview = false;
+  readonly speakingPromptExample = `Title:
+Daily routines speaking practice
+
+Role:
+You are a friendly English speaking teacher.
+
+Topic:
+Daily routines and what the learner did yesterday.
+
+Learner level:
+Beginner / A1
+
+Goal:
+Help the learner speak naturally in full sentences about yesterday and tomorrow.
+
+Vocabulary:
+yesterday, went, played, friend, school, favorite, tomorrow
+
+Conversation style:
+Friendly, patient, natural, and encouraging.
+
+Instructions:
+Have a real conversation, not a fixed quiz.
+Ask short follow-up questions when useful.
+Do not force the questions in a strict order.
+Encourage the learner to add more detail.
+Correct important mistakes gently when useful.
+If the learner asks for help, give a short example.
+If the learner asks for feedback, give one strength and one improvement.
+Keep the conversation in English unless a simple explanation is needed.
+Continue until the learner finishes the conversation.
+
+Example answer:
+Yesterday I went to school. I played football with my friends.
+My favorite part was playing outside.
+Tomorrow I will help my mom.`;
   activeChoiceWordBankId: string | null = null;
   activeMatchGroupId: string | null = null;
   pendingMatchEndpointId: string | null = null;
@@ -128,7 +188,13 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     startY: number;
     type: 'textTask' | 'choiceTask' | 'circleTask';
   } | null = null;
+  private creatorInkState: {
+    kind: 'ink' | 'highlighter';
+    points: { x: number; y: number }[];
+  } | null = null;
   private lastTaskDrawAt = 0;
+  private creatorCanvasFrame = 0;
+  private creatorInteractionFrame = 0;
   private guidePinDragFrame = 0;
   private pendingGuidePinPointer: { x: number; y: number } | null = null;
   private mediaRecorder: MediaRecorder | null = null;
@@ -140,6 +206,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     elementId: string;
     startClientX: number;
     startClientY: number;
+    startPointerX: number;
+    startPointerY: number;
     startX: number;
     startY: number;
     startWidth: number;
@@ -155,7 +223,9 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     public bookLibrary: BookLibraryService,
     private db: DbService,
     private languageService: LanguageService,
+    private platformFile: PlatformFileService,
     private guidePitch: GuidePitchService,
+    private aiSpeakingRuntime: AiSpeakingRuntimeService,
     private cdr: ChangeDetectorRef
   ) {
     this.progress$ = this.bookLibrary.progress$;
@@ -168,6 +238,10 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     });
   }
 
+  ngAfterViewInit(): void {
+    this.updateCreatorCanvasWidth();
+  }
+
   ngOnDestroy(): void {
     this.routeSubscription?.unsubscribe();
     this.stopGuideDotRecording();
@@ -175,6 +249,12 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.stopGuidePreview();
     if (this.guidePinDragFrame) {
       cancelAnimationFrame(this.guidePinDragFrame);
+    }
+    if (this.creatorCanvasFrame) {
+      cancelAnimationFrame(this.creatorCanvasFrame);
+    }
+    if (this.creatorInteractionFrame) {
+      cancelAnimationFrame(this.creatorInteractionFrame);
     }
   }
 
@@ -241,6 +321,17 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.refreshSelectedPageRender();
   }
 
+  rotateSelectedPage(): void {
+    const page = this.selectedPage;
+    if (!page) return;
+    this.captureHistory();
+    page.rotation = (this.getPageRotation(page) + 90) % 360;
+    this.selectedElementId = null;
+    this.activeCreatorTextInput = null;
+    this.markBookDirty();
+    this.refreshSelectedPageRender();
+  }
+
   markBookDirty(): void {
     if (this.book) {
       this.isDirty = true;
@@ -265,6 +356,11 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.selectedPageIndex = index;
     this.pageJumpValue = String(index + 1);
     this.refreshSelectedPageRender();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateCreatorCanvasWidth();
   }
 
   selectWorkbookPage(workbook: BookWorkbook, index: number, event?: Event): void {
@@ -292,6 +388,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   onEditorWheel(event: WheelEvent): void {
+    if (this.creatorZoom > 1) return;
     if (!this.book || Math.abs(event.deltaY) < 18) return;
     event.preventDefault();
     const now = Date.now();
@@ -514,12 +611,97 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.addElement('note', { content: 'Note' }, 0.08, 0.08);
   }
 
+  setCreatorZoom(value: number): void {
+    this.creatorZoom = this.clamp(Number(value) || 1, 0.55, 2);
+    this.updateCreatorCanvasWidth(() => {
+      if (this.creatorZoom > 1) {
+        this.centerCreatorZoom();
+      }
+    });
+  }
+
+  addInkMark(): void {
+    this.creatorDrawMode = !this.creatorDrawMode;
+    if (this.creatorDrawMode) {
+      this.creatorHighlighterMode = false;
+      this.creatorTextMode = false;
+      this.clearTaskPlacementModes();
+    }
+  }
+
+  addHighlighterMark(): void {
+    this.creatorHighlighterMode = !this.creatorHighlighterMode;
+    if (this.creatorHighlighterMode) {
+      this.creatorDrawMode = false;
+      this.creatorTextMode = false;
+      this.clearTaskPlacementModes();
+    }
+  }
+
+  addTextMark(): void {
+    this.creatorTextMode = !this.creatorTextMode;
+    if (this.creatorTextMode) {
+      this.creatorDrawMode = false;
+      this.creatorHighlighterMode = false;
+      this.clearTaskPlacementModes();
+    } else {
+      this.activeCreatorTextInput = null;
+    }
+  }
+
+  toggleInspector(): void {
+    if (this.isPhoneLayout()) {
+      this.inspectorOpen = !this.inspectorOpen;
+      if (this.inspectorOpen) this.pageStripOpen = false;
+      return;
+    }
+    this.inspectorCollapsed = !this.inspectorCollapsed;
+  }
+
+  async takeCreatorScreenshot(): Promise<void> {
+    if (!this.book || !this.editorCanvas?.nativeElement) return;
+    this.creatorScreenshotting = true;
+    this.cdr.detectChanges();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    try {
+      const canvas = await html2canvas(this.editorCanvas.nativeElement, {
+        backgroundColor: null,
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+        logging: false
+      });
+      const pageLabel = `${this.activePageLabel || 'page'} ${this.activePageIndex + 1}`;
+      await this.platformFile.saveDataUrlToDownloads(
+        canvas.toDataURL('image/png'),
+        `${this.book.title || 'NoPrep Book'} ${pageLabel}.png`,
+        'No-Prep Screenshots'
+      );
+      showAppNotification('Screenshot saved to Downloads/No-Prep Screenshots.', 'success');
+    } catch (error) {
+      showAppNotification(error instanceof Error ? error.message : 'Could not save screenshot.', 'error');
+    } finally {
+      this.creatorScreenshotting = false;
+      this.cdr.detectChanges();
+    }
+  }
+
   addAnswerKey(): void {
     this.captureHistory();
     this.addElement('answerKey', { src: '', label: 'Answer key' }, 0.08, 0.08);
   }
 
+  addSpeakingAi(): void {
+    this.captureHistory();
+    this.addElement('speakingAi', {
+      label: 'AI Speaking',
+      language: 'en',
+      prompt: this.speakingPromptExample,
+      packUrl: ''
+    }, 0.08, 0.08);
+  }
+
   toggleTextTaskTool(): void {
+    this.clearCreatorMarkModes();
     this.discardPendingMatchEndpoint();
     this.placingTextTask = !this.placingTextTask;
     this.placingChoiceTask = false;
@@ -532,6 +714,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   toggleChoiceTaskTool(): void {
+    this.clearCreatorMarkModes();
     this.discardPendingMatchEndpoint();
     const activating = !this.placingChoiceTask;
     this.placingChoiceTask = activating;
@@ -545,6 +728,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   toggleCircleTaskTool(): void {
+    this.clearCreatorMarkModes();
     this.discardPendingMatchEndpoint();
     const activating = !this.placingCircleTask;
     this.placingCircleTask = activating;
@@ -558,6 +742,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   toggleMatchTaskTool(): void {
+    this.clearCreatorMarkModes();
     const activating = !this.placingMatchTask;
     this.discardPendingMatchEndpoint();
     this.placingMatchTask = activating;
@@ -567,6 +752,26 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     this.placingGuidePin = false;
     this.activeChoiceWordBankId = null;
     this.activeMatchGroupId = activating ? this.createId('match-group') : null;
+    this.selectedElementId = null;
+  }
+
+  private clearCreatorMarkModes(): void {
+    this.creatorDrawMode = false;
+    this.creatorHighlighterMode = false;
+    this.creatorTextMode = false;
+    this.activeCreatorTextInput = null;
+  }
+
+  private clearTaskPlacementModes(): void {
+    this.discardPendingMatchEndpoint();
+    this.placingTextTask = false;
+    this.placingChoiceTask = false;
+    this.placingCircleTask = false;
+    this.placingMatchTask = false;
+    this.placingGuidePin = false;
+    this.activeChoiceWordBankId = null;
+    this.activeMatchGroupId = null;
+    this.pendingMatchEndpointId = null;
     this.selectedElementId = null;
   }
 
@@ -938,6 +1143,61 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     }, 0.12, 0.1);
   }
 
+  updateSpeakingAiField(element: BookElement, field: string, value: unknown): void {
+    if (element.type !== 'speakingAi') return;
+    element.data[field] = String(value ?? '');
+    if (field === 'language' && this.speakingPreviewElementId === element.id) {
+      this.speakingPreviewStatus = null;
+    }
+    this.markBookDirty();
+  }
+
+  getSpeakingAiRequiredPackLabel(element: BookElement): string {
+    if (element.type !== 'speakingAi') return '';
+    const language = String(element.data['language'] || 'en').trim().toLowerCase() || 'en';
+    return `${language.toUpperCase()} Speaking Pack`;
+  }
+
+  async previewSpeakingAi(element: BookElement): Promise<void> {
+    if (element.type !== 'speakingAi') return;
+    this.speakingPreviewElementId = element.id;
+    this.checkingSpeakingPreview = true;
+    this.cdr.detectChanges();
+    try {
+      this.speakingPreviewStatus = await this.aiSpeakingRuntime.getStatusForLanguage(String(element.data['language'] || 'en'));
+      showAppNotification(this.speakingPreviewStatus.reason, this.speakingPreviewStatus.conversationAvailable ? 'success' : 'info');
+    } catch (error: any) {
+      this.speakingPreviewStatus = null;
+      showAppNotification(error?.message || 'Could not check AI speaking packs.', 'error');
+    } finally {
+      this.checkingSpeakingPreview = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  isSpeakingPreviewVisible(element: BookElement): boolean {
+    return element.type === 'speakingAi' && this.speakingPreviewElementId === element.id;
+  }
+
+  getSpeakingPreviewStatusText(): string {
+    if (this.checkingSpeakingPreview) return 'Checking speaking pack...';
+    return this.speakingPreviewStatus?.reason || 'Click Preview to check this language on this device.';
+  }
+
+  getSpeakingPreviewRows(): SpeakingPreviewRow[] {
+    const status = this.speakingPreviewStatus;
+    return [
+      { label: 'Listening', pack: status?.featurePacks.speechToText ?? null, ready: !!status?.speechToTextAvailable },
+      { label: 'Conversation', pack: status?.featurePacks.dialogue ?? null, ready: !!status?.dialogueAvailable },
+      { label: 'Voice', pack: status?.featurePacks.textToSpeech ?? null, ready: !!status?.textToSpeechAvailable }
+    ];
+  }
+
+  getSpeakingPreviewPackMeta(pack: InstalledAiLanguagePack | null): string {
+    if (!pack) return 'Install the speaking pack for this language.';
+    return pack.label;
+  }
+
   isGameActivityRestricted(element: BookElement): boolean {
     return element.type === 'game' && element.data['activityMode'] === 'selected';
   }
@@ -1046,6 +1306,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     const topic = await this.db.getTopicById(topicId);
     if (!topic) return;
     this.captureHistory();
+    element.data['topicId'] = topic.id || topicId;
     element.data['topicName'] = topic.name;
     element.data['label'] = topic.name;
     const snapshotResult = await this.saveGameTopicSnapshot(element, topicId);
@@ -1344,6 +1605,14 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   onCanvasPointerDown(event: PointerEvent): void {
     if (!event.isPrimary) return;
+    if (this.creatorDrawMode || this.creatorHighlighterMode) {
+      this.startCreatorInk(event, this.creatorHighlighterMode ? 'highlighter' : 'ink');
+      return;
+    }
+    if (this.creatorTextMode) {
+      this.placeCreatorTextInput(event);
+      return;
+    }
     if (this.placingMatchTask) {
       this.placeMatchEndpoint(event);
       return;
@@ -1352,6 +1621,179 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       const type = this.placingCircleTask ? 'circleTask' : this.placingChoiceTask ? 'choiceTask' : 'textTask';
       this.startTaskDraw(event, type);
     }
+  }
+
+  private startCreatorInk(event: PointerEvent, kind: 'ink' | 'highlighter'): void {
+    const page = this.selectedPage;
+    const point = this.getEditorCanvasPoint(event);
+    if (!page || !point) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.editorCanvas?.nativeElement.setPointerCapture?.(event.pointerId);
+    this.beginHistoryCapture();
+    this.creatorInkState = {
+      kind,
+      points: [point]
+    };
+    this.redrawCreatorLiveInk();
+  }
+
+  private updateCreatorInk(clientX: number, clientY: number): void {
+    const state = this.creatorInkState;
+    if (!state) return;
+    const point = this.getEditorCanvasPointFromClient(clientX, clientY);
+    if (!point) return;
+    const previous = state.points[state.points.length - 1];
+    if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) < 0.0025) return;
+    state.points.push(point);
+    this.redrawCreatorLiveInk();
+  }
+
+  private createCreatorStrokeElement(points: { x: number; y: number }[], kind: 'ink' | 'highlighter'): BookElement {
+    const pad = kind === 'highlighter' ? 0.012 : 0.006;
+    const minX = this.clamp(Math.min(...points.map((point) => point.x)) - pad, 0, 1);
+    const maxX = this.clamp(Math.max(...points.map((point) => point.x)) + pad, 0, 1);
+    const minY = this.clamp(Math.min(...points.map((point) => point.y)) - pad, 0, 1);
+    const maxY = this.clamp(Math.max(...points.map((point) => point.y)) + pad, 0, 1);
+    const width = Math.max(0.002, maxX - minX);
+    const height = Math.max(0.002, maxY - minY);
+    return {
+      id: this.createId(kind),
+      type: kind,
+      x: minX,
+      y: minY,
+      width,
+      height,
+      data: {
+        color: kind === 'highlighter' ? '#fde047' : '#2563eb',
+        label: kind === 'highlighter' ? 'Highlighter' : 'Draw',
+        strokePx: kind === 'highlighter' ? 18 : 6,
+        points: points.map((point) => ({
+          x: this.clamp((point.x - minX) / width, 0, 1),
+          y: this.clamp((point.y - minY) / height, 0, 1)
+        }))
+      }
+    };
+  }
+
+  private redrawCreatorLiveInk(): void {
+    const canvas = this.creatorDrawingCanvas?.nativeElement;
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    const state = this.creatorInkState;
+    if (!canvas || !rect?.width || !rect.height) return;
+    const ratio = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.floor(rect.width * ratio));
+    const height = Math.max(1, Math.floor(rect.height * ratio));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    if (!state || !state.points.length) return;
+    context.save();
+    context.scale(ratio, ratio);
+    context.globalCompositeOperation = state.kind === 'highlighter' ? 'multiply' : 'source-over';
+    context.globalAlpha = state.kind === 'highlighter' ? 0.42 : 1;
+    context.strokeStyle = state.kind === 'highlighter' ? '#fde047' : '#2563eb';
+    context.lineWidth = state.kind === 'highlighter' ? 18 : 6;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.beginPath();
+    context.moveTo(state.points[0].x * rect.width, state.points[0].y * rect.height);
+    for (const point of state.points.slice(1)) {
+      context.lineTo(point.x * rect.width, point.y * rect.height);
+    }
+    context.stroke();
+    context.restore();
+  }
+
+  private clearCreatorLiveInk(): void {
+    const canvas = this.creatorDrawingCanvas?.nativeElement;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  private placeCreatorTextInput(event: PointerEvent): void {
+    const point = this.getEditorCanvasPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectedElementId = null;
+    this.activeCreatorTextInput = {
+      x: point.x,
+      y: point.y,
+      width: 0.18,
+      height: 0.06,
+      value: '',
+      color: '#111827'
+    };
+    this.cdr.detectChanges();
+    window.setTimeout(() => {
+      this.editorCanvas?.nativeElement.querySelector<HTMLTextAreaElement>('.creator-inline-text-input')?.focus();
+    });
+  }
+
+  commitCreatorTextInput(event?: Event): void {
+    const page = this.selectedPage;
+    const pending = this.activeCreatorTextInput;
+    const text = pending?.value.trim();
+    if (!page || !pending) {
+      this.activeCreatorTextInput = null;
+      return;
+    }
+    if (!text) {
+      this.activeCreatorTextInput = null;
+      return;
+    }
+    this.syncCreatorTextEditorSize(event);
+    this.captureHistory();
+    const refreshed = this.activeCreatorTextInput ?? pending;
+    const element: BookElement = {
+      id: this.createId('text'),
+      type: 'text',
+      x: this.clamp(refreshed.x, 0, 1 - refreshed.width),
+      y: this.clamp(refreshed.y, 0, 1 - refreshed.height),
+      width: refreshed.width,
+      height: refreshed.height,
+      data: {
+        text,
+        color: refreshed.color,
+        imageDataUrl: this.createTextImageDataUrl(text, refreshed.color),
+        label: 'Text'
+      }
+    };
+    page.elements.push(element);
+    this.selectedElementId = element.id;
+    this.activeCreatorTextInput = null;
+  }
+
+  cancelCreatorTextInput(): void {
+    this.activeCreatorTextInput = null;
+  }
+
+  commitCreatorTextInputFromKey(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    if (keyboardEvent.shiftKey) return;
+    event.preventDefault();
+    this.commitCreatorTextInput(keyboardEvent);
+  }
+
+  private syncCreatorTextEditorSize(event?: Event): void {
+    const pending = this.activeCreatorTextInput;
+    if (!pending) return;
+    const frameRect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    const target = event?.target as HTMLElement | null;
+    const editor = target?.closest<HTMLElement>('.creator-text-editor')
+      ?? this.editorCanvas?.nativeElement.querySelector<HTMLElement>('.creator-text-editor');
+    if (!frameRect || !editor) return;
+    const editorRect = editor.getBoundingClientRect();
+    pending.width = this.clamp(editorRect.width / frameRect.width, 0.08, 0.9);
+    pending.height = this.clamp(editorRect.height / frameRect.height, 0.035, 0.45);
+    pending.x = this.clamp((editorRect.left + editorRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
+    pending.y = this.clamp((editorRect.top + editorRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
   }
 
   private placeMatchEndpoint(event: PointerEvent): void {
@@ -1400,11 +1842,31 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return index;
   }
 
+  getPageRotation(page: BookPage | null | undefined): number {
+    return this.normalizePageRotation(page?.rotation);
+  }
+
+  getSelectedPageAspectRatio(): string {
+    return this.getPageAspectRatioFor(this.selectedPage);
+  }
+
+  getPageAspectRatioFor(page: BookPage | null | undefined): string {
+    const aspect = this.getPageAspectRatioNumber(page);
+    return `${Math.max(0.05, aspect)} / 1`;
+  }
+
   startElementDrag(event: PointerEvent, element: BookElement): void {
+    if (this.isFixedCreatorMark(element)) {
+      event.stopPropagation();
+      this.selectedElementId = element.id;
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const canvasSize = this.getEditorCanvasSize();
     if (!canvasSize) return;
+    const pointer = this.getEditorCanvasPointFromClient(event.clientX, event.clientY) ?? { x: element.x, y: element.y };
+    (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
     this.beginHistoryCapture();
     this.selectedElementId = element.id;
     this.dragState = {
@@ -1412,6 +1874,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       elementId: element.id,
       startClientX: event.clientX,
       startClientY: event.clientY,
+      startPointerX: pointer.x,
+      startPointerY: pointer.y,
       startX: element.x,
       startY: element.y,
       startWidth: element.width || 0.08,
@@ -1422,10 +1886,20 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   }
 
   startElementResize(event: PointerEvent, element: BookElement): void {
+    if (this.isFixedCreatorMark(element)) {
+      event.stopPropagation();
+      this.selectedElementId = element.id;
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const canvasSize = this.getEditorCanvasSize();
     if (!canvasSize) return;
+    const pointer = this.getEditorCanvasPointFromClient(event.clientX, event.clientY) ?? {
+      x: element.x + (element.width || 0.08),
+      y: element.y + (element.height || 0.08)
+    };
+    (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
     this.beginHistoryCapture();
     this.selectedElementId = element.id;
     this.dragState = {
@@ -1433,6 +1907,8 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       elementId: element.id,
       startClientX: event.clientX,
       startClientY: event.clientY,
+      startPointerX: pointer.x,
+      startPointerY: pointer.y,
       startX: element.x,
       startY: element.y,
       startWidth: element.width || 0.08,
@@ -1444,9 +1920,18 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   @HostListener('document:pointermove', ['$event'])
   onDocumentPointerMove(event: PointerEvent): void {
+    if (this.creatorInkState) {
+      event.preventDefault();
+      const events = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [event];
+      for (const pointerEvent of events) {
+        this.updateCreatorInk(pointerEvent.clientX, pointerEvent.clientY);
+      }
+      return;
+    }
     if (this.taskDrawState) {
       event.preventDefault();
       this.updateTaskDraw(event.clientX, event.clientY);
+      this.scheduleCreatorInteractionRefresh();
       return;
     }
     if (this.timelinePinDragState || this.pagePinDragState) {
@@ -1458,9 +1943,15 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     if (!this.dragState || !this.editorCanvas) return;
     const element = this.selectedElement;
     if (!element) return;
+    if (this.isFixedCreatorMark(element)) {
+      this.dragState = null;
+      return;
+    }
 
-    const dx = (event.clientX - this.dragState.startClientX) / this.dragState.canvasWidth;
-    const dy = (event.clientY - this.dragState.startClientY) / this.dragState.canvasHeight;
+    const pointer = this.getEditorCanvasPointFromClient(event.clientX, event.clientY);
+    if (!pointer) return;
+    const dx = pointer.x - this.dragState.startPointerX;
+    const dy = pointer.y - this.dragState.startPointerY;
 
     if (this.dragState.mode === 'resize') {
       const width = this.clamp(this.dragState.startWidth + dx, 0.03, 1 - this.dragState.startX);
@@ -1473,6 +1964,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
         element.width = width;
         element.height = height;
       }
+      this.scheduleCreatorInteractionRefresh();
       return;
     }
 
@@ -1480,12 +1972,38 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     const height = element.height || 0.08;
     element.x = this.clamp(this.dragState.startX + dx, 0, 1 - width);
     element.y = this.clamp(this.dragState.startY + dy, 0, 1 - height);
+    this.scheduleCreatorInteractionRefresh();
+  }
+
+  private scheduleCreatorInteractionRefresh(): void {
+    if (this.creatorInteractionFrame) return;
+    this.creatorInteractionFrame = requestAnimationFrame(() => {
+      this.creatorInteractionFrame = 0;
+      this.cdr.detectChanges();
+    });
+  }
+
+  isFixedCreatorMark(element: BookElement | null | undefined): boolean {
+    return element?.type === 'ink' || element?.type === 'highlighter';
   }
 
   private getEditorCanvasSize(): { width: number; height: number } | null {
     const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
     if (!rect?.width || !rect?.height) return null;
     return { width: rect.width, height: rect.height };
+  }
+
+  private getEditorCanvasPoint(event: MouseEvent | PointerEvent): { x: number; y: number } | null {
+    return this.getEditorCanvasPointFromClient(event.clientX, event.clientY);
+  }
+
+  private getEditorCanvasPointFromClient(clientX: number, clientY: number): { x: number; y: number } | null {
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    if (!rect?.width || !rect.height) return null;
+    return {
+      x: this.clamp((clientX - rect.left) / rect.width, 0, 1),
+      y: this.clamp((clientY - rect.top) / rect.height, 0, 1)
+    };
   }
 
   private startTaskDraw(event: PointerEvent, type: 'textTask' | 'choiceTask' | 'circleTask'): void {
@@ -1535,6 +2053,29 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
 
   @HostListener('document:pointerup', ['$event'])
   onDocumentPointerUp(event: PointerEvent): void {
+    if (this.creatorInkState) {
+      this.updateCreatorInk(event?.clientX ?? 0, event?.clientY ?? 0);
+      this.editorCanvas?.nativeElement.releasePointerCapture?.(event.pointerId);
+      const page = this.selectedPage;
+      if (page) {
+        const points = this.creatorInkState.points.length < 2
+          ? [
+          this.creatorInkState.points[0],
+          {
+            x: this.clamp(this.creatorInkState.points[0].x + 0.01, 0, 1),
+            y: this.creatorInkState.points[0].y
+          }
+        ]
+          : this.creatorInkState.points;
+        const element = this.createCreatorStrokeElement(points, this.creatorInkState.kind);
+        page.elements.push(element);
+        this.selectedElementId = element.id;
+      }
+      this.clearCreatorLiveInk();
+      this.commitHistoryCapture();
+      this.creatorInkState = null;
+      this.lastTaskDrawAt = Date.now();
+    }
     if (this.taskDrawState) {
       this.updateTaskDraw(event?.clientX ?? 0, event?.clientY ?? 0);
       this.commitHistoryCapture();
@@ -1561,6 +2102,15 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   @HostListener('document:pointercancel')
   onDocumentPointerCancel(): void {
     this.swipeDir?.cancel();
+    if (this.creatorInkState) {
+      const page = this.selectedPage;
+      if (page && this.creatorInkState.points.length) {
+        page.elements.push(this.createCreatorStrokeElement(this.creatorInkState.points, this.creatorInkState.kind));
+      }
+      this.clearCreatorLiveInk();
+      this.commitHistoryCapture();
+      this.creatorInkState = null;
+    }
     if (this.taskDrawState) {
       this.commitHistoryCapture();
       this.taskDrawState = null;
@@ -1587,6 +2137,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
   onPdfPageSize(size: { width: number; height: number }): void {
     if (size.width > 0 && size.height > 0) {
       this.pageAspectRatio = `${size.width} / ${size.height}`;
+      this.updateCreatorCanvasWidth();
     }
   }
 
@@ -1739,6 +2290,27 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return String(element.data?.['content'] || element.data?.['text'] || element.data?.['label'] || element.type);
   }
 
+  updateTextMarkText(element: BookElement, value: string): void {
+    element.data['text'] = value;
+    element.data['imageDataUrl'] = this.createTextImageDataUrl(value, String(element.data['color'] || '#111827'));
+    this.markBookDirty();
+  }
+
+  updateMarkColor(element: BookElement, value: string): void {
+    element.data['color'] = value;
+    if (element.type === 'text') {
+      element.data['imageDataUrl'] = this.createTextImageDataUrl(String(element.data['text'] || ''), value || '#111827');
+    }
+    this.markBookDirty();
+  }
+
+  getElementPolylinePoints(element: BookElement): string {
+    const points = Array.isArray(element.data?.['points']) ? element.data['points'] : [];
+    return points
+      .map((point: { x: number; y: number }) => `${Number(point.x) || 0},${Number(point.y) || 0}`)
+      .join(' ');
+  }
+
   getElementAssetUrl(element: BookElement): string {
     if (!this.book) return '';
     const src = String(element.data?.['src'] || '');
@@ -1758,6 +2330,10 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       case 'game': return this.languageService.translate('gameLabel');
       case 'note': return this.languageService.translate('noteLabel');
       case 'answerKey': return 'Answer Key';
+      case 'speakingAi': return 'AI Speaking';
+      case 'ink': return 'Draw Mark';
+      case 'highlighter': return 'Highlighter';
+      case 'text': return 'Text';
       case 'textTask': return 'Text Task';
       case 'choiceTask': return 'Word Bank Gap';
       case 'circleTask': return 'Circling Choice';
@@ -2184,6 +2760,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return {
       id: this.createId('blank'),
       type: 'blank',
+      rotation: 0,
       backgroundColor: '#ffffff',
       elements: []
     };
@@ -2615,6 +3192,57 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     return Math.min(max, Math.max(min, value));
   }
 
+  private createTextImageDataUrl(text: string, color: string): string {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return '';
+
+    const font = 'bold 96px Arial, sans-serif';
+    const maxLineWidth = 1200;
+    const lines = this.wrapTextLines(context, text, maxLineWidth, font);
+    const lineHeight = 110;
+    const padding = 2;
+    const measuredWidth = Math.max(1, ...lines.map((line) => context.measureText(line || ' ').width));
+    const width = Math.ceil(measuredWidth + padding * 2);
+    const height = Math.max(1, Math.ceil(padding * 2 + lines.length * lineHeight));
+    canvas.width = width;
+    canvas.height = height;
+    context.clearRect(0, 0, width, height);
+    context.font = font;
+    context.fillStyle = color || '#111827';
+    context.textBaseline = 'top';
+    context.lineJoin = 'round';
+    lines.forEach((line, index) => {
+      context.fillText(line, padding, padding + index * lineHeight);
+    });
+    return canvas.toDataURL('image/png');
+  }
+
+  private wrapTextLines(context: CanvasRenderingContext2D, text: string, maxWidth: number, font: string): string[] {
+    context.font = font;
+    const sourceLines = String(text || '').split(/\r?\n/);
+    const lines: string[] = [];
+    for (const sourceLine of sourceLines) {
+      const words = sourceLine.split(/\s+/).filter(Boolean);
+      if (!words.length) {
+        lines.push('');
+        continue;
+      }
+      let line = '';
+      for (const word of words) {
+        const next = line ? `${line} ${word}` : word;
+        if (context.measureText(next).width <= maxWidth || !line) {
+          line = next;
+        } else {
+          lines.push(line);
+          line = word;
+        }
+      }
+      lines.push(line);
+    }
+    return lines.length ? lines : [''];
+  }
+
   private isExternalUrl(value: string): boolean {
     try {
       const url = new URL(value);
@@ -2631,10 +3259,96 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
     if (!this.book || !page || page.type !== 'pdf' || !sourcePdf) {
       this.selectedPdfUrl = '';
       this.selectedElementId = null;
+      this.updateCreatorCanvasWidth();
       return;
     }
     this.selectedPdfUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
     this.selectedElementId = null;
+    this.updateCreatorCanvasWidth();
+  }
+
+  private updateCreatorCanvasWidth(afterLayout?: () => void): void {
+    if (this.creatorCanvasFrame) {
+      cancelAnimationFrame(this.creatorCanvasFrame);
+    }
+    this.creatorCanvasFrame = requestAnimationFrame(() => {
+      this.creatorCanvasFrame = 0;
+      const shell = this.editorCanvasShell?.nativeElement;
+      if (!shell) return;
+      const rect = shell.getBoundingClientRect();
+      const availableWidth = Math.max(220, rect.width - 24);
+      const availableHeight = Math.max(260, rect.height - 24);
+      const pageAspect = this.getPageAspectRatioNumber();
+      const fitWidth = Math.min(availableWidth, availableHeight * pageAspect);
+      this.creatorCanvasWidthPx = Math.max(220, fitWidth * this.creatorZoom);
+      this.cdr.detectChanges();
+      if (afterLayout) {
+        requestAnimationFrame(() => {
+          afterLayout();
+          requestAnimationFrame(afterLayout);
+        });
+      }
+    });
+  }
+
+  private getCreatorZoomAnchor(): { x: number; y: number } | null {
+    const shell = this.editorCanvasShell?.nativeElement;
+    const canvas = this.editorCanvas?.nativeElement;
+    if (!shell || !canvas || canvas.offsetWidth <= 0 || canvas.offsetHeight <= 0) return null;
+    return {
+      x: this.clamp((shell.scrollLeft + shell.clientWidth / 2 - canvas.offsetLeft) / canvas.offsetWidth, 0, 1),
+      y: this.clamp((shell.scrollTop + shell.clientHeight / 2 - canvas.offsetTop) / canvas.offsetHeight, 0, 1)
+    };
+  }
+
+  private restoreCreatorZoomAnchor(anchor: { x: number; y: number }): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const shell = this.editorCanvasShell?.nativeElement;
+        const canvas = this.editorCanvas?.nativeElement;
+        if (!shell || !canvas || this.creatorZoom <= 1) return;
+        const maxLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
+        const maxTop = Math.max(0, shell.scrollHeight - shell.clientHeight);
+        shell.scrollLeft = this.clamp(canvas.offsetLeft + canvas.offsetWidth * anchor.x - shell.clientWidth / 2, 0, maxLeft);
+        shell.scrollTop = this.clamp(canvas.offsetTop + canvas.offsetHeight * anchor.y - shell.clientHeight / 2, 0, maxTop);
+      });
+    });
+  }
+
+  private centerCreatorZoom(): void {
+    const shell = this.editorCanvasShell?.nativeElement;
+    const canvas = this.editorCanvas?.nativeElement;
+    if (!shell || !canvas) return;
+    const shellRect = shell.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    const maxLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
+    const maxTop = Math.max(0, shell.scrollHeight - shell.clientHeight);
+    const deltaX = canvasRect.left + canvasRect.width / 2 - (shellRect.left + shellRect.width / 2);
+    const deltaY = canvasRect.top + canvasRect.height / 2 - (shellRect.top + shellRect.height / 2);
+    shell.scrollLeft = this.clamp(shell.scrollLeft + deltaX, 0, maxLeft);
+    shell.scrollTop = this.clamp(shell.scrollTop + deltaY, 0, maxTop);
+  }
+
+  private getPageAspectRatioNumber(page = this.selectedPage): number {
+    const match = this.pageAspectRatio.match(/([0-9.]+)\s*\/\s*([0-9.]+)/);
+    if (!match) return this.getRotatedAspectRatio(210 / 297, page);
+    const width = Number(match[1]);
+    const height = Number(match[2]);
+    const baseAspect = width > 0 && height > 0 ? width / height : 210 / 297;
+    return this.getRotatedAspectRatio(baseAspect, page);
+  }
+
+  private getRotatedAspectRatio(baseAspect: number, page: BookPage | null | undefined): number {
+    return this.isSidewaysRotation(this.getPageRotation(page)) ? 1 / Math.max(0.05, baseAspect) : baseAspect;
+  }
+
+  private normalizePageRotation(value: unknown): number {
+    const rotation = Math.round((Number(value) || 0) / 90) * 90;
+    return ((rotation % 360) + 360) % 360;
+  }
+
+  private isSidewaysRotation(rotation: number): boolean {
+    return rotation === 90 || rotation === 270;
   }
 
   private async attachReturnedTopic(): Promise<void> {
@@ -2692,7 +3406,7 @@ export class BookCreatorComponent implements OnInit, OnDestroy {
       })))
     };
 
-    return this.bookLibrary.saveTopicSnapshot(this.book.id, element.id, snapshot);
+    return this.bookLibrary.saveTopicSnapshot(this.book.id, element.id, snapshot, topic.name);
   }
 
   private blobToDataUrl(blob: Blob): Promise<string> {

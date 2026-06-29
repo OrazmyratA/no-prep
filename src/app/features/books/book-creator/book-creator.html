@@ -33,7 +33,9 @@
           (click)="selectPage(activePageIndex - 1)"
           [disabled]="activePageIndex <= 0"
           [title]="'previousPage' | translate"
-          [attr.aria-label]="'previousPage' | translate">&lt;</button>
+          [attr.aria-label]="'previousPage' | translate">
+          <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+        </button>
         <input
           type="number"
           min="1"
@@ -50,7 +52,9 @@
           (click)="selectPage(activePageIndex + 1)"
           [disabled]="activePageIndex >= activePages.length - 1"
           [title]="'nextPage' | translate"
-          [attr.aria-label]="'nextPage' | translate">&gt;</button>
+          [attr.aria-label]="'nextPage' | translate">
+          <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+        </button>
       </div>
       <div class="toolbar-group">
         <button type="button" class="icon-tool-btn" (click)="undo()" [disabled]="!canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">
@@ -58,6 +62,29 @@
         </button>
         <button type="button" class="icon-tool-btn" (click)="redo()" [disabled]="!canRedo()" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate">
           <img src="assets/images/book/redo.png" alt="">
+        </button>
+      </div>
+      <div class="toolbar-group creator-mark-group">
+        <button type="button" class="icon-tool-btn" (click)="setCreatorZoom(creatorZoom + 0.1)" [title]="'zoomIn' | translate" [attr.aria-label]="'zoomIn' | translate">
+          <img src="assets/images/book/zoom-in.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="setCreatorZoom(creatorZoom - 0.1)" [title]="'zoomOut' | translate" [attr.aria-label]="'zoomOut' | translate">
+          <img src="assets/images/book/zoom-out.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="rotateSelectedPage()" title="Rotate page" aria-label="Rotate page">
+          <img src="assets/images/book/rotate-right.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" [class.active]="creatorDrawMode" (click)="addInkMark()" [title]="'drawLabel' | translate" [attr.aria-label]="'drawLabel' | translate">
+          <img src="assets/images/book/draw.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" [class.active]="creatorHighlighterMode" (click)="addHighlighterMark()" title="Highlighter" aria-label="Highlighter">
+          <img src="assets/images/book/highlighter.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" [class.active]="creatorTextMode" (click)="addTextMark()" title="Text" aria-label="Text">
+          <span aria-hidden="true">T</span>
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="takeCreatorScreenshot()" [disabled]="creatorScreenshotting" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate">
+          <img src="assets/images/book/screenshot.png" alt="">
         </button>
       </div>
       <div class="toolbar-group insert-group">
@@ -81,6 +108,9 @@
         </button>
         <button type="button" class="icon-tool-btn" (click)="addAnswerKey()" title="Answer key" aria-label="Add answer key">
           <img src="assets/images/book/answer key.png" alt="">
+        </button>
+        <button type="button" class="icon-tool-btn" (click)="addSpeakingAi()" title="AI speaking" aria-label="Add AI speaking">
+          <img src="assets/images/book/speaking.png" alt="">
         </button>
       </div>
       <div class="toolbar-group task-insert-group">
@@ -150,7 +180,7 @@
     </div>
   </div>
 
-  <div *ngIf="book" class="creator-workspace" [class.page-strip-collapsed]="pageStripCollapsed">
+  <div *ngIf="book" class="creator-workspace" [class.page-strip-collapsed]="pageStripCollapsed" [class.inspector-collapsed]="inspectorCollapsed">
     <div
       class="mobile-panel-backdrop"
       *ngIf="pageStripOpen || inspectorOpen"
@@ -183,6 +213,7 @@
               *ngIf="item.page.type === 'pdf' && getPagePdfUrl(item.page)"
               [sourceUrl]="getPagePdfUrl(item.page)"
               [pageNumber]="item.page.pdfPage || 1"
+              [rotation]="getPageRotation(item.page)"
               [renderScale]="0.22"
               [lazy]="true">
             </app-pdf-page-canvas>
@@ -239,6 +270,7 @@
               *ngIf="primaryWorkbook && item.page.type === 'pdf' && getPagePdfUrl(item.page, primaryWorkbook)"
               [sourceUrl]="getPagePdfUrl(item.page, primaryWorkbook)"
               [pageNumber]="item.page.pdfPage || 1"
+              [rotation]="getPageRotation(item.page)"
               [renderScale]="0.22"
               [lazy]="true">
             </app-pdf-page-canvas>
@@ -277,40 +309,55 @@
       </section>
     </aside>
 
-    <main class="editor-canvas-shell">
+    <main #editorCanvasShell class="editor-canvas-shell" [class.zoomed]="creatorZoom > 1">
       <button
         type="button"
         class="creator-page-edge previous"
         (click)="$event.stopPropagation(); selectPage(activePageIndex - 1)"
         [disabled]="activePageIndex <= 0"
         [title]="'previousPage' | translate"
-        [attr.aria-label]="'previousPage' | translate">&lt;</button>
+        [attr.aria-label]="'previousPage' | translate">
+        <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+      </button>
       <button
         type="button"
         class="creator-page-edge next"
         (click)="$event.stopPropagation(); selectPage(activePageIndex + 1)"
         [disabled]="activePageIndex >= activePages.length - 1"
         [title]="'nextPage' | translate"
-        [attr.aria-label]="'nextPage' | translate">&gt;</button>
-      <div
-        #editorCanvas
-        class="editor-canvas"
-        [style.aspect-ratio]="pageAspectRatio"
-        [style.background]="selectedPage?.backgroundColor || '#f8fafc'"
-        (wheel)="onEditorWheel($event)"
-        (click)="onCanvasBackgroundClick($event)"
-        appSwipe
-        [swipeDisabled]="!!placingMatchTask || !!placingTextTask || !!placingChoiceTask || !!placingCircleTask || isDragging"
-        (swipeLeft)="selectPage(activePageIndex + 1)"
-        (swipeRight)="selectPage(activePageIndex - 1)"
-        (pointerdown)="onCanvasPointerDown($event)">
+        [attr.aria-label]="'nextPage' | translate">
+        <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+      </button>
+      <div class="editor-canvas-scroll-content">
+        <div
+          #editorCanvas
+          class="editor-canvas"
+          [class.screenshotting]="creatorScreenshotting"
+          [class.mark-mode-active]="creatorDrawMode || creatorHighlighterMode"
+          [style.width.px]="creatorCanvasWidthPx"
+          [style.aspect-ratio]="getSelectedPageAspectRatio()"
+          [style.background]="selectedPage?.backgroundColor || '#f8fafc'"
+          (wheel)="onEditorWheel($event)"
+          (click)="onCanvasBackgroundClick($event)"
+          appSwipe
+          [swipeDisabled]="!!placingMatchTask || !!placingTextTask || !!placingChoiceTask || !!placingCircleTask || creatorDrawMode || creatorHighlighterMode || creatorTextMode || isDragging"
+          (swipeLeft)="selectPage(activePageIndex + 1)"
+          (swipeRight)="selectPage(activePageIndex - 1)"
+          (pointerdown)="onCanvasPointerDown($event)">
+        <div class="editor-page-content">
         <app-pdf-page-canvas
           *ngIf="selectedPage?.type === 'pdf' && selectedPdfUrl"
           [sourceUrl]="selectedPdfUrl"
           [pageNumber]="selectedPage?.pdfPage || 1"
+          [rotation]="getPageRotation(selectedPage)"
           [renderScale]="1.6"
           (pageSize)="onPdfPageSize($event)">
         </app-pdf-page-canvas>
+        <canvas
+          #creatorDrawingCanvas
+          class="creator-live-drawing-layer"
+          [class.active]="creatorDrawMode || creatorHighlighterMode">
+        </canvas>
         <div class="pdf-placeholder page-starter" *ngIf="!selectedPage || shouldShowPageStarter()">
           <strong>{{ activePageLabel }}</strong>
           <span *ngIf="activePageSource === 'main'">{{ 'creatorUploadStudentPdfHint' | translate }}</span>
@@ -334,6 +381,10 @@
           [class.image-element]="element.type === 'image'"
           [class.note-element]="element.type === 'note'"
           [class.answer-key-element]="element.type === 'answerKey'"
+          [class.speaking-ai-element]="element.type === 'speakingAi'"
+          [class.ink-element]="element.type === 'ink'"
+          [class.highlighter-element]="element.type === 'highlighter'"
+          [class.text-mark-element]="element.type === 'text'"
           [class.game-element]="element.type === 'game'"
           [class.video-element]="element.type === 'video'"
           [class.text-task-element]="element.type === 'textTask'"
@@ -356,8 +407,27 @@
           <span *ngIf="element.type === 'focus'" class="focus-label"></span>
           <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
           <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+          <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
+            <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
+          </span>
           <span *ngIf="element.type === 'note'" class="note-marker">
             <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+          </span>
+          <svg *ngIf="element.type === 'ink' && element.data['points']; else creatorInkFallback" class="creator-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+            <polyline [attr.points]="getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <ng-template #creatorInkFallback>
+            <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
+          </ng-template>
+          <svg *ngIf="element.type === 'highlighter' && element.data['points']; else creatorHighlighterFallback" class="creator-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+            <polyline [attr.points]="getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+          </svg>
+          <ng-template #creatorHighlighterFallback>
+            <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>
+          </ng-template>
+          <span *ngIf="element.type === 'text'" class="teacher-text-mark" [style.color]="element.data['color'] || '#111827'">
+            <img *ngIf="element.data['imageDataUrl']" [src]="element.data['imageDataUrl']" alt="">
+            <span *ngIf="!element.data['imageDataUrl']">{{ element.data['text'] || 'Text' }}</span>
           </span>
           <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
           <span *ngIf="element.type === 'textTask'" class="text-task-line"></span>
@@ -367,10 +437,29 @@
             <small>{{ getMatchTaskSideLabel(element) }}</small>
           </span>
           <span
-            *ngIf="element.id === selectedElementId && element.type !== 'matchTask'"
+            *ngIf="element.id === selectedElementId && element.type !== 'matchTask' && !isFixedCreatorMark(element)"
             class="resize-handle"
             (pointerdown)="startElementResize($event, element)">
           </span>
+        </div>
+
+        <div
+          *ngIf="activeCreatorTextInput"
+          class="creator-text-editor"
+          [style.left.%]="activeCreatorTextInput.x * 100"
+          [style.top.%]="activeCreatorTextInput.y * 100"
+          [style.width.%]="activeCreatorTextInput.width * 100"
+          [style.height.%]="activeCreatorTextInput.height * 100"
+          [style.color]="activeCreatorTextInput.color"
+          (click)="$event.stopPropagation()"
+          (pointerdown)="$event.stopPropagation()"
+          aria-label="Text">
+          <textarea
+            class="creator-inline-text-input"
+            [(ngModel)]="activeCreatorTextInput.value"
+            (keydown.enter)="commitCreatorTextInputFromKey($event)"
+            (keydown.escape)="cancelCreatorTextInput()"
+            (blur)="commitCreatorTextInput($event)"></textarea>
         </div>
 
         <ng-container *ngIf="selectedElement as guideElement">
@@ -405,10 +494,21 @@
             [src]="previewGuideImageUrl"
             alt="">
         </div>
+        </div>
+        </div>
       </div>
     </main>
 
-    <aside class="inspector" [class.open]="inspectorOpen">
+    <div class="inspector-collapsed-rail" *ngIf="inspectorCollapsed">
+      <button type="button" class="inspector-toggle-btn" (click)="toggleInspector()" title="Show settings" aria-label="Show settings">
+        <img class="drawer-toggle-icon drawer-toggle-hide inspector-show-icon" src="assets/images/book/hide.png" alt="">
+      </button>
+    </div>
+
+    <aside class="inspector" [class.open]="inspectorOpen" *ngIf="!inspectorCollapsed">
+      <button type="button" class="inspector-toggle-btn inspector-hide-btn" (click)="toggleInspector()" title="Hide settings" aria-label="Hide settings">
+        <img class="drawer-toggle-icon drawer-toggle-hide inspector-hide-icon" src="assets/images/book/hide.png" alt="">
+      </button>
       <h2 *ngIf="!selectedElement">{{ activePageLabel }}</h2>
       <div class="page-action-grid" *ngIf="selectedPage && !selectedElement">
         <button
@@ -494,6 +594,26 @@
             (blur)="commitHistoryCapture()"
             *ngIf="element.type === 'note'"></textarea>
         </label>
+        <div class="mark-settings" *ngIf="element.type === 'ink' || element.type === 'highlighter' || element.type === 'text'">
+          <label *ngIf="element.type === 'text'">
+            Text
+            <input
+              type="text"
+              [ngModel]="element.data['text']"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateTextMarkText(element, $event)"
+              (blur)="commitHistoryCapture()">
+          </label>
+          <label>
+            Color
+            <input
+              type="color"
+              [ngModel]="element.data['color'] || (element.type === 'highlighter' ? '#fde047' : element.type === 'text' ? '#111827' : '#2563eb')"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateMarkColor(element, $event)"
+              (blur)="commitHistoryCapture()">
+          </label>
+        </div>
         <div class="text-task-settings" *ngIf="element.type === 'textTask'">
           <div
             class="text-task-answer-row"
@@ -660,6 +780,55 @@
         </div>
         <div class="image-settings-panel" *ngIf="element.type === 'answerKey'">
           <app-image-uploader [contextKey]="element.id" (imageSelected)="onBookImageSelected($event, element)"></app-image-uploader>
+        </div>
+        <div class="speaking-ai-settings" *ngIf="element.type === 'speakingAi'">
+          <label>
+            Language
+            <input
+              type="text"
+              [ngModel]="element.data['language']"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateSpeakingAiField(element, 'language', $event)"
+              (blur)="commitHistoryCapture()"
+              placeholder="en, tr, ar...">
+          </label>
+          <label>
+            Teacher prompt
+            <textarea
+              rows="18"
+              [ngModel]="element.data['prompt']"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateSpeakingAiField(element, 'prompt', $event)"
+              (blur)="commitHistoryCapture()"
+              [placeholder]="speakingPromptExample"></textarea>
+          </label>
+          <div class="speaking-pack-note">
+            Required pack: {{ getSpeakingAiRequiredPackLabel(element) }}
+          </div>
+          <label>
+            Pack download URL
+            <input
+              type="url"
+              [ngModel]="element.data['packUrl']"
+              (focus)="beginHistoryCapture()"
+              (ngModelChange)="updateSpeakingAiField(element, 'packUrl', $event)"
+              (blur)="commitHistoryCapture()"
+              placeholder="https://...">
+          </label>
+          <button type="button" class="mini-btn" (click)="previewSpeakingAi(element)" [disabled]="checkingSpeakingPreview">
+            {{ checkingSpeakingPreview && isSpeakingPreviewVisible(element) ? 'Checking...' : 'Preview' }}
+          </button>
+          <div class="speaking-preview-card" *ngIf="isSpeakingPreviewVisible(element)">
+            <p>{{ getSpeakingPreviewStatusText() }}</p>
+            <div
+              class="speaking-preview-row"
+              *ngFor="let row of getSpeakingPreviewRows()"
+              [class.ready]="row.ready">
+              <span>{{ row.label }}</span>
+              <strong>{{ row.ready ? 'Ready' : 'Missing' }}</strong>
+              <small>{{ getSpeakingPreviewPackMeta(row.pack) }}</small>
+            </div>
+          </div>
         </div>
         <div class="video-settings-panel" *ngIf="element.type === 'video'">
           <button type="button" class="mini-icon-btn wide" (click)="uploadVideoElement(element)" [title]="'creatorUploadVideo' | translate" [attr.aria-label]="'creatorUploadVideo' | translate">
