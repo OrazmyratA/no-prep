@@ -68,6 +68,7 @@ import { BookReaderSpeakingPackController } from './book-reader-speaking-pack-co
 import { BookReaderSpeakingSessionController } from './book-reader-speaking-session-controller';
 import { BookReaderSpeakingPlaybackController } from './book-reader-speaking-playback-controller';
 import { BookReaderSpeakingRecordingController } from './book-reader-speaking-recording-controller';
+import { BookReaderSpeakingAiController } from './book-reader-speaking-ai-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -99,6 +100,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly speakingSessionController = new BookReaderSpeakingSessionController(this);
   private readonly speakingPlaybackController = new BookReaderSpeakingPlaybackController(this);
   private readonly speakingRecordingController = new BookReaderSpeakingRecordingController(this);
+  private readonly speakingAiController = new BookReaderSpeakingAiController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -2529,187 +2531,40 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.speakingRecordingController.finalizeSpeakingRecording(key, mimeType, saveAttempt);
   }
   private async tryTranscribeSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
-    const taskElement = this.activeSpeakingElement?.id === attempt.elementId
-      ? this.activeSpeakingElement
-      : this.findElementById(attempt.elementId);
-    if (!attempt.audio || !taskElement || !this.speakingRuntimeStatus?.speechToTextAvailable) return;
-    const sttPack = this.speakingRuntimeStatus.featurePacks.speechToText ?? this.speakingRuntimeStatus.pack;
-    const dialoguePack = this.speakingRuntimeStatus.featurePacks.dialogue ?? this.speakingRuntimeStatus.pack;
-    const ttsPack = this.speakingRuntimeStatus.featurePacks.textToSpeech ?? this.speakingRuntimeStatus.pack;
-    if (!sttPack) return;
-    try {
-      const transcript = await this.aiSpeakingRuntime.transcribeAudio({
-        audio: attempt.audio,
-        mimeType: attempt.audioMimeType || attempt.audio.type || 'audio/webm',
-        language: sttPack.language,
-        packId: sttPack.id
-      });
-      const lines = [
-        `Student: ${transcript.text || '[no speech detected]'}`
-      ];
-      attempt.studentText = transcript.text || '';
-      attempt.transcript = lines.join('\n\n');
-      this.forceUiRefresh();
-      let spokenResponse = '';
-      if (this.speakingRuntimeStatus.dialogueAvailable && dialoguePack) {
-        try {
-          const config = this.buildSpeakingTaskConfig(taskElement);
-          const dialogue = await this.aiSpeakingRuntime.generateDialogueResponse({
-            config,
-            history: this.buildSpeakingDialogueHistory(attempt, transcript.text),
-            latestStudentText: transcript.text,
-            sessionId: attempt.sessionId || this.activeSpeakingSessionId || undefined,
-            language: dialoguePack.language,
-            packId: dialoguePack.id
-          });
-          if (dialogue.responseText) lines.push(`AI: ${dialogue.responseText}`);
-          if (dialogue.feedback) lines.push(`Feedback: ${dialogue.feedback}`);
-          spokenResponse = dialogue.responseText || dialogue.feedback || '';
-          attempt.aiText = spokenResponse;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Offline dialogue failed.';
-          lines.push(`AI feedback unavailable: ${message}`);
-        }
-        if (!spokenResponse) {
-          spokenResponse = transcript.text
-            ? 'Thanks. Your speaking attempt has been saved. Please try one more sentence.'
-            : 'I could not hear speech clearly. Please try again when you are ready.';
-          lines.push(`AI: ${spokenResponse}`);
-          attempt.aiText = spokenResponse;
-        }
-      } else {
-        spokenResponse = transcript.text
-          ? 'Your speaking attempt has been saved. Your transcript is ready.'
-          : 'I could not hear speech clearly. Please try again when you are ready.';
-        lines.push(`AI: ${spokenResponse}`);
-        lines.push('Speaking feedback unavailable: Speaking Pack is not fully ready.');
-        attempt.aiText = spokenResponse;
-      }
-      attempt.transcript = lines.join('\n\n');
-      if (spokenResponse && this.speakingRuntimeStatus.textToSpeechAvailable && ttsPack) {
-        try {
-          const speech = await this.aiSpeakingRuntime.synthesizeSpeech({
-            text: spokenResponse,
-            language: ttsPack.language,
-            packId: ttsPack.id
-          });
-          attempt.responseAudio = speech.audio;
-          attempt.responseAudioMimeType = speech.mimeType;
-          this.forceUiRefresh();
-          this.playSpeakingAttemptAudio(attempt, 'ai');
-          showAppNotification('Speaking response is ready.', 'success');
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Offline speech synthesis failed.';
-          attempt.transcript = `${attempt.transcript}\n\nSpeaking voice unavailable: ${message}`;
-          showAppNotification(`Speaking voice unavailable: ${message}`, 'error');
-        }
-      } else if (spokenResponse && !this.speakingRuntimeStatus.textToSpeechAvailable) {
-        const message = this.speakingRuntimeStatus.reason || 'Offline text-to-speech is not ready.';
-        attempt.transcript = `${attempt.transcript}\n\nSpeaking voice unavailable: ${message}`;
-      }
-    } catch (error) {
-      attempt.transcript = error instanceof Error
-        ? `Recording captured. Offline AI processing failed: ${error.message}`
-        : 'Recording captured. Offline AI processing failed.';
-      showAppNotification(attempt.transcript, 'error');
-    }
+    await this.speakingAiController.tryTranscribeSpeakingAttempt(attempt);
   }
 
   private buildSpeakingTaskConfig(element: BookElement): AiSpeakingTaskConfig {
-    return {
-      language: this.getSpeakingAiLanguage(element),
-      topic: String(element.data?.['topic'] || ''),
-      teacherPrompt: String(element.data?.['teacherPrompt'] || element.data?.['prompt'] || ''),
-      questions: Array.isArray(element.data?.['questions'])
-        ? element.data['questions'].map((item: unknown) => String(item || '').trim()).filter(Boolean)
-        : [],
-      vocabulary: String(element.data?.['vocabulary'] || ''),
-      sampleAnswer: String(element.data?.['sampleAnswer'] || ''),
-      maxDurationSeconds: 0
-    };
+    return this.speakingAiController.buildSpeakingTaskConfig(element);
   }
 
   private buildSpeakingDialogueHistory(currentAttempt: BookSpeakingAttempt, latestStudentText: string): AiSpeakingTurn[] {
-    const sessionId = currentAttempt.sessionId || this.activeSpeakingSessionId;
-    const turns: AiSpeakingTurn[] = [];
-    const attempts = (this.speakingAttempts.get(currentAttempt.elementId) ?? [])
-      .filter((attempt) => attempt.key !== currentAttempt.key)
-      .filter((attempt) => sessionId ? attempt.sessionId === sessionId : true)
-      .sort((a, b) => this.compareSpeakingAttemptsByTurn(a, b));
-
-    for (const attempt of attempts) {
-      const studentText = this.getSpeakingAttemptStudentText(attempt);
-      const aiText = this.getSpeakingAttemptAiText(attempt);
-      if (studentText) {
-        turns.push({
-          speaker: 'student',
-          text: studentText,
-          startedAt: attempt.startedAt,
-          endedAt: attempt.endedAt
-        });
-      }
-      if (aiText) {
-        turns.push({
-          speaker: 'ai',
-          text: aiText,
-          startedAt: attempt.endedAt || attempt.startedAt
-        });
-      }
-    }
-
-    turns.push({
-      speaker: 'student',
-      text: latestStudentText || '[no speech detected]',
-      startedAt: currentAttempt.startedAt,
-      endedAt: currentAttempt.endedAt
-    });
-    return turns.slice(-12);
+    return this.speakingAiController.buildSpeakingDialogueHistory(currentAttempt, latestStudentText);
   }
 
   private getSpeakingAttemptStudentText(attempt: BookSpeakingAttempt): string {
-    if (attempt.studentText) return attempt.studentText;
-    const match = String(attempt.transcript || '').match(/(?:^|\n)Student:\s*([\s\S]*?)(?:\n\nAI:|\n\nFeedback:|$)/);
-    return match ? match[1].trim() : '';
+    return this.speakingAiController.getSpeakingAttemptStudentText(attempt);
   }
 
   private getSpeakingAttemptAiText(attempt: BookSpeakingAttempt): string {
-    if (attempt.aiText) return attempt.aiText;
-    const match = String(attempt.transcript || '').match(/(?:^|\n)AI:\s*([\s\S]*?)(?:\n\nFeedback:|\n\nAI voice unavailable:|\n\nSpeaking voice unavailable:|$)/);
-    const text = match ? match[1].trim() : '';
-    return /^(thinking|processing)/i.test(text) ? '' : text;
+    return this.speakingAiController.getSpeakingAttemptAiText(attempt);
   }
 
   private isSpeakingAttemptProcessing(attempt: BookSpeakingAttempt): boolean {
-    const transcript = String(attempt.transcript || '').toLowerCase();
-    return attempt.status === 'active'
-      || transcript.includes('processing')
-      || transcript.includes('recording captured')
-      || (!!attempt.studentText && !attempt.aiText);
+    return this.speakingAiController.isSpeakingAttemptProcessing(attempt);
   }
 
   private getNextSpeakingTurnIndex(element: BookElement | null): number {
-    if (!element || !this.activeSpeakingSessionId) return 0;
-    const attempts = this.speakingAttempts.get(element.id) ?? [];
-    return attempts
-      .filter((attempt) => attempt.sessionId === this.activeSpeakingSessionId)
-      .reduce((max, attempt) => Math.max(max, Number(attempt.turnIndex ?? -1)), -1) + 1;
+    return this.speakingAiController.getNextSpeakingTurnIndex(element);
   }
 
   private sortSpeakingAttemptsByTurn(attempts: BookSpeakingAttempt[]): BookSpeakingAttempt[] {
-    return [...attempts].sort((a, b) => this.compareSpeakingAttemptsByTurn(a, b));
+    return this.speakingAiController.sortSpeakingAttemptsByTurn(attempts);
   }
 
   private compareSpeakingAttemptsByTurn(a: BookSpeakingAttempt, b: BookSpeakingAttempt): number {
-    const aTurn = Number(a.turnIndex);
-    const bTurn = Number(b.turnIndex);
-    if (Number.isFinite(aTurn) && Number.isFinite(bTurn) && aTurn !== bTurn) {
-      return aTurn - bTurn;
-    }
-    if (Number.isFinite(aTurn) && !Number.isFinite(bTurn)) return -1;
-    if (!Number.isFinite(aTurn) && Number.isFinite(bTurn)) return 1;
-    return String(a.startedAt).localeCompare(String(b.startedAt));
+    return this.speakingAiController.compareSpeakingAttemptsByTurn(a, b);
   }
-
   private findSpeakingAttemptByKey(key: string): BookSpeakingAttempt | null {
     for (const attempts of this.speakingAttempts.values()) {
       const found = attempts.find((attempt) => attempt.key === key);
