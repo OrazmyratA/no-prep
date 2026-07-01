@@ -1,0 +1,53 @@
+@media (max-width: 460px) {
+  .speaking-ai-dock {
+    left: calc(0.45rem + env(safe-area-inset-left, 0px));
+    bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 0.9rem);
+    border-radius: 0.55rem;
+  }
+
+  .speaking-ai-main {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    gap: 0.35rem;
+    padding: 0.42rem;
+  }
+
+  .speaking-ai-missing-pack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .speaking-ai-start {
+    width: 2.05rem;
+    height: 2.05rem;
+  }
+
+  .speaking-ai-attempt-row {
+    grid-template-columns: 1.9rem 1.9rem minmax(0, 1fr) 3.7rem 1.9rem;
+  }
+
+  .speaking-ai-session-row {
+    grid-template-columns: 1.9rem minmax(0, 1fr) 1.9rem 1.9rem;
+  }
+
+  .ai-pack-manager-backdrop {
+    padding: 0.45rem;
+  }
+
+  .ai-pack-manager {
+    max-height: calc(100vh - 0.9rem);
+    border-radius: 0.8rem;
+  }
+
+  .ai-pack-readiness {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ai-pack-card {
+    grid-template-columns: minmax(0, 1fr) 2rem;
+  }
+
+  .ai-pack-feature-tags {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

@@ -85,6 +85,7 @@ import {
   cloneTextAnnotation,
   createTextImageDataUrl
 } from './book-reader-annotation-utils';
+import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
 
 @Component({
   selector: 'app-book-reader',
@@ -92,7 +93,6 @@ import {
   templateUrl: './book-reader.html',
   styleUrls: [
     './book-reader.css',
-    './book-reader-speaking.css',
     './book-reader-controls.css',
     './book-reader-stage.css',
     './book-reader-elements.css',
@@ -111,8 +111,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('expandedVideo') expandedVideo?: ElementRef<HTMLVideoElement>;
   @ViewChild('expandedVideoFrame') expandedVideoFrame?: ElementRef<HTMLElement>;
   @ViewChild('guidePinMediaFrame') guidePinMediaFrame?: ElementRef<HTMLElement>;
-  @ViewChild('speakingAiChat') speakingAiChat?: ElementRef<HTMLElement>;
-  @ViewChild('speakingRecordButton') speakingRecordButton?: ElementRef<HTMLButtonElement>;
+  @ViewChild(BookReaderSpeakingPanelComponent) speakingPanel?: BookReaderSpeakingPanelComponent;
+
+  readonly readerContext = this;
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -3964,7 +3965,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const glow = 0.75 + safeLevel * 1.45;
     this.speakingRecordingGlow = `${glow}rem`;
     this.speakingRecordingOuterGlow = `${glow * 1.65}rem`;
-    const button = this.speakingRecordButton?.nativeElement;
+    const button = this.speakingPanel?.speakingRecordButton?.nativeElement;
     if (button) {
       button.style.setProperty('--voice-aura-scale', String(this.speakingRecordingAuraScale));
       button.style.setProperty('--voice-ring-scale', String(this.speakingRecordingRingScale));
@@ -4527,7 +4528,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.speakingChatScrollFrame = requestAnimationFrame(() => {
       this.speakingChatScrollFrame = 0;
-      const chat = this.speakingAiChat?.nativeElement;
+      const chat = this.speakingPanel?.speakingAiChat?.nativeElement;
       if (!chat) return;
       chat.scrollTop = chat.scrollHeight;
     });

@@ -1,0 +1,190 @@
+<div class="speaking-ai-dock" *ngIf="reader.activeSpeakingElement">
+  <div class="speaking-ai-main" *ngIf="reader.isSpeakingAiPackInstalled(reader.activeSpeakingElement) || reader.checkingSpeakingRuntime; else missingSpeakingPack">
+    <button
+      type="button"
+      class="speaking-ai-start"
+      (click)="reader.toggleSpeakingConversation()"
+      [disabled]="reader.checkingSpeakingRuntime"
+      [attr.aria-label]="reader.getSpeakingPrimaryActionLabel()"
+      [title]="reader.getSpeakingPrimaryActionLabel()">
+      <img [src]="reader.speakingSessionActive ? 'assets/images/book/close.png' : 'assets/images/book/ai start.png'" alt="">
+    </button>
+    <span class="speaking-ai-spacer" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="speaking-ai-expand"
+      (click)="reader.speakingPanelExpanded = !reader.speakingPanelExpanded"
+      [attr.aria-label]="reader.speakingPanelExpanded ? 'Hide attempts' : 'Show attempts'">
+      <img [src]="reader.speakingPanelExpanded ? 'assets/images/book/hide.png' : 'assets/images/book/show.png'" alt="">
+    </button>
+    <button
+      type="button"
+      class="speaking-ai-pack-button"
+      (click)="reader.openAiPackManager()"
+      aria-label="Speaking Pack"
+      title="Speaking Pack">
+      AI
+    </button>
+  </div>
+  <ng-template #missingSpeakingPack>
+    <div class="speaking-ai-missing-pack">
+      <div>
+        <strong>{{ reader.getSpeakingAiLanguage(reader.activeSpeakingElement) | uppercase }} Speaking Pack required</strong>
+        <span>{{ reader.getSpeakingRequiredPackText() }}</span>
+      </div>
+      <div class="speaking-ai-missing-actions">
+        <button
+          type="button"
+          class="speaking-ai-mini"
+          *ngIf="reader.hasSpeakingPackUrl(reader.activeSpeakingElement)"
+          (click)="reader.openSpeakingPackUrl(reader.activeSpeakingElement)">
+          Get Pack
+        </button>
+        <button type="button" class="speaking-ai-mini" (click)="reader.importSpeakingAiPack()" [disabled]="reader.importingSpeakingPack">
+          {{ reader.importingSpeakingPack ? 'Importing' : 'Import Pack' }}
+        </button>
+        <button type="button" class="speaking-ai-pack-button" (click)="reader.openAiPackManager()" aria-label="Speaking Pack" title="Speaking Pack">
+          AI
+        </button>
+      </div>
+    </div>
+  </ng-template>
+  <div class="speaking-ai-attempts" *ngIf="reader.speakingPanelExpanded">
+    <ng-container *ngIf="reader.speakingSessionActive; else speakingSessionHistory">
+      <div #speakingAiChat class="speaking-ai-chat">
+        <div class="speaking-ai-empty" *ngIf="!reader.getActiveSpeakingChatTurns().length">
+          Tap the microphone to speak.
+        </div>
+        <div
+          class="speaking-ai-bubble"
+          *ngFor="let turn of reader.getActiveSpeakingChatTurns(); trackBy: reader.trackBySpeakingChatTurnId"
+          [class.student]="turn.speaker === 'student'"
+          [class.ai]="turn.speaker === 'ai'"
+          [class.pending]="turn.pending">
+          {{ turn.text }}
+        </div>
+      </div>
+      <button
+        #speakingRecordButton
+        type="button"
+        class="speaking-ai-speak"
+        [class.recording]="reader.speakingConversationActive"
+        [style.--voice-aura-scale]="reader.speakingRecordingAuraScale"
+        [style.--voice-ring-scale]="reader.speakingRecordingRingScale"
+        [style.--voice-aura-opacity]="reader.speakingRecordingAuraOpacity"
+        [style.--voice-ring-opacity]="reader.speakingRecordingRingOpacity"
+        [style.--voice-glow]="reader.speakingRecordingGlow"
+        [style.--voice-outer-glow]="reader.speakingRecordingOuterGlow"
+        (click)="reader.toggleSpeakingTurnRecording()"
+        [disabled]="reader.checkingSpeakingRuntime"
+        [attr.aria-label]="reader.getSpeakingTurnActionLabel()"
+        [title]="reader.getSpeakingTurnActionLabel()">
+        <img [src]="reader.speakingConversationActive ? 'assets/images/book/stop record.png' : 'assets/images/book/microphone.png'" alt="">
+      </button>
+    </ng-container>
+
+    <ng-template #speakingSessionHistory>
+      <div class="speaking-ai-session-list">
+        <div class="speaking-ai-empty" *ngIf="!reader.getFinishedSpeakingSessions(reader.activeSpeakingElement).length">
+          No conversations yet.
+        </div>
+        <div class="speaking-ai-session-row" *ngFor="let session of reader.getFinishedSpeakingSessions(reader.activeSpeakingElement); trackBy: reader.trackBySpeakingSessionId">
+          <button
+            type="button"
+            class="speaking-ai-mini icon"
+            (click)="reader.toggleSpeakingSessionPlayback(session)"
+            [attr.aria-label]="reader.isSpeakingSessionPlaying(session) ? 'Pause speaking conversation' : 'Play speaking conversation'"
+            [title]="reader.isSpeakingSessionPlaying(session) ? 'Pause' : 'Play'">
+            <img [src]="reader.isSpeakingSessionPlaying(session) ? 'assets/images/book/pause.png' : 'assets/images/book/play.png'" alt="">
+          </button>
+          <div class="speaking-ai-session-title">
+            <input
+              type="text"
+              [ngModel]="reader.getSpeakingSessionDraft(session)"
+              (ngModelChange)="reader.setSpeakingSessionDraft(session, $event)"
+              (focus)="reader.setSpeakingSessionDraft(session, reader.getSpeakingSessionDraft(session))"
+              (blur)="reader.renameSpeakingSession(session, reader.getSpeakingSessionDraft(session))"
+              (click)="$event.stopPropagation()"
+              (keydown.enter)="reader.renameSpeakingSession(session, reader.getSpeakingSessionDraft(session)); $any($event.target).blur()"
+              aria-label="Speaking conversation name">
+          </div>
+          <button type="button" class="speaking-ai-mini icon" (click)="reader.exportSpeakingSession(session)" aria-label="Export speaking conversation" title="Export">
+            <img src="assets/images/book/export.png" alt="">
+          </button>
+          <button type="button" class="speaking-ai-mini danger" (click)="reader.deleteSpeakingSession(session)" aria-label="Delete speaking conversation">
+            <img src="assets/images/book/delete.png" alt="">
+          </button>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+</div>
+
+<div class="ai-pack-manager-backdrop" *ngIf="reader.aiPackManagerOpen" (click)="reader.closeAiPackManager()">
+  <section class="ai-pack-manager" (click)="$event.stopPropagation()" aria-label="Speaking Pack">
+    <header>
+      <div>
+        <strong>Speaking Packs</strong>
+        <span>{{ reader.getSpeakingAiLanguage(reader.activeSpeakingElement) | uppercase }} language</span>
+      </div>
+      <button type="button" class="speaking-ai-mini danger" (click)="reader.closeAiPackManager()" aria-label="Close Speaking Pack">
+        <img src="assets/images/book/close.png" alt="">
+      </button>
+    </header>
+
+    <div class="ai-pack-readiness">
+      <div
+        class="ai-pack-readiness-row"
+        *ngFor="let row of reader.getAiPackManagerRows()"
+        [class.ready]="row.ready">
+        <span>{{ row.label }}</span>
+        <strong>{{ row.ready ? 'Ready' : 'Missing' }}</strong>
+      </div>
+    </div>
+
+    <p class="ai-pack-reason">{{ reader.getSpeakingRuntimeStatusText() }}</p>
+
+    <div class="ai-pack-actions">
+      <button
+        type="button"
+        class="speaking-ai-mini"
+        *ngIf="reader.hasSpeakingPackUrl(reader.activeSpeakingElement)"
+        (click)="reader.openSpeakingPackUrl(reader.activeSpeakingElement)">
+        Get Pack
+      </button>
+      <button type="button" class="speaking-ai-mini" (click)="reader.importSpeakingAiPack()" [disabled]="reader.importingSpeakingPack || reader.aiPackManagerBusy">
+        {{ reader.importingSpeakingPack ? 'Importing' : 'Import Pack' }}
+      </button>
+      <button type="button" class="speaking-ai-mini" (click)="reader.openAiPackManager()" [disabled]="reader.aiPackManagerBusy">
+        {{ reader.aiPackManagerBusy ? 'Checking' : 'Refresh' }}
+      </button>
+      <button type="button" class="speaking-ai-mini" (click)="reader.aiPackAdvancedOpen = !reader.aiPackAdvancedOpen">
+        {{ reader.aiPackAdvancedOpen ? 'Hide Advanced' : 'Advanced' }}
+      </button>
+    </div>
+
+    <div class="ai-pack-list">
+      <div class="speaking-ai-empty" *ngIf="!reader.getInstalledAiPacks().length">
+        No Speaking Packs installed.
+      </div>
+      <article class="ai-pack-card" *ngFor="let pack of reader.getInstalledAiPacks(); trackBy: reader.trackByAiPackId">
+        <div class="ai-pack-card-main">
+          <strong>{{ pack.label }}</strong>
+          <span>{{ pack.language | uppercase }} Â· {{ reader.getAiPackQualityLabel(pack) }} Speaking Pack</span>
+          <em *ngIf="reader.getAiPackSelectedRole(pack)">{{ reader.getAiPackSelectedRole(pack) }}</em>
+          <div class="ai-pack-advanced" *ngIf="reader.aiPackAdvancedOpen">
+            <small>{{ reader.getAiPackRuntimeSummary(pack) }}<ng-container *ngIf="reader.getAiPackSizeText(pack)"> Â· {{ reader.getAiPackSizeText(pack) }}</ng-container></small>
+            <small *ngIf="pack.modelSizeLabel">{{ pack.modelSizeLabel }}</small>
+            <small *ngIf="reader.getAiPackRequirementText(pack)">{{ reader.getAiPackRequirementText(pack) }}</small>
+          </div>
+        </div>
+        <div class="ai-pack-feature-tags">
+          <span *ngFor="let feature of reader.getAiPackFeatureLabels(pack)">{{ feature }}</span>
+        </div>
+        <button type="button" class="speaking-ai-mini danger" (click)="reader.removeAiPack(pack)" [disabled]="reader.aiPackManagerBusy" aria-label="Remove Speaking Pack">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+      </article>
+    </div>
+  </section>
+</div>
