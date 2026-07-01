@@ -9,12 +9,13 @@ import { BookReaderComponent } from './book-reader/book-reader';
 import { BookReaderPageDrawerComponent } from './book-reader/book-reader-page-drawer';
 import { BookReaderSpeakingPanelComponent } from './book-reader/book-reader-speaking-panel';
 import { BookReaderTaskOverlayComponent } from './book-reader/book-reader-task-overlay';
+import { BookReaderToolbarComponent } from './book-reader/book-reader-toolbar';
 import { BookSwitcherComponent } from './book-switcher/book-switcher';
 import { PdfPageCanvasComponent } from './pdf-page-canvas/pdf-page-canvas';
 import { TranslatePipe } from '../../shared/translate-pipe';
 
 @NgModule({
-  declarations: [BookCreatorComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageDrawerComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookSwitcherComponent, PdfPageCanvasComponent],
+  declarations: [BookCreatorComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageDrawerComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
   imports: [CommonModule, FormsModule, SharedModule, BooksRoutingModule, TranslatePipe]
 })
 export class BooksModule {}

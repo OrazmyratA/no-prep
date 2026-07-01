@@ -1,0 +1,176 @@
+<header class="reader-toolbar">
+  <div class="reader-toolbar-left">
+    <button type="button" class="tool-btn icon-reader-btn reader-back-btn" (click)="reader.close()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
+      <img src="assets/images/book/back.png" alt="">
+    </button>
+    <div class="reader-title">
+      <strong>{{ reader.readerTitle }}</strong>
+      <span>{{ reader.readerSubtitle }}</span>
+    </div>
+  </div>
+
+  <div class="reader-actions reader-toolbar-center">
+    <div class="reader-tool-cluster page-tools">
+      <button type="button" class="tool-btn icon-reader-btn" (click)="reader.togglePageDrawer()" [title]="'readerGoToPage' | translate" [attr.aria-label]="'readerGoToPage' | translate">
+        <img src="assets/images/book/content.png" alt="">
+      </button>
+      <div class="page-stepper" *ngIf="reader.book && reader.visiblePages.length">
+        <button type="button" class="tool-btn icon-turn-btn" (click)="reader.previousPage()" [disabled]="reader.currentPageIndex <= 0" [title]="'previousPage' | translate">
+          <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+        </button>
+        <input
+          type="number"
+          min="1"
+          [max]="reader.visiblePages.length"
+          [(ngModel)]="reader.pageJumpValue"
+          (focus)="reader.startPageJump()"
+          (keydown.enter)="reader.commitPageJump()"
+          (keydown.escape)="reader.cancelPageJump()"
+          (blur)="reader.commitPageJump()"
+          [attr.aria-label]="'readerGoToPage' | translate">
+        <span>/ {{ reader.visiblePages.length }}</span>
+        <button type="button" class="tool-btn icon-turn-btn" (click)="reader.nextPage()" [disabled]="reader.currentPageIndex >= reader.visiblePages.length - 1" [title]="'nextPage' | translate">
+          <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+        </button>
+      </div>
+    </div>
+
+    <div class="reader-tool-cluster history-tools">
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerUndoAnnotation' | translate" (click)="reader.undoAnnotation()" [disabled]="!reader.canUndoAnnotation()" [attr.aria-label]="'readerUndoAnnotation' | translate">
+        <img src="assets/images/book/undo.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate" (click)="reader.redoAnnotation()" [disabled]="!reader.canRedoAnnotation()">
+        <img src="assets/images/book/redo.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerClearAnnotations' | translate" (click)="reader.clearPageAnnotations()" [disabled]="!reader.canClearPageAnnotations()" [attr.aria-label]="'readerClearAnnotations' | translate">
+        <img src="assets/images/book/clear.png" alt="">
+      </button>
+    </div>
+
+    <div class="reader-tool-cluster zoom-tools">
+      <button type="button" class="tool-btn icon-reader-btn" (click)="reader.setZoom(reader.zoom + 0.1)" [title]="'zoomIn' | translate" [attr.aria-label]="'zoomIn' | translate">
+        <img src="assets/images/book/zoom-in.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" (click)="reader.setZoom(reader.zoom - 0.1)" [title]="'zoomOut' | translate" [attr.aria-label]="'zoomOut' | translate">
+        <img src="assets/images/book/zoom-out.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" (click)="reader.rotateCurrentPage()" [disabled]="!reader.currentPage" title="Rotate page" aria-label="Rotate page">
+        <img src="assets/images/book/rotate-right.png" alt="">
+      </button>
+    </div>
+
+    <div class="reader-tool-cluster mark-tools">
+      <button type="button" class="tool-btn icon-reader-btn" [class.active]="reader.focusMode" [title]="'focusLabel' | translate" (click)="reader.toggleFocusMode()" [attr.aria-label]="'focusLabel' | translate">
+        <img src="assets/images/book/focus.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" [class.active]="reader.drawMode" [title]="'drawLabel' | translate" (click)="reader.toggleDrawMode()" [attr.aria-label]="'drawLabel' | translate">
+        <img src="assets/images/book/draw.png" alt="">
+      </button>
+      <div class="pen-controls" *ngIf="reader.drawMode">
+        <button
+          *ngFor="let color of reader.penColors"
+          type="button"
+          class="color-dot"
+          [class.selected]="color === reader.penColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="reader.penColor = color"
+          [title]="'readerPenColor' | translate: {color: color}">
+        </button>
+        <label class="pen-size" [title]="'readerPenSize' | translate">
+          <span>{{ 'sizeLabel' | translate }}</span>
+          <input type="range" min="2" max="18" step="1" [(ngModel)]="reader.penWidth">
+        </label>
+      </div>
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn"
+        [class.active]="reader.highlighterMode"
+        (click)="reader.toggleHighlighterMode()"
+        title="Highlighter"
+        aria-label="Highlighter">
+        <img src="assets/images/book/highlighter.png" alt="">
+      </button>
+      <div class="pen-controls highlighter-controls" *ngIf="reader.highlighterMode">
+        <button
+          *ngFor="let color of reader.highlighterColors"
+          type="button"
+          class="color-dot highlighter-color-dot"
+          [class.selected]="color === reader.highlighterColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="reader.highlighterColor = color"
+          [title]="color">
+        </button>
+        <label class="pen-size" title="Highlighter size">
+          <span>{{ 'sizeLabel' | translate }}</span>
+          <input type="range" min="16" max="48" step="2" [(ngModel)]="reader.highlighterWidth">
+        </label>
+      </div>
+      <button type="button" class="tool-btn icon-reader-btn" [class.active]="reader.textMode" [title]="'addTextLabel' | translate" (click)="reader.addTemporaryText()" [attr.aria-label]="'addTextLabel' | translate">
+        <img src="assets/images/book/text.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn"
+        [class.active]="reader.deleteMode"
+        [title]="'readerDeleteAnnotations' | translate"
+        [attr.aria-label]="'readerDeleteAnnotations' | translate"
+        (click)="reader.deleteSelectedText()"
+        [disabled]="!reader.currentPage">
+        <img src="assets/images/book/delete.png" alt="">
+      </button>
+      <div class="pen-controls text-color-controls" *ngIf="reader.textMode || reader.selectedText || reader.activeTextInput">
+        <button
+          *ngFor="let color of reader.textColors"
+          type="button"
+          class="color-dot"
+          [class.selected]="color === reader.textColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="reader.selectTextColor(color)"
+          [title]="'readerTextColor' | translate: {color: color}">
+        </button>
+      </div>
+    </div>
+
+    <div class="reader-tool-cluster book-tools">
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn"
+        [class.active]="reader.pageSource === 'workbook'"
+        [disabled]="!reader.canSwitchLinkedWorkbook()"
+        (click)="reader.toggleLinkedWorkbook()"
+        [title]="(reader.pageSource === 'workbook' ? 'readerReturnToBook' : 'readerSwitchToWorkbook') | translate"
+        [attr.aria-label]="(reader.pageSource === 'workbook' ? 'readerReturnToBook' : 'readerSwitchToWorkbook') | translate">
+        <img src="assets/images/book/switch-book.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate" (click)="reader.takeScreenshot()" [disabled]="!reader.currentPage">
+        <img src="assets/images/book/screenshot.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn"
+        (click)="reader.toggleTwoPageMode()"
+        [title]="(reader.twoPageMode ? 'singlePageLabel' : 'twoPagesLabel') | translate"
+        [attr.aria-label]="(reader.twoPageMode ? 'readerShowSinglePage' : 'readerShowTwoPages') | translate">
+        <img [src]="reader.twoPageMode ? 'assets/images/book/single page.png' : 'assets/images/book/two pages.png'" alt="">
+      </button>
+    </div>
+  </div>
+
+  <div class="reader-actions reader-toolbar-right">
+    <button
+      type="button"
+      class="tool-btn icon-reader-btn check-answer-btn"
+      (click)="reader.checkVisibleTaskAnswers()"
+      [disabled]="!reader.hasVisibleTasks()"
+      title="Check answers"
+      aria-label="Check answers">
+      <img src="assets/images/book/check.png" alt="">
+    </button>
+    <button type="button" class="tool-btn icon-reader-btn" (click)="reader.edit()" [title]="'editTopic' | translate" [attr.aria-label]="'editTopic' | translate">
+      <img src="assets/images/book/edit.png" alt="">
+    </button>
+  </div>
+</header>
