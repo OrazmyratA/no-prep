@@ -1,0 +1,562 @@
+.reader-element {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  color: #1e3a8a;
+  font-size: 0.75rem;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  overflow: hidden;
+  contain: layout paint;
+  z-index: 10;
+  transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reader-element:not(.hidden-focus):hover {
+  transform: scale(1.04);
+  filter: drop-shadow(0 8px 12px rgba(41, 37, 36, 0.16));
+}
+
+.reader-element.ink-element,
+.reader-element.highlighter-element,
+.reader-element.text-mark-element {
+  pointer-events: none;
+  container-type: size;
+}
+
+.ink-mark,
+.highlighter-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.teacher-stroke-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.highlighter-stroke-svg {
+  opacity: 0.42;
+  mix-blend-mode: multiply;
+}
+
+.highlighter-mark {
+  opacity: 0.42;
+  mix-blend-mode: multiply;
+}
+
+.teacher-text-mark {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  align-items: center;
+  justify-items: start;
+  padding: 0;
+  line-height: 1;
+  font-size: clamp(0.55rem, 6cqh, 2rem);
+  font-weight: 800;
+  overflow: hidden;
+  text-align: left;
+}
+
+.teacher-text-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.teacher-text-mark span {
+  pointer-events: none;
+}
+
+.reader-element.text-task-element,
+.reader-element.choice-task-element {
+  container-type: size;
+  display: block;
+  overflow: visible;
+  border: 1.5px solid #64748b;
+  border-radius: 0.2rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: #111827;
+  contain: layout paint style;
+}
+
+.reader-element.text-task-element:not(.hidden-focus):hover,
+.reader-element.choice-task-element:not(.hidden-focus):hover {
+  transform: none;
+  filter: none;
+}
+
+.reader-element.text-task-element.task-active,
+.reader-element.choice-task-element.task-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+
+.reader-element.text-task-element.task-correct,
+.reader-element.choice-task-element.task-correct {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+}
+
+.reader-element.text-task-element.task-incorrect,
+.reader-element.choice-task-element.task-incorrect {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+}
+
+.reader-element.circle-task-element {
+  display: block;
+  overflow: visible;
+  border: 2px dashed rgba(71, 85, 105, 0.24);
+  border-radius: 999px;
+  background: transparent;
+  contain: layout paint style;
+  cursor: pointer;
+}
+
+.reader-element.circle-task-element:not(.hidden-focus):hover {
+  transform: none;
+  border-color: rgba(37, 99, 235, 0.52);
+  filter: none;
+}
+
+.reader-element.circle-task-element.circle-selected {
+  border-style: solid;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+}
+
+.reader-element.circle-task-element.circle-selected.task-correct {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.17);
+}
+
+.reader-element.circle-task-element.circle-selected.task-incorrect {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.17);
+}
+
+.circle-task-tap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.match-line-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.match-line-layer line {
+  stroke: #2563eb;
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.2));
+}
+
+.match-line-layer line.correct {
+  stroke: #16a34a;
+}
+
+.match-line-layer line.incorrect {
+  stroke: #dc2626;
+}
+
+.reader-element.match-task-element {
+  overflow: visible;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  contain: layout style;
+}
+
+.reader-element.match-task-element:not(.hidden-focus):hover {
+  transform: none;
+  filter: none;
+}
+
+.match-task-tap {
+  position: absolute;
+  inset: -0.45rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.match-task-tap > span {
+  display: block;
+  width: 55%;
+  aspect-ratio: 1 / 1;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.3);
+  transition: transform 0.14s ease, opacity 0.14s ease, box-shadow 0.14s ease;
+}
+
+.match-side-a .match-task-tap > span {
+  background: #0f766e;
+}
+
+.match-side-b .match-task-tap > span {
+  background: #b45309;
+}
+
+.match-task-element.match-connected .match-task-tap > span {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.24), 0 2px 7px rgba(15, 23, 42, 0.3);
+}
+
+.match-task-element.match-selected .match-task-tap > span {
+  transform: scale(1.24);
+  box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.25), 0 2px 7px rgba(15, 23, 42, 0.3);
+}
+
+.match-task-element:not(.match-available):not(.match-selected) .match-task-tap {
+  cursor: default;
+}
+
+.match-task-element:not(.match-available):not(.match-selected) .match-task-tap > span {
+  opacity: 0.32;
+}
+
+.match-task-element.match-missing .match-task-tap > span {
+  background: #ffffff;
+  border-color: #dc2626;
+  animation: match-endpoint-attention 0.45s ease-in-out 2;
+}
+
+@keyframes match-endpoint-attention {
+  50% {
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.2), 0 2px 7px rgba(15, 23, 42, 0.3);
+  }
+}
+
+.text-task-input,
+.text-task-tap,
+.choice-task-tap {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: #111827;
+  font-family: inherit;
+  outline: none;
+}
+
+.text-task-input,
+.text-task-tap {
+  font-size: clamp(0.6rem, 82cqh, 4rem);
+  line-height: 0.96;
+  padding: 0 0.1rem;
+}
+
+.choice-task-tap {
+  font-size: clamp(0.75rem, 48cqh, 2.4rem);
+  line-height: 1;
+  padding: 0.08rem 0.18rem;
+}
+
+.text-task-tap,
+.choice-task-tap {
+  display: flex;
+  align-items: center;
+  gap: 0.14rem;
+  cursor: text;
+  overflow: hidden;
+  text-align: left;
+}
+
+.text-task-tap {
+  gap: 0;
+}
+
+.text-task-tap span,
+.choice-task-tap span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-element img,
+.reader-element video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.reader-element.focus-element {
+  pointer-events: none;
+}
+
+.reader-element.hidden-focus {
+  display: none;
+}
+
+.reader-element.focus-visible {
+  display: grid;
+  border: 2px solid rgba(37, 99, 235, 0.76);
+  background:
+    linear-gradient(135deg, rgba(219, 234, 254, 0.18), rgba(147, 197, 253, 0.08));
+  color: #1e3a8a;
+  font-weight: 800;
+  pointer-events: auto;
+  cursor: zoom-in;
+  box-shadow:
+    0 0 0 0.18rem rgba(37, 99, 235, 0.14),
+    0 0 1.4rem rgba(37, 99, 235, 0.28);
+}
+
+.focus-label {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background:
+    linear-gradient(90deg, rgba(37, 99, 235, 0.34) 50%, transparent 50%) 0 0 / 0.75rem 2px repeat-x,
+    linear-gradient(90deg, rgba(37, 99, 235, 0.34) 50%, transparent 50%) 0 100% / 0.75rem 2px repeat-x,
+    linear-gradient(0deg, rgba(37, 99, 235, 0.34) 50%, transparent 50%) 0 0 / 2px 0.75rem repeat-y,
+    linear-gradient(0deg, rgba(37, 99, 235, 0.34) 50%, transparent 50%) 100% 0 / 2px 0.75rem repeat-y;
+  pointer-events: none;
+}
+
+.reader-element.dot-element {
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: none;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.reader-element.dot-disabled {
+  filter: grayscale(1);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.reader-element.dot-paused {
+  opacity: 0.82;
+  filter: saturate(0.65);
+}
+
+.reader-element.note-element {
+  background: transparent;
+  border: 0;
+  color: #78350f;
+  padding: 0;
+  align-content: center;
+  place-items: center;
+  font-weight: 700;
+}
+
+.reader-element.answer-key-element {
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.reader-element.game-element {
+  background: transparent;
+  border: 0;
+  color: #14532d;
+  font-weight: 900;
+}
+
+.reader-element.speaking-ai-element {
+  background: transparent;
+  border: 0;
+  overflow: visible;
+  cursor: pointer;
+}
+
+.reader-element.speaking-ai-disabled {
+  opacity: 0.42;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+
+.reader-element.speaking-ai-active {
+  filter:
+    drop-shadow(0 0 0.18rem rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0.45rem 0.75rem rgba(37, 99, 235, 0.34));
+}
+
+.speaking-ai-marker {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.book-marker-icon {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 10%;
+  pointer-events: none;
+}
+
+.teacher-marker-icon {
+  filter:
+    drop-shadow(0 0.35rem 0.55rem rgba(41, 37, 36, 0.22))
+    drop-shadow(0 0 0.18rem rgba(255, 255, 255, 0.9));
+}
+
+.note-marker {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.note-marker .book-marker-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.note-marker span {
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-height: 1.25;
+}
+
+.guide-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: 1.35rem;
+  width: min(82%, 42rem);
+  max-height: 3.4rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.6), rgba(0, 0, 0, 0.46));
+  color: #ffffff;
+  border-radius: 0.38rem;
+  padding: 0.42rem 0.9rem;
+  font-size: clamp(0.9rem, 1.6vw, 1.25rem);
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 12px 28px rgba(15, 23, 42, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  z-index: 12;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: max-height 0.18s ease, width 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.guide-bubble:hover {
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.72), rgba(0, 0, 0, 0.58));
+}
+
+.guide-bubble.expanded {
+  width: min(90%, 52rem);
+  max-height: min(42%, 14rem);
+  display: block;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.66);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.3);
+  -webkit-line-clamp: unset;
+}
+
+.owl-guide {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: clamp(4.25rem, 9vw, 7rem);
+  height: auto;
+  z-index: 40;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: left 0.9s cubic-bezier(0.4, 0, 0.2, 1), top 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s ease;
+  will-change: left, top, transform;
+  filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.28));
+}
+
+.guide-pin-media-overlay {
+  position: fixed;
+  inset: var(--reader-toolbar-height, 3.8rem) 0 0;
+  z-index: 34;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.97);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.guide-pin-media-overlay.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.guide-pin-media-frame {
+  width: min(34rem, 76vw);
+  height: min(21rem, 54vh);
+  display: grid;
+  place-items: center;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 22px 56px rgba(41, 37, 36, 0.28);
+  overflow: hidden;
+}
+
+.guide-pin-media-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.owl-guide.teaching {
+  transform: translate(-50%, -100%);
+  transform-origin: bottom center;
+}

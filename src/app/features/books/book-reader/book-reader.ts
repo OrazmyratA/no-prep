@@ -90,7 +90,15 @@ import {
   selector: 'app-book-reader',
   standalone: false,
   templateUrl: './book-reader.html',
-  styleUrls: ['./book-reader.css']
+  styleUrls: [
+    './book-reader.css',
+    './book-reader-speaking.css',
+    './book-reader-controls.css',
+    './book-reader-stage.css',
+    './book-reader-elements.css',
+    './book-reader-overlays.css',
+    './book-reader-responsive.css'
+  ]
 })
 export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(SwipeDirective) swipeDir?: SwipeDirective;
