@@ -49,45 +49,42 @@ import {
   normalizeBookGuideTimelines
 } from '../../../core/guide-timeline';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
-
-type ReaderAnnotationAction =
-  | { kind: 'add-text'; pageId: string; item: BookAnnotationText }
-  | { kind: 'delete-text'; pageId: string; item: BookAnnotationText }
-  | { kind: 'add-stroke'; pageId: string; item: BookAnnotationStroke }
-  | { kind: 'delete-stroke'; pageId: string; item: BookAnnotationStroke }
-  | { kind: 'clear'; pages: { pageId: string; before: BookPageAnnotations; responses: BookTaskResponse[] }[] };
-
-type BakedDrawingCanvas = {
-  canvas: HTMLCanvasElement;
-  width: number;
-  height: number;
-};
-
-type ReaderMatchLine = {
-  source: BookElement;
-  target: BookElement;
-  result: 'unchecked' | 'correct' | 'incorrect';
-};
-
-type SpeakingSessionSummary = {
-  sessionId: string;
-  sessionName: string;
-  attempts: BookSpeakingAttempt[];
-  startedAt: string;
-  updatedAt: string;
-  durationSeconds: number;
-};
-
-type SpeakingChatTurn = {
-  id: string;
-  speaker: 'student' | 'ai';
-  text: string;
-  pending?: boolean;
-};
-
-const MAX_BOOK_TOPIC_SNAPSHOT_BYTES = 100 * 1024 * 1024;
-const MAX_BOOK_TOPIC_ITEMS = 2000;
-const MAX_BOOK_TOPIC_MEDIA_BYTES = 25 * 1024 * 1024;
+import {
+  BakedDrawingCanvas,
+  MAX_BOOK_TOPIC_SNAPSHOT_BYTES,
+  ReaderAnnotationAction,
+  ReaderMatchLine,
+  SpeakingChatTurn,
+  SpeakingSessionSummary
+} from './book-reader.types';
+import {
+  createSpeakingSessionAudioBlob,
+  createZipBlob,
+  escapeHtml,
+  getAudioExtension
+} from './book-reader-export-utils';
+import {
+  clamp,
+  getClampedFocusRect,
+  getGuideTextDelay,
+  getRotatedAspectRatio,
+  normalizePageRotation
+} from './book-reader-geometry';
+import {
+  dataUrlToBlob,
+  getSafeBookTopicItems
+} from './book-reader-topic-snapshot';
+import {
+  getYouTubeEmbedUrlString,
+  getYouTubeVideoId,
+  isExternalUrl
+} from './book-reader-url-utils';
+import {
+  clonePageAnnotations,
+  cloneStrokeAnnotation,
+  cloneTextAnnotation,
+  createTextImageDataUrl
+} from './book-reader-annotation-utils';
 
 @Component({
   selector: 'app-book-reader',
@@ -438,7 +435,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   get readerVirtualStart(): number {
     const total = this.visiblePages.length;
     if (total <= 0) return 0;
-    return this.clamp(
+    return clamp(
       Math.floor(this.readerThumbScrollTop / this.readerThumbItemHeight) - this.virtualThumbBuffer,
       0,
       Math.max(0, total - 1)
@@ -449,7 +446,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const total = this.visiblePages.length;
     if (total <= 0) return 0;
     const visibleCount = Math.ceil(this.readerThumbViewportHeight / this.readerThumbItemHeight) + this.virtualThumbBuffer * 2;
-    return this.clamp(this.readerVirtualStart + visibleCount, 0, total);
+    return clamp(this.readerVirtualStart + visibleCount, 0, total);
   }
 
   get activeWorkbook(): BookWorkbook | null {
@@ -675,7 +672,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const text = this.getPageAnnotations(this.selectedText.pageId).texts.find((item) => item.id === this.selectedText?.textId);
       if (text) {
         text.color = color;
-        text.imageDataUrl = this.createTextImageDataUrl(text.text, color);
+        text.imageDataUrl = createTextImageDataUrl(text.text, color);
         void this.saveAnnotations();
       }
     }
@@ -728,7 +725,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.lastTextPlacementAt = Date.now();
     const point = this.getPagePointFromEvent(pageFrame ?? this.pageFrame?.nativeElement ?? null, event);
     if (!point) return;
-    const focusRect = this.isFocusCropActive(page) ? this.getClampedFocusRect(this.expandedFocusElement) : null;
+    const focusRect = this.isFocusCropActive(page) ? getClampedFocusRect(this.expandedFocusElement) : null;
     this.activeTextInput = {
       pageId: page.id,
       x: point.x,
@@ -774,7 +771,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       width: refreshed.width,
       height: refreshed.height,
       color: refreshed.color,
-      imageDataUrl: this.createTextImageDataUrl(text, refreshed.color),
+      imageDataUrl: createTextImageDataUrl(text, refreshed.color),
       text,
       createdAt: refreshed.createdAt ?? Date.now()
     };
@@ -783,7 +780,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       annotations.texts[existingIndex] = nextText;
     } else {
       annotations.texts.push(nextText);
-      this.pushUndoAction({ kind: 'add-text', pageId: page.id, item: this.cloneTextAnnotation(nextText) });
+      this.pushUndoAction({ kind: 'add-text', pageId: page.id, item: cloneTextAnnotation(nextText) });
     }
     this.textMode = false;
     this.activeTextInput = null;
@@ -1177,10 +1174,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const xs = stroke.points.map((point) => point.x);
     const ys = stroke.points.map((point) => point.y);
     const padding = 0.018;
-    const minX = this.clamp(Math.min(...xs) - padding, 0, 1);
-    const minY = this.clamp(Math.min(...ys) - padding, 0, 1);
-    const maxX = this.clamp(Math.max(...xs) + padding, 0, 1);
-    const maxY = this.clamp(Math.max(...ys) + padding, 0, 1);
+    const minX = clamp(Math.min(...xs) - padding, 0, 1);
+    const minY = clamp(Math.min(...ys) - padding, 0, 1);
+    const maxX = clamp(Math.max(...xs) + padding, 0, 1);
+    const maxY = clamp(Math.max(...ys) + padding, 0, 1);
     return {
       x: minX,
       y: minY,
@@ -1190,7 +1187,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getStrokePolylinePoints(stroke: BookAnnotationStroke): string {
-    return stroke.points.map((point) => `${this.clamp(point.x, 0, 1)},${this.clamp(point.y, 0, 1)}`).join(' ');
+    return stroke.points.map((point) => `${clamp(point.x, 0, 1)},${clamp(point.y, 0, 1)}`).join(' ');
   }
 
   getElementPolylinePoints(element: BookElement): string {
@@ -1239,7 +1236,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const index = annotations.texts.findIndex((text) => text.id === textId);
     if (index < 0) return;
     const [removed] = annotations.texts.splice(index, 1);
-    this.pushUndoAction({ kind: 'delete-text', pageId, item: this.cloneTextAnnotation(removed) });
+    this.pushUndoAction({ kind: 'delete-text', pageId, item: cloneTextAnnotation(removed) });
     this.selectedText = null;
     void this.saveAnnotations();
   }
@@ -1250,7 +1247,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     event.stopPropagation();
     const removed = this.removeStrokeById(page.id, stroke.id);
     if (!removed) return;
-    this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: this.cloneStrokeAnnotation(removed) });
+    this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: cloneStrokeAnnotation(removed) });
     this.redrawDrawingCanvas(page.id);
     void this.saveAnnotations();
   }
@@ -1328,7 +1325,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.drawing && this.activeStroke) {
       const stroke = this.activeStroke;
       this.getPageAnnotations(stroke.pageId).strokes.push(stroke);
-      this.pushUndoAction({ kind: 'add-stroke', pageId: stroke.pageId, item: this.cloneStrokeAnnotation(stroke) });
+      this.pushUndoAction({ kind: 'add-stroke', pageId: stroke.pageId, item: cloneStrokeAnnotation(stroke) });
       this.activeStroke = null;
       this.invalidateDrawingCache(stroke.pageId);
       this.redrawDrawingCanvas(stroke.pageId);
@@ -1395,7 +1392,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       kind: 'clear',
       pages: pages.map((page) => ({
         pageId: page.id,
-        before: this.clonePageAnnotations(this.getPageAnnotations(page.id)),
+        before: clonePageAnnotations(this.getPageAnnotations(page.id)),
         responses: Array.from(this.taskResponses.values())
           .filter((response) => response.pageId === page.id)
           .map((response) => ({ ...response }))
@@ -1453,7 +1450,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const input = event.target as HTMLInputElement | null;
     const value = Number(input?.value);
     if (!Number.isFinite(value)) return;
-    this.activeAudio.currentTime = this.clamp(value, 0, this.guideAudioDuration || this.activeAudio.duration || 0);
+    this.activeAudio.currentTime = clamp(value, 0, this.guideAudioDuration || this.activeAudio.duration || 0);
     this.guideAudioCurrentTime = this.activeAudio.currentTime;
     if (this.activeGuideElement && this.activeGuidePage && this.activeGuideTrackIndex >= 0) {
       this.applyReaderGuideState(
@@ -1471,7 +1468,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const input = event.target as HTMLInputElement | null;
     const value = Number(input?.value);
     if (!Number.isFinite(value)) return;
-    this.guideAudioVolume = this.clamp(value, 0, 1);
+    this.guideAudioVolume = clamp(value, 0, 1);
     if (this.activeAudio) {
       this.activeAudio.volume = this.guideAudioVolume;
     }
@@ -1563,7 +1560,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         await this.playAudioTrack(track, element, page, index, token);
       }
     } else {
-      await this.wait(this.getGuideTextDelay(this.guideBubbleText));
+      await this.wait(getGuideTextDelay(this.guideBubbleText));
     }
     if (token !== this.guidePlaybackToken) return;
 
@@ -1818,8 +1815,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private isPointInVideoFullscreenControl(event: PointerEvent, video: HTMLVideoElement): boolean {
     const rect = video.getBoundingClientRect();
     if (!rect.width || !rect.height) return false;
-    const controlHeight = this.clamp(rect.height * 0.16, 42, 58);
-    const controlWidth = this.clamp(rect.width * 0.12, 54, 78);
+    const controlHeight = clamp(rect.height * 0.16, 42, 58);
+    const controlWidth = clamp(rect.width * 0.12, 54, 78);
     return event.clientX >= rect.right - controlWidth
       && event.clientX <= rect.right
       && event.clientY >= rect.bottom - controlHeight
@@ -1853,7 +1850,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!video) return;
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const maxTime = duration > 0 ? duration : Number.MAX_SAFE_INTEGER;
-    video.currentTime = this.clamp(video.currentTime + seconds, 0, maxTime);
+    video.currentTime = clamp(video.currentTime + seconds, 0, maxTime);
   }
 
   closeExpandedFocus(): void {
@@ -1872,20 +1869,20 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const aspect = this.getPageAspectRatioNumber(page);
       return `${Math.max(0.05, aspect)} / 1`;
     }
-    const focus = this.getClampedFocusRect(this.expandedFocusElement);
+    const focus = getClampedFocusRect(this.expandedFocusElement);
     const pageAspect = this.getPageAspectRatioNumber(page);
     return `${Math.max(0.05, pageAspect * focus.width)} / ${Math.max(0.05, focus.height)}`;
   }
 
   getPageRotation(page: BookPage | null | undefined): number {
-    return this.normalizePageRotation(page?.rotation);
+    return normalizePageRotation(page?.rotation);
   }
 
   getFocusContentStyle(page: BookPage | null): Record<string, string> {
     if (!this.isFocusCropActive(page)) {
       return {};
     }
-    const focus = this.getClampedFocusRect(this.expandedFocusElement);
+    const focus = getClampedFocusRect(this.expandedFocusElement);
     const cacheKey = `${page?.id || ''}:${this.expandedFocusElement?.id || ''}:${focus.x}:${focus.y}:${focus.width}:${focus.height}`;
     if (cacheKey === this.focusContentStyleCacheKey) {
       return this.focusContentStyleCacheValue;
@@ -1901,7 +1898,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getFocusZoomTransform(element: BookElement | null): string {
-    const focus = this.getClampedFocusRect(element);
+    const focus = getClampedFocusRect(element);
     const scale = Math.min(8, Math.max(1.2, Math.min(1 / focus.width, 1 / focus.height)));
     return `translate(${-focus.x * 100}%, ${-focus.y * 100}%) scale(${scale})`;
   }
@@ -2212,7 +2209,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   setSpeakingVoiceVolume(value: number | string): void {
-    this.speakingVoiceVolume = this.clamp(Number(value) || 0, 0, 1);
+    this.speakingVoiceVolume = clamp(Number(value) || 0, 0, 1);
     if (this.speakingPlaybackAudio) {
       this.speakingPlaybackAudio.volume = this.speakingVoiceVolume;
     }
@@ -2415,13 +2412,13 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const folder = 'No-Prep Speaking Attempts';
       let audioFilename = '';
       if (attempt.audio) {
-        const extension = this.getAudioExtension(attempt.audioMimeType || attempt.audio.type);
+        const extension = getAudioExtension(attempt.audioMimeType || attempt.audio.type);
         audioFilename = `speaking-attempt-${attempt.attemptId}.${extension}`;
         await this.platformFile.saveBlobToDownloads(attempt.audio, audioFilename, folder);
       }
       let responseAudioFilename = '';
       if (attempt.responseAudio) {
-        const extension = this.getAudioExtension(attempt.responseAudioMimeType || attempt.responseAudio.type);
+        const extension = getAudioExtension(attempt.responseAudioMimeType || attempt.responseAudio.type);
         responseAudioFilename = `speaking-attempt-${attempt.attemptId}-ai-response.${extension}`;
         await this.platformFile.saveBlobToDownloads(attempt.responseAudio, responseAudioFilename, folder);
       }
@@ -2430,17 +2427,17 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         '<title>NoPrep Speaking Attempt</title>',
         '<style>body{font-family:Arial,sans-serif;max-width:760px;margin:32px auto;line-height:1.5;color:#111827}section{border:1px solid #d1d5db;border-radius:12px;padding:18px;margin:14px 0}h1{font-size:24px}dt{font-weight:700}dd{margin:0 0 10px}</style>',
         '</head><body>',
-        `<h1>${this.escapeHtml(this.book.title || 'NoPrep Book')} Speaking Attempt</h1>`,
+        `<h1>${escapeHtml(this.book.title || 'NoPrep Book')} Speaking Attempt</h1>`,
         '<section>',
-        `<dl><dt>Task</dt><dd>${this.escapeHtml(this.getSpeakingAiTitle(element))}</dd>`,
-        `<dt>Language</dt><dd>${this.escapeHtml(this.getSpeakingAiLanguage(element))}</dd>`,
-        `<dt>Started</dt><dd>${this.escapeHtml(attempt.startedAt)}</dd>`,
+        `<dl><dt>Task</dt><dd>${escapeHtml(this.getSpeakingAiTitle(element))}</dd>`,
+        `<dt>Language</dt><dd>${escapeHtml(this.getSpeakingAiLanguage(element))}</dd>`,
+        `<dt>Started</dt><dd>${escapeHtml(attempt.startedAt)}</dd>`,
         `<dt>Duration</dt><dd>${Math.round(attempt.durationSeconds || 0)} seconds</dd>`,
-        `<dt>Student audio file</dt><dd>${audioFilename ? this.escapeHtml(audioFilename) : 'No audio recorded'}</dd>`,
-        `<dt>Teacher voice file</dt><dd>${responseAudioFilename ? this.escapeHtml(responseAudioFilename) : 'No speaking response recorded'}</dd></dl>`,
+        `<dt>Student audio file</dt><dd>${audioFilename ? escapeHtml(audioFilename) : 'No audio recorded'}</dd>`,
+        `<dt>Teacher voice file</dt><dd>${responseAudioFilename ? escapeHtml(responseAudioFilename) : 'No speaking response recorded'}</dd></dl>`,
         '</section>',
         '<section><h2>Transcript</h2>',
-        `<p>${this.escapeHtml(attempt.transcript || 'Speech transcript will appear here after the Speaking Pack is ready.')}</p>`,
+        `<p>${escapeHtml(attempt.transcript || 'Speech transcript will appear here after the Speaking Pack is ready.')}</p>`,
         '</section></body></html>'
       ].join('');
       await this.platformFile.saveTextToDownloads(
@@ -2466,14 +2463,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const conversationAudioFilename = 'conversation.wav';
 
       const orderedAttempts = this.sortSpeakingAttemptsByTurn(session.attempts);
-      const conversationAudio = await this.createSpeakingSessionAudioBlob(orderedAttempts);
+      const conversationAudio = await createSpeakingSessionAudioBlob(orderedAttempts);
 
       for (const [index, attempt] of orderedAttempts.entries()) {
         const turnNumber = Number.isFinite(Number(attempt.turnIndex)) ? Number(attempt.turnIndex) + 1 : index + 1;
         transcriptSections.push([
           `<h3>Turn ${turnNumber}</h3>`,
-          `<p><strong>Student:</strong> ${this.escapeHtml(this.getSpeakingAttemptStudentText(attempt) || '[no speech detected]')}</p>`,
-          `<p><strong>AI:</strong> ${this.escapeHtml(this.getSpeakingAttemptAiText(attempt) || '[no AI response]')}</p>`
+          `<p><strong>Student:</strong> ${escapeHtml(this.getSpeakingAttemptStudentText(attempt) || '[no speech detected]')}</p>`,
+          `<p><strong>AI:</strong> ${escapeHtml(this.getSpeakingAttemptAiText(attempt) || '[no AI response]')}</p>`
         ].join(''));
       }
 
@@ -2482,20 +2479,20 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         '<title>NoPrep Speaking Conversation</title>',
         '<style>body{font-family:Arial,sans-serif;max-width:820px;margin:32px auto;line-height:1.5;color:#111827}section{border:1px solid #d1d5db;border-radius:12px;padding:18px;margin:14px 0}h1{font-size:24px}.files{white-space:pre-wrap;color:#475569}</style>',
         '</head><body>',
-        `<h1>${this.escapeHtml(this.book.title || 'NoPrep Book')} Speaking Conversation</h1>`,
+        `<h1>${escapeHtml(this.book.title || 'NoPrep Book')} Speaking Conversation</h1>`,
         '<section>',
-        `<p><strong>Task:</strong> ${this.escapeHtml(this.getSpeakingAiTitle(element))}</p>`,
-        `<p><strong>Language:</strong> ${this.escapeHtml(this.getSpeakingAiLanguage(element))}</p>`,
-        `<p><strong>Started:</strong> ${this.escapeHtml(session.startedAt)}</p>`,
+        `<p><strong>Task:</strong> ${escapeHtml(this.getSpeakingAiTitle(element))}</p>`,
+        `<p><strong>Language:</strong> ${escapeHtml(this.getSpeakingAiLanguage(element))}</p>`,
+        `<p><strong>Started:</strong> ${escapeHtml(session.startedAt)}</p>`,
         `<p><strong>Turns:</strong> ${session.attempts.length}</p>`,
         `<p><strong>Total audio time:</strong> ${Math.round(session.durationSeconds || 0)} seconds</p>`,
-        `<p class="files"><strong>Conversation audio:</strong>\n${this.escapeHtml(conversationAudio ? conversationAudioFilename : 'No combined audio could be created')}</p>`,
+        `<p class="files"><strong>Conversation audio:</strong>\n${escapeHtml(conversationAudio ? conversationAudioFilename : 'No combined audio could be created')}</p>`,
         '</section>',
         `<section><h2>Conversation</h2>${transcriptSections.join('')}</section>`,
         '</body></html>'
       ].join('');
 
-      const packageBlob = await this.createZipBlob([
+      const packageBlob = await createZipBlob([
         { name: 'conversation.html', data: report },
         ...(conversationAudio ? [{ name: conversationAudioFilename, data: conversationAudio }] : [])
       ]);
@@ -2525,7 +2522,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const conversationAudio = await this.createSpeakingSessionAudioBlob(this.sortSpeakingAttemptsByTurn(session.attempts));
+    const conversationAudio = await createSpeakingSessionAudioBlob(this.sortSpeakingAttemptsByTurn(session.attempts));
     if (!conversationAudio) {
       showAppNotification('This conversation has no recorded audio yet.', 'info');
       return;
@@ -2605,7 +2602,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   getElementAssetUrl(element: BookElement): string {
     if (!this.book) return '';
     const src = String(element.data?.['src'] || '');
-    if (this.isExternalUrl(src)) {
+    if (isExternalUrl(src)) {
       return src;
     }
     return src ? this.getCachedAssetUrl(src) : '';
@@ -2614,23 +2611,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   getElementMediaUrl(element: BookElement): string {
     if (!this.book) return '';
     const src = String(element.data?.['src'] || '');
-    if (this.isExternalUrl(src)) {
+    if (isExternalUrl(src)) {
       return src;
     }
     return src ? this.getCachedAssetFileUrl(src) : '';
   }
 
   isYouTubeVideo(element: BookElement | null): boolean {
-    return !!this.getYouTubeEmbedUrlString(element);
+    return !!getYouTubeEmbedUrlString(element);
   }
 
   getYouTubeEmbedUrl(element: BookElement | null): SafeResourceUrl | null {
-    const embedUrl = this.getYouTubeEmbedUrlString(element);
+    const embedUrl = getYouTubeEmbedUrlString(element);
     return embedUrl ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl) : null;
   }
 
   getYouTubeWatchUrl(element: BookElement | null): string {
-    const videoId = this.getYouTubeVideoId(element);
+    const videoId = getYouTubeVideoId(element);
     return videoId ? `https://www.youtube.com/watch?v=${videoId}` : this.getElementAssetUrl(element as BookElement);
   }
 
@@ -2745,7 +2742,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       const snapshot = JSON.parse(snapshotText);
       const name = String(snapshot?.topic?.name || element.data['label'] || 'Book Game Topic');
-      const snapshotItems = this.getSafeBookTopicItems(snapshot);
+      const snapshotItems = getSafeBookTopicItems(snapshot);
       if (Number.isFinite(topicId) && topicId > 0 && await this.doesTopicMatchSnapshot(topicId, name, snapshotItems)) {
         return topicId;
       }
@@ -2753,8 +2750,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const items = snapshotItems
         ? await Promise.all(snapshotItems.map(async (item: any) => ({
             text: String(item?.text || ''),
-            image: item?.image ? await this.dataUrlToBlob(String(item.image), 'image') : undefined,
-            audio: item?.audio ? await this.dataUrlToBlob(String(item.audio), 'audio') : undefined
+            image: item?.image ? await dataUrlToBlob(String(item.image), 'image') : undefined,
+            audio: item?.audio ? await dataUrlToBlob(String(item.audio), 'audio') : undefined
           })))
         : [{ text: name, image: undefined, audio: undefined }];
       await this.db.addItems(newTopicId, items);
@@ -2780,51 +2777,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return false;
     }
     return items.every((item, index) => String(item.text || '') === String(snapshotItems[index]?.text || ''));
-  }
-
-  private getSafeBookTopicItems(snapshot: any): any[] | null {
-    if (!Array.isArray(snapshot?.items)) {
-      return null;
-    }
-    if (snapshot.items.length > MAX_BOOK_TOPIC_ITEMS) {
-      throw new Error('Book topic has too many items.');
-    }
-    for (const item of snapshot.items) {
-      if (item?.image && !this.isAllowedBookTopicDataUrl(item.image, 'image')) {
-        throw new Error('Book topic image is not valid.');
-      }
-      if (item?.audio && !this.isAllowedBookTopicDataUrl(item.audio, 'audio')) {
-        throw new Error('Book topic audio is not valid.');
-      }
-    }
-    return snapshot.items;
-  }
-
-  private async dataUrlToBlob(dataUrl: string, expectedKind: 'image' | 'audio'): Promise<Blob> {
-    if (!this.isAllowedBookTopicDataUrl(dataUrl, expectedKind)) {
-      throw new Error('Book topic media is not valid.');
-    }
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-    if (blob.size > MAX_BOOK_TOPIC_MEDIA_BYTES) {
-      throw new Error('Book topic media is too large.');
-    }
-    return blob;
-  }
-
-  private isAllowedBookTopicDataUrl(value: unknown, expectedKind: 'image' | 'audio'): boolean {
-    if (typeof value !== 'string' || value.length > MAX_BOOK_TOPIC_MEDIA_BYTES * 2) return false;
-    const match = value.match(/^data:([^;,]+)(?:;[^,]*)?;base64,([A-Za-z0-9+/=\s]+)$/i);
-    if (!match) return false;
-    const mimeType = match[1].toLowerCase();
-    if (!mimeType.startsWith(`${expectedKind}/`)) return false;
-    return this.decodedBase64Length(match[2]) <= MAX_BOOK_TOPIC_MEDIA_BYTES;
-  }
-
-  private decodedBase64Length(base64: string): number {
-    const normalized = String(base64 || '').replace(/\s/g, '');
-    const padding = normalized.endsWith('==') ? 2 : normalized.endsWith('=') ? 1 : 0;
-    return Math.max(0, Math.floor((normalized.length * 3) / 4) - padding);
   }
 
   private resizeDrawingCanvas(width: number, height: number): void {
@@ -2876,8 +2828,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     return {
-      x: this.clamp((event.clientX - rect.left) / rect.width, 0, 1),
-      y: this.clamp((event.clientY - rect.top) / rect.height, 0, 1)
+      x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+      y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
     };
   }
 
@@ -2902,7 +2854,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (bestIndex < 0 || bestDistance > 0.025) return;
     const [removed] = annotations.strokes.splice(bestIndex, 1);
-    this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: this.cloneStrokeAnnotation(removed) });
+    this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: cloneStrokeAnnotation(removed) });
     this.redrawDrawingCanvas(page.id);
     void this.saveAnnotations();
   }
@@ -2927,7 +2879,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const dy = end.y - start.y;
     const lengthSquared = dx * dx + dy * dy;
     if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
-    const amount = this.clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
+    const amount = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
     return Math.hypot(point.x - (start.x + amount * dx), point.y - (start.y + amount * dy));
   }
 
@@ -3041,7 +2993,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getVisibleTaskEntries(): Array<{ page: BookPage; element: BookElement }> {
-    const focus = this.expandedFocusElement ? this.getClampedFocusRect(this.expandedFocusElement) : null;
+    const focus = this.expandedFocusElement ? getClampedFocusRect(this.expandedFocusElement) : null;
     return this.getActiveAnnotationPages().flatMap((page) =>
       page.elements
         .filter(isBookTaskElement)
@@ -3089,7 +3041,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private applyAnnotationAction(action: ReaderAnnotationAction): void {
     if (action.kind === 'add-text') {
       this.removeTextById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).texts.push(this.cloneTextAnnotation(action.item));
+      this.getPageAnnotations(action.pageId).texts.push(cloneTextAnnotation(action.item));
       return;
     }
     if (action.kind === 'delete-text') {
@@ -3098,7 +3050,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (action.kind === 'add-stroke') {
       this.removeStrokeById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).strokes.push(this.cloneStrokeAnnotation(action.item));
+      this.getPageAnnotations(action.pageId).strokes.push(cloneStrokeAnnotation(action.item));
       this.invalidateDrawingCache(action.pageId);
       return;
     }
@@ -3124,7 +3076,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (action.kind === 'delete-text') {
       this.removeTextById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).texts.push(this.cloneTextAnnotation(action.item));
+      this.getPageAnnotations(action.pageId).texts.push(cloneTextAnnotation(action.item));
       return;
     }
     if (action.kind === 'add-stroke') {
@@ -3133,12 +3085,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (action.kind === 'delete-stroke') {
       this.removeStrokeById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).strokes.push(this.cloneStrokeAnnotation(action.item));
+      this.getPageAnnotations(action.pageId).strokes.push(cloneStrokeAnnotation(action.item));
       this.invalidateDrawingCache(action.pageId);
       return;
     }
     for (const page of action.pages) {
-      this.annotations!.pages[page.pageId] = this.clonePageAnnotations(page.before);
+      this.annotations!.pages[page.pageId] = clonePageAnnotations(page.before);
       this.invalidateDrawingCache(page.pageId);
       for (const response of page.responses) {
         this.taskResponses.set(response.taskId, { ...response });
@@ -3155,12 +3107,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       const text = annotations.texts.at(-1);
       if (text && text.createdAt > latestCreatedAt) {
         latestCreatedAt = text.createdAt;
-        latest = { kind: 'add-text', pageId, item: this.cloneTextAnnotation(text) };
+        latest = { kind: 'add-text', pageId, item: cloneTextAnnotation(text) };
       }
       const stroke = annotations.strokes.at(-1);
       if (stroke && stroke.createdAt > latestCreatedAt) {
         latestCreatedAt = stroke.createdAt;
-        latest = { kind: 'add-stroke', pageId, item: this.cloneStrokeAnnotation(stroke) };
+        latest = { kind: 'add-stroke', pageId, item: cloneStrokeAnnotation(stroke) };
       }
     }
     return latest;
@@ -3181,77 +3133,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const [removed] = strokes.splice(index, 1);
     this.invalidateDrawingCache(pageId);
     return removed;
-  }
-
-  private cloneTextAnnotation(text: BookAnnotationText): BookAnnotationText {
-    return { ...text };
-  }
-
-  private cloneStrokeAnnotation(stroke: BookAnnotationStroke): BookAnnotationStroke {
-    return {
-      ...stroke,
-      points: stroke.points.map((point) => ({ ...point }))
-    };
-  }
-
-  private clonePageAnnotations(annotations: BookPageAnnotations): BookPageAnnotations {
-    return {
-      texts: annotations.texts.map((text) => this.cloneTextAnnotation(text)),
-      strokes: annotations.strokes.map((stroke) => this.cloneStrokeAnnotation(stroke))
-    };
-  }
-
-  private createTextImageDataUrl(text: string, color: string): string {
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) return '';
-
-    const font = 'bold 96px Arial, sans-serif';
-    const maxLineWidth = 1200;
-    const lines = this.wrapTextLines(context, text, maxLineWidth, font);
-    const lineHeight = 110;
-    const padding = 2;
-    const measuredWidth = Math.max(1, ...lines.map((line) => context.measureText(line || ' ').width));
-    const width = Math.ceil(measuredWidth + padding * 2);
-    const height = Math.max(1, Math.ceil(padding * 2 + lines.length * lineHeight));
-    canvas.width = width;
-    canvas.height = height;
-    context.clearRect(0, 0, width, height);
-    context.font = font;
-    context.fillStyle = color;
-    context.textBaseline = 'top';
-    context.lineJoin = 'round';
-
-    lines.forEach((line, index) => {
-      context.fillText(line, padding, padding + index * lineHeight);
-    });
-
-    return canvas.toDataURL('image/png');
-  }
-
-  private wrapTextLines(context: CanvasRenderingContext2D, text: string, maxWidth: number, font: string): string[] {
-    context.font = font;
-    const sourceLines = text.split(/\r?\n/);
-    const lines: string[] = [];
-    for (const sourceLine of sourceLines) {
-      const words = sourceLine.split(/\s+/).filter(Boolean);
-      if (!words.length) {
-        lines.push('');
-        continue;
-      }
-      let line = '';
-      for (const word of words) {
-        const next = line ? `${line} ${word}` : word;
-        if (context.measureText(next).width <= maxWidth || !line) {
-          line = next;
-        } else {
-          lines.push(line);
-          line = word;
-        }
-      }
-      lines.push(line);
-    }
-    return lines;
   }
 
   private getVisiblePageById(pageId: string): BookPage | null {
@@ -3542,12 +3423,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!frame) return;
     const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const owlSize = this.clamp(window.innerWidth * 0.09, 68, 112);
+    const owlSize = clamp(window.innerWidth * 0.09, 68, 112);
     const bounds = this.getOwlVisibleBounds(true);
     const targetX = rect.left + owlSize * 0.5;
     const targetY = rect.bottom;
-    this.owlX = this.clamp(targetX, bounds.minX, bounds.maxX);
-    this.owlY = this.clamp(targetY, bounds.minY, bounds.maxY);
+    this.owlX = clamp(targetX, bounds.minX, bounds.maxX);
+    this.owlY = clamp(targetY, bounds.minY, bounds.maxY);
     this.forceUiRefresh();
   }
 
@@ -4045,7 +3926,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       sum += centered * centered;
     }
     const rms = Math.sqrt(sum / data.length);
-    this.speakingRecordingLevel = this.clamp(rms * 4.8, 0, 1);
+    this.speakingRecordingLevel = clamp(rms * 4.8, 0, 1);
     this.setSpeakingRecordingVisualLevel(this.speakingRecordingLevel);
     this.speakingRecordingLevelFrame = requestAnimationFrame(() => this.updateSpeakingRecordingLevel());
   }
@@ -4066,7 +3947,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private setSpeakingRecordingVisualLevel(level: number): void {
-    const safeLevel = this.clamp(level, 0, 1);
+    const safeLevel = clamp(level, 0, 1);
     this.speakingRecordingLevel = safeLevel;
     this.speakingRecordingAuraScale = 0.92 + safeLevel * 0.36;
     this.speakingRecordingRingScale = 1 + safeLevel * 0.38;
@@ -4188,222 +4069,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.speakingAttemptAudioUrls.clear();
   }
 
-  private async blobToDataUrl(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  private getAudioExtension(mimeType: string | undefined): string {
-    const type = String(mimeType || '').toLowerCase();
-    if (type.includes('mp4') || type.includes('aac')) return 'm4a';
-    if (type.includes('ogg')) return 'ogg';
-    if (type.includes('wav')) return 'wav';
-    return 'webm';
-  }
-
-  private async createSpeakingSessionAudioBlob(attempts: BookSpeakingAttempt[]): Promise<Blob | null> {
-    const clips: Blob[] = [];
-    for (const attempt of attempts) {
-      if (attempt.audio) clips.push(attempt.audio);
-      if (attempt.responseAudio) clips.push(attempt.responseAudio);
-    }
-    if (!clips.length) return null;
-
-    const audioContext = new AudioContext();
-    try {
-      const decoded: AudioBuffer[] = [];
-      for (const clip of clips) {
-        try {
-          const buffer = await clip.arrayBuffer();
-          decoded.push(await audioContext.decodeAudioData(buffer.slice(0)));
-        } catch {
-          // Keep exporting the session report even if one clip cannot be decoded.
-        }
-      }
-      if (!decoded.length) return null;
-
-      const sampleRate = decoded[0].sampleRate || 44100;
-      const gapFrames = Math.round(sampleRate * 0.35);
-      const totalFrames = decoded.reduce((total, buffer, index) => (
-        total + this.resampledFrameCount(buffer, sampleRate) + (index > 0 ? gapFrames : 0)
-      ), 0);
-      const combined = audioContext.createBuffer(1, totalFrames, sampleRate);
-      const output = combined.getChannelData(0);
-      let offset = 0;
-
-      for (const [index, buffer] of decoded.entries()) {
-        if (index > 0) offset += gapFrames;
-        const mono = this.audioBufferToMono(buffer);
-        if (buffer.sampleRate === sampleRate) {
-          output.set(mono.subarray(0, Math.min(mono.length, output.length - offset)), offset);
-          offset += mono.length;
-        } else {
-          offset += this.writeResampledAudio(mono, buffer.sampleRate, output, offset, sampleRate);
-        }
-      }
-
-      return this.encodeWavBlob(output, sampleRate);
-    } finally {
-      void audioContext.close();
-    }
-  }
-
-  private audioBufferToMono(buffer: AudioBuffer): Float32Array {
-    const mono = new Float32Array(buffer.length);
-    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
-      const data = buffer.getChannelData(channel);
-      for (let index = 0; index < data.length; index++) {
-        mono[index] += data[index] / buffer.numberOfChannels;
-      }
-    }
-    return mono;
-  }
-
-  private resampledFrameCount(buffer: AudioBuffer, targetSampleRate: number): number {
-    return buffer.sampleRate === targetSampleRate
-      ? buffer.length
-      : Math.ceil(buffer.length * targetSampleRate / buffer.sampleRate);
-  }
-
-  private writeResampledAudio(source: Float32Array, sourceSampleRate: number, target: Float32Array, offset: number, targetSampleRate: number): number {
-    const frameCount = Math.min(Math.ceil(source.length * targetSampleRate / sourceSampleRate), target.length - offset);
-    const ratio = sourceSampleRate / targetSampleRate;
-    for (let index = 0; index < frameCount; index++) {
-      const sourceIndex = index * ratio;
-      const left = Math.floor(sourceIndex);
-      const right = Math.min(left + 1, source.length - 1);
-      const amount = sourceIndex - left;
-      target[offset + index] = source[left] * (1 - amount) + source[right] * amount;
-    }
-    return frameCount;
-  }
-
-  private encodeWavBlob(samples: Float32Array, sampleRate: number): Blob {
-    const bytesPerSample = 2;
-    const headerBytes = 44;
-    const buffer = new ArrayBuffer(headerBytes + samples.length * bytesPerSample);
-    const view = new DataView(buffer);
-    this.writeAscii(view, 0, 'RIFF');
-    view.setUint32(4, 36 + samples.length * bytesPerSample, true);
-    this.writeAscii(view, 8, 'WAVE');
-    this.writeAscii(view, 12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * bytesPerSample, true);
-    view.setUint16(32, bytesPerSample, true);
-    view.setUint16(34, 8 * bytesPerSample, true);
-    this.writeAscii(view, 36, 'data');
-    view.setUint32(40, samples.length * bytesPerSample, true);
-
-    let offset = headerBytes;
-    for (const sample of samples) {
-      const clamped = Math.max(-1, Math.min(1, sample));
-      view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
-      offset += bytesPerSample;
-    }
-    return new Blob([buffer], { type: 'audio/wav' });
-  }
-
-  private writeAscii(view: DataView, offset: number, value: string): void {
-    for (let index = 0; index < value.length; index++) {
-      view.setUint8(offset + index, value.charCodeAt(index));
-    }
-  }
-
-  private async createZipBlob(entries: { name: string; data: Blob | string }[]): Promise<Blob> {
-    const encoder = new TextEncoder();
-    const localParts: BlobPart[] = [];
-    const centralParts: BlobPart[] = [];
-    let offset = 0;
-
-    for (const entry of entries) {
-      const nameBytes = encoder.encode(this.sanitizeZipEntryName(entry.name));
-      const data = typeof entry.data === 'string'
-        ? encoder.encode(entry.data)
-        : new Uint8Array(await entry.data.arrayBuffer());
-      const crc = this.getCrc32(data);
-      const { dosTime, dosDate } = this.getZipTimestamp(new Date());
-
-      const localHeader = new Uint8Array(30 + nameBytes.length);
-      const localView = new DataView(localHeader.buffer);
-      localView.setUint32(0, 0x04034b50, true);
-      localView.setUint16(4, 20, true);
-      localView.setUint16(6, 0, true);
-      localView.setUint16(8, 0, true);
-      localView.setUint16(10, dosTime, true);
-      localView.setUint16(12, dosDate, true);
-      localView.setUint32(14, crc, true);
-      localView.setUint32(18, data.byteLength, true);
-      localView.setUint32(22, data.byteLength, true);
-      localView.setUint16(26, nameBytes.length, true);
-      localHeader.set(nameBytes, 30);
-      localParts.push(localHeader, data);
-
-      const centralHeader = new Uint8Array(46 + nameBytes.length);
-      const centralView = new DataView(centralHeader.buffer);
-      centralView.setUint32(0, 0x02014b50, true);
-      centralView.setUint16(4, 20, true);
-      centralView.setUint16(6, 20, true);
-      centralView.setUint16(8, 0, true);
-      centralView.setUint16(10, 0, true);
-      centralView.setUint16(12, dosTime, true);
-      centralView.setUint16(14, dosDate, true);
-      centralView.setUint32(16, crc, true);
-      centralView.setUint32(20, data.byteLength, true);
-      centralView.setUint32(24, data.byteLength, true);
-      centralView.setUint16(28, nameBytes.length, true);
-      centralView.setUint32(42, offset, true);
-      centralHeader.set(nameBytes, 46);
-      centralParts.push(centralHeader);
-
-      offset += localHeader.byteLength + data.byteLength;
-    }
-
-    const centralOffset = offset;
-    const centralSize = centralParts.reduce((total, part) => total + (part as Uint8Array).byteLength, 0);
-    const endRecord = new Uint8Array(22);
-    const endView = new DataView(endRecord.buffer);
-    endView.setUint32(0, 0x06054b50, true);
-    endView.setUint16(8, entries.length, true);
-    endView.setUint16(10, entries.length, true);
-    endView.setUint32(12, centralSize, true);
-    endView.setUint32(16, centralOffset, true);
-
-    return new Blob([...localParts, ...centralParts, endRecord], { type: 'application/zip' });
-  }
-
-  private sanitizeZipEntryName(name: string): string {
-    return String(name || 'file')
-      .replace(/\\/g, '/')
-      .replace(/^\/+/, '')
-      .replace(/\.\.\//g, '')
-      || 'file';
-  }
-
-  private getZipTimestamp(date: Date): { dosTime: number; dosDate: number } {
-    const year = Math.max(1980, date.getFullYear());
-    const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
-    const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
-    return { dosTime, dosDate };
-  }
-
-  private getCrc32(data: Uint8Array): number {
-    let crc = 0xffffffff;
-    for (const byte of data) {
-      crc ^= byte;
-      for (let bit = 0; bit < 8; bit++) {
-        crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-      }
-    }
-    return (crc ^ 0xffffffff) >>> 0;
-  }
-
   private playSpeakingUiSound(src: string): void {
     const audio = new Audio(src);
     audio.volume = 0.85;
@@ -4487,15 +4152,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       .find((element) => element.id === elementId) ?? null;
   }
 
-  private escapeHtml(value: unknown): string {
-    return String(value ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
   private stopGuideAudio(): void {
     this.guidePlaybackToken++;
     if (this.activeAudio) {
@@ -4558,8 +4214,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!drag) return;
     const rect = this.getPageContentRect(drag.pageId);
     if (!rect) return;
-    const x = this.clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const y = this.clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
     if (this.activeTextInput && !drag.textId) {
       this.activeTextInput.x = x;
       this.activeTextInput.y = y;
@@ -4624,19 +4280,19 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     const bounds = this.getOwlVisibleBounds(true);
-    this.owlX = this.clamp(target.x, bounds.minX, bounds.maxX);
-    this.owlY = this.clamp(target.y, bounds.minY, bounds.maxY);
+    this.owlX = clamp(target.x, bounds.minX, bounds.maxX);
+    this.owlY = clamp(target.y, bounds.minY, bounds.maxY);
   }
 
   private moveOwlToGuidePin(pin: GuideTimelinePin, page = this.currentPage): void {
-    const target = this.getPageCoordinateScreenPoint(page, this.clamp(pin.x, 0, 1), this.clamp(pin.y, 0, 1));
+    const target = this.getPageCoordinateScreenPoint(page, clamp(pin.x, 0, 1), clamp(pin.y, 0, 1));
     if (!target) {
       this.moveOwlToCorner();
       return;
     }
     const bounds = this.getOwlVisibleBounds(true);
-    this.owlX = this.clamp(target.x, bounds.minX, bounds.maxX);
-    this.owlY = this.clamp(target.y, bounds.minY, bounds.maxY);
+    this.owlX = clamp(target.x, bounds.minX, bounds.maxX);
+    this.owlY = clamp(target.y, bounds.minY, bounds.maxY);
   }
 
   private getPageCoordinateScreenPoint(page: BookPage | null, x: number, y: number): { x: number; y: number } | null {
@@ -4644,10 +4300,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!frame) return null;
     const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
-    let visibleX = this.clamp(x, 0, 1);
-    let visibleY = this.clamp(y, 0, 1);
+    let visibleX = clamp(x, 0, 1);
+    let visibleY = clamp(y, 0, 1);
     if (page && this.isFocusCropActive(page)) {
-      const focus = this.getClampedFocusRect(this.expandedFocusElement);
+      const focus = getClampedFocusRect(this.expandedFocusElement);
       visibleX = (visibleX - focus.x) / focus.width;
       visibleY = (visibleY - focus.y) / focus.height;
     }
@@ -4671,7 +4327,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getOwlVisibleBounds(teaching: boolean): { minX: number; maxX: number; minY: number; maxY: number } {
-    const owlSize = this.clamp(window.innerWidth * 0.09, 68, 112);
+    const owlSize = clamp(window.innerWidth * 0.09, 68, 112);
     if (teaching) {
       const inset = 12;
       return {
@@ -4700,10 +4356,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       ?? this.readerStage?.nativeElement.querySelector<HTMLElement>(`.reader-text-editor[data-page-id="${CSS.escape(pending.pageId)}"]`);
     if (!frameRect || !editor) return;
     const editorRect = editor.getBoundingClientRect();
-    pending.width = this.clamp(editorRect.width / frameRect.width, 0.08, 0.9);
-    pending.height = this.clamp(editorRect.height / frameRect.height, 0.035, 0.45);
-    pending.x = this.clamp((editorRect.left + editorRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
-    pending.y = this.clamp((editorRect.top + editorRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
+    pending.width = clamp(editorRect.width / frameRect.width, 0.08, 0.9);
+    pending.height = clamp(editorRect.height / frameRect.height, 0.035, 0.45);
+    pending.x = clamp((editorRect.left + editorRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
+    pending.y = clamp((editorRect.top + editorRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
   }
 
   private updateReaderSpreadWidth(afterLayout?: () => void): void {
@@ -4747,8 +4403,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const shell = this.readerCanvasShell?.nativeElement;
     if (!stage || !shell || shell.offsetWidth <= 0 || shell.offsetHeight <= 0) return null;
     return {
-      x: this.clamp((stage.scrollLeft + stage.clientWidth / 2 - shell.offsetLeft) / shell.offsetWidth, 0, 1),
-      y: this.clamp((stage.scrollTop + stage.clientHeight / 2 - shell.offsetTop) / shell.offsetHeight, 0, 1)
+      x: clamp((stage.scrollLeft + stage.clientWidth / 2 - shell.offsetLeft) / shell.offsetWidth, 0, 1),
+      y: clamp((stage.scrollTop + stage.clientHeight / 2 - shell.offsetTop) / shell.offsetHeight, 0, 1)
     };
   }
 
@@ -4760,12 +4416,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!stage || !shell || this.twoPageMode || this.zoom <= 1) return;
         const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
         const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
-        stage.scrollLeft = this.clamp(
+        stage.scrollLeft = clamp(
           shell.offsetLeft + shell.offsetWidth * anchor.x - stage.clientWidth / 2,
           0,
           maxLeft
         );
-        stage.scrollTop = this.clamp(
+        stage.scrollTop = clamp(
           shell.offsetTop + shell.offsetHeight * anchor.y - stage.clientHeight / 2,
           0,
           maxTop
@@ -4795,13 +4451,13 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
     const deltaX = shellRect.left + shellRect.width / 2 - (stageRect.left + stageRect.width / 2);
     const deltaY = shellRect.top + shellRect.height / 2 - (stageRect.top + stageRect.height / 2);
-    stage.scrollLeft = this.clamp(stage.scrollLeft + deltaX, 0, maxLeft);
-    stage.scrollTop = this.clamp(stage.scrollTop + deltaY, 0, maxTop);
+    stage.scrollLeft = clamp(stage.scrollLeft + deltaX, 0, maxLeft);
+    stage.scrollTop = clamp(stage.scrollTop + deltaY, 0, maxTop);
   }
 
   private getPageAspectRatioNumber(page = this.currentPage): number {
     const baseAspect = this.getBasePageAspectRatioNumber();
-    return this.getRotatedAspectRatio(baseAspect, page);
+    return getRotatedAspectRatio(baseAspect, this.getPageRotation(page));
   }
 
   private getBasePageAspectRatioNumber(): number {
@@ -4816,29 +4472,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.expandedFocusElement) {
       return this.getPageAspectRatioNumber(this.currentPage);
     }
-    const focus = this.getClampedFocusRect(this.expandedFocusElement);
+    const focus = getClampedFocusRect(this.expandedFocusElement);
     return Math.max(0.05, this.getPageAspectRatioNumber(this.expandedFocusPage || this.currentPage) * focus.width / focus.height);
-  }
-
-  private getRotatedAspectRatio(baseAspect: number, page: BookPage | null | undefined): number {
-    return this.isSidewaysRotation(this.getPageRotation(page)) ? 1 / Math.max(0.05, baseAspect) : baseAspect;
-  }
-
-  private normalizePageRotation(value: unknown): number {
-    const rotation = Math.round((Number(value) || 0) / 90) * 90;
-    return ((rotation % 360) + 360) % 360;
-  }
-
-  private isSidewaysRotation(rotation: number): boolean {
-    return rotation === 90 || rotation === 270;
-  }
-
-  private getClampedFocusRect(element: BookElement | null): { x: number; y: number; width: number; height: number } {
-    const width = this.clamp(Number(element?.width || 0.25), 0.04, 1);
-    const height = this.clamp(Number(element?.height || 0.18), 0.04, 1);
-    const x = this.clamp(Number(element?.x || 0), 0, Math.max(0, 1 - width));
-    const y = this.clamp(Number(element?.y || 0), 0, Math.max(0, 1 - height));
-    return { x, y, width, height };
   }
 
   private syncSelectedTextBox(pageId = this.selectedText?.pageId, textId = this.selectedText?.textId): void {
@@ -4850,10 +4485,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const text = this.getPageAnnotations(pageId).texts.find((item) => item.id === textId);
     if (!frameRect || !element || !text) return;
     const elementRect = element.getBoundingClientRect();
-    text.width = this.clamp(elementRect.width / frameRect.width, 0.06, 0.9);
-    text.height = this.clamp(elementRect.height / frameRect.height, 0.035, 0.45);
-    text.x = this.clamp((elementRect.left + elementRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
-    text.y = this.clamp((elementRect.top + elementRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
+    text.width = clamp(elementRect.width / frameRect.width, 0.06, 0.9);
+    text.height = clamp(elementRect.height / frameRect.height, 0.035, 0.45);
+    text.x = clamp((elementRect.left + elementRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
+    text.y = clamp((elementRect.top + elementRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
   }
 
   private wait(ms: number): Promise<void> {
@@ -4890,12 +4525,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private getGuideTextDelay(text: string): number {
-    const trimmed = String(text || '').trim();
-    if (!trimmed) return 1400;
-    return this.clamp(1200 + trimmed.length * 45, 1800, 5200);
-  }
-
   private getCachedAssetUrl(relativePath: string): string {
     if (!this.book || !relativePath) return '';
     const key = `${this.book.id}:${relativePath}`;
@@ -4916,51 +4545,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.assetFileUrlCache.set(key, url);
     }
     return url;
-  }
-
-  private isExternalUrl(value: string): boolean {
-    try {
-      const url = new URL(value);
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  }
-
-  private getYouTubeEmbedUrlString(element: BookElement | null): string {
-    const videoId = this.getYouTubeVideoId(element);
-    return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&playsinline=1&origin=https://www.youtube.com` : '';
-  }
-
-  private getYouTubeVideoId(element: BookElement | null): string {
-    if (!element || element.type !== 'video') return '';
-    const rawUrl = String(element.data?.['src'] || '').trim();
-    if (!rawUrl) return '';
-
-    try {
-      const url = new URL(rawUrl);
-      const host = url.hostname.replace(/^www\./, '').toLowerCase();
-      let videoId = '';
-
-      if (host === 'youtu.be') {
-        videoId = url.pathname.split('/').filter(Boolean)[0] || '';
-      } else if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
-        if (url.pathname === '/watch') {
-          videoId = url.searchParams.get('v') || '';
-        } else if (url.pathname.startsWith('/embed/') || url.pathname.startsWith('/shorts/')) {
-          videoId = url.pathname.split('/').filter(Boolean)[1] || '';
-        }
-      }
-
-      if (!/^[A-Za-z0-9_-]{6,}$/.test(videoId)) return '';
-      return videoId;
-    } catch {
-      return '';
-    }
-  }
-
-  private clamp(value: number, min: number, max: number): number {
-    return Math.min(max, Math.max(min, value));
   }
 
   private refreshPdfUrl(): void {
