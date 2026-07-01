@@ -21,7 +21,6 @@ import {
   BookAnnotations,
   BookElement,
   BookTaskResponse,
-  GuideAudioTrack,
   GuideTimelinePin,
   BookWorkbook,
   BookPage,
@@ -31,11 +30,7 @@ import {
   WorkbookLink,
   InteractiveBook
 } from '../../../core/book.model';
-import {
-  getGuideTracks,
-  getOrderedGuidePins,
-  normalizeBookGuideTimelines
-} from '../../../core/guide-timeline';
+import { normalizeBookGuideTimelines } from '../../../core/guide-timeline';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 import {
   BakedDrawingCanvas,
@@ -54,7 +49,6 @@ import {
 import {
   clamp,
   getClampedFocusRect,
-  getGuideTextDelay,
   getRotatedAspectRatio,
   normalizePageRotation
 } from './book-reader-geometry';
@@ -75,6 +69,7 @@ import {
 } from './book-reader-annotation-utils';
 import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
 import { BookReaderTaskController } from './book-reader-task-controller';
+import { BookReaderGuideController } from './book-reader-guide-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -101,6 +96,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly readerContext = this;
   private readonly taskController = new BookReaderTaskController(this);
+  private readonly guideController = new BookReaderGuideController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -1181,69 +1177,27 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get currentSpeechSpeed(): number {
-    return this.speechSpeeds[this.speechSpeedIndex] ?? 1;
+    return this.guideController.currentSpeechSpeed;
   }
 
   cycleSpeechSpeed(): void {
-    this.speechSpeedIndex = (this.speechSpeedIndex + 1) % this.speechSpeeds.length;
-    if (this.activeAudio) {
-      this.activeAudio.playbackRate = this.currentSpeechSpeed;
-    }
-    this.forceUiRefresh();
+    this.guideController.cycleSpeechSpeed();
   }
 
   toggleGuideAudioPlayback(): void {
-    if (!this.activeAudio) return;
-    if (this.activeAudio.paused) {
-      this.guideAudioPaused = false;
-      this.pausedGuideElementId = null;
-      void this.activeAudio.play().catch(() => {
-        this.guideAudioPaused = true;
-        this.pausedGuideElementId = this.playingGuideElementId;
-        this.forceUiRefresh();
-      });
-    } else {
-      this.activeAudio.pause();
-      this.guideAudioPaused = true;
-      this.pausedGuideElementId = this.playingGuideElementId;
-    }
-    this.forceUiRefresh();
+    this.guideController.toggleGuideAudioPlayback();
   }
 
   seekGuideAudio(event: Event): void {
-    if (!this.activeAudio) return;
-    const input = event.target as HTMLInputElement | null;
-    const value = Number(input?.value);
-    if (!Number.isFinite(value)) return;
-    this.activeAudio.currentTime = clamp(value, 0, this.guideAudioDuration || this.activeAudio.duration || 0);
-    this.guideAudioCurrentTime = this.activeAudio.currentTime;
-    if (this.activeGuideElement && this.activeGuidePage && this.activeGuideTrackIndex >= 0) {
-      this.applyReaderGuideState(
-        this.activeGuideElement,
-        this.activeGuidePage,
-        this.activeGuideTrackIndex,
-        this.guideAudioCurrentTime,
-        true
-      );
-    }
-    this.forceUiRefresh();
+    this.guideController.seekGuideAudio(event);
   }
 
   setGuideAudioVolume(event: Event): void {
-    const input = event.target as HTMLInputElement | null;
-    const value = Number(input?.value);
-    if (!Number.isFinite(value)) return;
-    this.guideAudioVolume = clamp(value, 0, 1);
-    if (this.activeAudio) {
-      this.activeAudio.volume = this.guideAudioVolume;
-    }
+    this.guideController.setGuideAudioVolume(event);
   }
 
   toggleGuideBubble(event?: MouseEvent): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (!this.guideBubbleText) return;
-    this.guideBubbleExpanded = !this.guideBubbleExpanded;
+    this.guideController.toggleGuideBubble(event);
   }
 
   async takeScreenshot(): Promise<void> {
@@ -1294,42 +1248,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async playGuideDot(element: BookElement, page = this.currentPage): Promise<void> {
-    if (!page || element.type !== 'guideDot' || !this.isGuideDotEnabled(element, page)) return;
-    this.stopGuideAudio();
-    const token = ++this.guidePlaybackToken;
-    this.playingGuideElementId = element.id;
-    this.pausedGuideElementId = null;
-    const tracks = getGuideTracks(element);
-    const hasTimedPins = getOrderedGuidePins(element).length > 0;
-    this.guideBubbleText = hasTimedPins ? '' : String(element.data['text'] || '');
-    this.guideBubbleExpanded = false;
-    this.activeGuideElement = element;
-    this.activeGuidePage = page;
-    this.activeGuidePinId = null;
-    this.setGuideOverlayImage('');
-    this.moveOwlToElement(element, page);
-    this.owlTeaching = true;
-    this.owlImage = 'assets/gifs/owl-teaching.gif';
-    this.forceUiRefresh();
-    await this.wait(360);
-    if (token !== this.guidePlaybackToken) return;
-
-    this.guideSegmentCount = tracks.length;
-    this.guideSegmentIndex = -1;
-    if (tracks.length) {
-      for (const [index, track] of tracks.entries()) {
-        if (token !== this.guidePlaybackToken) return;
-        this.guideSegmentIndex = index;
-        this.activeGuideTrackIndex = index;
-        this.applyReaderGuideState(element, page, index, 0, true);
-        await this.playAudioTrack(track, element, page, index, token);
-      }
-    } else {
-      await this.wait(getGuideTextDelay(this.guideBubbleText));
-    }
-    if (token !== this.guidePlaybackToken) return;
-
-    this.finishGuideDot(element, page);
+    await this.guideController.playGuideDot(element, page);
   }
 
   async activateElement(element: BookElement, event?: MouseEvent, page = this.currentPage): Promise<void> {
@@ -1669,15 +1588,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isGuideDotEnabled(element: BookElement, page = this.currentPage): boolean {
-    if (!page || element.type !== 'guideDot') return false;
-    if (this.isPageInActiveSpread(page)) {
-      const dots = this.getActiveSpreadGuideDots();
-      const index = dots.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
-      return index >= 0 && index <= (this.guideProgress[this.getActiveSpreadGuideProgressKey()] ?? 0);
-    }
-    const dots = this.getGuideDots(page);
-    const index = dots.findIndex((dot) => dot.id === element.id);
-    return index >= 0 && index <= (this.guideProgress[page.id] ?? 0);
+    return this.guideController.isGuideDotEnabled(element, page);
   }
 
   isSpeakingAiEnabled(element: BookElement, page = this.currentPage): boolean {
@@ -2977,244 +2888,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopDrawing();
   }
 
-  private async playAudioTrack(
-    track: GuideAudioTrack,
-    element: BookElement,
-    page: BookPage,
-    trackIndex: number,
-    token = this.guidePlaybackToken
-  ): Promise<void> {
-    if (!this.book) return;
-
-    const audio = new Audio(this.getCachedAssetFileUrl(track.src));
-    audio.playbackRate = this.currentSpeechSpeed;
-    audio.volume = this.guideAudioVolume;
-
-    const semitones = track.pitchSemitones ?? 0;
-    if (semitones) {
-      const cleanup = await this.guidePitch.connect(audio, semitones, this.currentSpeechSpeed);
-      if (this.guidePlaybackToken !== token) { cleanup(); return; }
-      this.activePitchCleanup = cleanup;
-    }
-
-    this.activeAudio = audio;
-    return new Promise((resolve) => {
-      this.guideAudioVisible = true;
-      this.guideAudioPaused = false;
-      this.guideAudioCurrentTime = 0;
-      this.guideAudioDuration = 0;
-      this.guideAudioResolver = resolve;
-      audio.onloadedmetadata = () => {
-        if (token !== this.guidePlaybackToken) return;
-        this.guideAudioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-        if (this.guideAudioDuration > 0) {
-          track.duration = this.guideAudioDuration;
-        }
-        this.refreshGuideAudioControls();
-      };
-      audio.ontimeupdate = () => {
-        if (token !== this.guidePlaybackToken) return;
-        this.guideAudioCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-        if (!this.guideAudioDuration && Number.isFinite(audio.duration)) {
-          this.guideAudioDuration = audio.duration;
-        }
-        this.applyReaderGuideState(element, page, trackIndex, this.guideAudioCurrentTime);
-        this.refreshGuideAudioControls();
-      };
-      audio.onplay = () => {
-        if (token !== this.guidePlaybackToken) return;
-        this.guideAudioPaused = false;
-        this.pausedGuideElementId = null;
-        this.refreshGuideAudioControls();
-      };
-      audio.onpause = () => {
-        if (token !== this.guidePlaybackToken || audio.ended) return;
-        this.guideAudioPaused = true;
-        this.pausedGuideElementId = this.playingGuideElementId;
-        this.refreshGuideAudioControls();
-      };
-      audio.onended = () => {
-        if (token !== this.guidePlaybackToken) return;
-        this.applyReaderGuideState(element, page, trackIndex, audio.duration || this.guideAudioDuration, true);
-        this.guideAudioResolver = null;
-        this.activeAudio = null;
-        this.guideAudioCurrentTime = 0;
-        this.guideAudioDuration = 0;
-        this.guideAudioPaused = false;
-        resolve();
-      };
-      audio.onerror = () => {
-        if (token !== this.guidePlaybackToken) return;
-        this.guideAudioResolver = null;
-        this.activeAudio = null;
-        this.guideAudioCurrentTime = 0;
-        this.guideAudioDuration = 0;
-        this.guideAudioPaused = false;
-        resolve();
-      };
-      void audio.play().catch(() => {
-        this.guideAudioResolver = null;
-        this.activeAudio = null;
-        this.guideAudioVisible = false;
-        this.guideAudioCurrentTime = 0;
-        this.guideAudioDuration = 0;
-        this.guideAudioPaused = false;
-        resolve();
-      });
-    });
-  }
-
-  private applyReaderGuideState(
-    element: BookElement,
-    page: BookPage,
-    trackIndex: number,
-    time: number,
-    force = false
-  ): void {
-    const tracks = getGuideTracks(element);
-    let activePin: GuideTimelinePin | null = null;
-    for (let index = 0; index <= trackIndex && index < tracks.length; index++) {
-      const limit = index < trackIndex ? Number.POSITIVE_INFINITY : time + 0.01;
-      const pin = [...(tracks[index].pins || [])]
-        .sort((a, b) => a.time - b.time)
-        .filter((candidate) => candidate.time <= limit)
-        .pop();
-      if (pin) activePin = pin;
-    }
-
-    if (!activePin) {
-      if (!getOrderedGuidePins(element).length) {
-        this.guideBubbleText = String(element.data['text'] || '');
-      } else {
-        this.guideBubbleText = '';
-      }
-      this.guideBubbleExpanded = false;
-      this.setGuideOverlayImage('');
-      this.moveOwlToElement(element, page);
-      this.activeGuidePinId = null;
-      return;
-    }
-
-    if (!force && activePin.id === this.activeGuidePinId) return;
-    this.activeGuidePinId = activePin.id;
-    this.guideBubbleText = activePin.text || '';
-    this.guideBubbleExpanded = false;
-    const imageUrl = activePin.imageSrc ? this.getCachedAssetUrl(activePin.imageSrc) : '';
-    if (imageUrl) {
-      this.setGuideOverlayImage(imageUrl);
-    } else {
-      this.cancelGuideOverlayPositionFrame();
-      this.moveOwlToGuidePin(activePin, page);
-      this.setGuideOverlayImage('');
-    }
-    this.forceUiRefresh();
-  }
-
-  private setGuideOverlayImage(url: string): void {
-    if (this.guideOverlayTimer !== null) {
-      window.clearTimeout(this.guideOverlayTimer);
-      this.guideOverlayTimer = null;
-    }
-    if (!url) {
-      this.cancelGuideOverlayPositionFrame();
-      this.guideOverlayVisible = false;
-      if (this.guideOverlayImageUrl) {
-        this.guideOverlayTimer = window.setTimeout(() => {
-          this.guideOverlayTimer = null;
-          this.guideOverlayImageUrl = '';
-          this.forceUiRefresh();
-        }, 240);
-      }
-      return;
-    }
-    if (url === this.guideOverlayImageUrl) {
-      this.guideOverlayVisible = true;
-      this.forceUiRefresh();
-      this.scheduleOwlAtGuideOverlayCorner();
-      return;
-    }
-    this.guideOverlayVisible = false;
-    this.guideOverlayTimer = window.setTimeout(() => {
-      this.guideOverlayTimer = null;
-      this.guideOverlayImageUrl = url;
-      this.guideOverlayVisible = true;
-      this.forceUiRefresh();
-      this.scheduleOwlAtGuideOverlayCorner();
-    }, 120);
-  }
-
-  private scheduleOwlAtGuideOverlayCorner(): void {
-    this.cancelGuideOverlayPositionFrame();
-    this.guideOverlayPositionFrame = requestAnimationFrame(() => {
-      this.guideOverlayPositionFrame = requestAnimationFrame(() => {
-        this.guideOverlayPositionFrame = 0;
-        this.moveOwlToGuideOverlayCorner();
-      });
-    });
-  }
-
-  private cancelGuideOverlayPositionFrame(): void {
-    if (!this.guideOverlayPositionFrame) return;
-    cancelAnimationFrame(this.guideOverlayPositionFrame);
-    this.guideOverlayPositionFrame = 0;
-  }
-
-  private moveOwlToGuideOverlayCorner(): void {
-    const frame = this.guidePinMediaFrame?.nativeElement;
-    if (!frame) return;
-    const rect = frame.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const owlSize = clamp(window.innerWidth * 0.09, 68, 112);
-    const bounds = this.getOwlVisibleBounds(true);
-    const targetX = rect.left + owlSize * 0.5;
-    const targetY = rect.bottom;
-    this.owlX = clamp(targetX, bounds.minX, bounds.maxX);
-    this.owlY = clamp(targetY, bounds.minY, bounds.maxY);
-    this.forceUiRefresh();
-  }
-
-  private finishGuideDot(element: BookElement, page = this.currentPage): void {
-    this.completeGuideDot(element, page);
-    this.stopGuideAudioAndReturnHome();
-    this.forceUiRefresh();
-  }
-
-  private completeGuideDot(element: BookElement, page = this.currentPage): void {
-    if (!page) return;
-    if (this.isPageInActiveSpread(page)) {
-      const dots = this.getActiveSpreadGuideDots();
-      const index = dots.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
-      if (index >= 0) {
-        const key = this.getActiveSpreadGuideProgressKey();
-        this.guideProgress[key] = Math.max(this.guideProgress[key] ?? 0, index + 1);
-      }
-    }
-
-    const dots = this.getGuideDots(page);
-    const index = dots.findIndex((dot) => dot.id === element.id);
-    if (index < 0) return;
-    this.guideProgress[page.id] = Math.max(this.guideProgress[page.id] ?? 0, index + 1);
-  }
-
-  private getGuideDots(page: BookPage): BookElement[] {
-    return page.elements
-      .map((element, index) => ({ element, index }))
-      .filter(({ element }) => element.type === 'guideDot')
-      .sort((a, b) => Number(a.element.data['stepNumber'] ?? a.index) - Number(b.element.data['stepNumber'] ?? b.index))
-      .map(({ element }) => element);
-  }
-
   private isPageInActiveSpread(page: BookPage): boolean {
     return this.twoPageMode && !!this.companionPage && [this.currentPage?.id, this.companionPage.id].includes(page.id);
-  }
-
-  private getActiveSpreadGuideDots(): { page: BookPage; element: BookElement }[] {
-    const pages = [this.currentPage, this.companionPage].filter((page): page is BookPage => !!page);
-    return pages.flatMap((page) => this.getGuideDots(page).map((element) => ({ page, element })));
-  }
-
-  private getActiveSpreadGuideProgressKey(): string {
-    return `spread:${this.pageSource}:${this.currentPage?.id || ''}:${this.companionPage?.id || ''}`;
   }
 
   private openSpeakingAi(element: BookElement, page = this.currentPage): void {
@@ -3894,47 +3569,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private stopGuideAudio(): void {
-    this.guidePlaybackToken++;
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio = null;
-    }
-    this.activePitchCleanup?.();
-    this.activePitchCleanup = null;
-    this.guideAudioResolver?.();
-    this.guideAudioResolver = null;
-    this.playingGuideElementId = null;
-    this.pausedGuideElementId = null;
-    this.guideBubbleText = '';
-    this.guideBubbleExpanded = false;
-    this.guideAudioVisible = false;
-    this.guideAudioPaused = false;
-    this.guideAudioCurrentTime = 0;
-    this.guideAudioDuration = 0;
-    this.guideSegmentIndex = -1;
-    this.guideSegmentCount = 0;
-    this.activeGuideElement = null;
-    this.activeGuidePage = null;
-    this.activeGuideTrackIndex = -1;
-    this.activeGuidePinId = null;
-    this.setGuideOverlayImage('');
+    this.guideController.stopGuideAudio();
   }
 
   private stopGuideAudioAndReturnHome(): void {
-    const hadGuideAudio = !!this.playingGuideElementId || this.guideAudioVisible || !!this.guideBubbleText || this.owlTeaching;
-    this.stopGuideAudio();
-    if (hadGuideAudio) {
-      this.moveOwlToCorner();
-      this.forceUiRefresh();
-    }
-  }
-
-  private refreshGuideAudioControls(): void {
-    if (this.guideAudioUiFrame) return;
-    this.guideAudioUiFrame = requestAnimationFrame(() => {
-      this.guideAudioUiFrame = 0;
-      this.zone.run(() => this.cdr.detectChanges());
-    });
+    this.guideController.stopGuideAudioAndReturnHome();
   }
 
   @HostListener('window:resize')
