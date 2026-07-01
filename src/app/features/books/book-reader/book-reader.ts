@@ -14,19 +14,7 @@ import { BookTaskResponseService } from '../../../core/book-task-responses';
 import { BookSpeakingAttemptService } from '../../../core/book-speaking-attempts';
 import { AiLanguagePackService, InstalledAiLanguagePack } from '../../../core/ai-language-packs';
 import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus, AiSpeakingTaskConfig, AiSpeakingTurn } from '../../../core/ai-speaking-runtime';
-import {
-  getAvailableWordBankOptions,
-  getChoiceTaskBankId,
-  getMatchTaskGroupElements,
-  getMatchTaskGroupId,
-  getMatchTaskSide,
-  getPageWordBank,
-  isBookTaskElement,
-  isChoiceTaskAnswerCorrect,
-  isCircleTaskCorrectTarget,
-  isMatchTaskConnectionCorrect,
-  isTextTaskAnswerCorrect
-} from '../../../core/book-tasks';
+import { isBookTaskElement } from '../../../core/book-tasks';
 import {
   BookAnnotationStroke,
   BookAnnotationText,
@@ -86,6 +74,7 @@ import {
   createTextImageDataUrl
 } from './book-reader-annotation-utils';
 import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
+import { BookReaderTaskController } from './book-reader-task-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -111,6 +100,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(BookReaderSpeakingPanelComponent) speakingPanel?: BookReaderSpeakingPanelComponent;
 
   readonly readerContext = this;
+  private readonly taskController = new BookReaderTaskController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -812,46 +802,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getTaskResponseValue(element: BookElement | null): string {
-    return element ? this.taskResponses.get(element.id)?.value ?? '' : '';
+    return this.taskController.getTaskResponseValue(element);
   }
 
   getTaskResult(element: BookElement): 'unchecked' | 'correct' | 'incorrect' {
-    return this.taskResponses.get(element.id)?.result ?? 'unchecked';
+    return this.taskController.getTaskResult(element);
   }
 
-  shouldUseTaskDock(_element: BookElement): boolean {
-    return _element.type === 'textTask';
+  shouldUseTaskDock(element: BookElement): boolean {
+    return this.taskController.shouldUseTaskDock(element);
   }
 
   activateTextTask(element: BookElement, page: BookPage, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (element.type !== 'textTask') return;
-    this.activeTaskElement = element;
-    this.activeTaskPageId = page.id;
-    this.drawMode = false;
-    this.highlighterMode = false;
-    this.textMode = false;
-    this.deleteMode = false;
-    this.forceUiRefresh();
-    window.setTimeout(() => {
-      this.readerStage?.nativeElement.ownerDocument
-        .querySelector<HTMLInputElement>('.task-response-dock input')
-        ?.focus();
-    });
+    this.taskController.activateTextTask(element, page, event);
   }
 
   activateChoiceTask(element: BookElement, page: BookPage, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (element.type !== 'choiceTask') return;
-    this.activeTaskElement = element;
-    this.activeTaskPageId = page.id;
-    this.drawMode = false;
-    this.highlighterMode = false;
-    this.textMode = false;
-    this.deleteMode = false;
-    this.forceUiRefresh();
+    this.taskController.activateChoiceTask(element, page, event);
   }
 
   @HostListener('document:click', ['$event'])
@@ -871,8 +838,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   closeTaskInput(): void {
-    this.activeTaskElement = null;
-    this.activeTaskPageId = null;
+    this.taskController.closeTaskInput();
   }
 
   private closeSpeakingPanelFromOutsideClick(target: HTMLElement | null): void {
@@ -893,103 +859,39 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   updateTaskResponse(element: BookElement, page: BookPage, value: string): void {
-    if (!this.book || !isBookTaskElement(element)) return;
-    const existing = this.taskResponses.get(element.id);
-    const response: BookTaskResponse = {
-      key: this.taskResponseService.makeKey(this.book.id, element.id),
-      profileId: this.taskResponseService.defaultProfileId,
-      bookId: this.book.id,
-      pageId: page.id,
-      taskId: element.id,
-      value,
-      result: 'unchecked',
-      attempts: existing?.attempts ?? 0,
-      updatedAt: new Date().toISOString()
-    };
-    this.taskResponses.set(element.id, response);
-    this.pendingTaskResponseIds.add(element.id);
-    this.scheduleTaskResponseSave();
+    this.taskController.updateTaskResponse(element, page, value);
   }
 
   updateActiveTaskResponse(value: string): void {
-    const element = this.activeTaskElement;
-    const page = this.activeTaskPageId ? this.getVisiblePageById(this.activeTaskPageId) : null;
-    if (element && page) this.updateTaskResponse(element, page, value);
+    this.taskController.updateActiveTaskResponse(value);
   }
 
   getChoiceTaskDisplayValue(element: BookElement, page: BookPage): string {
-    if (element.type !== 'choiceTask') return '';
-    const optionId = this.getTaskResponseValue(element);
-    return getPageWordBank(page, getChoiceTaskBankId(element))
-      ?.options.find((option) => option.id === optionId)?.text || '';
+    return this.taskController.getChoiceTaskDisplayValue(element, page);
   }
 
   getActiveWordBankOptions(): BookWordBankOption[] {
-    const element = this.activeTaskElement;
-    const page = this.activeTaskPageId ? this.getVisiblePageById(this.activeTaskPageId) : null;
-    if (!element || element.type !== 'choiceTask' || !page) return [];
-    return getAvailableWordBankOptions(page, getChoiceTaskBankId(element));
+    return this.taskController.getActiveWordBankOptions();
   }
 
   isActiveChoiceOptionSelected(optionId: string): boolean {
-    return this.activeTaskElement?.type === 'choiceTask' && this.getTaskResponseValue(this.activeTaskElement) === optionId;
+    return this.taskController.isActiveChoiceOptionSelected(optionId);
   }
 
   selectActiveChoiceOption(optionId: string): void {
-    const element = this.activeTaskElement;
-    const page = this.activeTaskPageId ? this.getVisiblePageById(this.activeTaskPageId) : null;
-    if (!element || element.type !== 'choiceTask' || !page) return;
-    if (!this.getActiveWordBankOptions().some((option) => option.id === optionId)) return;
-    this.updateTaskResponse(element, page, optionId);
-    this.closeTaskInput();
-    this.forceUiRefresh();
+    this.taskController.selectActiveChoiceOption(optionId);
   }
 
   isCircleTaskSelected(element: BookElement): boolean {
-    return element.type === 'circleTask' && this.getTaskResponseValue(element) === 'selected';
+    return this.taskController.isCircleTaskSelected(element);
   }
 
   toggleCircleTask(element: BookElement, page: BookPage, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (!this.book || element.type !== 'circleTask') return;
-    this.closeTaskInput();
-    this.drawMode = false;
-    this.highlighterMode = false;
-    this.textMode = false;
-    this.deleteMode = false;
-    const selectTarget = !this.isCircleTaskSelected(element);
-    const existing = this.taskResponses.get(element.id);
-    const response: BookTaskResponse = {
-      key: this.taskResponseService.makeKey(this.book.id, element.id),
-      profileId: this.taskResponseService.defaultProfileId,
-      bookId: this.book.id,
-      pageId: page.id,
-      taskId: element.id,
-      value: selectTarget ? 'selected' : '',
-      result: 'unchecked',
-      attempts: existing?.attempts ?? 0,
-      updatedAt: new Date().toISOString()
-    };
-    this.taskResponses.set(element.id, response);
-    this.pendingTaskResponseIds.add(element.id);
-    this.scheduleTaskResponseSave();
-    this.forceUiRefresh();
+    this.taskController.toggleCircleTask(element, page, event);
   }
 
   getMatchLines(page: BookPage): ReaderMatchLine[] {
-    const endpoints = page.elements.filter((element) => element.type === 'matchTask');
-    const endpointById = new Map(endpoints.map((element) => [element.id, element]));
-    return endpoints
-      .filter((element) => getMatchTaskSide(element) === 'A')
-      .map((source) => {
-        const response = this.taskResponses.get(source.id);
-        const target = endpointById.get(response?.value || '') ?? null;
-        return target && getMatchTaskSide(target) === 'B'
-          ? { source, target, result: response?.result ?? 'unchecked' }
-          : null;
-      })
-      .filter((line): line is ReaderMatchLine => !!line);
+    return this.taskController.getMatchLines(page);
   }
 
   trackByMatchLine(_index: number, line: ReaderMatchLine): string {
@@ -1005,174 +907,31 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isMatchEndpointSelected(element: BookElement, page: BookPage): boolean {
-    return this.activeMatchEndpoint?.elementId === element.id && this.activeMatchEndpoint.pageId === page.id;
+    return this.taskController.isMatchEndpointSelected(element, page);
   }
 
   isMatchEndpointAvailable(element: BookElement, page: BookPage): boolean {
-    if (!this.activeMatchEndpoint) return true;
-    if (this.isMatchEndpointSelected(element, page)) return true;
-    if (this.activeMatchEndpoint.pageId !== page.id) return false;
-    const active = page.elements.find((item) => item.id === this.activeMatchEndpoint?.elementId) ?? null;
-    return !!active
-      && getMatchTaskGroupId(active) === getMatchTaskGroupId(element)
-      && getMatchTaskSide(active) !== getMatchTaskSide(element);
+    return this.taskController.isMatchEndpointAvailable(element, page);
   }
 
   isMatchEndpointConnected(element: BookElement, page: BookPage): boolean {
-    if (element.type !== 'matchTask') return false;
-    if (getMatchTaskSide(element) === 'A') return !!this.taskResponses.get(element.id)?.value;
-    return page.elements
-      .filter((source) => source.type === 'matchTask' && getMatchTaskSide(source) === 'A')
-      .some((source) => this.taskResponses.get(source.id)?.value === element.id);
+    return this.taskController.isMatchEndpointConnected(element, page);
   }
 
   isMatchEndpointMissing(element: BookElement, page: BookPage): boolean {
-    if (element.type !== 'matchTask' || this.isMatchEndpointConnected(element, page)) return false;
-    const group = getMatchTaskGroupElements(page, getMatchTaskGroupId(element));
-    return group
-      .filter((endpoint) => getMatchTaskSide(endpoint) === 'A')
-      .some((source) => this.getTaskResult(source) !== 'unchecked');
+    return this.taskController.isMatchEndpointMissing(element, page);
   }
 
   activateMatchEndpoint(element: BookElement, page: BookPage, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (element.type !== 'matchTask') return;
-    this.closeTaskInput();
-    this.drawMode = false;
-    this.highlighterMode = false;
-    this.textMode = false;
-    this.deleteMode = false;
-
-    if (!this.activeMatchEndpoint) {
-      this.activeMatchEndpoint = { elementId: element.id, pageId: page.id };
-      this.forceUiRefresh();
-      return;
-    }
-    if (this.isMatchEndpointSelected(element, page)) {
-      this.activeMatchEndpoint = null;
-      this.forceUiRefresh();
-      return;
-    }
-    if (!this.isMatchEndpointAvailable(element, page)) return;
-
-    const active = page.elements.find((item) => item.id === this.activeMatchEndpoint?.elementId) ?? null;
-    if (!active) {
-      this.activeMatchEndpoint = null;
-      return;
-    }
-    const source = getMatchTaskSide(active) === 'A' ? active : element;
-    const target = getMatchTaskSide(active) === 'B' ? active : element;
-    this.setMatchConnection(page, source, target);
-    this.activeMatchEndpoint = null;
-    this.forceUiRefresh();
-  }
-
-  private setMatchConnection(page: BookPage, source: BookElement, target: BookElement): void {
-    if (!this.book || getMatchTaskSide(source) !== 'A' || getMatchTaskSide(target) !== 'B') return;
-    const group = getMatchTaskGroupElements(page, getMatchTaskGroupId(source));
-    for (const endpoint of group.filter((item) => getMatchTaskSide(item) === 'A')) {
-      const existing = this.taskResponses.get(endpoint.id);
-      const response: BookTaskResponse = {
-        key: this.taskResponseService.makeKey(this.book.id, endpoint.id),
-        profileId: this.taskResponseService.defaultProfileId,
-        bookId: this.book.id,
-        pageId: page.id,
-        taskId: endpoint.id,
-        value: endpoint.id === source.id
-          ? target.id
-          : existing?.value === target.id ? '' : existing?.value ?? '',
-        result: 'unchecked',
-        attempts: existing?.attempts ?? 0,
-        updatedAt: new Date().toISOString()
-      };
-      this.taskResponses.set(endpoint.id, response);
-      this.pendingTaskResponseIds.add(endpoint.id);
-    }
-    this.scheduleTaskResponseSave();
+    this.taskController.activateMatchEndpoint(element, page, event);
   }
 
   hasVisibleTasks(): boolean {
-    return this.getVisibleTaskEntries().length > 0;
+    return this.taskController.hasVisibleTasks();
   }
 
   checkVisibleTaskAnswers(): void {
-    if (!this.book) return;
-    const entries = this.getVisibleTaskEntries();
-    const changed: BookTaskResponse[] = [];
-    for (const { page, element } of entries.filter((entry) =>
-      entry.element.type !== 'circleTask' && entry.element.type !== 'matchTask'
-    )) {
-      const existing = this.taskResponses.get(element.id);
-      const value = existing?.value ?? '';
-      const correct = element.type === 'choiceTask'
-        ? isChoiceTaskAnswerCorrect(element, value)
-        : isTextTaskAnswerCorrect(element, value);
-      const response: BookTaskResponse = {
-        key: this.taskResponseService.makeKey(this.book.id, element.id),
-        profileId: this.taskResponseService.defaultProfileId,
-        bookId: this.book.id,
-        pageId: page.id,
-        taskId: element.id,
-        value,
-        result: correct ? 'correct' : 'incorrect',
-        attempts: (existing?.attempts ?? 0) + 1,
-        updatedAt: new Date().toISOString()
-      };
-      this.taskResponses.set(element.id, response);
-      changed.push(response);
-      this.pendingTaskResponseIds.delete(element.id);
-    }
-    for (const { page, element } of entries.filter((entry) => entry.element.type === 'circleTask')) {
-      const existing = this.taskResponses.get(element.id);
-      const selected = this.isCircleTaskSelected(element);
-      const response: BookTaskResponse = {
-        key: this.taskResponseService.makeKey(this.book.id, element.id),
-        profileId: this.taskResponseService.defaultProfileId,
-        bookId: this.book.id,
-        pageId: page.id,
-        taskId: element.id,
-        value: existing?.value ?? '',
-        result: selected ? (isCircleTaskCorrectTarget(element) ? 'correct' : 'incorrect') : 'unchecked',
-        attempts: (existing?.attempts ?? 0) + 1,
-        updatedAt: new Date().toISOString()
-      };
-      this.taskResponses.set(element.id, response);
-      changed.push(response);
-      this.pendingTaskResponseIds.delete(element.id);
-    }
-    const matchGroups = new Map<string, { page: BookPage; elements: BookElement[] }>();
-    for (const { page, element } of entries.filter((entry) => entry.element.type === 'matchTask')) {
-      const key = `${page.id}:${getMatchTaskGroupId(element)}`;
-      const group = matchGroups.get(key) || { page, elements: [] };
-      group.elements.push(element);
-      matchGroups.set(key, group);
-    }
-    for (const { page, elements } of matchGroups.values()) {
-      const endpointById = new Map(elements.map((element) => [element.id, element]));
-      for (const source of elements.filter((element) => getMatchTaskSide(element) === 'A')) {
-        const existing = this.taskResponses.get(source.id);
-        const value = existing?.value ?? '';
-        const correct = isMatchTaskConnectionCorrect(source, endpointById.get(value) ?? null);
-        const response: BookTaskResponse = {
-          key: this.taskResponseService.makeKey(this.book.id, source.id),
-          profileId: this.taskResponseService.defaultProfileId,
-          bookId: this.book.id,
-          pageId: page.id,
-          taskId: source.id,
-          value,
-          result: correct ? 'correct' : 'incorrect',
-          attempts: (existing?.attempts ?? 0) + 1,
-          updatedAt: new Date().toISOString()
-        };
-        this.taskResponses.set(source.id, response);
-        changed.push(response);
-        this.pendingTaskResponseIds.delete(source.id);
-      }
-    }
-    this.activeMatchEndpoint = null;
-    void this.taskResponseService.saveMany(changed);
-    this.forceUiRefresh();
+    this.taskController.checkVisibleTaskAnswers();
   }
 
   getStrokeBounds(stroke: BookAnnotationStroke): { x: number; y: number; width: number; height: number } {
@@ -2991,25 +2750,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getActiveAnnotationPageIds(): string[] {
     return this.getActiveAnnotationPages().map((page) => page.id);
-  }
-
-  private getVisibleTaskEntries(): Array<{ page: BookPage; element: BookElement }> {
-    const focus = this.expandedFocusElement ? getClampedFocusRect(this.expandedFocusElement) : null;
-    return this.getActiveAnnotationPages().flatMap((page) =>
-      page.elements
-        .filter(isBookTaskElement)
-        .filter((element) => !focus || this.elementIntersectsRect(element, focus))
-        .map((element) => ({ page, element }))
-    );
-  }
-
-  private elementIntersectsRect(
-    element: BookElement,
-    rect: { x: number; y: number; width: number; height: number }
-  ): boolean {
-    const right = element.x + (element.width || 0);
-    const bottom = element.y + (element.height || 0);
-    return right >= rect.x && element.x <= rect.x + rect.width && bottom >= rect.y && element.y <= rect.y + rect.height;
   }
 
   private getAllBookPages(): BookPage[] {
