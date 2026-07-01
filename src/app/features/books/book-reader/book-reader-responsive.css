@@ -34,10 +34,6 @@
     padding: 0.1rem;
   }
 
-  .guide-progress {
-    height: 8rem;
-  }
-
   .page-stepper span {
     min-width: 1.8rem;
   }
@@ -110,10 +106,6 @@
 
   .reader-tool-cluster {
     gap: 0.12rem;
-  }
-
-  .guide-progress {
-    height: 7rem;
   }
 
   .pen-controls {
@@ -251,10 +243,6 @@
     width: min(100%, calc(100vw - 4.3rem));
   }
 
-  .guide-progress {
-    height: 5.5rem;
-  }
-
   .guide-bubble {
     bottom: 0.85rem;
     width: min(90%, 28rem);
@@ -303,11 +291,5 @@
     padding: 0.12rem 0.45rem;
   }
 
-  .guide-audio-controls {
-    /* Keep vertical side position — already correct, just shrink the progress bar */
-  }
 
-  .guide-progress {
-    height: 4rem;
-  }
 }

@@ -1,0 +1,27 @@
+<div class="guide-audio-controls" *ngIf="reader.guideAudioVisible" [attr.aria-label]="'readerTeacherAudioControls' | translate">
+  <button
+    type="button"
+    class="guide-play-btn"
+    (click)="reader.toggleGuideAudioPlayback()"
+    [attr.aria-label]="(reader.guideAudioPaused ? 'readerPlayTeacherAudio' : 'readerPauseTeacherAudio') | translate"
+    [title]="(reader.guideAudioPaused ? 'playLabel' : 'pauseLabel') | translate">
+    <img [src]="reader.guideAudioPaused ? 'assets/images/book/play.png' : 'assets/images/book/pause.png'" alt="">
+  </button>
+  <input
+    class="guide-progress"
+    type="range"
+    min="0"
+    [max]="reader.guideAudioDuration || 1"
+    step="0.01"
+    [ngModel]="reader.guideAudioCurrentTime"
+    (input)="reader.seekGuideAudio($event)"
+    [attr.aria-label]="'readerTeacherAudioProgress' | translate">
+  <button
+    type="button"
+    class="guide-speed-btn"
+    [title]="'readerTeacherAudioSpeed' | translate"
+    [attr.aria-label]="'readerTeacherAudioSpeed' | translate"
+    (click)="reader.cycleSpeechSpeed()">
+    {{ reader.currentSpeechSpeed }}x
+  </button>
+</div>
