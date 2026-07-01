@@ -40,6 +40,7 @@ import {
 } from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
+import { BookCreatorMarkController } from './book-creator-mark-controller';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -226,12 +227,14 @@ Tomorrow I will help my mom.`;
     private languageService: LanguageService,
     private platformFile: PlatformFileService,
     private guidePitch: GuidePitchService,
-    private aiSpeakingRuntime: AiSpeakingRuntimeService,
-    private cdr: ChangeDetectorRef
+  private aiSpeakingRuntime: AiSpeakingRuntimeService,
+  private cdr: ChangeDetectorRef
   ) {
     this.progress$ = this.bookLibrary.progress$;
     this.topics$ = this.db.topics$;
   }
+
+  private readonly markController = new BookCreatorMarkController(this);
 
   async ngOnInit(): Promise<void> {
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -1660,176 +1663,43 @@ Tomorrow I will help my mom.`;
   }
 
   private startCreatorInk(event: PointerEvent, kind: 'ink' | 'highlighter'): void {
-    const page = this.selectedPage;
-    const point = this.getEditorCanvasPoint(event);
-    if (!page || !point) return;
-    event.preventDefault();
-    event.stopPropagation();
-    this.editorCanvas?.nativeElement.setPointerCapture?.(event.pointerId);
-    this.beginHistoryCapture();
-    this.creatorInkState = {
-      kind,
-      points: [point]
-    };
-    this.redrawCreatorLiveInk();
+    this.markController.startCreatorInk(event, kind);
   }
 
   private updateCreatorInk(clientX: number, clientY: number): void {
-    const state = this.creatorInkState;
-    if (!state) return;
-    const point = this.getEditorCanvasPointFromClient(clientX, clientY);
-    if (!point) return;
-    const previous = state.points[state.points.length - 1];
-    if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) < 0.0025) return;
-    state.points.push(point);
-    this.redrawCreatorLiveInk();
+    this.markController.updateCreatorInk(clientX, clientY);
   }
 
   private createCreatorStrokeElement(points: { x: number; y: number }[], kind: 'ink' | 'highlighter'): BookElement {
-    const pad = kind === 'highlighter' ? 0.012 : 0.006;
-    const minX = this.clamp(Math.min(...points.map((point) => point.x)) - pad, 0, 1);
-    const maxX = this.clamp(Math.max(...points.map((point) => point.x)) + pad, 0, 1);
-    const minY = this.clamp(Math.min(...points.map((point) => point.y)) - pad, 0, 1);
-    const maxY = this.clamp(Math.max(...points.map((point) => point.y)) + pad, 0, 1);
-    const width = Math.max(0.002, maxX - minX);
-    const height = Math.max(0.002, maxY - minY);
-    return {
-      id: this.createId(kind),
-      type: kind,
-      x: minX,
-      y: minY,
-      width,
-      height,
-      data: {
-        color: kind === 'highlighter' ? '#fde047' : '#2563eb',
-        label: kind === 'highlighter' ? 'Highlighter' : 'Draw',
-        strokePx: kind === 'highlighter' ? 18 : 6,
-        points: points.map((point) => ({
-          x: this.clamp((point.x - minX) / width, 0, 1),
-          y: this.clamp((point.y - minY) / height, 0, 1)
-        }))
-      }
-    };
+    return this.markController.createCreatorStrokeElement(points, kind);
   }
 
   private redrawCreatorLiveInk(): void {
-    const canvas = this.creatorDrawingCanvas?.nativeElement;
-    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
-    const state = this.creatorInkState;
-    if (!canvas || !rect?.width || !rect.height) return;
-    const ratio = window.devicePixelRatio || 1;
-    const width = Math.max(1, Math.floor(rect.width * ratio));
-    const height = Math.max(1, Math.floor(rect.height * ratio));
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-    }
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    if (!state || !state.points.length) return;
-    context.save();
-    context.scale(ratio, ratio);
-    context.globalCompositeOperation = state.kind === 'highlighter' ? 'multiply' : 'source-over';
-    context.globalAlpha = state.kind === 'highlighter' ? 0.42 : 1;
-    context.strokeStyle = state.kind === 'highlighter' ? '#fde047' : '#2563eb';
-    context.lineWidth = state.kind === 'highlighter' ? 18 : 6;
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.beginPath();
-    context.moveTo(state.points[0].x * rect.width, state.points[0].y * rect.height);
-    for (const point of state.points.slice(1)) {
-      context.lineTo(point.x * rect.width, point.y * rect.height);
-    }
-    context.stroke();
-    context.restore();
+    this.markController.redrawCreatorLiveInk();
   }
 
   private clearCreatorLiveInk(): void {
-    const canvas = this.creatorDrawingCanvas?.nativeElement;
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context) return;
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    this.markController.clearCreatorLiveInk();
   }
 
   private placeCreatorTextInput(event: PointerEvent): void {
-    const point = this.getEditorCanvasPoint(event);
-    if (!point) return;
-    event.preventDefault();
-    event.stopPropagation();
-    this.selectedElementId = null;
-    this.activeCreatorTextInput = {
-      x: point.x,
-      y: point.y,
-      width: 0.18,
-      height: 0.06,
-      value: '',
-      color: '#111827'
-    };
-    this.cdr.detectChanges();
-    window.setTimeout(() => {
-      this.editorCanvas?.nativeElement.querySelector<HTMLTextAreaElement>('.creator-inline-text-input')?.focus();
-    });
+    this.markController.placeCreatorTextInput(event);
   }
 
   commitCreatorTextInput(event?: Event): void {
-    const page = this.selectedPage;
-    const pending = this.activeCreatorTextInput;
-    const text = pending?.value.trim();
-    if (!page || !pending) {
-      this.activeCreatorTextInput = null;
-      return;
-    }
-    if (!text) {
-      this.activeCreatorTextInput = null;
-      return;
-    }
-    this.syncCreatorTextEditorSize(event);
-    this.captureHistory();
-    const refreshed = this.activeCreatorTextInput ?? pending;
-    const element: BookElement = {
-      id: this.createId('text'),
-      type: 'text',
-      x: this.clamp(refreshed.x, 0, 1 - refreshed.width),
-      y: this.clamp(refreshed.y, 0, 1 - refreshed.height),
-      width: refreshed.width,
-      height: refreshed.height,
-      data: {
-        text,
-        color: refreshed.color,
-        imageDataUrl: this.createTextImageDataUrl(text, refreshed.color),
-        label: 'Text'
-      }
-    };
-    page.elements.push(element);
-    this.selectedElementId = element.id;
-    this.activeCreatorTextInput = null;
+    this.markController.commitCreatorTextInput(event);
   }
 
   cancelCreatorTextInput(): void {
-    this.activeCreatorTextInput = null;
+    this.markController.cancelCreatorTextInput();
   }
 
   commitCreatorTextInputFromKey(event: Event): void {
-    const keyboardEvent = event as KeyboardEvent;
-    if (keyboardEvent.shiftKey) return;
-    event.preventDefault();
-    this.commitCreatorTextInput(keyboardEvent);
+    this.markController.commitCreatorTextInputFromKey(event);
   }
 
   private syncCreatorTextEditorSize(event?: Event): void {
-    const pending = this.activeCreatorTextInput;
-    if (!pending) return;
-    const frameRect = this.editorCanvas?.nativeElement.getBoundingClientRect();
-    const target = event?.target as HTMLElement | null;
-    const editor = target?.closest<HTMLElement>('.creator-text-editor')
-      ?? this.editorCanvas?.nativeElement.querySelector<HTMLElement>('.creator-text-editor');
-    if (!frameRect || !editor) return;
-    const editorRect = editor.getBoundingClientRect();
-    pending.width = this.clamp(editorRect.width / frameRect.width, 0.08, 0.9);
-    pending.height = this.clamp(editorRect.height / frameRect.height, 0.035, 0.45);
-    pending.x = this.clamp((editorRect.left + editorRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
-    pending.y = this.clamp((editorRect.top + editorRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
+    this.markController.syncCreatorTextEditorSize(event);
   }
 
   private placeMatchEndpoint(event: PointerEvent): void {
@@ -2090,27 +1960,7 @@ Tomorrow I will help my mom.`;
   @HostListener('document:pointerup', ['$event'])
   onDocumentPointerUp(event: PointerEvent): void {
     if (this.creatorInkState) {
-      this.updateCreatorInk(event?.clientX ?? 0, event?.clientY ?? 0);
-      this.editorCanvas?.nativeElement.releasePointerCapture?.(event.pointerId);
-      const page = this.selectedPage;
-      if (page) {
-        const points = this.creatorInkState.points.length < 2
-          ? [
-          this.creatorInkState.points[0],
-          {
-            x: this.clamp(this.creatorInkState.points[0].x + 0.01, 0, 1),
-            y: this.creatorInkState.points[0].y
-          }
-        ]
-          : this.creatorInkState.points;
-        const element = this.createCreatorStrokeElement(points, this.creatorInkState.kind);
-        page.elements.push(element);
-        this.selectedElementId = element.id;
-      }
-      this.clearCreatorLiveInk();
-      this.commitHistoryCapture();
-      this.creatorInkState = null;
-      this.lastTaskDrawAt = Date.now();
+      this.markController.finishCreatorInk(event);
     }
     if (this.taskDrawState) {
       this.updateTaskDraw(event?.clientX ?? 0, event?.clientY ?? 0);
@@ -2139,13 +1989,7 @@ Tomorrow I will help my mom.`;
   onDocumentPointerCancel(): void {
     this.swipeDir?.cancel();
     if (this.creatorInkState) {
-      const page = this.selectedPage;
-      if (page && this.creatorInkState.points.length) {
-        page.elements.push(this.createCreatorStrokeElement(this.creatorInkState.points, this.creatorInkState.kind));
-      }
-      this.clearCreatorLiveInk();
-      this.commitHistoryCapture();
-      this.creatorInkState = null;
+      this.markController.cancelCreatorInk();
     }
     if (this.taskDrawState) {
       this.commitHistoryCapture();
