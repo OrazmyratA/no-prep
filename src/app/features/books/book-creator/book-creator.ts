@@ -41,6 +41,7 @@ import {
 import { GAMES } from '../../topics/games.config';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
+import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -235,6 +236,7 @@ Tomorrow I will help my mom.`;
   }
 
   private readonly markController = new BookCreatorMarkController(this);
+  private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
 
   async ngOnInit(): Promise<void> {
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -705,58 +707,19 @@ Tomorrow I will help my mom.`;
   }
 
   toggleTextTaskTool(): void {
-    this.clearCreatorMarkModes();
-    this.discardPendingMatchEndpoint();
-    this.placingTextTask = !this.placingTextTask;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = null;
-    this.placingGuidePin = false;
-    this.selectedElementId = null;
+    this.taskPlacementController.toggleTextTaskTool();
   }
 
   toggleChoiceTaskTool(): void {
-    this.clearCreatorMarkModes();
-    this.discardPendingMatchEndpoint();
-    const activating = !this.placingChoiceTask;
-    this.placingChoiceTask = activating;
-    this.placingTextTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.activeChoiceWordBankId = activating ? this.createId('word-bank') : null;
-    this.activeMatchGroupId = null;
-    this.placingGuidePin = false;
-    this.selectedElementId = null;
+    this.taskPlacementController.toggleChoiceTaskTool();
   }
 
   toggleCircleTaskTool(): void {
-    this.clearCreatorMarkModes();
-    this.discardPendingMatchEndpoint();
-    const activating = !this.placingCircleTask;
-    this.placingCircleTask = activating;
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingMatchTask = false;
-    this.placingGuidePin = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = null;
-    this.selectedElementId = null;
+    this.taskPlacementController.toggleCircleTaskTool();
   }
 
   toggleMatchTaskTool(): void {
-    this.clearCreatorMarkModes();
-    const activating = !this.placingMatchTask;
-    this.discardPendingMatchEndpoint();
-    this.placingMatchTask = activating;
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingGuidePin = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = activating ? this.createId('match-group') : null;
-    this.selectedElementId = null;
+    this.taskPlacementController.toggleMatchTaskTool();
   }
 
   private clearCreatorMarkModes(): void {
@@ -767,27 +730,12 @@ Tomorrow I will help my mom.`;
   }
 
   private clearTaskPlacementModes(): void {
-    this.discardPendingMatchEndpoint();
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.placingGuidePin = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = null;
-    this.pendingMatchEndpointId = null;
-    this.selectedElementId = null;
+    this.taskPlacementController.clearTaskPlacementModes();
   }
 
   @HostListener('document:keydown.escape')
   finishTaskPlacement(): void {
-    this.discardPendingMatchEndpoint();
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = null;
+    this.taskPlacementController.finishTaskPlacement();
   }
 
   addGuideDot(): void {
@@ -1703,41 +1651,7 @@ Tomorrow I will help my mom.`;
   }
 
   private placeMatchEndpoint(event: PointerEvent): void {
-    const page = this.selectedPage;
-    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
-    if (!page || !rect?.width || !rect.height) return;
-    event.preventDefault();
-    event.stopPropagation();
-
-    let pending = this.pendingMatchEndpointId
-      ? page.elements.find((element) => element.id === this.pendingMatchEndpointId && element.type === 'matchTask') ?? null
-      : null;
-    if (this.pendingMatchEndpointId && !pending) {
-      this.discardPendingMatchEndpoint();
-      pending = null;
-    }
-
-    this.activeMatchGroupId ||= this.createId('match-group');
-    const pairId = pending ? getMatchTaskPairId(pending) : this.createId('match-pair');
-    const side = pending ? 'B' : 'A';
-    const width = 0.034;
-    const height = this.clamp(width * rect.width / rect.height, 0.022, 0.06);
-    const centerX = this.clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const centerY = this.clamp((event.clientY - rect.top) / rect.height, 0, 1);
-    const element: BookElement = {
-      id: this.createId('match-endpoint'),
-      type: 'matchTask',
-      x: this.clamp(centerX - width / 2, 0, 1 - width),
-      y: this.clamp(centerY - height / 2, 0, 1 - height),
-      width,
-      height,
-      data: { groupId: this.activeMatchGroupId, pairId, side }
-    };
-    this.captureHistory();
-    page.elements.push(element);
-    this.selectedElementId = element.id;
-    this.pendingMatchEndpointId = side === 'A' ? element.id : null;
-    this.lastTaskDrawAt = Date.now();
+    this.taskPlacementController.placeMatchEndpoint(event);
   }
 
   trackByElementId(_index: number, element: BookElement): string {
@@ -1913,48 +1827,11 @@ Tomorrow I will help my mom.`;
   }
 
   private startTaskDraw(event: PointerEvent, type: 'textTask' | 'choiceTask' | 'circleTask'): void {
-    const page = this.selectedPage;
-    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
-    if (!page || !rect?.width || !rect.height) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const startX = this.clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const startY = this.clamp((event.clientY - rect.top) / rect.height, 0, 1);
-    this.beginHistoryCapture();
-    const wordBank = type === 'choiceTask' ? this.ensureActiveChoiceWordBank(page) : null;
-    const element: BookElement = {
-      id: this.createId(type === 'choiceTask' ? 'choice-task' : type === 'circleTask' ? 'circle-task' : 'text-task'),
-      type,
-      x: startX,
-      y: startY,
-      width: 0.08,
-      height: 0.035,
-      data: type === 'choiceTask'
-        ? { wordBankId: wordBank?.id || '', correctOptionId: '' }
-        : type === 'circleTask'
-          ? { correct: false }
-          : { acceptedAnswers: [''] }
-    };
-    page.elements.push(element);
-    this.selectedElementId = element.id;
-    this.taskDrawState = { elementId: element.id, startX, startY, type };
+    this.taskPlacementController.startTaskDraw(event, type);
   }
 
   private updateTaskDraw(clientX: number, clientY: number): void {
-    const state = this.taskDrawState;
-    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
-    const element = this.selectedElement;
-    if (!state || !rect?.width || !rect.height || !element || element.id !== state.elementId) return;
-    const currentX = this.clamp((clientX - rect.left) / rect.width, 0, 1);
-    const currentY = this.clamp((clientY - rect.top) / rect.height, 0, 1);
-    const minWidth = 0.055;
-    const minHeight = 0.025;
-    const left = Math.min(state.startX, currentX);
-    const top = Math.min(state.startY, currentY);
-    element.x = this.clamp(left, 0, 1 - minWidth);
-    element.y = this.clamp(top, 0, 1 - minHeight);
-    element.width = this.clamp(Math.max(minWidth, Math.abs(currentX - state.startX)), minWidth, 1 - element.x);
-    element.height = this.clamp(Math.max(minHeight, Math.abs(currentY - state.startY)), minHeight, 1 - element.y);
+    this.taskPlacementController.updateTaskDraw(clientX, clientY);
   }
 
   @HostListener('document:pointerup', ['$event'])
@@ -1963,10 +1840,7 @@ Tomorrow I will help my mom.`;
       this.markController.finishCreatorInk(event);
     }
     if (this.taskDrawState) {
-      this.updateTaskDraw(event?.clientX ?? 0, event?.clientY ?? 0);
-      this.commitHistoryCapture();
-      this.taskDrawState = null;
-      this.lastTaskDrawAt = Date.now();
+      this.taskPlacementController.finishTaskDraw(event);
     }
     this.flushGuidePinDragFrame();
     if (this.timelinePinDragState) {
@@ -1992,9 +1866,7 @@ Tomorrow I will help my mom.`;
       this.markController.cancelCreatorInk();
     }
     if (this.taskDrawState) {
-      this.commitHistoryCapture();
-      this.taskDrawState = null;
-      this.lastTaskDrawAt = Date.now();
+      this.taskPlacementController.cancelTaskDraw();
     }
     this.flushGuidePinDragFrame();
     if (this.dragState || this.timelinePinDragState || this.pagePinDragState) {
@@ -2867,37 +2739,11 @@ Tomorrow I will help my mom.`;
   }
 
   private discardPendingMatchEndpoint(): void {
-    if (!this.pendingMatchEndpointId || !this.book) return;
-    const pendingId = this.pendingMatchEndpointId;
-    for (const page of this.getAllCreatorPages()) {
-      const previousLength = page.elements.length;
-      page.elements = page.elements.filter((element) => element.id !== pendingId);
-      if (page.elements.length !== previousLength) {
-        this.markBookDirty();
-      }
-    }
-    if (this.selectedElementId === pendingId) this.selectedElementId = null;
-    this.pendingMatchEndpointId = null;
+    this.taskPlacementController.discardPendingMatchEndpoint();
   }
 
   private syncPendingMatchEndpoint(): void {
-    this.pendingMatchEndpointId = null;
-    if (!this.placingMatchTask || !this.activeMatchGroupId) return;
-    for (const page of this.getAllCreatorPages()) {
-      const endpoints = page.elements.filter((element) =>
-        element.type === 'matchTask' && getMatchTaskGroupId(element) === this.activeMatchGroupId
-      );
-      const completedPairIds = new Set(
-        endpoints.filter((element) => getMatchTaskSide(element) === 'B').map((element) => getMatchTaskPairId(element))
-      );
-      const pending = [...endpoints].reverse().find((element) =>
-        getMatchTaskSide(element) === 'A' && !completedPairIds.has(getMatchTaskPairId(element))
-      );
-      if (pending) {
-        this.pendingMatchEndpointId = pending.id;
-        return;
-      }
-    }
+    this.taskPlacementController.syncPendingMatchEndpoint();
   }
 
   private getAllCreatorPages(): BookPage[] {
