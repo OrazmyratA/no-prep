@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, QueryList, ViewChild, ViewChildren } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { SwipeDirective } from '../../../shared/swipe.directive';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -102,9 +102,6 @@ import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
 })
 export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(SwipeDirective) swipeDir?: SwipeDirective;
-  @ViewChild('drawingCanvas') drawingCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChildren('drawingCanvas') drawingCanvases?: QueryList<ElementRef<HTMLCanvasElement>>;
-  @ViewChild('pageFrame') pageFrame?: ElementRef<HTMLElement>;
   @ViewChild('readerSpread') readerSpread?: ElementRef<HTMLElement>;
   @ViewChild('readerStage') readerStage?: ElementRef<HTMLElement>;
   @ViewChild('readerCanvasShell') readerCanvasShell?: ElementRef<HTMLElement>;
@@ -732,7 +729,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const target = event.target as HTMLElement | null;
     if (target?.closest('.reader-element') || target?.closest('.reader-page-edge') || target?.closest('.reader-inline-text-input')) return;
     this.lastTextPlacementAt = Date.now();
-    const point = this.getPagePointFromEvent(pageFrame ?? this.pageFrame?.nativeElement ?? null, event);
+    const point = this.getPagePointFromEvent(pageFrame ?? this.getPrimaryPageFrameElement(), event);
     if (!point) return;
     const focusRect = this.isFocusCropActive(page) ? getClampedFocusRect(this.expandedFocusElement) : null;
     this.activeTextInput = {
@@ -1493,7 +1490,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   async takeScreenshot(): Promise<void> {
     const target = this.twoPageMode && this.companionPage
       ? this.readerSpread?.nativeElement
-      : this.pageFrame?.nativeElement;
+      : this.getPrimaryPageFrameElement();
     if (!this.book || !target) return;
     this.screenshotting = true;
     await this.nextFrame();
@@ -2794,8 +2791,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.drawingCanvasFrame = requestAnimationFrame(() => {
       this.drawingCanvasFrame = 0;
-      const canvases = this.drawingCanvases?.toArray() ?? [];
-      const targets = canvases.length ? canvases.map((ref) => ref.nativeElement) : this.drawingCanvas ? [this.drawingCanvas.nativeElement] : [];
+      const targets = this.getDrawingCanvasElements();
       const ratio = window.devicePixelRatio || 1;
       for (const canvas of targets) {
         const rect = canvas.getBoundingClientRect();
@@ -2812,9 +2808,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.drawingCanvasFrame = requestAnimationFrame(() => {
       this.drawingCanvasFrame = 0;
-      const canvases = this.drawingCanvases?.toArray() ?? [];
-      for (const canvasRef of canvases) {
-        const canvas = canvasRef.nativeElement;
+      for (const canvas of this.getDrawingCanvasElements()) {
         const rect = canvas.getBoundingClientRect();
         const ratio = window.devicePixelRatio || 1;
         canvas.width = Math.max(1, Math.floor(rect.width * ratio));
@@ -2893,14 +2887,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private redrawDrawingCanvas(pageId?: string): void {
-    const canvases = this.drawingCanvases?.toArray() ?? [];
-    if (!canvases.length && this.drawingCanvas) {
-      this.redrawSingleCanvas(this.drawingCanvas.nativeElement, pageId ?? this.currentPage?.id ?? '');
+    const canvases = this.getDrawingCanvasElements();
+    if (!canvases.length) {
       return;
     }
 
-    for (const canvasRef of canvases) {
-      const canvas = canvasRef.nativeElement;
+    for (const canvas of canvases) {
       const canvasPageId = canvas.dataset['pageId'] || '';
       if (pageId && canvasPageId !== pageId) continue;
       this.redrawSingleCanvas(canvas, canvasPageId);
@@ -4305,7 +4297,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getPageCoordinateScreenPoint(page: BookPage | null, x: number, y: number): { x: number; y: number } | null {
-    const frame = page ? this.getPageFrameForPageId(page.id) ?? this.pageFrame?.nativeElement : this.pageFrame?.nativeElement;
+    const frame = page ? this.getPageFrameForPageId(page.id) ?? this.getPrimaryPageFrameElement() : this.getPrimaryPageFrameElement();
     if (!frame) return null;
     const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
@@ -4333,6 +4325,17 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getPageFrameForPageId(pageId: string): HTMLElement | null {
     return this.readerStage?.nativeElement.querySelector<HTMLElement>(`.page-frame[data-page-id="${CSS.escape(pageId)}"]`) ?? null;
+  }
+
+  private getPrimaryPageFrameElement(): HTMLElement | null {
+    const currentPageId = this.currentPage?.id;
+    return currentPageId
+      ? this.getPageFrameForPageId(currentPageId)
+      : this.readerStage?.nativeElement.querySelector<HTMLElement>('.page-frame') ?? null;
+  }
+
+  private getDrawingCanvasElements(): HTMLCanvasElement[] {
+    return Array.from(this.readerStage?.nativeElement.querySelectorAll<HTMLCanvasElement>('canvas.drawing-layer') ?? []);
   }
 
   private getOwlVisibleBounds(teaching: boolean): { minX: number; maxX: number; minY: number; maxY: number } {

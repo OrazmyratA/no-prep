@@ -1,0 +1,240 @@
+<div
+  class="page-frame"
+  [class.companion-page-frame]="companion"
+  [class.screenshotting]="primary && reader.screenshotting"
+  [class.delete-mode]="reader.deleteMode"
+  [class.focus-crop-page]="primary && reader.isFocusCropActive(page)"
+  (click)="reader.onPageFrameClick($event)"
+  appSwipe
+  [swipeDisabled]="reader.isInkModeActive() || reader.textMode"
+  (swipeLeft)="reader.nextPage()"
+  (swipeRight)="reader.previousPage()"
+  (pointerup)="reader.onPageFramePointerUp($event)"
+  [attr.data-page-id]="page.id"
+  [style.aspect-ratio]="reader.getPageAspectRatioFor(page)"
+  [style.background]="page.backgroundColor || '#ffffff'">
+  <div
+    class="page-content"
+    [class.focus-crop-content]="primary && reader.isFocusCropActive(page)"
+    [ngStyle]="primary ? reader.getFocusContentStyle(page) : null">
+    <app-pdf-page-canvas
+      *ngIf="pdfUrl && page.type === 'pdf'"
+      [sourceUrl]="pdfUrl"
+      [pageNumber]="page.pdfPage || 1"
+      [rotation]="reader.getPageRotation(page)"
+      [renderScale]="renderScale"
+      (pageSize)="primary && reader.onPdfPageSize($event)">
+    </app-pdf-page-canvas>
+
+    <div *ngIf="page.type === 'blank'" class="blank-page"></div>
+
+    <canvas
+      class="drawing-layer"
+      [attr.data-page-id]="page.id"
+      [class.active]="reader.isInkModeActive()"
+      (pointerdown)="reader.startDrawing($event)"
+      (pointermove)="reader.continueDrawing($event)"
+      (pointerup)="reader.stopDrawing()"
+      (pointercancel)="reader.stopDrawing()"
+      (pointerleave)="reader.stopDrawing()">
+    </canvas>
+
+    <div
+      *ngIf="reader.textMode"
+      class="text-placement-layer"
+      (pointerdown)="reader.placeTextFromEvent($event)">
+    </div>
+
+    <div
+      *ngIf="reader.isTextInputForPage(page)"
+      class="reader-text-editor"
+      [attr.data-page-id]="page.id"
+      [style.left.%]="reader.activeTextInput!.x * 100"
+      [style.top.%]="reader.activeTextInput!.y * 100"
+      [style.width.%]="reader.activeTextInput!.width * 100"
+      [style.height.%]="reader.activeTextInput!.height * 100"
+      [style.color]="reader.activeTextInput!.color">
+      <button
+        type="button"
+        class="reader-text-move"
+        (pointerdown)="reader.startTextEditorDrag($event)"
+        [title]="'readerMoveText' | translate"
+        [attr.aria-label]="'readerMoveText' | translate"></button>
+      <textarea
+        class="reader-inline-text-input"
+        [(ngModel)]="reader.activeTextInput!.value"
+        (keydown.enter)="reader.commitTextInputFromKey($event)"
+        (keydown.escape)="reader.cancelTextInput()"
+        (blur)="reader.commitTextInput($event)"
+        [attr.placeholder]="'textOptional' | translate"></textarea>
+    </div>
+
+    <div
+      *ngFor="let text of reader.getPageTexts(page)"
+      class="temporary-text"
+      [class.selected]="reader.isTextSelected(page, text)"
+      [class.delete-target]="reader.deleteMode"
+      [attr.data-page-id]="page.id"
+      [attr.data-text-id]="text.id"
+      [style.left.%]="text.x * 100"
+      [style.top.%]="text.y * 100"
+      [style.width.%]="(text.width || 0.22) * 100"
+      [style.height.%]="(text.height || 0.055) * 100"
+      [style.color]="text.color || '#111827'"
+      [style.--text-scale]="text.height || 0.055"
+      (click)="reader.selectTextAnnotation(page, text, $event)"
+      (pointerdown)="reader.startSavedTextDrag(page, text, $event)">
+      <img *ngIf="text.imageDataUrl" [src]="text.imageDataUrl" alt="">
+      <span *ngIf="!text.imageDataUrl">{{ text.text }}</span>
+    </div>
+
+    <svg
+      *ngFor="let stroke of reader.getPageStrokes(page)"
+      class="stroke-delete-target"
+      [style.display]="reader.deleteMode ? 'block' : 'none'"
+      viewBox="0 0 1 1"
+      preserveAspectRatio="none"
+      (click)="reader.deleteStrokeAnnotation(page, stroke, $event)"
+      [attr.title]="'readerDeleteDrawing' | translate"
+      [attr.aria-label]="'readerDeleteDrawing' | translate">
+      <polyline
+        [attr.points]="reader.getStrokePolylinePoints(stroke)"
+        fill="none"
+        vector-effect="non-scaling-stroke"></polyline>
+    </svg>
+
+    <svg class="match-line-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+      <line
+        *ngFor="let line of reader.getMatchLines(page); trackBy: reader.trackByMatchLine"
+        [class.correct]="line.result === 'correct'"
+        [class.incorrect]="line.result === 'incorrect'"
+        [attr.x1]="reader.getMatchEndpointCenterX(line.source)"
+        [attr.y1]="reader.getMatchEndpointCenterY(line.source)"
+        [attr.x2]="reader.getMatchEndpointCenterX(line.target)"
+        [attr.y2]="reader.getMatchEndpointCenterY(line.target)"
+        vector-effect="non-scaling-stroke">
+      </line>
+    </svg>
+
+    <div
+      *ngFor="let element of page.elements; trackBy: reader.trackByElementId"
+      class="reader-element"
+      [class.companion-element]="companion"
+      [class.focus-element]="element.type === 'focus'"
+      [class.focus-visible]="reader.focusMode && element.type === 'focus'"
+      [class.dot-element]="element.type === 'guideDot'"
+      [class.dot-disabled]="element.type === 'guideDot' && !reader.isGuideDotEnabled(element, page)"
+      [class.dot-paused]="element.id === reader.pausedGuideElementId"
+      [class.speaking-ai-element]="element.type === 'speakingAi'"
+      [class.speaking-ai-disabled]="element.type === 'speakingAi' && !reader.isSpeakingAiEnabled(element, page)"
+      [class.speaking-ai-active]="element.type === 'speakingAi' && reader.activeSpeakingElement?.id === element.id"
+      [class.note-element]="element.type === 'note'"
+      [class.answer-key-element]="element.type === 'answerKey'"
+      [class.ink-element]="element.type === 'ink'"
+      [class.highlighter-element]="element.type === 'highlighter'"
+      [class.text-mark-element]="element.type === 'text'"
+      [class.game-element]="element.type === 'game'"
+      [class.text-task-element]="element.type === 'textTask'"
+      [class.choice-task-element]="element.type === 'choiceTask'"
+      [class.circle-task-element]="element.type === 'circleTask'"
+      [class.circle-selected]="element.type === 'circleTask' && reader.isCircleTaskSelected(element)"
+      [class.match-task-element]="element.type === 'matchTask'"
+      [class.match-side-a]="element.type === 'matchTask' && element.data['side'] === 'A'"
+      [class.match-side-b]="element.type === 'matchTask' && element.data['side'] === 'B'"
+      [class.match-selected]="element.type === 'matchTask' && reader.isMatchEndpointSelected(element, page)"
+      [class.match-available]="element.type === 'matchTask' && reader.isMatchEndpointAvailable(element, page)"
+      [class.match-connected]="element.type === 'matchTask' && reader.isMatchEndpointConnected(element, page)"
+      [class.match-missing]="element.type === 'matchTask' && reader.isMatchEndpointMissing(element, page)"
+      [class.task-active]="(element.type === 'textTask' || element.type === 'choiceTask') && reader.activeTaskElement?.id === element.id"
+      [class.task-correct]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) === 'correct'"
+      [class.task-incorrect]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) === 'incorrect'"
+      [class.hidden-focus]="element.type === 'focus' && !reader.focusMode"
+      [style.left.%]="element.x * 100"
+      [style.top.%]="element.y * 100"
+      [style.width.%]="(element.width || 0.08) * 100"
+      [style.height.%]="(element.height || 0.08) * 100"
+      (click)="reader.activateElement(element, $event, page)">
+      <img *ngIf="element.type === 'image'" [src]="reader.getElementAssetUrl(element)" [alt]="reader.getElementText(element)">
+      <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
+      <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+      <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+      <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+      <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
+        <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
+      </span>
+      <span *ngIf="element.type === 'note'" class="note-marker">
+        <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+      </span>
+      <svg *ngIf="element.type === 'ink' && element.data['points']; else inkFallback" class="teacher-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+        <polyline [attr.points]="reader.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <ng-template #inkFallback>
+        <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
+      </ng-template>
+      <svg *ngIf="element.type === 'highlighter' && element.data['points']; else highlighterFallback" class="teacher-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+        <polyline [attr.points]="reader.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <ng-template #highlighterFallback>
+        <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>
+      </ng-template>
+      <span *ngIf="element.type === 'text'" class="teacher-text-mark" [style.color]="element.data['color'] || '#111827'">
+        <img *ngIf="element.data['imageDataUrl']" [src]="element.data['imageDataUrl']" alt="">
+        <span *ngIf="!element.data['imageDataUrl']">{{ element.data['text'] || 'Text' }}</span>
+      </span>
+      <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
+      <input
+        *ngIf="element.type === 'textTask' && !reader.shouldUseTaskDock(element)"
+        type="text"
+        class="text-task-input"
+        [ngModel]="reader.getTaskResponseValue(element)"
+        (focus)="reader.activateTextTask(element, page, $event)"
+        (click)="$event.stopPropagation()"
+        (ngModelChange)="reader.updateTaskResponse(element, page, $event)"
+        aria-label="Student answer">
+      <button
+        *ngIf="element.type === 'textTask' && reader.shouldUseTaskDock(element)"
+        type="button"
+        class="text-task-tap"
+        (click)="reader.activateTextTask(element, page, $event)"
+        aria-label="Enter student answer">
+        <span>{{ reader.getTaskResponseValue(element) }}</span>
+      </button>
+      <button
+        *ngIf="element.type === 'choiceTask'"
+        type="button"
+        class="choice-task-tap"
+        (click)="reader.activateChoiceTask(element, page, $event)"
+        aria-label="Choose a word-bank answer">
+        <span>{{ reader.getChoiceTaskDisplayValue(element, page) }}</span>
+      </button>
+      <button
+        *ngIf="element.type === 'circleTask'"
+        type="button"
+        class="circle-task-tap"
+        [attr.aria-pressed]="reader.isCircleTaskSelected(element)"
+        (click)="reader.toggleCircleTask(element, page, $event)"
+        aria-label="Select circling answer">
+      </button>
+      <button
+        *ngIf="element.type === 'matchTask'"
+        type="button"
+        class="match-task-tap"
+        [attr.aria-pressed]="reader.isMatchEndpointSelected(element, page)"
+        [attr.aria-disabled]="!reader.isMatchEndpointAvailable(element, page)"
+        (click)="reader.activateMatchEndpoint(element, page, $event)"
+        aria-label="Select matching endpoint">
+        <span></span>
+      </button>
+    </div>
+
+    <button
+      type="button"
+      class="guide-bubble"
+      [class.expanded]="reader.guideBubbleExpanded"
+      *ngIf="primary && reader.guideBubbleText"
+      (click)="reader.toggleGuideBubble($event)"
+      [title]="(reader.guideBubbleExpanded ? 'readerCollapseTeacherText' : 'readerExpandTeacherText') | translate">
+      {{ reader.guideBubbleText }}
+    </button>
+  </div>
+</div>
