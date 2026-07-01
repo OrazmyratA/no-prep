@@ -212,36 +212,7 @@
   </div>
 
   <main #readerStage class="reader-stage" [class.drawer-open]="pageDrawerOpen" [class.zoomed]="zoom > 1">
-    <aside class="reader-page-drawer" *ngIf="pageDrawerOpen" (scroll)="onReaderThumbScroll($event)">
-      <button type="button" class="reader-drawer-handle collapse" (click)="togglePageDrawer()" title="Hide pages" aria-label="Hide pages">
-        <img class="drawer-toggle-icon drawer-toggle-hide" src="assets/images/book/hide.png" alt="">
-      </button>
-      <div class="virtual-spacer" [style.height.px]="readerVirtualTopPadding"></div>
-      <button
-        *ngFor="let item of readerVirtualPages; trackBy: trackByVirtualPageId"
-        type="button"
-        class="reader-page-option a4-reader-thumb"
-        [class.selected]="item.index === currentPageIndex"
-        (click)="goToPage(item.index)"
-        [attr.aria-label]="'readerGoToPageNumber' | translate: {number: item.index + 1}">
-        <div class="reader-thumb-page">
-          <app-pdf-page-canvas
-            *ngIf="item.page.type === 'pdf' && getPagePdfUrl(item.page)"
-            [sourceUrl]="getPagePdfUrl(item.page)"
-            [pageNumber]="item.page.pdfPage || 1"
-            [rotation]="getPageRotation(item.page)"
-            [renderScale]="0.22"
-            [lazy]="true">
-          </app-pdf-page-canvas>
-          <div class="reader-thumb-blank" *ngIf="item.page.type === 'blank'"></div>
-        </div>
-        <span class="reader-thumb-number">{{ item.index + 1 }}</span>
-        <span class="reader-thumb-source" *ngIf="pageSource === 'workbook'">
-          <img src="assets/images/book/switch-book.png" alt="">
-        </span>
-      </button>
-      <div class="virtual-spacer" [style.height.px]="readerVirtualBottomPadding"></div>
-    </aside>
+    <app-book-reader-page-drawer *ngIf="pageDrawerOpen" [reader]="readerContext"></app-book-reader-page-drawer>
     <div *ngIf="loading" class="reader-message">{{ 'readerLoadingBook' | translate }}</div>
     <div *ngIf="!loading && !book" class="reader-message">{{ 'readerBookNotFound' | translate }}</div>
     <div *ngIf="!loading && book && !currentPage" class="reader-message">{{ 'readerNoVisiblePages' | translate }}</div>

@@ -71,10 +71,6 @@
     width: min(100%, calc((100svh - 4.6rem) * 1.32));
   }
 
-  .reader-page-drawer {
-    border-radius: 0.5rem;
-    padding: 0.45rem;
-  }
 
   .pen-size span {
     display: none;
@@ -160,14 +156,6 @@
     grid-template-columns: 1fr;
   }
 
-  .reader-page-drawer {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: min(10rem, 45vw);
-    box-shadow: 0 12px 30px rgba(41, 37, 36, 0.18);
-  }
 
   .reader-canvas-shell,
   .reader-spread {
@@ -266,9 +254,6 @@
     width: 2.55rem;
   }
 
-  .reader-page-drawer {
-    width: min(8.25rem, 48vw);
-  }
 
   .reader-canvas-shell {
     gap: 0.18rem;
