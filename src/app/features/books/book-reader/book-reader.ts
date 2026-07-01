@@ -67,6 +67,7 @@ import { BookReaderGuideController } from './book-reader-guide-controller';
 import { BookReaderSpeakingPackController } from './book-reader-speaking-pack-controller';
 import { BookReaderSpeakingSessionController } from './book-reader-speaking-session-controller';
 import { BookReaderSpeakingPlaybackController } from './book-reader-speaking-playback-controller';
+import { BookReaderSpeakingRecordingController } from './book-reader-speaking-recording-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -97,6 +98,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly speakingPackController = new BookReaderSpeakingPackController(this);
   private readonly speakingSessionController = new BookReaderSpeakingSessionController(this);
   private readonly speakingPlaybackController = new BookReaderSpeakingPlaybackController(this);
+  private readonly speakingRecordingController = new BookReaderSpeakingRecordingController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -1708,14 +1710,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async toggleSpeakingTurnRecordingAsync(): Promise<void> {
-    if (this.speakingConversationActive) {
-      void this.stopSpeakingConversation(true);
-      return;
-    }
-    if (!this.speakingSessionActive) {
-      await this.startSpeakingSession();
-    }
-    void this.startSpeakingConversation();
+    await this.speakingRecordingController.toggleSpeakingTurnRecordingAsync();
   }
 
   finishSpeakingSession(): void {
@@ -2523,150 +2518,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async startSpeakingConversation(): Promise<void> {
-    if (!this.book || !this.activeSpeakingElement || !this.activeSpeakingPage) return;
-    await this.stopSpeakingConversation(false);
-    if (!this.speakingSessionActive || !this.activeSpeakingSessionId) {
-      this.speakingSessionActive = true;
-      this.activeSpeakingSessionId = this.createId('speaking-session');
-      this.speakingSessionStartedAt = Date.now();
-      this.speakingTurnIndex = this.getNextSpeakingTurnIndex(this.activeSpeakingElement);
-    }
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      showAppNotification('Microphone recording is not available on this device.', 'error');
-      return;
-    }
-
-    let stream: MediaStream | null = null;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = this.createSpeakingMediaRecorder(stream);
-      const now = new Date();
-      const attemptId = this.createId('speaking-attempt');
-      const key = this.speakingAttemptService.makeKey(this.book.id, this.activeSpeakingElement.id, attemptId);
-      const attempt: BookSpeakingAttempt = {
-        key,
-        profileId: this.speakingAttemptService.defaultProfileId,
-        bookId: this.book.id,
-        pageId: this.activeSpeakingPage.id,
-        elementId: this.activeSpeakingElement.id,
-        attemptId,
-        sessionId: this.activeSpeakingSessionId,
-        turnIndex: this.speakingTurnIndex++,
-        startedAt: now.toISOString(),
-        durationSeconds: 0,
-        status: 'active',
-        transcript: 'Recording captured. Speech transcript will appear after the Speaking Pack is ready.',
-        updatedAt: now.toISOString()
-      };
-
-      this.speakingRecordedChunks = [];
-      this.speakingMediaRecorder = recorder;
-      this.speakingRecordingStream = stream;
-      this.speakingActiveAttemptKey = key;
-      this.startSpeakingRecordingLevelMeter(stream);
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) this.speakingRecordedChunks.push(event.data);
-      };
-      recorder.onerror = () => {
-        showAppNotification('Speaking recording failed.', 'error');
-        void this.stopSpeakingConversation(true);
-      };
-      recorder.onstop = () => {
-        return this.finalizeSpeakingRecording(key, recorder.mimeType, this.speakingSaveOnStop);
-      };
-
-      this.speakingAttempts.set(this.activeSpeakingElement.id, [
-        attempt,
-        ...this.getSpeakingAttempts(this.activeSpeakingElement)
-      ]);
-      await this.speakingAttemptService.save(attempt);
-
-      this.speakingAttemptStartedAt = Date.now();
-      this.speakingConversationActive = true;
-      this.owlTeaching = true;
-      this.owlImage = 'assets/gifs/owl-teaching.gif';
-      recorder.start(1000);
-      this.playSpeakingUiSound('assets/sound/start.mp3');
-      this.forceUiRefresh();
-    } catch {
-      try { stream?.getTracks().forEach((track) => track.stop()); } catch { /* already stopped */ }
-      this.resetSpeakingRecorderState();
-      showAppNotification('Microphone permission is required for speaking practice.', 'error');
-    }
+    await this.speakingRecordingController.startSpeakingConversation();
   }
 
   private async stopSpeakingConversation(saveAttempt: boolean): Promise<void> {
-    if (this.speakingTimer !== null) {
-      window.clearInterval(this.speakingTimer);
-      this.speakingTimer = null;
-    }
-    if (!this.speakingConversationActive && !this.speakingMediaRecorder) return;
-    const key = this.speakingActiveAttemptKey;
-    this.speakingConversationActive = false;
-    this.stopSpeakingRecordingLevelMeter();
-    this.speakingSaveOnStop = saveAttempt;
-    if (saveAttempt) this.playSpeakingUiSound('assets/sound/stop.mp3');
-
-    if (this.speakingMediaRecorder && this.speakingMediaRecorder.state !== 'inactive') {
-      const recorder = this.speakingMediaRecorder;
-      const stopped = new Promise<void>((resolve) => {
-        const onstop = recorder.onstop;
-        recorder.onstop = (event) => {
-          const result = onstop?.call(recorder, event);
-          void Promise.resolve(result).finally(resolve);
-        };
-      });
-      recorder.stop();
-      await stopped;
-    } else if (key) {
-      await this.finalizeSpeakingRecording(key, this.speakingMediaRecorder?.mimeType || '', saveAttempt);
-    }
-    if (saveAttempt && !this.speakingSessionActive) {
-      this.moveOwlToCorner();
-    }
-    this.forceUiRefresh();
+    await this.speakingRecordingController.stopSpeakingConversation(saveAttempt);
   }
 
   private async finalizeSpeakingRecording(key: string, mimeType: string, saveAttempt: boolean): Promise<void> {
-    const activeElementId = this.activeSpeakingElement?.id;
-    const activeAttempt = activeElementId
-      ? (this.speakingAttempts.get(activeElementId) ?? []).find((attempt) => attempt.key === key)
-      : this.findSpeakingAttemptByKey(key);
-    try {
-      const durationSeconds = Math.max(1, Math.round((Date.now() - this.speakingAttemptStartedAt) / 1000));
-      if (activeAttempt) {
-        activeAttempt.durationSeconds = durationSeconds;
-        activeAttempt.endedAt = new Date().toISOString();
-        activeAttempt.status = 'saved';
-        activeAttempt.transcript = saveAttempt
-          ? activeAttempt.transcript
-          : 'Attempt stopped before the offline AI engine finished processing.';
-        const blob = this.speakingRecordedChunks.length
-          ? new Blob(this.speakingRecordedChunks, { type: mimeType || this.speakingMediaRecorder?.mimeType || 'audio/webm' })
-          : null;
-        if (blob?.size) {
-          activeAttempt.audio = blob;
-          activeAttempt.audioMimeType = blob.type || mimeType || 'audio/webm';
-          const attemptElement = this.findElementById(activeAttempt.elementId) ?? this.activeSpeakingElement;
-          await this.refreshSpeakingRuntimeStatus(attemptElement).catch(() => this.speakingRuntimeStatus);
-          if (this.speakingRuntimeStatus?.speechToTextAvailable) {
-            activeAttempt.transcript = 'Processing speech transcript...';
-            this.forceUiRefresh();
-          } else {
-            activeAttempt.transcript = this.speakingRuntimeStatus?.reason
-              ? `Recording captured. ${this.speakingRuntimeStatus.reason}`
-              : 'Recording captured. Offline AI processing is not ready yet.';
-          }
-          await this.tryTranscribeSpeakingAttempt(activeAttempt);
-        }
-        await this.speakingAttemptService.save(activeAttempt);
-      }
-    } finally {
-      this.resetSpeakingRecorderState();
-      this.forceUiRefresh();
-    }
+    await this.speakingRecordingController.finalizeSpeakingRecording(key, mimeType, saveAttempt);
   }
-
   private async tryTranscribeSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
     const taskElement = this.activeSpeakingElement?.id === attempt.elementId
       ? this.activeSpeakingElement
@@ -2869,102 +2730,28 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private resetSpeakingRecorderState(): void {
-    this.stopSpeakingRecordingLevelMeter();
-    try { this.speakingRecordingStream?.getTracks().forEach((track) => track.stop()); } catch { /* already stopped */ }
-    this.speakingMediaRecorder = null;
-    this.speakingRecordingStream = null;
-    this.speakingRecordedChunks = [];
-    this.speakingActiveAttemptKey = null;
-    this.speakingSaveOnStop = true;
-    this.speakingAttemptStartedAt = 0;
+    this.speakingRecordingController.resetSpeakingRecorderState();
   }
 
   private startSpeakingRecordingLevelMeter(stream: MediaStream): void {
-    this.stopSpeakingRecordingLevelMeter();
-    try {
-      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextCtor) return;
-      const context = new AudioContextCtor() as AudioContext;
-      const source = context.createMediaStreamSource(stream);
-      const analyser = context.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.76;
-      source.connect(analyser);
-      this.speakingRecordingAudioContext = context;
-      this.speakingRecordingAnalyser = analyser;
-      this.speakingRecordingLevelData = new Uint8Array(analyser.frequencyBinCount);
-      this.updateSpeakingRecordingLevel();
-    } catch {
-      this.speakingRecordingLevel = 0;
-    }
+    this.speakingRecordingController.startSpeakingRecordingLevelMeter(stream);
   }
 
   private updateSpeakingRecordingLevel(): void {
-    const analyser = this.speakingRecordingAnalyser;
-    const data = this.speakingRecordingLevelData;
-    if (!analyser || !data) return;
-    analyser.getByteTimeDomainData(data);
-    let sum = 0;
-    for (const sample of data) {
-      const centered = (sample - 128) / 128;
-      sum += centered * centered;
-    }
-    const rms = Math.sqrt(sum / data.length);
-    this.speakingRecordingLevel = clamp(rms * 4.8, 0, 1);
-    this.setSpeakingRecordingVisualLevel(this.speakingRecordingLevel);
-    this.speakingRecordingLevelFrame = requestAnimationFrame(() => this.updateSpeakingRecordingLevel());
+    this.speakingRecordingController.updateSpeakingRecordingLevel();
   }
 
   private stopSpeakingRecordingLevelMeter(): void {
-    if (this.speakingRecordingLevelFrame) {
-      cancelAnimationFrame(this.speakingRecordingLevelFrame);
-      this.speakingRecordingLevelFrame = 0;
-    }
-    this.speakingRecordingAnalyser = null;
-    this.speakingRecordingLevelData = null;
-    const context = this.speakingRecordingAudioContext;
-    this.speakingRecordingAudioContext = null;
-    this.setSpeakingRecordingVisualLevel(0);
-    if (context && context.state !== 'closed') {
-      void context.close().catch(() => undefined);
-    }
+    this.speakingRecordingController.stopSpeakingRecordingLevelMeter();
   }
 
   private setSpeakingRecordingVisualLevel(level: number): void {
-    const safeLevel = clamp(level, 0, 1);
-    this.speakingRecordingLevel = safeLevel;
-    this.speakingRecordingAuraScale = 0.92 + safeLevel * 0.36;
-    this.speakingRecordingRingScale = 1 + safeLevel * 0.38;
-    this.speakingRecordingAuraOpacity = 0.42 + safeLevel * 0.42;
-    this.speakingRecordingRingOpacity = 0.28 + safeLevel * 0.32;
-    const glow = 0.75 + safeLevel * 1.45;
-    this.speakingRecordingGlow = `${glow}rem`;
-    this.speakingRecordingOuterGlow = `${glow * 1.65}rem`;
-    const button = this.speakingPanel?.speakingRecordButton?.nativeElement;
-    if (button) {
-      button.style.setProperty('--voice-aura-scale', String(this.speakingRecordingAuraScale));
-      button.style.setProperty('--voice-ring-scale', String(this.speakingRecordingRingScale));
-      button.style.setProperty('--voice-aura-opacity', String(this.speakingRecordingAuraOpacity));
-      button.style.setProperty('--voice-ring-opacity', String(this.speakingRecordingRingOpacity));
-      button.style.setProperty('--voice-glow', this.speakingRecordingGlow);
-      button.style.setProperty('--voice-outer-glow', this.speakingRecordingOuterGlow);
-    }
+    this.speakingRecordingController.setSpeakingRecordingVisualLevel(level);
   }
 
   private createSpeakingMediaRecorder(stream: MediaStream): MediaRecorder {
-    const mimeTypes = [
-      'audio/mp4;codecs=mp4a.40.2',
-      'audio/mp4',
-      'audio/aac',
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/ogg'
-    ];
-    const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
-    return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    return this.speakingRecordingController.createSpeakingMediaRecorder(stream);
   }
-
   private stopSpeakingPlayback(): void {
     this.speakingPlaybackController.stopSpeakingPlayback();
   }
