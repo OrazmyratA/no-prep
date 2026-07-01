@@ -91,28 +91,6 @@
     display: none;
   }
 
-  .word-bank-overlay {
-    place-items: end center;
-    padding: 0;
-  }
-
-  .word-bank-dialog {
-    width: 100%;
-    max-height: 55svh;
-    border-radius: 0.5rem 0.5rem 0 0;
-    padding: 0.85rem 3.6rem 0.85rem 0.85rem;
-  }
-
-  .word-bank-options {
-    justify-content: flex-start;
-    max-height: calc(55svh - 1.7rem);
-  }
-
-  .word-bank-option {
-    min-height: 2.65rem;
-    padding-inline: 0.9rem;
-  }
-
   .reader-toolbar {
     gap: 0.32rem;
     padding-bottom: 0.38rem;

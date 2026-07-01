@@ -176,40 +176,7 @@
     </div>
   </header>
 
-  <div
-    class="task-response-dock"
-    *ngIf="activeTaskElement && shouldUseTaskDock(activeTaskElement)">
-    <input
-      type="text"
-      [ngModel]="getTaskResponseValue(activeTaskElement)"
-      (ngModelChange)="updateActiveTaskResponse($event)"
-      (keydown.enter)="closeTaskInput()"
-      aria-label="Student answer">
-    <button type="button" (click)="closeTaskInput()" title="Close answer input" aria-label="Close answer input">
-      <img src="assets/images/book/close.png" alt="">
-    </button>
-  </div>
-
-  <div
-    class="word-bank-overlay"
-    *ngIf="activeTaskElement?.type === 'choiceTask'"
-    (click)="closeTaskInput()">
-    <section class="word-bank-dialog" (click)="$event.stopPropagation()" aria-label="Choose an answer">
-      <div class="word-bank-options">
-        <button
-          *ngFor="let option of getActiveWordBankOptions()"
-          type="button"
-          class="word-bank-option"
-          [class.selected]="isActiveChoiceOptionSelected(option.id)"
-          (click)="selectActiveChoiceOption(option.id)">
-          {{ option.text }}
-        </button>
-      </div>
-      <button type="button" class="word-bank-close" (click)="closeTaskInput()" title="Close word bank" aria-label="Close word bank">
-        <img src="assets/images/book/close.png" alt="">
-      </button>
-    </section>
-  </div>
+  <app-book-reader-task-overlay [reader]="readerContext"></app-book-reader-task-overlay>
 
   <main #readerStage class="reader-stage" [class.drawer-open]="pageDrawerOpen" [class.zoomed]="zoom > 1">
     <app-book-reader-page-drawer *ngIf="pageDrawerOpen" [reader]="readerContext"></app-book-reader-page-drawer>

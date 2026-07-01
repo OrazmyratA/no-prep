@@ -1,0 +1,34 @@
+<div
+  class="task-response-dock"
+  *ngIf="reader.activeTaskElement && reader.shouldUseTaskDock(reader.activeTaskElement)">
+  <input
+    type="text"
+    [ngModel]="reader.getTaskResponseValue(reader.activeTaskElement)"
+    (ngModelChange)="reader.updateActiveTaskResponse($event)"
+    (keydown.enter)="reader.closeTaskInput()"
+    aria-label="Student answer">
+  <button type="button" (click)="reader.closeTaskInput()" title="Close answer input" aria-label="Close answer input">
+    <img src="assets/images/book/close.png" alt="">
+  </button>
+</div>
+
+<div
+  class="word-bank-overlay"
+  *ngIf="reader.activeTaskElement?.type === 'choiceTask'"
+  (click)="reader.closeTaskInput()">
+  <section class="word-bank-dialog" (click)="$event.stopPropagation()" aria-label="Choose an answer">
+    <div class="word-bank-options">
+      <button
+        *ngFor="let option of reader.getActiveWordBankOptions()"
+        type="button"
+        class="word-bank-option"
+        [class.selected]="reader.isActiveChoiceOptionSelected(option.id)"
+        (click)="reader.selectActiveChoiceOption(option.id)">
+        {{ option.text }}
+      </button>
+    </div>
+    <button type="button" class="word-bank-close" (click)="reader.closeTaskInput()" title="Close word bank" aria-label="Close word bank">
+      <img src="assets/images/book/close.png" alt="">
+    </button>
+  </section>
+</div>
