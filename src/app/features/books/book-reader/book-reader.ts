@@ -71,6 +71,7 @@ import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
 import { BookReaderTaskController } from './book-reader-task-controller';
 import { BookReaderGuideController } from './book-reader-guide-controller';
 import { BookReaderSpeakingPackController } from './book-reader-speaking-pack-controller';
+import { BookReaderSpeakingSessionController } from './book-reader-speaking-session-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -99,6 +100,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly taskController = new BookReaderTaskController(this);
   private readonly guideController = new BookReaderGuideController(this);
   private readonly speakingPackController = new BookReaderSpeakingPackController(this);
+  private readonly speakingSessionController = new BookReaderSpeakingSessionController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -1642,141 +1644,59 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getSpeakingAttempts(element: BookElement | null): BookSpeakingAttempt[] {
-    if (!element) return [];
-    return this.speakingAttempts.get(element.id) ?? [];
+    return this.speakingSessionController.getSpeakingAttempts(element);
   }
 
   trackBySpeakingAttemptId(_index: number, attempt: BookSpeakingAttempt): string {
-    return attempt.key;
+    return this.speakingSessionController.trackBySpeakingAttemptId(_index, attempt);
   }
 
   trackBySpeakingSessionId(_index: number, session: SpeakingSessionSummary): string {
-    return session.sessionId;
+    return this.speakingSessionController.trackBySpeakingSessionId(_index, session);
   }
 
   trackBySpeakingChatTurnId(_index: number, turn: SpeakingChatTurn): string {
-    return turn.id;
+    return this.speakingSessionController.trackBySpeakingChatTurnId(_index, turn);
   }
 
   getSpeakingSessions(element: BookElement | null): SpeakingSessionSummary[] {
-    const attempts = this.getSpeakingAttempts(element);
-    const groups = new Map<string, BookSpeakingAttempt[]>();
-    for (const attempt of attempts) {
-      const sessionId = attempt.sessionId || attempt.attemptId;
-      const list = groups.get(sessionId) ?? [];
-      list.push(attempt);
-      groups.set(sessionId, list);
-    }
-
-    return Array.from(groups.entries())
-      .map(([sessionId, list]) => {
-        const sorted = this.sortSpeakingAttemptsByTurn(list);
-        const startedAt = sorted[0]?.startedAt || '';
-        const sessionName = String(sorted.find((attempt) => attempt.sessionName)?.sessionName || '').trim();
-        const updatedAt = sorted.reduce((latest, attempt) => (
-          String(attempt.updatedAt || attempt.endedAt || attempt.startedAt).localeCompare(latest) > 0
-            ? String(attempt.updatedAt || attempt.endedAt || attempt.startedAt)
-            : latest
-        ), startedAt);
-        const durationSeconds = sorted.reduce((total, attempt) => total + Math.max(0, Math.round(attempt.durationSeconds || 0)), 0);
-        return { sessionId, sessionName, attempts: sorted, startedAt, updatedAt, durationSeconds };
-      })
-      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    return this.speakingSessionController.getSpeakingSessions(element);
   }
 
   getFinishedSpeakingSessions(element: BookElement | null): SpeakingSessionSummary[] {
-    return this.getSpeakingSessions(element)
-      .filter((session) => session.sessionId !== this.activeSpeakingSessionId);
+    return this.speakingSessionController.getFinishedSpeakingSessions(element);
   }
 
   getActiveSpeakingChatTurns(): SpeakingChatTurn[] {
-    if (!this.activeSpeakingElement || !this.activeSpeakingSessionId) return [];
-    const attempts = this.getSpeakingAttempts(this.activeSpeakingElement)
-      .filter((attempt) => (attempt.sessionId || attempt.attemptId) === this.activeSpeakingSessionId);
-    const turns: SpeakingChatTurn[] = [];
-    for (const attempt of this.sortSpeakingAttemptsByTurn(attempts)) {
-      const studentText = this.getSpeakingAttemptStudentText(attempt);
-      const aiText = this.getSpeakingAttemptAiText(attempt);
-      if (studentText) {
-        turns.push({
-          id: `${attempt.key}:student`,
-          speaker: 'student',
-          text: studentText
-        });
-      } else if (attempt.status !== 'active' && this.isSpeakingAttemptProcessing(attempt)) {
-        turns.push({
-          id: `${attempt.key}:student-processing`,
-          speaker: 'student',
-          text: '',
-          pending: true
-        });
-      }
-      if (aiText) {
-        turns.push({
-          id: `${attempt.key}:ai`,
-          speaker: 'ai',
-          text: aiText
-        });
-      } else if (studentText && this.isSpeakingAttemptProcessing(attempt)) {
-        turns.push({
-          id: `${attempt.key}:ai-thinking`,
-          speaker: 'ai',
-          text: '',
-          pending: true
-        });
-      }
-    }
-    return turns;
+    return this.speakingSessionController.getActiveSpeakingChatTurns();
   }
 
   formatSpeakingSession(session: SpeakingSessionSummary): string {
-    if (session.sessionName.trim()) return session.sessionName.trim();
-    return this.formatSpeakingSessionDefaultName(session);
+    return this.speakingSessionController.formatSpeakingSession(session);
   }
 
   getSpeakingSessionDraft(session: SpeakingSessionSummary): string {
-    if (!this.speakingSessionNameDrafts.has(session.sessionId)) {
-      this.speakingSessionNameDrafts.set(session.sessionId, this.formatSpeakingSession(session));
-    }
-    return this.speakingSessionNameDrafts.get(session.sessionId) || '';
+    return this.speakingSessionController.getSpeakingSessionDraft(session);
   }
 
   setSpeakingSessionDraft(session: SpeakingSessionSummary, value: string): void {
-    this.speakingSessionNameDrafts.set(session.sessionId, String(value ?? ''));
+    this.speakingSessionController.setSpeakingSessionDraft(session, value);
   }
 
   formatSpeakingSessionDefaultName(session: SpeakingSessionSummary): string {
-    const started = new Date(session.startedAt);
-    const time = Number.isNaN(started.getTime())
-      ? 'Conversation'
-      : started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const duration = Math.max(0, Math.round(session.durationSeconds || 0));
-    return `${time} - ${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
+    return this.speakingSessionController.formatSpeakingSessionDefaultName(session);
   }
 
   formatSpeakingAttempt(attempt: BookSpeakingAttempt): string {
-    const started = new Date(attempt.startedAt);
-    const time = Number.isNaN(started.getTime())
-      ? 'Attempt'
-      : started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const duration = Math.max(0, Math.round(attempt.durationSeconds || 0));
-    const status = attempt.status === 'active'
-      ? 'Recording'
-      : `${Math.floor(duration / 60)}:${String(duration % 60).padStart(2, '0')}`;
-    const turn = Number.isFinite(Number(attempt.turnIndex))
-      ? `Turn ${Number(attempt.turnIndex) + 1}`
-      : time;
-    return `${turn} - ${status}`;
+    return this.speakingSessionController.formatSpeakingAttempt(attempt);
   }
 
   getSpeakingPrimaryActionLabel(): string {
-    if (this.checkingSpeakingRuntime) return 'Checking';
-    if (this.speakingSessionActive) return 'Finish';
-    return 'Start';
+    return this.speakingSessionController.getSpeakingPrimaryActionLabel();
   }
 
   getSpeakingTurnActionLabel(): string {
-    return this.speakingConversationActive ? 'Stop' : 'Speak';
+    return this.speakingSessionController.getSpeakingTurnActionLabel();
   }
 
   toggleSpeakingConversation(): void {
@@ -1852,13 +1772,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getSpeakingAttemptProgress(attempt: BookSpeakingAttempt): number {
-    if (attempt.status === 'active') {
-      return 0;
-    }
-    if (this.playingSpeakingAttemptId?.startsWith(`${attempt.attemptId}:`)) {
-      return this.speakingProgress[this.playingSpeakingAttemptId] ?? 0;
-    }
-    return this.speakingProgress[attempt.attemptId] ?? 0;
+    return this.speakingSessionController.getSpeakingAttemptProgress(attempt);
   }
 
   setSpeakingVoiceVolume(value: number | string): void {
