@@ -35,16 +35,13 @@ import {
 import {
   getGuideTracks,
   getOrderedGuidePins,
-  normalizeBookGuideTimelines,
-  syncLegacyGuideAudioFiles
+  normalizeBookGuideTimelines
 } from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
+import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
-
-const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
-const GUIDE_RECORDING_TIMESLICE_MS = 1000;
 
 type SpeakingPreviewRow = {
   label: string;
@@ -171,7 +168,6 @@ Tomorrow I will help my mom.`;
   private previewToken = 0;
   private guideTrackSeekTimes: Record<string, number> = {};
   private draggedPageIndex: number | null = null;
-  private draggedAudioIndex: number | null = null;
   previewGuideTrackId: string | null = null;
   private timelinePinDragState: {
     elementId: string;
@@ -200,9 +196,6 @@ Tomorrow I will help my mom.`;
   private creatorInteractionFrame = 0;
   private guidePinDragFrame = 0;
   private pendingGuidePinPointer: { x: number; y: number } | null = null;
-  private mediaRecorder: MediaRecorder | null = null;
-  private recordedChunks: Blob[] = [];
-  private recordingTimeoutId: number | null = null;
   private lastEditorWheelAt = 0;
   private dragState: {
     mode: 'move' | 'resize';
@@ -237,6 +230,7 @@ Tomorrow I will help my mom.`;
 
   private readonly markController = new BookCreatorMarkController(this);
   private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
+  private readonly guideAudioController = new BookCreatorGuideAudioController(this);
 
   async ngOnInit(): Promise<void> {
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -780,182 +774,40 @@ Tomorrow I will help my mom.`;
   }
 
   async addGuideDotAudio(element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'guideDot') return;
-    const asset = await this.bookLibrary.addAsset(this.book.id, 'audio', [
-      { name: 'Audio', extensions: ['mp3', 'wav', 'ogg', 'm4a', 'aac'] }
-    ]);
-    if (!asset) return;
-    this.captureHistory();
-    const track: GuideAudioTrack = {
-      id: this.createId('guide-track'),
-      src: asset.relativePath,
-      pins: []
-    };
-    this.getGuideDotTracks(element).push(track);
-    syncLegacyGuideAudioFiles(element);
-    this.selectGuideTrack(element, track);
-    void this.ensureGuideTrackDuration(track);
+    await this.guideAudioController.addGuideDotAudio(element);
   }
 
   deleteSelectedGuideTrack(element: BookElement): void {
-    const tracks = this.getGuideDotTracks(element);
-    const index = tracks.findIndex((track) => track.id === this.selectedGuideTrackId);
-    if (index < 0) return;
-    if (!window.confirm('Delete this audio track and all of its pins?')) return;
-    this.captureHistory();
-    const [removed] = tracks.splice(index, 1);
-    delete this.guideTrackSeekTimes[removed.id];
-    syncLegacyGuideAudioFiles(element);
-    if (removed.id === this.previewGuideTrackId) {
-      this.stopGuidePreview();
-    }
-    const nextTrack = tracks[Math.min(index, tracks.length - 1)] ?? null;
-    this.selectedGuideTrackId = nextTrack?.id ?? null;
-    this.selectedGuidePinId = null;
+    this.guideAudioController.deleteSelectedGuideTrack(element);
   }
 
   moveGuideDotAudio(element: BookElement, index: number, direction: -1 | 1): void {
-    const tracks = this.getGuideDotTracks(element);
-    const nextIndex = index + direction;
-    if (index < 0 || nextIndex < 0 || index >= tracks.length || nextIndex >= tracks.length) return;
-    this.captureHistory();
-    [tracks[index], tracks[nextIndex]] = [tracks[nextIndex], tracks[index]];
-    syncLegacyGuideAudioFiles(element);
+    this.guideAudioController.moveGuideDotAudio(element, index, direction);
   }
 
   onGuideAudioDragStart(index: number, event: DragEvent): void {
-    this.draggedAudioIndex = index;
-    event.dataTransfer?.setData('text/plain', String(index));
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-    }
+    this.guideAudioController.onGuideAudioDragStart(index, event);
   }
 
   onGuideAudioDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
-    }
+    this.guideAudioController.onGuideAudioDragOver(event);
   }
 
   onGuideAudioDrop(element: BookElement, targetIndex: number, event: DragEvent): void {
-    event.preventDefault();
-    const sourceIndex = this.draggedAudioIndex ?? Number(event.dataTransfer?.getData('text/plain'));
-    this.draggedAudioIndex = null;
-    const tracks = this.getGuideDotTracks(element);
-    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= tracks.length || sourceIndex === targetIndex) {
-      return;
-    }
-    this.captureHistory();
-    const [track] = tracks.splice(sourceIndex, 1);
-    tracks.splice(targetIndex, 0, track);
-    syncLegacyGuideAudioFiles(element);
+    this.guideAudioController.onGuideAudioDrop(element, targetIndex, event);
   }
 
   async toggleGuideDotRecording(element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'guideDot') return;
-    if (this.recordingGuideElementId === element.id) {
-      this.stopGuideDotRecording();
-      return;
-    }
-    if (this.requestingMicPermission) return;
-
-    let stream: MediaStream | null = null;
-    try {
-      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-        throw new Error('Recorder API unavailable.');
-      }
-      // Show immediate feedback before the permission dialog appears
-      this.requestingMicPermission = true;
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      this.requestingMicPermission = false;
-      this.cdr.detectChanges();
-
-      this.recordedChunks = [];
-      this.recordingGuideElementId = element.id;
-      const recorder = this.createMediaRecorder(stream);
-      this.mediaRecorder = recorder;
-      const chunks: Blob[] = this.recordedChunks;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunks.push(event.data);
-      };
-      recorder.onerror = () => {
-        this.clearRecordingTimeout();
-        stream?.getTracks().forEach((t) => t.stop());
-        this.mediaRecorder = null;
-        this.recordingGuideElementId = null;
-        window.alert(this.languageService.translate('creatorMicRecordingFailed'));
-      };
-      recorder.onstop = async () => {
-        this.clearRecordingTimeout();
-        stream?.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/mp4' });
-        if (!blob.size || !this.book) return;
-        this.savingRecording = true;
-        try {
-          const dataUrl = await this.blobToDataUrl(blob);
-          const saved = await this.bookLibrary.saveAudioRecording(this.book.id, dataUrl);
-          if (!saved) return;
-          this.captureHistory();
-          const track: GuideAudioTrack = {
-            id: this.createId('guide-track'),
-            src: saved.relativePath,
-            pins: []
-          };
-          const elementId = element.id;
-          const livePage = this.book.pages.find((p) => p.elements.some((e) => e.id === elementId));
-          const liveElement = livePage?.elements.find((e) => e.id === elementId);
-          if (!liveElement) return;
-          this.getGuideDotTracks(liveElement).push(track);
-          syncLegacyGuideAudioFiles(liveElement);
-          this.selectGuideTrack(liveElement, track);
-          void this.ensureGuideTrackDuration(track);
-        } finally {
-          this.savingRecording = false;
-        }
-      };
-      recorder.start(GUIDE_RECORDING_TIMESLICE_MS);
-      this.recordingTimeoutId = window.setTimeout(() => this.stopGuideDotRecording(), MAX_GUIDE_RECORDING_MS);
-    } catch {
-      this.requestingMicPermission = false;
-      this.cdr.detectChanges();
-      this.clearRecordingTimeout();
-      this.recordingGuideElementId = null;
-      try { stream?.getTracks().forEach((t) => t.stop()); } catch { /* already stopped */ }
-      window.alert(this.languageService.translate('creatorMicRecordingUnavailable'));
-    }
+    await this.guideAudioController.toggleGuideDotRecording(element);
   }
 
   private stopGuideDotRecording(): void {
     // Clear state immediately so the button snaps back — onstop will save in background
-    this.clearRecordingTimeout();
-    this.recordingGuideElementId = null;
-    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop();
-    }
-    this.mediaRecorder = null;
+    this.guideAudioController.stopGuideDotRecording();
   }
 
   private clearRecordingTimeout(): void {
-    if (this.recordingTimeoutId !== null) {
-      window.clearTimeout(this.recordingTimeoutId);
-      this.recordingTimeoutId = null;
-    }
-  }
-
-  private createMediaRecorder(stream: MediaStream): MediaRecorder {
-    const mimeTypes = [
-      'audio/mp4;codecs=mp4a.40.2',
-      'audio/mp4',
-      'audio/aac',
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/ogg'
-    ];
-    const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
-    return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    this.guideAudioController.clearRecordingTimeout();
   }
 
   async toggleGuideTrackPreview(element: BookElement): Promise<void> {
