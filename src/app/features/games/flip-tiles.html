@@ -21,10 +21,10 @@
       <div #gridContainer class="tile-board"
            [style.gap.px]="gap"
            [style.height.px]="boardHeight">
-        <div *ngFor="let row of cardRows; let rowIndex = index"
+        <div *ngFor="let row of cardRows; let rowIndex = index; trackBy: trackByRowIndex"
              class="tile-row"
              [style.gap.px]="gap">
-          <div *ngFor="let card of row; let colIndex = index"
+          <div *ngFor="let card of row; let colIndex = index; trackBy: trackByCardItemId"
                (click)="flipCard(rowIndex * gridColumns + colIndex)"
                class="card"
                [class.shake]="card.shake"

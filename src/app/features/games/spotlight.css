@@ -1,7 +1,8 @@
 .game-container {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   overflow: hidden;
   background: #f5f4c4;
   font-family: 'Nunito', 'Segoe UI', sans-serif;
@@ -176,6 +177,7 @@
   display: flex;
   justify-content: center;
   gap: 0.9rem;
+  max-width: calc(100vw - 1rem);
   z-index: 20;
   pointer-events: none; /* allow clicks on buttons */
 }
@@ -191,11 +193,22 @@
   cursor: pointer;
   transition: transform 0.2s, border-color 0.2s;
   font-weight: 600;
+  white-space: nowrap;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 .nav-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.4);
   transform: scale(1.05);
+}
+.nav-btn.icon-only {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 1rem;
 }
 .nav-btn:disabled {
   opacity: 0.3;
@@ -283,6 +296,41 @@
 }
 
 @media (max-width: 700px) {
+  .nav-buttons {
+    top: 0.35rem;
+    gap: 0.35rem;
+  }
+
+  .nav-btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .nav-btn.icon-only {
+    width: 2.35rem;
+    min-width: 2.35rem;
+    height: 2.2rem;
+    padding: 0;
+    font-size: 0.82rem;
+  }
+
+  .top-left-controls {
+    top: 3.15rem;
+    left: 0.5rem;
+    gap: 0.4rem;
+  }
+
+  .progress {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.65rem;
+  }
+
+  .speaker-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
   .item-image {
     width: 90vw;
     height: calc(90vw * 0.75); /* maintain 4:3 aspect ratio (600x450 = 4:3) */
@@ -291,6 +339,29 @@
 }
 
 @media (max-height: 500px) {
+  .nav-buttons {
+    top: 0.3rem;
+    gap: 0.35rem;
+  }
+
+  .nav-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.68rem;
+  }
+
+  .nav-btn.icon-only {
+    width: 2.25rem;
+    min-width: 2.25rem;
+    height: 2rem;
+    padding: 0;
+    font-size: 0.78rem;
+  }
+
+  .top-left-controls {
+    top: 2.7rem;
+    left: 0.5rem;
+  }
+
   .item-image {
     width: min(55vh, 80vw);
     height: calc(min(55vh, 80vw) * 0.75);

@@ -1,9 +1,9 @@
 /* ===== GLOBAL BOARD ===== */
 .game-board {
   width: 100%;
-  height: 100vh;
-  min-height: 100vh;
-  max-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -101,20 +101,23 @@
 .blue-zone .team-info {
   justify-content: flex-end;
 }
-.team-info h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-}
 .team-color {
-  font-size: 28px;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  font-weight: 900;
+  color: #fff;
+  box-shadow: inset 0 -5px 10px rgba(0, 0, 0, 0.22), 0 8px 18px rgba(0, 0, 0, 0.22);
 }
-.cup-count {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 5px 15px;
-  border-radius: 20px;
-  font-size: 20px;
-  font-weight: 600;
+.team-color.red {
+  background: linear-gradient(145deg, #ff4d5f, #c81e34);
+}
+.team-color.blue {
+  background: linear-gradient(145deg, #38bdf8, #1d4ed8);
 }
 
 /* Cups grid - balanced layout */
@@ -152,6 +155,7 @@
 .cup {
   width: 100%;
   height: 100%;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -179,72 +183,212 @@
   transition: transform 0.25s ease, filter 0.2s ease;
 }
 
-/* Center dice */
-.center-dice {
+.capture-marker {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  width: clamp(15px, calc(var(--cup-size) * 0.38), 21px);
+  height: clamp(15px, calc(var(--cup-size) * 0.38), 21px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(11px, calc(var(--cup-size) * 0.27), 15px);
+  line-height: 1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.28);
+  pointer-events: none;
+  animation: captureMarkerBounce 0.82s ease-in-out infinite;
+  z-index: 3;
+}
+
+@keyframes captureMarkerBounce {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-5px) scale(1.08);
+  }
+}
+
+/* Team dice controls */
+.team-dice-control {
+  width: clamp(98px, 12vw, 150px);
+  height: clamp(70px, 8vw, 104px);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 120px;
-  perspective: 700px;
+  cursor: not-allowed;
+  opacity: 0.62;
+  filter: saturate(0.88);
+  transform: translateY(0);
+  transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
 }
-.dice-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
+
+.team-dice-control.current {
+  opacity: 0.94;
+  filter: saturate(1.18);
 }
-.dice {
-  width: 100px;
-  height: 100px;
-  background: white;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 60px;
-  color: #2d3748;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  transform-style: preserve-3d;
-  will-change: transform;
-  transition: box-shadow 0.25s ease, background 0.25s ease;
-}
-.dice-container.enabled .dice {
+
+.team-dice-control.active {
   cursor: pointer;
+  opacity: 1;
+}
+
+.team-dice-control.active:hover {
+  transform: translateY(-3px);
+}
+
+.team-dice-control:disabled {
+  pointer-events: none;
+}
+
+.red-dice-control {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.28), transparent 28%),
+    linear-gradient(135deg, #7f1d1d 0%, #dc2626 46%, #ff4d4d 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 -16px 28px rgba(69, 10, 10, 0.34),
+    0 16px 34px rgba(127, 29, 29, 0.42);
+}
+
+.blue-dice-control {
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.28), transparent 28%),
+    linear-gradient(135deg, #1e3a8a 0%, #2563eb 46%, #38bdf8 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 -16px 28px rgba(15, 23, 42, 0.34),
+    0 16px 34px rgba(30, 64, 175, 0.42);
+}
+
+.red-dice-control.active {
+  box-shadow:
+    0 0 0 4px rgba(254, 202, 202, 0.42),
+    0 0 32px rgba(248, 113, 113, 0.56),
+    0 20px 42px rgba(127, 29, 29, 0.5);
+}
+
+.blue-dice-control.active {
+  box-shadow:
+    0 0 0 4px rgba(191, 219, 254, 0.42),
+    0 0 32px rgba(56, 189, 248, 0.56),
+    0 20px 42px rgba(30, 64, 175, 0.5);
+}
+
+.team-dice {
+  --dice-size: clamp(58px, 6.5vw, 86px);
+  width: var(--dice-size);
+  height: var(--dice-size);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 460px;
+  transform: rotateX(-10deg) rotateY(12deg);
+  transform-style: preserve-3d;
+  background: #f8fafc;
+  border-radius: 18px;
+  box-shadow:
+    0 13px 24px rgba(0, 0, 0, 0.36),
+    0 0 0 2px rgba(255, 255, 255, 0.86);
+  will-change: transform;
+}
+
+.dice-cube {
+  width: var(--dice-size);
+  height: var(--dice-size);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.42s cubic-bezier(0.2, 1, 0.22, 1);
+}
+
+.dice-side {
+  position: absolute;
+  inset: -1px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 28% 24%, #ffffff 0%, #fbfdff 30%, #e5e7eb 72%, #cbd5e1 100%);
+  border: 1px solid rgba(255, 255, 255, 0.96);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.22),
+    inset 5px 6px 12px rgba(255, 255, 255, 0.82),
+    inset -7px -8px 14px rgba(15, 23, 42, 0.18);
+}
+
+.dice-side::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 11px;
+  box-shadow:
+    inset 2px 2px 4px rgba(255, 255, 255, 0.72),
+    inset -2px -2px 6px rgba(15, 23, 42, 0.12);
+}
+
+.dice-face-1 { transform: rotateY(0deg) translateZ(calc(var(--dice-size) / 2)); }
+.dice-face-2 { transform: rotateY(90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dice-face-3 { transform: rotateX(90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dice-face-4 { transform: rotateX(-90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dice-face-5 { transform: rotateY(-90deg) translateZ(calc(var(--dice-size) / 2)); }
+.dice-face-6 { transform: rotateY(180deg) translateZ(calc(var(--dice-size) / 2)); }
+
+.dice-cube.show-1 { transform: rotateX(0deg) rotateY(0deg); }
+.dice-cube.show-2 { transform: rotateX(0deg) rotateY(-90deg); }
+.dice-cube.show-3 { transform: rotateX(-90deg) rotateY(0deg); }
+.dice-cube.show-4 { transform: rotateX(90deg) rotateY(0deg); }
+.dice-cube.show-5 { transform: rotateX(0deg) rotateY(90deg); }
+.dice-cube.show-6 { transform: rotateX(0deg) rotateY(180deg); }
+
+.dice-pips {
+  width: 68%;
+  height: 68%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  align-items: center;
+  justify-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.dice-pip {
+  width: clamp(6px, 0.95vw, 11px);
+  aspect-ratio: 1 / 1;
+  border-radius: 999px;
+  opacity: 0;
+  background: radial-gradient(circle at 34% 30%, #4b5563 0%, #111827 58%, #020617 100%);
+  box-shadow:
+    inset 1px 1px 2px rgba(255, 255, 255, 0.22),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.55),
+    0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.dice-pip.visible {
+  opacity: 1;
+}
+
+.team-dice-control.active .team-dice {
   animation: dicePulse 2s ease-in-out infinite;
 }
-.dice-container.enabled .dice:hover {
-  transform: scale(1.12) rotateY(18deg) rotateX(-6deg);
-  box-shadow: 0 20px 55px rgba(72, 187, 120, 0.55), 0 0 0 3px rgba(72, 187, 120, 0.3);
-}
-.dice.rolling {
-  cursor: default;
+
+.team-dice.rolling .dice-cube {
   animation: diceRoll3D 0.72s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  background: linear-gradient(135deg, #fff 0%, #f0fff4 100%);
-  box-shadow:
-    0 0 0 3px rgba(72, 187, 120, 0.5),
-    0 0 35px rgba(72, 187, 120, 0.55),
-    0 12px 40px rgba(0, 0, 0, 0.4);
 }
-.dice.landing {
-  animation: diceLand 0.6s cubic-bezier(0.15, 1.6, 0.3, 1) forwards;
-  background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
-  box-shadow:
-    0 0 0 5px rgba(72, 187, 120, 0.75),
-    0 0 65px rgba(72, 187, 120, 0.8),
-    0 16px 50px rgba(0, 0, 0, 0.3);
-}
-.dice-value {
-  background: #48bb78;
-  color: white;
-  padding: 5px 20px;
-  border-radius: 25px;
-  font-size: 24px;
-  font-weight: 700;
+
+.team-dice.landing {
+  animation: diceLand 0.45s cubic-bezier(0.15, 1.6, 0.3, 1) forwards;
 }
 @keyframes dicePulse {
-  0%, 100% { transform: scale(1) rotateY(0deg);   box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-  50%       { transform: scale(1.06) rotateY(12deg); box-shadow: 0 16px 38px rgba(72,187,120,0.35); }
+  0%, 100% { transform: scale(1) rotateX(-10deg) rotateY(12deg); }
+  50%       { transform: scale(1.06) rotateX(-13deg) rotateY(24deg); }
 }
 @keyframes diceRoll3D {
   0%   { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg)   scale(1); }
@@ -254,11 +398,11 @@
   100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg) scale(1); }
 }
 @keyframes diceLand {
-  0%   { transform: rotateX(28deg)  rotateY(18deg)  scale(1.38); }
-  38%  { transform: rotateX(-10deg) rotateY(-7deg)  scale(0.87); }
-  62%  { transform: rotateX(6deg)   rotateY(4deg)   scale(1.1); }
-  80%  { transform: rotateX(-3deg)  rotateY(-2deg)  scale(0.97); }
-  100% { transform: rotateX(0deg)   rotateY(0deg)   scale(1); }
+  0%   { transform: rotateX(30deg)  rotateY(42deg)  scale(1.34); }
+  38%  { transform: rotateX(-16deg) rotateY(-8deg)  scale(0.9); }
+  62%  { transform: rotateX(-5deg)  rotateY(22deg)  scale(1.08); }
+  80%  { transform: rotateX(-12deg) rotateY(8deg)   scale(0.98); }
+  100% { transform: rotateX(-10deg) rotateY(12deg)  scale(1); }
 }
 
 /* Ghost preview */
@@ -289,47 +433,16 @@
 
 /* Bottom controls */
 .game-controls {
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
+  padding: 8px 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  gap: 2px;
-  background: rgba(0,0,0,0.3);
-  backdrop-filter: blur(10px);
+  justify-items: center;
+  gap: 8px;
+  background: transparent;
+  backdrop-filter: none;
   width: 100%;
   box-sizing: border-box;
-}
-.turn-indicator {
-  padding: 15px 30px;
-  border-radius: 50px;
-  background: rgba(255,255,255,0.1);
-  color: white;
-  font-size: 20px;
-  font-weight: 600;
-  display: flex;
-  gap: 20px;
-  align-items: center;
-}
-.turn-red {
-  background: linear-gradient(45deg, #c53030, #f56565);
-  box-shadow: 0 0 20px rgba(197,48,48,0.5);
-}
-.turn-blue {
-  background: linear-gradient(45deg, #2b6cb0, #4299e1);
-  box-shadow: 0 0 20px rgba(43,108,176,0.5);
-}
-.dice-requirement {
-  background: rgba(255,255,255,0.2);
-  padding: 5px 15px;
-  border-radius: 25px;
-  font-size: 16px;
-}
-.miss-turn {
-  background: rgba(229,62,62,0.3);
-  padding: 5px 15px;
-  border-radius: 25px;
-  font-size: 16px;
-  color: #feb2b2;
 }
 
 /* Items row */
@@ -503,6 +616,10 @@
   backdrop-filter: blur(8px);
 }
 
+.rps-hidden {
+  display: none !important;
+}
+
 .rps-modal {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -627,14 +744,6 @@
 .rps-btn-blue:hover:not(:disabled) { box-shadow: 0 20px 40px rgba(43, 108, 176, 0.7); }
 .rps-btn:active:not(:disabled) { transform: scale(0.93); }
 .rps-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: scale(0.95); }
-
-.rps-label {
-  font-size: 0.9rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-}
-.rps-label-red  { color: #f56565; }
-.rps-label-blue { color: #4299e1; }
 
 .rps-vs {
   font-size: 1.8rem;
@@ -909,10 +1018,6 @@
     padding: 12px 10px 6px;
     gap: 6px;
   }
-  .center-dice {
-    order: -1;
-    margin: 16px 0;
-  }
 }
 @media (max-width: 768px) {
   .board-container {
@@ -985,10 +1090,6 @@
     font-size: 1.25rem;
   }
 
-  .rps-label {
-    font-size: 0.68rem;
-  }
-
   .rps-result {
     padding: 0.42rem 1rem;
     font-size: 0.82rem;
@@ -1014,17 +1115,10 @@
     gap: 6px;
   }
 
-  .team-info h2 {
-    font-size: 0.82rem;
-  }
-
   .team-color {
-    font-size: 1rem;
-  }
-
-  .cup-count {
-    padding: 3px 7px;
-    font-size: 0.72rem;
+    width: 30px;
+    height: 30px;
+    font-size: 0.86rem;
   }
 
   .cups-grid {
@@ -1033,44 +1127,32 @@
     border-radius: 10px;
   }
 
-  .center-dice {
-    min-width: 66px;
-    order: 0;
-    margin: 0;
-  }
-
-  .dice-container {
-    gap: 4px;
-    padding: 4px;
-  }
-
-  .dice {
-    width: 56px;
-    height: 56px;
-    border-radius: 13px;
-    font-size: 2rem;
-  }
-
-  .dice-label,
-  .dice-value {
-    font-size: 0.72rem;
-    padding: 3px 8px;
-  }
-
   .game-controls {
-    padding: 3px 8px;
-  }
-
-  .turn-indicator {
-    padding: 5px 12px;
+    padding: 4px 8px;
     gap: 8px;
-    font-size: 0.78rem;
   }
 
-  .dice-requirement,
-  .miss-turn {
-    padding: 2px 7px;
-    font-size: 0.7rem;
+  .team-dice-control {
+    width: 92px;
+    height: 62px;
+    border-radius: 18px;
+  }
+
+  .team-dice {
+    --dice-size: 50px;
+  }
+
+  .dice-side {
+    border-radius: 12px;
+  }
+
+  .dice-side::before {
+    inset: 4px;
+    border-radius: 8px;
+  }
+
+  .dice-pip {
+    width: 7px;
   }
 
   .items-row {

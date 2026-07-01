@@ -23,7 +23,7 @@
 
         <div class="word-list-scroll">
           <button
-            *ngFor="let word of words; let i = index"
+            *ngFor="let word of words; let i = index; trackBy: trackByWordText"
             type="button"
             (click)="onWordClick(i)"
             class="word-item"
@@ -37,9 +37,9 @@
 
       <section class="word-grid-panel">
         <div class="grid-wrap">
-          <div *ngFor="let row of grid; let r = index" class="grid-row">
+          <div *ngFor="let row of grid; let r = index; trackBy: trackByGridRow" class="grid-row">
             <button
-              *ngFor="let cell of row; let c = index"
+              *ngFor="let cell of row; let c = index; trackBy: trackByCell"
               type="button"
               (click)="onGridClick(r, c)"
               class="grid-cell"

@@ -1,3 +1,9 @@
+.game-container {
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+
 .game-board-container {
   width: 100%;
   flex: 1;
@@ -26,9 +32,10 @@
 
 .card {
   position: relative;
-  transition: all 0.8s ease;
+  transition: transform 0.8s ease, opacity 0.3s ease;
   transform-style: preserve-3d;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .card.flipped {
@@ -92,4 +99,20 @@
   0%,100% { transform: translateX(0); }
   10%,30%,50%,70%,90% { transform: translateX(-5px); }
   20%,40%,60%,80% { transform: translateX(5px); }
+}
+
+@media (max-height: 560px), (max-width: 640px) {
+  .game-container {
+    padding: 0.5rem !important;
+  }
+
+  .match-header h2 {
+    font-size: 1.45rem !important;
+    line-height: 1.1;
+  }
+
+  .match-info,
+  .match-actions {
+    margin-top: 0.45rem !important;
+  }
 }

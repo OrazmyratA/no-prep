@@ -2,6 +2,9 @@
 .game-container {
   perspective: 2000px;
   overflow: hidden;
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
 }
 
 /* ===== FLEX GRID WRAPPER – centered & responsive ===== */
@@ -278,6 +281,24 @@
 }
 /* ===== RESPONSIVE ADJUSTMENTS ===== */
 @media (max-width: 640px) {
+  .game-container {
+    padding: 0.5rem !important;
+  }
+
+  .flip-header h2 {
+    font-size: 1.45rem !important;
+    line-height: 1.1;
+  }
+
+  .flip-controls {
+    gap: 0.45rem !important;
+  }
+
+  .flip-controls button {
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.82rem;
+  }
+
   .card-back p {
     font-size: 0.7rem;
   }

@@ -1,6 +1,6 @@
 .game-container {
   position: relative;
-  height: 100vh;
+  height: 100dvh;
   padding: 32px 24px;
   background: linear-gradient(135deg, #312e81 0%, #4c1d95 45%, #7c3aed 65%, #a855f7 100%);
   color: #ffffff;
@@ -75,8 +75,8 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 20px 80px rgba(12, 12, 60, 0.35);
   flex: 1;
-  height: calc(100vh - 60px);
-  max-height: calc(100vh - 60px);
+  height: calc(100dvh - 60px);
+  max-height: calc(100dvh - 60px);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -144,17 +144,6 @@
 .rectangle.right {
   border-color: rgba(16, 185, 129, 0.4);
 }
-.set-pill {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.95rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1rem;
-  margin-bottom: 12px;
-  color: #1e2138;
-}
-
 .items-area {
   position: relative;
   flex: 1;
@@ -354,15 +343,15 @@
     min-height: 0;
   }
   .game-board {
-    height: calc(100vh - 48px);
+    height: calc(100dvh - 48px);
   }
 }
 
 @media (max-width: 600px) {
   .game-container { padding: 10px 8px; }
   .game-board {
-    height: calc(100vh - 20px);
-    max-height: calc(100vh - 20px);
+    height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 20px);
     padding: 14px;
     gap: 8px;
   }
@@ -430,13 +419,6 @@
     padding: 8px;
     border-radius: 18px;
     flex-basis: 0;
-  }
-
-  .set-pill {
-    font-size: 0.66rem;
-    letter-spacing: 0.04rem;
-    margin-bottom: 5px;
-    gap: 6px;
   }
 
   .items-area {

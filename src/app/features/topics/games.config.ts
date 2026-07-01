@@ -11,21 +11,21 @@ export interface GameConfig {
 }
 
 export const GAMES: GameConfig[] = [
-    {
+  {
     id: 'flip-tiles',
     nameKey: 'gameFlipTilesName',
     descKey: 'gameFlipTilesDesc',
     icon: '\u{1F504}',
     requiresSettings: false,
   },
-    {
+  {
     id: 'match-pairs',
     nameKey: 'gameMatchPairsName',
     descKey: 'gameMatchPairsDesc',
     icon: '\u{1F0CF}',
     requiresSettings: false,
   },
-    {
+  {
     id: 'watch-memorize',
     nameKey: 'gameWatchMemorizeName',
     descKey: 'gameWatchMemorizeDesc',
@@ -53,14 +53,14 @@ export const GAMES: GameConfig[] = [
     icon: '\u{1F9E9}',
     requiresSettings: true,
   },
-    {
+  {
     id: 'pop-balloon',
     nameKey: 'gamePopBalloonName',
     descKey: 'gamePopBalloonDesc',
     icon: '\u{1F388}',
     requiresSettings: true,
   },
-    {
+  {
     id: 'test-abc',
     nameKey: 'gameTestAbcName',
     descKey: 'gameTestAbcDesc',
@@ -92,7 +92,7 @@ export const GAMES: GameConfig[] = [
     id: 'team-tug',
     nameKey: 'gameTeamTugName',
     descKey: 'gameTeamTugDesc',
-    icon: '🤼',
+    icon: '\u{1F93C}',
     requiresSettings: true,
   },
   {
@@ -127,14 +127,14 @@ export const GAMES: GameConfig[] = [
     id: 'squid-game',
     nameKey: 'gameSquidGameName',
     descKey: 'gameSquidGameDesc',
-    icon: '🦑',
+    icon: '\u{1F991}',
     requiresSettings: true,
   },
   {
     id: 'rock-paper-scissors',
     nameKey: 'gameRockPaperScissorsName',
     descKey: 'gameRockPaperScissorsDesc',
-    icon: '🏰',
+    icon: '\u{270A}',
     requiresSettings: true,
   }
 ];

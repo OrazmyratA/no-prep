@@ -55,6 +55,8 @@ export class AnagramComponent implements OnInit, OnDestroy {
   private currentItemAudio: HTMLAudioElement | null = null;
   private currentItemAudioUrl: string | null = null;
   private advanceTimer: number | null = null;
+  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -102,7 +104,9 @@ export class AnagramComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearAdvanceTimer();
+    this.clearFeedbackTimers();
     this.stopCurrentItemAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
@@ -285,6 +289,14 @@ export class AnagramComponent implements OnInit, OnDestroy {
     return this.imageUrls.get(itemId)!;
   }
 
+  trackByDisplaySlot(index: number, slot: DisplaySlot): string {
+    return slot.isSpace ? `space-${index}` : `slot-${slot.targetIndex}`;
+  }
+
+  trackByTileId(_: number, tile: LetterTile): string {
+    return tile.id;
+  }
+
   get currentImageUrl(): string | null {
     if (!this.currentItem?.image) return null;
     return this.imageUrl(this.currentItem.image, this.currentItem.id ?? this.currentIndex);
@@ -301,6 +313,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
 
   resetGame() {
     this.clearAdvanceTimer();
+    this.clearFeedbackTimers();
     this.stopCurrentItemAudio();
     this.currentIndex = 0;
     this.gameFinished = false;
@@ -339,7 +352,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     this.triggerFlyAnimation(tile.id);
     this.playSound(this.flipSound, 0.3);
 
-    setTimeout(() => {
+    this.setFeedbackTimeout(() => {
       this.sourceLetters.splice(tileIndex, 1);
       this.targetLetters[targetIndex] = tile;
       this.animatingTiles.delete(tile.id);
@@ -368,7 +381,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     this.animatingTiles.set(tileId, { tileId, animationType: 'shake' });
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setFeedbackTimeout(() => {
       this.animatingTiles.delete(tileId);
       this.cdr.detectChanges();
     }, 600);
@@ -416,5 +429,21 @@ export class AnagramComponent implements OnInit, OnDestroy {
       window.clearTimeout(this.advanceTimer);
       this.advanceTimer = null;
     }
+  }
+
+  private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.feedbackTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.feedbackTimers.add(timer);
+    return timer;
+  }
+
+  private clearFeedbackTimers() {
+    this.feedbackTimers.forEach(timer => clearTimeout(timer));
+    this.feedbackTimers.clear();
   }
 }

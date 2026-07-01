@@ -167,6 +167,7 @@ Tomorrow I will help my mom.`;
   private activePreviewAudio: HTMLAudioElement | null = null;
   private previewPitchCleanup: (() => void) | null = null;
   private previewToken = 0;
+  private guideTrackSeekTimes: Record<string, number> = {};
   private draggedPageIndex: number | null = null;
   private draggedAudioIndex: number | null = null;
   previewGuideTrackId: string | null = null;
@@ -852,6 +853,7 @@ Tomorrow I will help my mom.`;
     if (!window.confirm('Delete this audio track and all of its pins?')) return;
     this.captureHistory();
     const [removed] = tracks.splice(index, 1);
+    delete this.guideTrackSeekTimes[removed.id];
     syncLegacyGuideAudioFiles(element);
     if (removed.id === this.previewGuideTrackId) {
       this.stopGuidePreview();
@@ -1013,6 +1015,13 @@ Tomorrow I will help my mom.`;
 
     if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
       if (this.activePreviewAudio.paused) {
+        const duration = this.getGuideTrackDuration(track);
+        if (duration > 0 && this.activePreviewAudio.currentTime >= duration - 0.05) {
+          this.activePreviewAudio.currentTime = 0;
+          this.previewGuideCurrentTime = 0;
+          this.guideTrackSeekTimes[track.id] = 0;
+          this.applyCreatorGuideState(element, track, 0);
+        }
         await this.activePreviewAudio.play().catch(() => {});
       } else {
         this.activePreviewAudio.pause();
@@ -1020,10 +1029,20 @@ Tomorrow I will help my mom.`;
       return;
     }
 
-    this.startGuideTrackPreview(element, track, 0);
+    const duration = this.getGuideTrackDuration(track);
+    const startTime = duration > 0 && this.previewGuideCurrentTime >= duration - 0.05
+      ? 0
+      : this.previewGuideCurrentTime;
+    this.startGuideTrackPreview(element, track, startTime);
   }
 
   stopGuidePreview(): void {
+    if (this.previewGuideTrackId) {
+      const time = this.activePreviewAudio
+        ? this.activePreviewAudio.currentTime
+        : this.previewGuideCurrentTime;
+      this.guideTrackSeekTimes[this.previewGuideTrackId] = Math.max(0, Number(time) || 0);
+    }
     this.previewToken++;
     if (this.activePreviewAudio) {
       this.activePreviewAudio.pause();
@@ -1050,10 +1069,15 @@ Tomorrow I will help my mom.`;
     this.selectedGuideTrackId = track.id;
     this.selectedGuidePinId = null;
     this.placingGuidePin = false;
+    const rememberedTime = this.guideTrackSeekTimes[track.id] ?? 0;
     this.previewGuideCurrentTime = wasPreviewingTrack
       ? this.activePreviewAudio?.currentTime ?? this.previewGuideCurrentTime
-      : 0;
+      : this.clamp(rememberedTime, 0, this.getGuideTrackDuration(track));
     this.previewGuideDuration = track.duration || 0;
+    this.previewGuideElementId = element.id;
+    this.previewGuideTrackId = track.id;
+    this.previewGuidePaused = this.activePreviewAudio?.paused ?? true;
+    this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
     void this.ensureGuideTrackDuration(track);
   }
 
@@ -1592,6 +1616,18 @@ Tomorrow I will help my mom.`;
 
   get pageStripToggleActive(): boolean {
     return this.isPhoneLayout() ? this.pageStripOpen : this.pageStripCollapsed;
+  }
+
+  get isPageStripVisible(): boolean {
+    return this.isPhoneLayout() ? this.pageStripOpen : !this.pageStripCollapsed;
+  }
+
+  get showPageStripRail(): boolean {
+    return this.isPhoneLayout() ? !this.pageStripOpen : this.pageStripCollapsed;
+  }
+
+  get isInspectorVisible(): boolean {
+    return this.isPhoneLayout() ? this.inspectorOpen : !this.inspectorCollapsed;
   }
 
   closeMobilePanels(): void {
@@ -2665,7 +2701,8 @@ Tomorrow I will help my mom.`;
   getGuideTrackDuration(track: GuideAudioTrack): number {
     const duration = Number(track.duration || (this.previewGuideTrackId === track.id ? this.previewGuideDuration : 0));
     const lastPinTime = Math.max(0, ...(track.pins || []).map((pin) => Number(pin.time) || 0));
-    return Math.max(1, Number.isFinite(duration) ? duration : 0, lastPinTime);
+    const rememberedTime = Number(this.guideTrackSeekTimes[track.id] || 0);
+    return Math.max(1, Number.isFinite(duration) ? duration : 0, lastPinTime, Number.isFinite(rememberedTime) ? rememberedTime : 0);
   }
 
   formatGuideTime(value: number): string {
@@ -2683,7 +2720,21 @@ Tomorrow I will help my mom.`;
     return item.pin.id;
   }
 
+  getGuideTrackCurrentTime(track: GuideAudioTrack): number {
+    if (this.previewGuideTrackId === track.id) {
+      return this.clamp(this.previewGuideCurrentTime, 0, this.getGuideTrackDuration(track));
+    }
+    return this.clamp(this.guideTrackSeekTimes[track.id] ?? 0, 0, this.getGuideTrackDuration(track));
+  }
+
+  prepareGuideTrackSeek(event: Event, element: BookElement, track: GuideAudioTrack): void {
+    event.stopPropagation();
+    this.selectGuideTrack(element, track);
+    void this.ensureGuideTrackDuration(track);
+  }
+
   seekGuideTrack(event: Event, element: BookElement, track: GuideAudioTrack): void {
+    event.stopPropagation();
     const input = event.target as HTMLInputElement;
     this.selectGuideTrack(element, track);
     this.seekGuideTrackTo(element, track, Number(input.value));
@@ -3049,6 +3100,7 @@ Tomorrow I will help my mom.`;
     audio.ontimeupdate = () => {
       if (token !== this.previewToken) return;
       this.previewGuideCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      this.guideTrackSeekTimes[track.id] = this.previewGuideCurrentTime;
       this.previewGuideDuration = Number.isFinite(audio.duration) ? audio.duration : this.previewGuideDuration;
       this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
     };
@@ -3062,6 +3114,7 @@ Tomorrow I will help my mom.`;
       if (token !== this.previewToken) return;
       this.previewGuidePaused = true;
       this.previewGuideCurrentTime = this.previewGuideDuration;
+      this.guideTrackSeekTimes[track.id] = this.previewGuideCurrentTime;
     };
     audio.onerror = () => {
       if (token === this.previewToken) this.previewGuidePaused = true;
@@ -3075,6 +3128,7 @@ Tomorrow I will help my mom.`;
     const time = this.clamp(Number(value) || 0, 0, this.getGuideTrackDuration(track));
     const isActiveTrack = this.previewGuideTrackId === track.id;
     this.previewGuideCurrentTime = time;
+    this.guideTrackSeekTimes[track.id] = time;
     this.previewGuideDuration = this.getGuideTrackDuration(track);
     this.previewGuideElementId = element.id;
     this.previewGuideTrackId = track.id;

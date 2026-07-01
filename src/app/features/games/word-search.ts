@@ -172,6 +172,18 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     return (this.foundWordsCount / this.words.length) * 100;
   }
 
+  trackByWordText(index: number, word: WordPlacement): string {
+    return `${word.answer}-${word.startRow}-${word.startCol}-${index}`;
+  }
+
+  trackByGridRow(index: number): number {
+    return index;
+  }
+
+  trackByCell(_: number, cell: GridCell): string {
+    return `${cell.row}-${cell.col}`;
+  }
+
   private buildGrid() {
     const candidates = this.prepareWords();
     if (candidates.length === 0) {

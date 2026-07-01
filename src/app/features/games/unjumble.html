@@ -1,6 +1,10 @@
-<div class="h-screen overflow-hidden bg-gradient-to-br from-green-900 to-teal-800 p-3 flex flex-col">
+<div class="relative h-screen overflow-hidden bg-gradient-to-br from-green-900 to-teal-800 p-3 flex flex-col">
   <div class="w-full flex-1 min-h-0 flex flex-col">
     <h2 class="text-2xl font-bold text-white mb-1 text-center">{{ 'unjumbleTitle' | translate }}</h2>
+    <div *ngIf="!loading && !gameFinished && currentItem"
+         class="absolute top-3 left-3 text-white text-sm font-bold bg-black bg-opacity-35 rounded-full px-3 py-1 shadow-lg">
+      {{ currentIndex + 1 }} / {{ items.length }}
+    </div>
 
     <!-- Loading -->
     <div *ngIf="loading" class="flex justify-center items-center h-64">
@@ -71,16 +75,20 @@
       <div class="flex justify-center gap-4 mt-2">
         <button (click)="previousItem()"
                 [disabled]="currentIndex === 0"
-                class="bg-slate-500 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
-          {{ 'previous' | translate }}
+                aria-label="Previous"
+                title="Previous"
+                class="w-12 h-12 bg-slate-500 hover:bg-slate-700 text-white font-bold rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl">
+          <span aria-hidden="true">&#9664;</span>
         </button>
         <button (click)="shuffle()"
                 class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
           {{ 'shuffle' | translate }}
         </button>
         <button (click)="nextItem()"
-                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-          {{ 'next' | translate }}
+                aria-label="Next"
+                title="Next"
+                class="w-12 h-12 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded-full shadow-lg transition flex items-center justify-center text-xl">
+          <span aria-hidden="true">&#9654;</span>
         </button>
       </div>
     </div>

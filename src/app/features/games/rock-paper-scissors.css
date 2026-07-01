@@ -2,7 +2,7 @@
 .rps-wrapper {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -200,14 +200,6 @@
 
 .rps-panel.panel-disabled {
   cursor: default;
-}
-
-.rps-team-name {
-  font-weight: 800;
-  font-size: 0.9rem;
-  text-align: center;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 /* ── Choice display box ──────────────────────────────────────── */
@@ -726,10 +718,6 @@
   .rps-panel-left { left: 10px; }
   .rps-panel-right { right: 10px; }
 
-  .rps-team-name {
-    font-size: 0.78rem;
-  }
-
   .rps-choice-box {
     width: 64px;
     height: 64px;
@@ -742,7 +730,7 @@
 
   .rps-quiz-card {
     width: calc(100vw - 24px);
-    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     overflow: auto;
     padding: 22px 16px;
     gap: 16px;
@@ -759,7 +747,7 @@
 
   .rps-victory-card {
     width: calc(100vw - 24px);
-    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     overflow: auto;
     padding: 28px 18px;
   }

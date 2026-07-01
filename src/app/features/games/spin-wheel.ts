@@ -30,6 +30,9 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   private rewardSound: HTMLAudioElement | null = null;
   private victoryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private confirmTimerId: ReturnType<typeof setTimeout> | null = null;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private spinFrameId: number | null = null;
+  private destroyed = false;
   private imageUrls = new Map<number, string>();
   quizOverlayVisible = false;
   useTextOnWheel = false;
@@ -138,18 +141,25 @@ private resizeCanvas() {
 
   private attemptDrawWheel() {
     const tryDraw = () => {
+      if (this.destroyed) return;
       if (this.drawWheel()) {
         this.retryCount = 0;
       } else if (this.retryCount < 10) {
         this.retryCount++;
-        setTimeout(tryDraw, 100);
+        this.setGameTimeout(tryDraw, 100);
       }
     };
     tryDraw();
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.layoutSubscription?.unsubscribe();
+    this.clearPendingTimers();
+    if (this.spinFrameId !== null) {
+      cancelAnimationFrame(this.spinFrameId);
+      this.spinFrameId = null;
+    }
     this.clearVictoryTimeout();
     if (this.confirmTimerId !== null) { clearTimeout(this.confirmTimerId); this.confirmTimerId = null; }
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
@@ -302,6 +312,7 @@ drawWheel(): boolean {
     const url = URL.createObjectURL(item.image);
     this.objectUrls.push(url);
     img.onload = () => {
+      if (this.destroyed) return;
       this.images.set(item.id!, img);
       this.imageLoadQueue.delete(item.id!);
       this.drawWheel();
@@ -316,6 +327,22 @@ drawWheel(): boolean {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
     }
+  }
+
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
   }
 
 spin() {
@@ -354,6 +381,7 @@ spin() {
   const startRotation = this.rotation;
 
   const animate = (time: number) => {
+    if (this.destroyed) return;
     const elapsed = time - start;
     const progress = Math.min(elapsed / duration, 1);
     // Use a smooth ease-out
@@ -362,21 +390,22 @@ spin() {
     this.drawWheel();
 
     if (progress < 1) {
-      requestAnimationFrame(animate);
+      this.spinFrameId = requestAnimationFrame(animate);
     } else {
+      this.spinFrameId = null;
       this.spinning = false;
       // Show quiz or not
 if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
   const canShowQuiz = this.buildQuizOptions();
   if (canShowQuiz) {
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.simpleConfirmMode = false;
       this.showQuiz = true;
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
     }, 1000);
   } else {
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.simpleConfirmMode = true;
       this.showQuiz = true;
       this.quizOverlayVisible = true;
@@ -384,7 +413,7 @@ if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
     }, 1000);
   }
 } else {
-  setTimeout(() => {
+  this.setGameTimeout(() => {
     this.simpleConfirmMode = true;
     this.showQuiz = true;
     this.quizOverlayVisible = true;
@@ -393,7 +422,7 @@ if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
 }
     }
   };
-  requestAnimationFrame(animate);
+  this.spinFrameId = requestAnimationFrame(animate);
 }
 private eliminateSilently(item: Item) {
   const idx = this.currentItems.findIndex(i => i.id === item.id);
@@ -504,7 +533,7 @@ onQuizAnswer(selected: Item) {
     this.cdr.detectChanges();
 
     // Wait for the effect to finish (2.5 seconds) then eliminate the segment
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       const idx = this.currentItems.findIndex(i => i.id === this.selectedItem?.id);
       if (idx !== -1) this.currentItems.splice(idx, 1);
       this.showQuiz = false;
@@ -516,7 +545,7 @@ onQuizAnswer(selected: Item) {
       this.queueVictoryIfDone();
 
       // Remove the dissolve effect slightly after redraw
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.eliminationLong = false;
         this.cdr.detectChanges();
       }, 50);
@@ -526,7 +555,7 @@ onQuizAnswer(selected: Item) {
     this.playSound(this.buzzSound, 0.5);
     const el = document.querySelector(`[data-opt-id="${selected.id}"]`);
     el?.classList.add('shake');
-    setTimeout(() => el?.classList.remove('shake'), 500);
+    this.setGameTimeout(() => el?.classList.remove('shake'), 500);
   }
 }
   onConfirmOk() {
@@ -534,7 +563,7 @@ onQuizAnswer(selected: Item) {
     this.playSound(this.collectSound);
     this.eliminationLong = true;
     this.cdr.detectChanges();
-    this.confirmTimerId = setTimeout(() => {
+    this.confirmTimerId = this.setGameTimeout(() => {
       this.confirmTimerId = null;
       const idx = this.currentItems.findIndex(i => i.id === this.selectedItem?.id);
       if (idx !== -1) this.currentItems.splice(idx, 1);
@@ -544,7 +573,7 @@ onQuizAnswer(selected: Item) {
       this.selectedItem = null;
       this.drawWheel();
       this.queueVictoryIfDone();
-      setTimeout(() => { this.eliminationLong = false; this.cdr.detectChanges(); }, 50);
+      this.setGameTimeout(() => { this.eliminationLong = false; this.cdr.detectChanges(); }, 50);
     }, 1500);
   }
 
@@ -598,7 +627,7 @@ onQuizAnswer(selected: Item) {
     }
 
     this.victoryPending = true;
-    this.victoryTimeoutId = setTimeout(() => {
+    this.victoryTimeoutId = this.setGameTimeout(() => {
       this.playSound(this.rewardSound);
       this.gameFinished = true;
       this.victoryPending = false;
@@ -628,5 +657,9 @@ onQuizAnswer(selected: Item) {
     this.objectUrls.push(url);
   }
   return this.imageUrls.get(itemId)!;
+}
+
+trackByOptionId(index: number, item: Item): number | string {
+  return item.id ?? item.text ?? index;
 }
 }

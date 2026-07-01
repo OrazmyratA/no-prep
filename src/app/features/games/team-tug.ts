@@ -31,6 +31,8 @@ export class TeamTugComponent implements OnInit, OnDestroy {
   gameStatus: 'running' | 'leftWin' | 'rightWin' | 'draw' = 'running';
   timerRemaining: number | null = null;
   private timerInterval: any;
+  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   // Character position (0 = far left, 100 = far right, relative to container)
   characterPosition = 50;
@@ -125,7 +127,9 @@ export class TeamTugComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearTimer();
+    this.clearFeedbackTimers();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
     [this.correctSound, this.buzzSound, this.winSound].forEach(s => s?.pause());
@@ -170,6 +174,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
   }
 
   startGame() {
+    this.clearFeedbackTimers();
     this.resetRoundState();
     this.gameStatus = 'running';
     this.gameActive = true;
@@ -309,7 +314,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
     const buttons = document.querySelectorAll(selector);
     buttons.forEach(btn => {
       btn.classList.add('shake');
-      setTimeout(() => btn.classList.remove('shake'), 500);
+      this.setFeedbackTimeout(() => btn.classList.remove('shake'), 500);
     });
   }
 
@@ -318,6 +323,22 @@ export class TeamTugComponent implements OnInit, OnDestroy {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
     }
+  }
+
+  private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.feedbackTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.feedbackTimers.add(timer);
+    return timer;
+  }
+
+  private clearFeedbackTimers() {
+    this.feedbackTimers.forEach(timer => clearTimeout(timer));
+    this.feedbackTimers.clear();
   }
 
   imageUrl(blob: Blob | undefined | null, itemId: number): string | null {

@@ -1,7 +1,7 @@
 <div class="game-board cup-clash-board" [style.--cup-size]="cupSize">
   <!-- RPS modal — who goes first? -->
   <div *ngIf="showRpsModal" class="rps-overlay">
-    <div class="rps-modal" *ngIf="!rpsClash">
+    <div class="rps-modal" [class.rps-hidden]="hideRpsChooser">
 
       <!-- Floating decorative icons -->
       <div class="rps-banner">
@@ -27,7 +27,6 @@
             [disabled]="!!rpsRedChoice || !!rpsWinner">
             🔴
           </button>
-          <span class="rps-label rps-label-red">{{ 'cupClashRed' | translate }}</span>
         </div>
 
         <div class="rps-vs">{{ 'cupClashVs' | translate }}</div>
@@ -44,20 +43,17 @@
             [disabled]="!!rpsBlueChoice || !!rpsWinner">
             🔵
           </button>
-          <span class="rps-label rps-label-blue">{{ 'cupClashBlue' | translate }}</span>
         </div>
 
       </div>
 
       <!-- Result -->
       <div class="rps-result" *ngIf="rpsIsTie">🤝 It's a tie — try again!</div>
-      <div class="rps-result rps-result-red" *ngIf="rpsWinner === 'red'">🔴 Red team goes first!</div>
-      <div class="rps-result rps-result-blue" *ngIf="rpsWinner === 'blue'">🔵 Blue team goes first!</div>
 
     </div>
 
     <!-- Clash arena: winner's icon beats the loser's -->
-    <div *ngIf="rpsClash" class="rps-clash-arena">
+    <div class="rps-clash-arena" [class.rps-hidden]="hideRpsClashArena">
       <div class="clash-emoji clash-left"
            [class.winner]="rpsClashResult === 'red-wins'"
            [class.loser]="rpsClashResult === 'blue-wins'"
@@ -87,9 +83,7 @@
     <div class="zone red-zone" [class.zone-miss]="missedTurn && currentTurn === 'blue'">
       <div class="zone-header">
         <div class="team-info">
-          <span class="team-color red">🔴</span>
-          <h2>{{ 'cupClashRedTeam' | translate }}</h2>
-          <span class="cup-count">{{ redCups.length }} {{ 'cupClashCups' | translate }}</span>
+          <span class="team-color red">{{ redCups.length }}</span>
         </div>
       </div>
       <div class="cups-grid"
@@ -103,45 +97,13 @@
             <div class="cup red"
                  [attr.data-cup-id]="cup.id"
                  [attr.data-team]="cup.team"
-                 [class.clickable]="cup.team !== currentTurn && capturesRemaining > 0 && gameStatus === 'running'"
+                 [class.clickable]="isCupCapturable(cup)"
                  (click)="onCupClick(cup)">
               <img [src]="'assets/images/cup1-red.png'" alt="red cup" class="cup-image">
+              <span *ngIf="isCupCapturable(cup)" class="capture-marker" aria-hidden="true">❌</span>
             </div>
           </ng-container>
         </div>
-      </div>
-    </div>
-
-    <!-- Center Dice -->
-    <div class="center-dice">
-      <div class="dice-container"
-           [class.enabled]="diceValue === null && gameStatus === 'running'"
-           [attr.aria-disabled]="diceRolling || diceValue !== null"
-           role="button"
-           tabindex="0"
-           (click)="triggerDiceRoll()"
-           (keydown.enter)="triggerDiceRoll()"
-           (keydown.space)="triggerDiceRoll()">
-        <div class="dice" [class.rolling]="diceRolling" [class.landing]="diceLanding">
-          <div class="dice-face">
-            <ng-container [ngSwitch]="diceDisplayValue">
-              <span *ngSwitchCase="1">⚀</span>
-              <span *ngSwitchCase="2">⚁</span>
-              <span *ngSwitchCase="3">⚂</span>
-              <span *ngSwitchCase="4">⚃</span>
-              <span *ngSwitchCase="5">⚄</span>
-              <span *ngSwitchCase="6">⚅</span>
-              <span *ngSwitchDefault>🎲</span>
-            </ng-container>
-          </div>
-        </div>
-        <span class="dice-label"
-              *ngIf="diceDisplayValue === null && diceValue === null && !diceRolling">
-          {{ 'cupClashRollDice' | translate }}
-        </span>
-        <span class="dice-value" *ngIf="diceDisplayValue !== null">
-          {{ diceDisplayValue }}
-        </span>
       </div>
     </div>
 
@@ -149,9 +111,7 @@
     <div class="zone blue-zone" [class.zone-miss]="missedTurn && currentTurn === 'red'">
       <div class="zone-header">
         <div class="team-info">
-          <span class="cup-count">{{ blueCups.length }} {{ 'cupClashCups' | translate }}</span>
-          <h2>{{ 'cupClashBlueTeam' | translate }}</h2>
-          <span class="team-color blue">🔵</span>
+          <span class="team-color blue">{{ blueCups.length }}</span>
         </div>
       </div>
       <div class="cups-grid"
@@ -165,9 +125,10 @@
             <div class="cup blue"
                  [attr.data-cup-id]="cup.id"
                  [attr.data-team]="cup.team"
-                 [class.clickable]="cup.team !== currentTurn && capturesRemaining > 0 && gameStatus === 'running'"
+                 [class.clickable]="isCupCapturable(cup)"
                  (click)="onCupClick(cup)">
               <img [src]="'assets/images/cup1-blue.png'" alt="blue cup" class="cup-image">
+              <span *ngIf="isCupCapturable(cup)" class="capture-marker" aria-hidden="true">❌</span>
             </div>
           </ng-container>
         </div>
@@ -199,15 +160,59 @@
 
   <!-- Bottom controls -->
   <div class="game-controls" *ngIf="gameStatus === 'running'">
-    <div class="turn-indicator" [class]="'turn-' + currentTurn">
-      <span class="turn-text">
-        {{ (currentTurn === 'red' ? 'cupClashRedTurn' : 'cupClashBlueTurn') | translate }}
+    <button
+      type="button"
+      class="team-dice-control red-dice-control"
+      [class.active]="canRollForTeam('red')"
+      [class.current]="currentTurn === 'red'"
+      [class.waiting]="currentTurn === 'red' && !canRollForTeam('red')"
+      [disabled]="!canRollForTeam('red')"
+      [attr.aria-label]="'cupClashRedTeam' | translate"
+      (click)="rollTeamDice('red')">
+      <span class="team-dice" [class.rolling]="isTeamDiceRolling('red')" [class.landing]="isTeamDiceLanding('red')">
+        <span class="dice-cube" [ngClass]="'show-' + teamDiceFaceValue('red')">
+          <span
+            *ngFor="let faceValue of diceFaceValues; trackBy: trackByPipPosition"
+            class="dice-side"
+            [ngClass]="'dice-face-' + faceValue">
+            <span class="dice-pips">
+              <span
+                *ngFor="let pip of dicePipPositions; trackBy: trackByPipPosition"
+                class="dice-pip"
+                [class.visible]="isDicePipVisible(faceValue, pip)">
+              </span>
+            </span>
+          </span>
+        </span>
       </span>
-      <span class="dice-requirement" *ngIf="diceValue">
-        🎲 {{ 'cupClashNeedToCapture' | translate }}: {{ capturesRemaining }} / {{ diceValue }}
+    </button>
+
+    <button
+      type="button"
+      class="team-dice-control blue-dice-control"
+      [class.active]="canRollForTeam('blue')"
+      [class.current]="currentTurn === 'blue'"
+      [class.waiting]="currentTurn === 'blue' && !canRollForTeam('blue')"
+      [disabled]="!canRollForTeam('blue')"
+      [attr.aria-label]="'cupClashBlueTeam' | translate"
+      (click)="rollTeamDice('blue')">
+      <span class="team-dice" [class.rolling]="isTeamDiceRolling('blue')" [class.landing]="isTeamDiceLanding('blue')">
+        <span class="dice-cube" [ngClass]="'show-' + teamDiceFaceValue('blue')">
+          <span
+            *ngFor="let faceValue of diceFaceValues; trackBy: trackByPipPosition"
+            class="dice-side"
+            [ngClass]="'dice-face-' + faceValue">
+            <span class="dice-pips">
+              <span
+                *ngFor="let pip of dicePipPositions; trackBy: trackByPipPosition"
+                class="dice-pip"
+                [class.visible]="isDicePipVisible(faceValue, pip)">
+              </span>
+            </span>
+          </span>
+        </span>
       </span>
-<span class="miss-turn" *ngIf="missedTurn">❌ {{ 'cupClashMissedTurn' | translate }}</span>
-    </div>
+    </button>
   </div>
 
 <div class="items-row">
@@ -216,7 +221,7 @@
          #itemsScroller
          (scroll)="onItemsScroll()"
          touch-action="pan-x">
-      <div *ngFor="let item of items; let idx = index"
+      <div *ngFor="let item of items; let idx = index; trackBy: trackByItem"
            class="item-flip-scene"
            role="button"
            tabindex="0"

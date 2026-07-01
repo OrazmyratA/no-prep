@@ -35,30 +35,6 @@ private translations: TranslationDictionary = {
   sa: 'نتائج اللعبة',
 },
 
-'myTopics': {
-  en: 'My topics',
-  tk: 'Meniň temalarym',
-  ru: 'Мои темы',
-  cn: '我的主题',
-  cde: 'Meine Themen',
-  es: 'Mis temas',
-  fr: 'Mes sujets',
-  kr: '내 주제',
-  sa: 'مواضيعي',
-},
-
-'createNewTopic': {
-  en: 'Create New Topic',
-  tk: 'Täze tema döret',
-  ru: 'Создать новую тему',
-  cn: '创建新主题',
-  cde: 'Neues Thema erstellen',
-  es: 'Crear nuevo tema',
-  fr: 'Créer un nouveau sujet',
-  kr: '새 주제 만들기',
-  sa: 'إنشاء موضوع جديد',
-},
-
 'noTopicsYet': {
   en: 'No topics yet',
   tk: 'Heniz tema ýok',
@@ -81,18 +57,6 @@ private translations: TranslationDictionary = {
   fr: 'Créez votre premier sujet pour commencer',
   kr: '시작하려면 첫 번째 주제를 만드세요',
   sa: 'أنشئ أول موضوع للبدء',
-},
-
-'searchTopics': {
-  en: 'Search Topics',
-  tk: 'Temalary gözle',
-  ru: 'Поиск тем',
-  cn: '搜索主题',
-  cde: 'Themen suchen',
-  es: 'Buscar temas',
-  fr: 'Rechercher des sujets',
-  kr: '주제 검색',
-  sa: 'البحث عن المواضيع',
 },
 
 'searchPlaceholder': {
@@ -383,18 +347,6 @@ private translations: TranslationDictionary = {
   sa: 'النص',
 },
 
-'descriptionUsedWhenNoImage': {
-  en: 'Text to image',
-  tk: 'Teksti surata ozgertmek',
-  ru: 'Текст в изображение',
-  cn: '文本转图像',
-  cde: 'Text zu Bild',
-  es: 'Texto a imagen',
-  fr: 'Texte vers image',
-  kr: '텍스트를 이미지로',
-  sa: 'نص إلى صورة',
-},
-
 'noAudioRecordOrUpload': {
   en: 'No audio. Record or upload.',
   tk: 'Ses ýok. Ýazga alyň ýa-da ýükläň.',
@@ -467,30 +419,6 @@ private translations: TranslationDictionary = {
   sa: 'موافق',
 },
 
-'fileFormatNotRecognized': {
-  en: 'File format not recognized',
-  tk: 'Faýlyň formaty tanalmady',
-  ru: 'Формат файла не распознан',
-  cn: '无法识别文件格式',
-  cde: 'Dateiformat nicht erkannt',
-  es: 'Formato de archivo no reconocido',
-  fr: 'Format de fichier non reconnu',
-  kr: '파일 형식을 인식할 수 없습니다',
-  sa: 'تعذر التعرف على تنسيق الملف',
-},
-
-'successfullyImported': {
-  en: 'Successfully imported {count} topic(s).',
-  tk: '{count} tema üstünlikli import edildi. ',
-  ru: 'Успешно импортировано тем: {count}.',
-  cn: '成功导入 {count} 个主题。',
-  cde: '{count} Thema(e) erfolgreich importiert.',
-  es: 'Se importaron correctamente {count} tema(s).',
-  fr: '{count} sujet(s) importé(s) avec succès.',
-  kr: '{count}개의 주제를 성공적으로 가져왔습니다.',
-  sa: 'تم استيراد {count} موضوع بنجاح.',
-},
-
 'unableToFindSelectedTopics': {
   en: 'Unable to find the selected topics. Please try again.',
   tk: 'Saýlanan temalary tapyp bolmady. Täzeden synanyşyň.',
@@ -525,18 +453,6 @@ private translations: TranslationDictionary = {
   fr: 'Incorrect !',
   kr: '틀렸습니다!',
   sa: 'خطأ!',
-},
-
-'comingSoon': {
-  en: 'Coming Soon – Stay Tuned!',
-  tk: 'Gysga wagtdan — täze görnüşine garaşyň!',
-  ru: 'Скоро — следите за обновлениями!',
-  cn: '即将推出，敬请期待！',
-  cde: 'Demnächst verfügbar – bleiben Sie dran!',
-  es: 'Próximamente – ¡mantente atento!',
-  fr: 'Bientôt disponible – restez à l’écoute !',
-  kr: '곧 출시됩니다 – 기대해 주세요!',
-  sa: 'قريباً — ترقبوا!',
 },
 
 'gameSpinWheelName': {
@@ -755,18 +671,6 @@ private translations: TranslationDictionary = {
   sa: 'جاري الكشف',
 },
 
-'skipToNext': {
-  en: 'Skip to Next',
-  tk: 'Indiki',
-  ru: 'Перейти к следующему',
-  cn: '跳至下一个',
-  cde: 'Zum nächsten springen',
-  es: 'Saltar al siguiente',
-  fr: 'Passer au suivant',
-  kr: '다음으로 건너뛰기',
-  sa: 'تخطي إلى التالي',
-},
-
 'revealGameAllRevealed': {
   en: 'All images revealed!',
   tk: 'Ähli suratlar açyldy!',
@@ -789,18 +693,6 @@ private translations: TranslationDictionary = {
   fr: 'Aucune image trouvée dans ce sujet. Veuillez ajouter des éléments avec images.',
   kr: '이 주제에서 이미지를 찾을 수 없습니다. 이미지가 있는 항목을 추가하세요.',
   sa: 'لم يتم العثور على صور في هذا الموضوع. يرجى إضافة عناصر تحتوي على صور.',
-},
-
-'revealGameNotEnoughNames': {
-  en: 'Not enough items with text to create a quiz question.',
-  tk: 'Sorag düzmek üçin tekstli özleşdirmeler ýeterlik däl.',
-  ru: 'Недостаточно элементов с текстом для создания вопроса викторины.',
-  cn: '没有足够的带文本项目来创建测验问题。',
-  cde: 'Nicht genügend Elemente mit Text, um eine Quizfrage zu erstellen.',
-  es: 'No hay suficientes elementos con texto para crear una pregunta de cuestionario.',
-  fr: 'Pas assez d’éléments avec texte pour créer une question de quiz.',
-  kr: '퀴즈 질문을 만들기에 텍스트가 있는 항목이 충분하지 않습니다.',
-  sa: 'لا توجد عناصر كافية تحتوي على نص لإنشاء سؤال اختبار.',
 },
 
 'settingsRevealTeamCount': {
@@ -1259,54 +1151,6 @@ private translations: TranslationDictionary = {
   sa: 'ترتيب الكلمات',
 },
 
-'unjumbleYourSentence': {
-  en: 'Your sentence:',
-  tk: 'Siziň sözlemiňiz:',
-  ru: 'Ваше предложение:',
-  cn: '你的句子：',
-  cde: 'Ihr Satz:',
-  es: 'Tu oración:',
-  fr: 'Votre phrase :',
-  kr: '당신의 문장:',
-  sa: 'جملتك:',
-},
-
-'unjumbleDragWordsHere': {
-  en: 'Drag words here to build your sentence...',
-  tk: 'Sözlem düzmek üçin sözleri şu ýerde goýyň...',
-  ru: 'Перетащите слова сюда, чтобы составить предложение...',
-  cn: '将单词拖到此处以造句...',
-  cde: 'Ziehen Sie Wörter hierher, um Ihren Satz zu bilden...',
-  es: 'Arrastra las palabras aquí para formar tu oración...',
-  fr: 'Glissez les mots ici pour construire votre phrase...',
-  kr: '문장을 만들려면 단어를 여기로 드래그하세요...',
-  sa: 'اسحب الكلمات هنا لتكوين جملتك...',
-},
-
-'unjumbleAvailableWords': {
-  en: 'Available words:',
-  tk: 'Bar bolan sözler:',
-  ru: 'Доступные слова:',
-  cn: '可用单词：',
-  cde: 'Verfügbare Wörter:',
-  es: 'Palabras disponibles:',
-  fr: 'Mots disponibles :',
-  kr: '사용 가능한 단어:',
-  sa: 'الكلمات المتاحة:',
-},
-
-'unjumbleNoWordsLeft': {
-  en: 'No words left',
-  tk: 'Söz galmady',
-  ru: 'Слов не осталось',
-  cn: '没有剩余单词',
-  cde: 'Keine Wörter mehr',
-  es: 'No quedan palabras',
-  fr: 'Plus de mots',
-  kr: '남은 단어 없음',
-  sa: 'لا توجد كلمات متبقية',
-},
-
 'unjumbleAllSentencesSolved': {
   en: 'All sentences solved!',
   tk: 'Ähli sözlemler düzüldi!',
@@ -1415,18 +1259,6 @@ private translations: TranslationDictionary = {
   sa: 'لم يتم العثور على كلمات صالحة. يرجى استخدام العناصر التي تحتوي على أحرف.',
 },
 
-'wordSearchClickFirstLetter': {
-  en: 'Click the first letter of a word directly in the grid.',
-  tk: 'Sözleri kletgalarda tapyň we ilkinji harpyna basyň.',
-  ru: 'Нажмите на первую букву слова прямо в сетке.',
-  cn: '直接点击网格中单词的第一个字母。',
-  cde: 'Klicken Sie direkt im Raster auf den ersten Buchstaben eines Wortes.',
-  es: 'Haz clic en la primera letra de una palabra directamente en la cuadrícula.',
-  fr: 'Cliquez directement sur la première lettre d’un mot dans la grille.',
-  kr: '그리드에서 단어의 첫 글자를 직접 클릭하세요.',
-  sa: 'انقر على الحرف الأول من الكلمة مباشرة داخل الشبكة.',
-},
-
 'gamePopBalloonName': {
   en: 'Pop Balloon',
   tk: 'Jadyly sowgat',
@@ -1463,17 +1295,6 @@ private translations: TranslationDictionary = {
   sa: 'جاري تحميل البالونات...',
 },
 
-'popBalloonPopped': {
-  en: 'Popped',
-  tk: 'Ýaryldy',
-  ru: 'Лопнуло',
-  cn: '已戳破',
-  cde: 'Geplatzt',
-  es: 'Roto',
-  fr: 'Éclaté',
-  kr: '터뜨림',
-  sa: 'تم الفقع',
-},
 
 'popBalloonVictory': {
   en: 'You did it!',
@@ -1523,30 +1344,6 @@ private translations: TranslationDictionary = {
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
 },
 
-'settingsPopBalloonSoundQuizMode': {
-  en: 'Play with Sound (Quiz Mode)',
-  tk: 'Sesini tana',
-  ru: 'Играть со звуком (режим викторины)',
-  cn: '使用声音游戏（测验模式）',
-  cde: 'Mit Ton spielen (Quiz-Modus)',
-  es: 'Jugar con sonido (modo de prueba)',
-  fr: 'Jouer avec le son (mode quiz)',
-  kr: '소리와 함께 플레이하기(퀴즈 모드)',
-  sa: 'العب بالصوت (نمط الاختبار)',
-},
-
-'settingsPopBalloonSoundQuizModeHint': {
-  en: 'When enabled, only items with audio appear. Click the speaker icon to hear a random word, then pop the matching balloon.',
-  tk: 'Diňe sesli özleşdirmeler görünýär. Tötänleýin sözi eşitmek üçin dinamik nyşanyna basyň we degişli şary ýaryň.',
-  ru: 'При включении отображаются только элементы со звуком. Нажмите на значок динамика, чтобы услышать случайное слово, затем лопните соответствующий шарик.',
-  cn: '启用后，仅显示有音频的项目。点击扬声器图标听随机单词，然后戳破匹配的气球。',
-  cde: 'Wenn aktiviert, erscheinen nur Elemente mit Audio. Klicken Sie auf das Lautsprechersymbol, um ein zufälliges Wort zu hören, und platzen Sie dann den passenden Ballon.',
-  es: 'Cuando está habilitado, solo aparecen elementos con audio. Haz clic en el icono del altavoz para escuchar una palabra aleatoria y luego revienta el globo correspondiente.',
-  fr: 'Lorsqu’activé, seuls les éléments avec audio apparaissent. Cliquez sur l’icône du haut-parleur pour entendre un mot aléatoire, puis éclatez le ballon correspondant.',
-  kr: '활성화하면 오디오가 있는 항목만 나타납니다. 스피커 아이콘을 클릭하여 무작위 단어를 듣고 일치하는 풍선을 터뜨리세요.',
-  sa: 'عند التمكين، تظهر فقط العناصر التي تحتوي على صوت. انقر على أيقونة السماعة لسماع كلمة عشوائية، ثم افقع البالون المطابق.',
-},
-
 'popBalloonNoAudioItems': {
   en: 'No items with sound found in this topic. Sound mode disabled.',
   tk: 'Bu temada sesli özleşdirme tapylmady. Ses režimi öçürildi.',
@@ -1557,18 +1354,6 @@ private translations: TranslationDictionary = {
   fr: 'Aucun élément avec son trouvé dans ce sujet. Mode sonore désactivé.',
   kr: '이 주제에서 소리가 있는 항목을 찾을 수 없습니다. 사운드 모드가 비활성화되었습니다.',
   sa: 'لم يتم العثور على عناصر تحتوي على صوت في هذا الموضوع. تم تعطيل وضع الصوت.',
-},
-
-'popBalloonPlaySound': {
-  en: 'Play random sound',
-  tk: 'Tötänleýin ses çal',
-  ru: 'Воспроизвести случайный звук',
-  cn: '播放随机声音',
-  cde: 'Zufälligen Ton abspielen',
-  es: 'Reproducir sonido aleatorio',
-  fr: 'Jouer un son aléatoire',
-  kr: '무작위 소리 재생',
-  sa: 'تشغيل صوت عشوائي',
 },
 
 'gameSpotlightName': {
@@ -1631,18 +1416,6 @@ private translations: TranslationDictionary = {
   sa: 'عشوائي',
 },
 
-'spotlightVictory': {
-  en: 'All items found!',
-  tk: 'Ähli elementler tapyldy!',
-  ru: 'Все предметы найдены!',
-  cn: '所有项目都已找到！',
-  cde: 'Alle Gegenstände gefunden!',
-  es: '¡Todos los objetos encontrados!',
-  fr: 'Tous les éléments trouvés !',
-  kr: '모든 항목을 찾았습니다!',
-  sa: 'تم العثور على جميع العناصر!',
-},
-
 'spotlightNoItems': {
   en: 'No items found for this topic.',
   tk: 'Bu tema üçin hiç hili özleşdirme tapylmady.',
@@ -1691,41 +1464,6 @@ private translations: TranslationDictionary = {
   sa: 'جاري تحميل شد الحبل الجماعي...',
 },
 
-'teamTugTitle': {
-  en: 'Tug of war',
-  tk: 'Tanap çekdi',
-  ru: 'Перетягивание каната',
-  cn: '拔河',
-  cde: 'Tauziehen',
-  es: 'Tira y afloja por equipos',
-  fr: 'Tir à la corde en équipe',
-  kr: '팀 줄다리기',
-  sa: 'شد الحبل الجماعي',
-},
-
-'teamTugReadyDesc': {
-  en: 'Click the correct word to pull the rope!',
-  tk: 'Ýüpi çekmek üçin dogry söze basyň!',
-  ru: 'Нажмите на правильное слово, чтобы перетянуть канат!',
-  cn: '点击正确的单词来拉绳子！',
-  cde: 'Klicken Sie auf das richtige Wort, um am Seil zu ziehen!',
-  es: '¡Haz clic en la palabra correcta para tirar de la cuerda!',
-  fr: 'Cliquez sur le mot correct pour tirer la corde !',
-  kr: '올바른 단어를 클릭하여 줄을 당기세요!',
-  sa: 'انقر على الكلمة الصحيحة لسحب الحبل!',
-},
-
-'teamTugClicks': {
-  en: 'clicks',
-  tk: 'bal',
-  ru: 'кликов',
-  cn: '点击次数',
-  cde: 'Klicks',
-  es: 'clics',
-  fr: 'clics',
-  kr: '클릭',
-  sa: 'نقرات',
-},
 
 'teamTugTimer': {
   en: 'Timer',
@@ -1775,17 +1513,6 @@ private translations: TranslationDictionary = {
   sa: 'تعادل!',
 },
 
-'teamTugTotalClicks': {
-  en: 'Total clicks:',
-  tk: 'Jemleýji bal:',
-  ru: 'Всего кликов:',
-  cn: '总点击次数：',
-  cde: 'Gesamtklicks:',
-  es: 'Clics totales:',
-  fr: 'Clics totaux :',
-  kr: '총 클릭 수:',
-  sa: 'إجمالي النقرات:',
-},
 
 'teamTugNeedImagesError': {
   en: 'Team Tug requires items with images. Please add images to your topic items.',
@@ -1869,66 +1596,6 @@ private translations: TranslationDictionary = {
   fr: 'Équipe bleue',
   kr: '블루 팀',
   sa: 'الفريق الأزرق',
-},
-
-'cupClashCups': {
-  en: 'cups',
-  tk: 'çaşga',
-  ru: 'кубки',
-  cn: '杯子',
-  cde: 'Becher',
-  es: 'copas',
-  fr: 'tasses',
-  kr: '컵',
-  sa: 'أكواب',
-},
-
-'cupClashRollDice': {
-  en: 'Roll Dice',
-  tk: 'Sül',
-  ru: 'Бросить кубик',
-  cn: '掷骰子',
-  cde: 'Würfeln',
-  es: 'Lanzar dados',
-  fr: 'Lancer les dés',
-  kr: '주사위 굴리기',
-  sa: 'ارمِ النرد',
-},
-
-'cupClashRedTurn': {
-  en: 'Red Team\'s turn',
-  tk: 'Gyzyl toparyň nobaty',
-  ru: 'Ход красной команды',
-  cn: '红队回合',
-  cde: 'Rotes Team ist dran',
-  es: 'Turno del equipo rojo',
-  fr: 'Au tour de l’équipe rouge',
-  kr: '레드 팀 차례',
-  sa: 'دور الفريق الأحمر',
-},
-
-'cupClashBlueTurn': {
-  en: 'Blue Team\'s turn',
-  tk: 'Gök toparyň nobaty',
-  ru: 'Ход синей команды',
-  cn: '蓝队回合',
-  cde: 'Blaues Team ist dran',
-  es: 'Turno del equipo azul',
-  fr: 'Au tour de l’équipe bleue',
-  kr: '블루 팀 차례',
-  sa: 'دور الفريق الأزرق',
-},
-
-'cupClashNeedToCapture': {
-  en: 'Captures needed',
-  tk: 'Ele geçirmeli',
-  ru: 'Нужно захватить',
-  cn: '需要夺取',
-  cde: 'Benötigte Eroberungen',
-  es: 'Capturas necesarias',
-  fr: 'Captures nécessaires',
-  kr: '빼앗기 필요',
-  sa: 'الاستحواذات المطلوبة',
 },
 
 'cupClashMissedTurn': {
@@ -2135,54 +1802,6 @@ private translations: TranslationDictionary = {
   sa: 'الوقت المتبقي',
 },
 
-'oddOneOutLeftSet': {
-  en: 'Left set',
-  tk: 'Çep topar',
-  ru: 'Левый набор',
-  cn: '左侧集合',
-  cde: 'Linke Gruppe',
-  es: 'Conjunto izquierdo',
-  fr: 'Ensemble gauche',
-  kr: '왼쪽 세트',
-  sa: 'المجموعة اليسرى',
-},
-
-'oddOneOutOddHere': {
-  en: 'Odd one here!',
-  tk: 'Täk özleşdirme şu ýerde!',
-  ru: 'Лишний здесь!',
-  cn: '不同项在这里！',
-  cde: 'Der Ausreißer ist hier!',
-  es: '¡El diferente está aquí!',
-  fr: 'L’intrus est ici !',
-  kr: '다른 것이 여기 있습니다!',
-  sa: 'العنصر الشاذ هنا!',
-},
-
-'oddOneOutMirrorSet': {
-  en: 'Mirror set',
-  tk: 'Deňeşdirme bölegi',
-  ru: 'Зеркальный набор',
-  cn: '镜像集合',
-  cde: 'Spiegelgruppe',
-  es: 'Conjunto espejo',
-  fr: 'Ensemble miroir',
-  kr: '미러 세트',
-  sa: 'المجموعة المرآة',
-},
-
-'oddOneOutRightSet': {
-  en: 'Right set',
-  tk: 'Sag topar',
-  ru: 'Правый набор',
-  cn: '右侧集合',
-  cde: 'Rechte Gruppe',
-  es: 'Conjunto derecho',
-  fr: 'Ensemble droit',
-  kr: '오른쪽 세트',
-  sa: 'المجموعة اليمنى',
-},
-
 'oddOneOutVictory': {
   en: 'Victory!',
   tk: 'Ýeňiş!',
@@ -2267,29 +1886,7 @@ private translations: TranslationDictionary = {
   sa: 'جاري تحميل الاختبار...',
 },
 
-'testAbcQuestion': {
-  en: 'Question',
-  tk: 'Sorag',
-  ru: 'Вопрос',
-  cn: '问题',
-  cde: 'Frage',
-  es: 'Pregunta',
-  fr: 'Question',
-  kr: '질문',
-  sa: 'سؤال',
-},
 
-'testAbcOf': {
-  en: 'of',
-  tk: '/',
-  ru: 'из',
-  cn: '/',
-  cde: 'von',
-  es: 'de',
-  fr: 'de',
-  kr: '/',
-  sa: 'من',
-},
 
 'testAbcQuizComplete': {
   en: 'Quiz Complete!',
@@ -2435,30 +2032,6 @@ private translations: TranslationDictionary = {
   sa: 'الفريق الأيمن',
 },
 
-'gameAiAnalyzerName': {
-  en: 'AI Analyzer',
-  tk: 'AI Bahalandyrjysy',
-  ru: 'AI Анализатор',
-  cn: 'AI分析器',
-  cde: 'KI-Analysator',
-  es: 'Analizador de IA',
-  fr: 'Analyseur IA',
-  kr: 'AI 분석기',
-  sa: 'محلل الذكاء الاصطناعي',
-},
-
-'gameAiAnalyzerDesc': {
-  en: 'Coming soon – analyze behavior patterns.',
-  tk: 'Basym ulgamda – sapaga yetişik ýagdaýlaryny seljerme ulgamy.',
-  ru: 'Скоро – анализ шаблонов поведения.',
-  cn: '即将推出 – 分析行为模式。',
-  cde: 'Demnächst – Verhaltensmuster analysieren.',
-  es: 'Próximamente – analizar patrones de comportamiento.',
-  fr: 'Bientôt – analyser les modèles de comportement.',
-  kr: '곧 출시 – 행동 패턴 분석.',
-  sa: 'قريباً – تحليل أنماط السلوك.',
-},
-
 'license.request.success': {
   en: 'Machine ID saved to: {path}. Please send this file to: {contact}.',
   tk: 'Maşyn ID faýly şu ýere ýüklenildi: {path}. Bu faýly şu salga iberiň: {contact}.',
@@ -2555,18 +2128,6 @@ private translations: TranslationDictionary = {
   sa: 'اضغط أو أسقط صورة هنا',
 },
 
-'searchPixabayPlaceholder': {
-  en: 'Search Pixabay (e.g., cat, cartoon dog)',
-  tk: 'Pixabay-da gözle (meselem: pişik, multfilm güjüjegi)',
-  ru: 'Поиск в Pixabay (например: кот, мультяшная собака)',
-  cn: '搜索 Pixabay（例如：猫、卡通狗）',
-  cde: 'Pixabay durchsuchen (z. B. Katze, Cartoon-Hund)',
-  es: 'Buscar en Pixabay (ej.: gato, perro animado)',
-  fr: 'Rechercher sur Pixabay (ex. : chat, chien de dessin animé)',
-  kr: 'Pixabay 검색 (예: 고양이, 만화 강아지)',
-  sa: 'ابحث في Pixabay (مثال: قطة، كلب كرتوني)',
-},
-
 'googleImages': {
   en: 'Google Images',
   tk: 'Google Images',
@@ -2577,18 +2138,6 @@ private translations: TranslationDictionary = {
   fr: 'Google Images',
   kr: 'Google Images',
   sa: 'Google Images',
-},
-
-'copyImageFromGoogle': {
-  en: 'Copy image from Google',
-  tk: 'Google-dan surat göçür',
-  ru: 'Скопировать изображение из Google',
-  cn: '从 Google 复制图片',
-  cde: 'Bild aus Google kopieren',
-  es: 'Copiar imagen de Google',
-  fr: 'Copier une image depuis Google',
-  kr: 'Google에서 이미지 복사',
-  sa: 'نسخ صورة من Google',
 },
 
 'googleImagesSearchPlaceholder': {
@@ -2685,30 +2234,6 @@ private translations: TranslationDictionary = {
   fr: 'Recherche...',
   kr: '검색 중...',
   sa: 'جارٍ البحث...',
-},
-
-'noImagesFound': {
-  en: 'No images found. Try another word.',
-  tk: 'Surat tapylmady. Başga söz synap görüň.',
-  ru: 'Изображения не найдены. Попробуйте другое слово.',
-  cn: '未找到图片。请试试其他词。',
-  cde: 'Keine Bilder gefunden. Versuchen Sie ein anderes Wort.',
-  es: 'No se encontraron imágenes. Prueba otra palabra.',
-  fr: 'Aucune image trouvée. Essayez un autre mot.',
-  kr: '이미지를 찾을 수 없습니다. 다른 단어를 시도해 보세요.',
-  sa: 'لم يتم العثور على صور. جرّب كلمة أخرى.',
-},
-
-'loadingMoreImages': {
-  en: 'Loading more images...',
-  tk: 'Has köp surat ýüklenýär...',
-  ru: 'Загрузка дополнительных изображений...',
-  cn: '正在加载更多图片...',
-  cde: 'Weitere Bilder werden geladen...',
-  es: 'Cargando más imágenes...',
-  fr: 'Chargement de plus d’images...',
-  kr: '이미지를 더 불러오는 중...',
-  sa: 'جارٍ تحميل المزيد من الصور...',
 },
 
 'pixabaySearchError': {
@@ -3215,17 +2740,6 @@ private translations: TranslationDictionary = {
   sa: 'تفعيل المؤقت',
 },
 
-'teamSentenceClickWords': {
-  en: 'Click words to build a sentence...',
-  tk: 'Sözlem düzmek üçin sözlere basyň...',
-  ru: 'Нажимайте на слова, чтобы составить предложение...',
-  cn: '点击单词来组成句子...',
-  cde: 'Klicken Sie auf Wörter, um einen Satz zu bilden...',
-  es: 'Haz clic en las palabras para formar una oración...',
-  fr: 'Cliquez sur les mots pour former une phrase...',
-  kr: '문장을 만들려면 단어를 클릭하세요...',
-  sa: 'انقر على الكلمات لتكوين جملة...',
-},
 
 'gameWordSearchName': {
   en: 'Word Search',
@@ -3453,30 +2967,6 @@ private translations: TranslationDictionary = {
   fr: 'Vitesse de défilement (secondes par élément)',
   kr: '스크롤 속도(항목당 초)',
   sa: 'سرعة التمرير (ثوانٍ لكل عنصر)',
-},
-
-'settingsShowImageHint': {
-  en: 'Show image hint',
-  tk: 'Suratly ýerine ýetirmek',
-  ru: 'Показывать подсказку изображением',
-  cn: '显示图片提示',
-  cde: 'Bildhinweis anzeigen',
-  es: 'Mostrar pista de imagen',
-  fr: 'Afficher l’indice visuel',
-  kr: '이미지 힌트 표시',
-  sa: 'إظهار تلميح الصورة',
-},
-
-'settingsShowImageHintUnchecked': {
-  en: 'Show images.',
-  tk: 'Suratlary görkez.',
-  ru: 'Показать изображения.',
-  cn: '显示图片。',
-  cde: 'Wenn deaktiviert, wird nur der Text angezeigt (falls vorhanden).',
-  es: 'Si no está marcado, solo se mostrará el texto (si está disponible).',
-  fr: 'Lorsque décoché, seul le texte sera affiché (si disponible).',
-  kr: '체크 해제 시 텍스트만 표시됩니다(있는 경우).',
-  sa: 'عند إلغاء التحديد، سيتم عرض النص فقط (إن وجد).',
 },
 
 'settingsSpotlightSize': {
@@ -3731,18 +3221,6 @@ private translations: TranslationDictionary = {
   sa: 'Show only the current item, with previous, skip, and next controls.',
 },
 
-'teamSentenceSkip': {
-  en: 'Skip',
-  tk: 'Skip',
-  ru: 'Skip',
-  cn: 'Skip',
-  cde: 'Skip',
-  es: 'Skip',
-  fr: 'Skip',
-  kr: 'Skip',
-  sa: 'Skip',
-},
-
 'settingsTeamSentenceReverseMode': {
   en: 'Use images instead of words',
   tk: 'Sözleriň deregine suratlary ulan',
@@ -3765,30 +3243,6 @@ private translations: TranslationDictionary = {
   fr: 'Affiche les images correspondantes sur les tuiles mobiles quand elles sont disponibles.',
   kr: '이미지가 있으면 움직이는 타일에 해당 이미지를 표시합니다.',
   sa: 'يعرض صور العناصر المطابقة على البطاقات المتحركة عند توفرها.',
-},
-
-'settingsTeamSentenceSoundQuizMode': {
-  en: 'Play with audio prompts',
-  tk: 'Sesli soraglar bilen oyna',
-  ru: 'Играть с аудиоподсказками',
-  cn: '使用音频提示进行游戏',
-  cde: 'Mit Audioansagen spielen',
-  es: 'Jugar con pistas de audio',
-  fr: 'Jouer avec des consignes audio',
-  kr: '오디오 힌트로 플레이',
-  sa: 'اللعب باستخدام تلميحات صوتية',
-},
-
-'settingsTeamSentenceSoundQuizModeHint': {
-  en: 'Only recorded items appear. The teacher plays a random sound, then teams build the matching answer.',
-  tk: 'Diňe sesi ýazylan zatlar çykýar. Mugallym tötänleýin ses açýar, toparlar bolsa degişli jogaby düzýär.',
-  ru: 'Появляются только элементы с записью. Учитель включает случайный звук, затем команды собирают подходящий ответ.',
-  cn: '只显示有录音的项目。教师播放随机声音，然后各队组成匹配的答案。',
-  cde: 'Nur Elemente mit Aufnahme erscheinen. Die Lehrkraft spielt einen zufälligen Ton ab, dann bilden Teams die passende Antwort.',
-  es: 'Solo aparecen elementos con audio. El profesor reproduce un sonido aleatorio y los equipos construyen la respuesta correcta.',
-  fr: 'Seuls les éléments avec audio apparaissent. L’enseignant lance un son aléatoire, puis les équipes construisent la réponse correspondante.',
-  kr: '녹음된 항목만 나타납니다. 교사가 무작위 소리를 재생하면 팀이 알맞은 답을 만듭니다.',
-  sa: 'تظهر العناصر المسجلة فقط. يشغّل المعلم صوتاً عشوائياً، ثم تبني الفرق الإجابة المطابقة.',
 },
 
 'settingsNoSettingsRequired': {
@@ -3899,18 +3353,6 @@ private translations: TranslationDictionary = {
   sa: 'جارٍ التحميل...',
 },
 
-'spellingCheckClickPlaceholder': {
-  en: 'Drag the pen to the missing spot.',
-  tk: 'Galamjygy ýetmeýän ýere süýret.',
-  ru: 'Перетащите ручку на пропущенное место.',
-  cn: '把笔拖到空白处。',
-  cde: 'Ziehe den Stift zur Lücke.',
-  es: 'Arrastra el bolígrafo al espacio vacío.',
-  fr: 'Glisse le stylo vers l\'espace manquant.',
-  kr: '펜을 빈칸으로 드래그하세요.',
-  sa: 'اسحب القلم إلى المكان الفارغ.',
-},
-
 'spellingCheckDragPen': {
   en: 'Drag pen',
   tk: 'Galamy süýret',
@@ -3969,162 +3411,6 @@ private translations: TranslationDictionary = {
   fr: 'Aucun élément texte trouvé pour cette activité.',
   kr: '이 활동에 대한 텍스트 항목이 없습니다.',
   sa: 'لم يتم العثور على عناصر نصية لهذا النشاط.',
-},
-
-'settingsSpellingCheckWordRules': {
-  en: 'Word-level omissions',
-  tk: 'Word-level omissions',
-  ru: 'Word-level omissions',
-  cn: 'Word-level omissions',
-  cde: 'Word-level omissions',
-  es: 'Word-level omissions',
-  fr: 'Word-level omissions',
-  kr: 'Word-level omissions',
-  sa: 'Word-level omissions',
-},
-
-'settingsSpellingCheckOmitLetter': {
-  en: 'Omit a letter',
-  tk: 'Omit a letter',
-  ru: 'Omit a letter',
-  cn: 'Omit a letter',
-  cde: 'Omit a letter',
-  es: 'Omit a letter',
-  fr: 'Omit a letter',
-  kr: 'Omit a letter',
-  sa: 'Omit a letter',
-},
-
-'settingsSpellingCheckOmitSuffix': {
-  en: 'Omit a suffix (-ing, -ed, -s, ...)',
-  tk: 'Omit a suffix (-ing, -ed, -s, ...)',
-  ru: 'Omit a suffix (-ing, -ed, -s, ...)',
-  cn: 'Omit a suffix (-ing, -ed, -s, ...)',
-  cde: 'Omit a suffix (-ing, -ed, -s, ...)',
-  es: 'Omit a suffix (-ing, -ed, -s, ...)',
-  fr: 'Omit a suffix (-ing, -ed, -s, ...)',
-  kr: 'Omit a suffix (-ing, -ed, -s, ...)',
-  sa: 'Omit a suffix (-ing, -ed, -s, ...)',
-},
-
-'settingsSpellingCheckOmitPrefix': {
-  en: 'Omit a prefix (un-, re-, pre-, ...)',
-  tk: 'Omit a prefix (un-, re-, pre-, ...)',
-  ru: 'Omit a prefix (un-, re-, pre-, ...)',
-  cn: 'Omit a prefix (un-, re-, pre-, ...)',
-  cde: 'Omit a prefix (un-, re-, pre-, ...)',
-  es: 'Omit a prefix (un-, re-, pre-, ...)',
-  fr: 'Omit a prefix (un-, re-, pre-, ...)',
-  kr: 'Omit a prefix (un-, re-, pre-, ...)',
-  sa: 'Omit a prefix (un-, re-, pre-, ...)',
-},
-
-'settingsSpellingCheckOmitDouble': {
-  en: 'Omit a double letter (ll, ss, tt, ...)',
-  tk: 'Omit a double letter (ll, ss, tt, ...)',
-  ru: 'Omit a double letter (ll, ss, tt, ...)',
-  cn: 'Omit a double letter (ll, ss, tt, ...)',
-  cde: 'Omit a double letter (ll, ss, tt, ...)',
-  es: 'Omit a double letter (ll, ss, tt, ...)',
-  fr: 'Omit a double letter (ll, ss, tt, ...)',
-  kr: 'Omit a double letter (ll, ss, tt, ...)',
-  sa: 'Omit a double letter (ll, ss, tt, ...)',
-},
-
-'settingsSpellingCheckOmitDigraph': {
-  en: 'Omit a digraph (th, sh, ch, ...)',
-  tk: 'Omit a digraph (th, sh, ch, ...)',
-  ru: 'Omit a digraph (th, sh, ch, ...)',
-  cn: 'Omit a digraph (th, sh, ch, ...)',
-  cde: 'Omit a digraph (th, sh, ch, ...)',
-  es: 'Omit a digraph (th, sh, ch, ...)',
-  fr: 'Omit a digraph (th, sh, ch, ...)',
-  kr: 'Omit a digraph (th, sh, ch, ...)',
-  sa: 'Omit a digraph (th, sh, ch, ...)',
-},
-
-'settingsSpellingCheckSentenceRules': {
-  en: 'Sentence-level omissions',
-  tk: 'Sentence-level omissions',
-  ru: 'Sentence-level omissions',
-  cn: 'Sentence-level omissions',
-  cde: 'Sentence-level omissions',
-  es: 'Sentence-level omissions',
-  fr: 'Sentence-level omissions',
-  kr: 'Sentence-level omissions',
-  sa: 'Sentence-level omissions',
-},
-
-'settingsSpellingCheckOmitPreposition': {
-  en: 'Omit a preposition',
-  tk: 'Omit a preposition',
-  ru: 'Omit a preposition',
-  cn: 'Omit a preposition',
-  cde: 'Omit a preposition',
-  es: 'Omit a preposition',
-  fr: 'Omit a preposition',
-  kr: 'Omit a preposition',
-  sa: 'Omit a preposition',
-},
-
-'settingsSpellingCheckOmitArticle': {
-  en: 'Omit an article (a, an, the)',
-  tk: 'Omit an article (a, an, the)',
-  ru: 'Omit an article (a, an, the)',
-  cn: 'Omit an article (a, an, the)',
-  cde: 'Omit an article (a, an, the)',
-  es: 'Omit an article (a, an, the)',
-  fr: 'Omit an article (a, an, the)',
-  kr: 'Omit an article (a, an, the)',
-  sa: 'Omit an article (a, an, the)',
-},
-
-'settingsSpellingCheckOmitConjunction': {
-  en: 'Omit a conjunction',
-  tk: 'Omit a conjunction',
-  ru: 'Omit a conjunction',
-  cn: 'Omit a conjunction',
-  cde: 'Omit a conjunction',
-  es: 'Omit a conjunction',
-  fr: 'Omit a conjunction',
-  kr: 'Omit a conjunction',
-  sa: 'Omit a conjunction',
-},
-
-'settingsSpellingCheckOmitVerb': {
-  en: 'Omit a verb',
-  tk: 'Omit a verb',
-  ru: 'Omit a verb',
-  cn: 'Omit a verb',
-  cde: 'Omit a verb',
-  es: 'Omit a verb',
-  fr: 'Omit a verb',
-  kr: 'Omit a verb',
-  sa: 'Omit a verb',
-},
-
-'settingsSpellingCheckOmitAdjective': {
-  en: 'Omit an adjective',
-  tk: 'Omit an adjective',
-  ru: 'Omit an adjective',
-  cn: 'Omit an adjective',
-  cde: 'Omit an adjective',
-  es: 'Omit an adjective',
-  fr: 'Omit an adjective',
-  kr: 'Omit an adjective',
-  sa: 'Omit an adjective',
-},
-
-'settingsSpellingCheckOmitAdverb': {
-  en: 'Omit an adverb',
-  tk: 'Omit an adverb',
-  ru: 'Omit an adverb',
-  cn: 'Omit an adverb',
-  cde: 'Omit an adverb',
-  es: 'Omit an adverb',
-  fr: 'Omit an adverb',
-  kr: 'Omit an adverb',
-  sa: 'Omit an adverb',
 },
 
 'settingsSpellingCheckSuffixes': {
@@ -4787,18 +4073,6 @@ private translations: TranslationDictionary = {
   sa: 'ala Android, insakh rabat al-surah min suwar Google, thumma ilsaqahu fi haql al-rabat adnahu.',
 },
 
-'androidPasteHint': {
-  en: 'Tip: On Android, copy an image URL and use the Paste URL button below.',
-  tk: 'Maslahat: Android-da surat URL-ni gochurin we asagdaky URL goyjun duwmesini ulanyng.',
-  ru: 'Podskazka: Na Android skopiruyte URL izobrazheniya i ispolzuyte knopku Vstavit URL nizhe.',
-  cn: 'Ti shi: zai Android shang, fu zhi tu pian URL bing shi yong xia mian de zhan tie URL an niu.',
-  cde: 'Tipp: Kopiere auf Android eine Bild-URL und verwende die Schaltflaeche URL einfuegen unten.',
-  es: 'Consejo: En Android, copia una URL de imagen y usa el boton Pegar URL a continuacion.',
-  fr: 'Astuce: Sur Android, copiez une URL d\'image et utilisez le bouton Coller l\'URL ci-dessous.',
-  kr: 'Ti p: Android e seo i mi ji URL eul bok sa ha go a rae ui URL but yeo neow gi but teun eul sa yong ha se yo.',
-  sa: 'Nasihah: ala Android, insakh rabat surah wastakhdim zirr ilsaq al-rabat adnah.',
-},
-
 'androidPasteFallback': {
   en: 'Clipboard paste is not supported here. Please use the URL field to import an image.',
   tk: 'Gochurmek gysganch bukjadan goymak bu yerde goldanmayyar. Surat import etmek ucin URL meydanyny ulanyng.',
@@ -4919,42 +4193,6 @@ private translations: TranslationDictionary = {
   sa: 'خط النهاية',
 },
 
-'squidGameWins': {
-  en: 'wins!',
-  tk: 'ýeňdi!',
-  ru: 'победила!',
-  cn: '获胜！',
-  cde: 'gewinnt!',
-  es: '¡gana!',
-  fr: 'a gagné !',
-  kr: '승리!',
-  sa: 'فاز!',
-},
-
-'squidGameTimesUp': {
-  en: "Time's up!",
-  tk: 'Wagt gutardy!',
-  ru: 'Время вышло!',
-  cn: '时间到！',
-  cde: 'Zeit ist um!',
-  es: '¡Se acabó el tiempo!',
-  fr: 'Temps écoulé !',
-  kr: '시간 종료!',
-  sa: 'انتهى الوقت!',
-},
-
-'squidGameNotEnoughItems': {
-  en: 'Need at least 2 items with both image and text for quizzes.',
-  tk: 'Soraglar üçin azyndan surat we tekst bolan 2 element gerek.',
-  ru: 'Нужно минимум 2 элемента с изображением и текстом для викторины.',
-  cn: '需要至少2个同时有图片和文字的项目才能进行测验。',
-  cde: 'Mindestens 2 Elemente mit Bild und Text werden für Quizfragen benötigt.',
-  es: 'Se necesitan al menos 2 elementos con imagen y texto para los cuestionarios.',
-  fr: 'Il faut au moins 2 éléments avec image et texte pour les quiz.',
-  kr: '퀴즈를 위해 이미지와 텍스트가 모두 있는 항목이 최소 2개 필요합니다.',
-  sa: 'مطلوب عنصران على الأقل يحتويان على صورة ونص للاختبارات.',
-},
-
 'settingsSquidGameTeamCount': {
   en: 'Number of Teams',
   tk: 'Toparlaryň sany',
@@ -5000,28 +4238,6 @@ private translations: TranslationDictionary = {
   kr: '인형 타이밍 (초록불 지속 시간)',
   sa: 'توقيت الدمية (مدة الضوء الأخضر)',
 },
-'settingsSquidGameDollMin': {
-  en: 'Min (s)',
-  tk: 'Min (s)',
-  ru: 'Мин (с)',
-  cn: '最小（秒）',
-  cde: 'Min (s)',
-  es: 'Mín (s)',
-  fr: 'Min (s)',
-  kr: '최소 (초)',
-  sa: 'الحد الأدنى (ث)',
-},
-'settingsSquidGameDollMax': {
-  en: 'Max (s)',
-  tk: 'Maks (s)',
-  ru: 'Макс (с)',
-  cn: '最大（秒）',
-  cde: 'Max (s)',
-  es: 'Máx (s)',
-  fr: 'Max (s)',
-  kr: '최대 (초)',
-  sa: 'الحد الأقصى (ث)',
-},
 
 'gameRockPaperScissorsName': {
   en: 'Castle Clash: Rock Paper Scissors',
@@ -5059,30 +4275,6 @@ private translations: TranslationDictionary = {
   sa: 'جارٍ التحميل…',
 },
 
-'rpsLeftTeam': {
-  en: 'Left Team',
-  tk: 'Çep Topar',
-  ru: 'Левая команда',
-  cn: '左队',
-  cde: 'Linkes Team',
-  es: 'Equipo Izquierdo',
-  fr: 'Équipe Gauche',
-  kr: '왼쪽 팀',
-  sa: 'الفريق الأيسر',
-},
-
-'rpsRightTeam': {
-  en: 'Right Team',
-  tk: 'Sag Topar',
-  ru: 'Правая команда',
-  cn: '右队',
-  cde: 'Rechtes Team',
-  es: 'Equipo Derecho',
-  fr: 'Équipe Droite',
-  kr: '오른쪽 팀',
-  sa: 'الفريق الأيمن',
-},
-
 'rpsChoose': {
   en: 'Choose',
   tk: 'Saýla',
@@ -5093,18 +4285,6 @@ private translations: TranslationDictionary = {
   fr: 'Choisir',
   kr: '선택',
   sa: 'اختر',
-},
-
-'rpsTie': {
-  en: 'TIE!',
-  tk: 'DEŇLIK!',
-  ru: 'НИЧЬЯ!',
-  cn: '平局！',
-  cde: 'UNENTSCHIEDEN!',
-  es: '¡EMPATE!',
-  fr: 'ÉGALITÉ !',
-  kr: '무승부!',
-  sa: 'تعادل!',
 },
 
 'rpsBlueTeam': {
@@ -5167,42 +4347,6 @@ private translations: TranslationDictionary = {
   sa: 'ليس دورك!',
 },
 
-'rpsWins': {
-  en: 'Wins!',
-  tk: 'Ýeňdi!',
-  ru: 'Победила!',
-  cn: '获胜！',
-  cde: 'Gewinnt!',
-  es: '¡Gana!',
-  fr: 'Gagne !',
-  kr: '승리!',
-  sa: 'فاز!',
-},
-
-'rpsReward': {
-  en: 'Reward',
-  tk: 'Baýrak',
-  ru: 'Награда',
-  cn: '奖励',
-  cde: 'Belohnung',
-  es: 'Recompensa',
-  fr: 'Récompense',
-  kr: '보상',
-  sa: 'مكافأة',
-},
-
-'rpsPowerUpActive': {
-  en: '2× Next Move!',
-  tk: '2× Indiki Hereket!',
-  ru: '2× следующий ход!',
-  cn: '2× 下次移动！',
-  cde: '2× nächster Zug!',
-  es: '¡2× próximo movimiento!',
-  fr: '2× prochain mouvement !',
-  kr: '2× 다음 이동!',
-  sa: '2× الحركة التالية!',
-},
-
 'settingsRpsStepsToWin': {
   en: 'Steps to Win',
   tk: 'Ýeňmek üçin ädimler',
@@ -5225,54 +4369,6 @@ private translations: TranslationDictionary = {
   fr: 'Bonnes réponses pour atteindre le château (1 = mort subite)',
   kr: '성에 도달하기 위한 정답 수 (1 = 즉사)',
   sa: 'إجابات صحيحة للوصول إلى القلعة (1 = موت مفاجئ)',
-},
-
-'settingsRpsPowerUpChance': {
-  en: 'Power-up Chance (%)',
-  tk: 'Güýçlendiriji Ähtimallygy (%)',
-  ru: 'Шанс усиления (%)',
-  cn: '强化概率 (%)',
-  cde: 'Power-up-Chance (%)',
-  es: 'Probabilidad de poder (%)',
-  fr: 'Chance de bonus (%)',
-  kr: '파워업 확률 (%)',
-  sa: 'احتمالية التعزيز (%)',
-},
-
-'settingsRpsPowerUpChanceHint': {
-  en: 'Chance of ⚡ lightning after a tie — next correct answer moves 2 steps',
-  tk: 'Deňlikden soň ⚡ ýyldyrym ähtimallygy — indiki dogry jogap 2 ädim',
-  ru: 'Шанс ⚡ молнии после ничьей — следующий правильный ответ = 2 шага',
-  cn: '平局后 ⚡ 闪电的概率 — 下一次正确回答移动 2 步',
-  cde: 'Chance auf ⚡ Blitz nach einem Unentschieden — nächste richtige Antwort = 2 Schritte',
-  es: 'Probabilidad de ⚡ rayo tras empate — la próxima respuesta correcta mueve 2 pasos',
-  fr: 'Chance de ⚡ foudre après égalité — prochaine bonne réponse = 2 pas',
-  kr: '동점 후 ⚡ 번개 확률 — 다음 정답은 2칸 이동',
-  sa: 'احتمالية ⚡ البرق بعد التعادل — الإجابة الصحيحة التالية تتحرك خطوتين',
-},
-
-'settingsRpsMovementSpeed': {
-  en: 'Movement Speed (s)',
-  tk: 'Hereket Tizligi (s)',
-  ru: 'Скорость движения (с)',
-  cn: '移动速度 (秒)',
-  cde: 'Bewegungsgeschwindigkeit (s)',
-  es: 'Velocidad de movimiento (s)',
-  fr: 'Vitesse de déplacement (s)',
-  kr: '이동 속도 (초)',
-  sa: 'سرعة الحركة (ث)',
-},
-
-'settingsRpsMovementSpeedHint': {
-  en: 'CSS transition time for the knight sliding across the track',
-  tk: 'Şöwaleniň ýol boýunça süýşmeginiň CSS geçiş wagty',
-  ru: 'Длительность CSS-анимации движения рыцаря',
-  cn: '骑士在轨道上滑动的 CSS 过渡时间',
-  cde: 'CSS-Übergangszeit für den gleitenden Ritter auf der Strecke',
-  es: 'Tiempo de transición CSS del caballero deslizándose por el camino',
-  fr: 'Durée de la transition CSS du chevalier sur la piste',
-  kr: '트랙에서 기사가 미끄러지는 CSS 전환 시간',
-  sa: 'وقت انتقال CSS للفارس المنزلق عبر المسار',
 },
 
 'settingsRpsReverseMode': {

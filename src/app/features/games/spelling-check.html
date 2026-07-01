@@ -48,7 +48,7 @@
       <div *ngIf="showPopup" class="quiz-popup">
         <div class="popup-content">
           <button
-            *ngFor="let opt of popupOptions"
+            *ngFor="let opt of popupOptions; trackBy: trackByOption"
             type="button"
             class="popup-option"
             (click)="onQuizAnswer(opt)"
@@ -79,14 +79,14 @@
     </div>
 
     <div class="controls">
-      <button class="nav-btn" type="button" (click)="previousQuestion()" [disabled]="currentIndex === 0 || answerLocked">
-        ‹ {{ 'previous' | translate }}
+      <button class="nav-btn" type="button" (click)="previousQuestion()" [disabled]="currentIndex === 0 || answerLocked" aria-label="Previous" title="Previous">
+        <span aria-hidden="true">&#9664;</span>
       </button>
-      <button class="nav-btn skip" type="button" (click)="skipQuestion()" [disabled]="answerLocked || isCurrentAnswered">
-        {{ 'skipToNext' | translate }}
+      <button class="nav-btn skip" type="button" (click)="skipQuestion()" [disabled]="answerLocked || isCurrentAnswered" aria-label="Skip" title="Skip">
+        <img src="assets/images/skip.png" alt="" class="skip-icon">
       </button>
-      <button class="nav-btn" type="button" (click)="nextQuestion()" [disabled]="answerLocked || (currentIndex === questions.length - 1 && answeredQuestions.size >= questions.length)">
-        {{ 'next' | translate }} ›
+      <button class="nav-btn" type="button" (click)="nextQuestion()" [disabled]="answerLocked || (currentIndex === questions.length - 1 && answeredQuestions.size >= questions.length)" aria-label="Next" title="Next">
+        <span aria-hidden="true">&#9654;</span>
       </button>
     </div>
   </div>

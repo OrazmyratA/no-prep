@@ -32,9 +32,13 @@
     <!-- Navigation buttons -->
     <div class="nav-buttons">
       <button (click)="revealAllScreen()" class="nav-btn reveal" [attr.title]="'spotlightRevealTitle' | translate">👁️</button>
-      <button (click)="previousItem()" [disabled]="currentIndex === 0" class="nav-btn prev">{{ 'previous' | translate }}</button>
+      <button (click)="previousItem()" [disabled]="currentIndex === 0" class="nav-btn prev icon-only" aria-label="Previous" title="Previous">
+        <span aria-hidden="true">&#9664;</span>
+      </button>
       <button (click)="randomItem()" [disabled]="items.length < 2" class="nav-btn random">{{ 'random' | translate }}</button>
-      <button (click)="nextItem()" [disabled]="currentIndex === items.length - 1" class="nav-btn next">{{ 'next' | translate }}</button>
+      <button (click)="nextItem()" [disabled]="currentIndex === items.length - 1" class="nav-btn next icon-only" aria-label="Next" title="Next">
+        <span aria-hidden="true">&#9654;</span>
+      </button>
     </div>
 
       <!-- Top‑left controls (progress + speaker) -->

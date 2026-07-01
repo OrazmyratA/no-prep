@@ -1,3 +1,9 @@
+:host > div {
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+
 .media-stage {
   display: flex;
   justify-content: center;

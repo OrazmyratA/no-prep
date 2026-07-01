@@ -47,6 +47,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private rewardSound: HTMLAudioElement | null = null;
   private cardImageUrls: string[] = [];
   private layoutSubscription?: Subscription;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -85,6 +87,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.clearPendingTimers();
     this.layoutSubscription?.unsubscribe();
     [this.flipSound, this.buzzSound, this.collectSound, this.rewardSound].forEach(sound => sound?.pause());
     this.cleanupCardImageUrls();
@@ -170,8 +174,36 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  get remainingPairs(): number {
+    return this.cards.filter(card => !card.matched).length / 2;
+  }
+
+  trackByRowIndex(index: number): number {
+    return index;
+  }
+
+  trackByCardId(_: number, card: Card): number {
+    return card.id;
+  }
+
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
+  }
 
   private setupGame() {
+    this.clearPendingTimers();
     this.cleanupCardImageUrls();
     const pairs: Card[] = [];
     this.items.forEach((item, idx) => {
@@ -230,7 +262,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     });
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.cards.forEach(card => {
         if (!card.matched) card.flipped = false;
       });
@@ -245,7 +277,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     if (isMatch) {
       this.playSound(this.collectSound);
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         // Mark both as matched (they will become invisible)
         cardA.matched = true;
         cardB.matched = true;
@@ -261,13 +293,13 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.cdr.detectChanges();
       }, 3000);
     } else {
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.playSound(this.buzzSound);
         cardA.shake = true;
         cardB.shake = true;
         this.cdr.detectChanges();
 
-        setTimeout(() => {
+        this.setGameTimeout(() => {
           cardA.shake = false;
           cardB.shake = false;
           cardA.flipped = false;

@@ -62,7 +62,19 @@ export class CupClashComponent implements OnInit, OnDestroy {
 
   // Dice animation
   diceLanding = false;
+  readonly diceFaceValues = [1, 2, 3, 4, 5, 6];
+  readonly dicePipPositions = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   private diceAnimationTimer: any = null;
+  private readonly dicePipsByValue: Record<number, readonly number[]> = {
+    1: [5],
+    2: [1, 9],
+    3: [1, 5, 9],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 3, 4, 6, 7, 9],
+  };
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   // Scrollable items
   private itemsScrollerElement?: HTMLDivElement;
@@ -102,6 +114,7 @@ export class CupClashComponent implements OnInit, OnDestroy {
   ) {}
 
 async ngOnInit() {
+    this.destroyed = false;
     const idParam = this.route.snapshot.paramMap.get('id') ?? this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
 
@@ -165,6 +178,8 @@ async ngOnInit() {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.clearPendingTimers();
     if (this.resizeObserver) this.resizeObserver.disconnect();
     if (this.resizeSubscription) this.resizeSubscription.unsubscribe();
 
@@ -181,6 +196,7 @@ async ngOnInit() {
 
 
   startGame() {
+    this.clearPendingTimers();
     const redPositions = this.fillGridPositions(this.cupsPerTeam);
     const bluePositions = this.fillGridPositions(this.cupsPerTeam);
     this.redCups = redPositions.map((pos, i) => ({
@@ -259,8 +275,60 @@ async ngOnInit() {
     return this.createGridSlots();
   }
 
+  get hideRpsChooser(): boolean {
+    return this.rpsClash;
+  }
+
+  get hideRpsClashArena(): boolean {
+    return !this.rpsClash;
+  }
+
   trackByBoardPosition(_: number, position: number): number {
     return position;
+  }
+
+  trackByItem(index: number, item: Item): number {
+    return item?.id ?? item?.order ?? index;
+  }
+
+  trackByPipPosition(_: number, pip: number): number {
+    return pip;
+  }
+
+  canRollForTeam(team: 'red' | 'blue'): boolean {
+    return (
+      this.gameStatus === 'running' &&
+      !this.showRpsModal &&
+      !this.missedTurn &&
+      this.currentTurn === team &&
+      !this.diceRolling &&
+      this.diceValue === null
+    );
+  }
+
+  rollTeamDice(team: 'red' | 'blue'): void {
+    if (!this.canRollForTeam(team)) return;
+    this.triggerDiceRoll();
+  }
+
+  teamDiceDisplayValue(team: 'red' | 'blue'): number | null {
+    return this.currentTurn === team ? this.diceDisplayValue : null;
+  }
+
+  teamDiceFaceValue(team: 'red' | 'blue'): number {
+    return this.teamDiceDisplayValue(team) ?? 5;
+  }
+
+  isDicePipVisible(value: number, pip: number): boolean {
+    return this.dicePipsByValue[value]?.includes(pip) ?? false;
+  }
+
+  isTeamDiceRolling(team: 'red' | 'blue'): boolean {
+    return this.currentTurn === team && this.diceRolling;
+  }
+
+  isTeamDiceLanding(team: 'red' | 'blue'): boolean {
+    return this.currentTurn === team && this.diceLanding;
   }
 
   triggerDiceRoll(): void {
@@ -273,12 +341,13 @@ async ngOnInit() {
     this.playSound(this.diceSound);
     this.cdr.detectChanges();
 
-    // Variable-speed frame timings: fast → slow (slot-machine deceleration, ~3.5 s total)
-    const frames = [30, 33, 37, 41, 46, 52, 58, 65, 73, 82, 92, 103, 116, 130, 146, 163, 183, 205, 230, 257, 288, 322, 360, 403];
+    // Variable-speed frame timings: fast -> slow, tuned to finish in about 2.5s with landing.
+    const frames = [24, 28, 32, 36, 42, 48, 55, 63, 72, 82, 94, 108, 124, 142, 164, 188, 216, 248, 285];
     let fi = 0;
     const finalValue = Math.floor(Math.random() * 6) + 1;
 
     const tick = () => {
+      if (this.destroyed) return;
       if (fi < frames.length) {
         this.diceDisplayValue = Math.floor(Math.random() * 6) + 1;
         this.cdr.detectChanges();
@@ -290,10 +359,11 @@ async ngOnInit() {
         this.diceLanding = true;
         this.cdr.detectChanges();
         this.diceAnimationTimer = window.setTimeout(() => {
+          if (this.destroyed) return;
           this.diceLanding = false;
           this.rollDice(finalValue);
           this.cdr.detectChanges();
-        }, 600);
+        }, 450);
       }
     };
 
@@ -316,7 +386,7 @@ async ngOnInit() {
       this.missedTurn = true;
       this.playSound(this.errorSound);
       this.cdr.detectChanges();
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.missedTurn = false;
         this.switchTurn();
       }, 2800);
@@ -396,7 +466,8 @@ async ngOnInit() {
   }
 
   private lockRpsChoice(team: 'red' | 'blue') {
-    this.playSound(this.cashSound);
+    if (team === 'red' && this.rpsRedChoice) return;
+    if (team === 'blue' && this.rpsBlueChoice) return;
 
     if (team === 'red') {
       this.clearRpsSpin('red');
@@ -415,7 +486,7 @@ async ngOnInit() {
       this.rpsClash = true;
       this.cdr.detectChanges();
       // Let the approach animation play before revealing the outcome
-      this.rpsResetTimer = setTimeout(() => this.resolveRps(), 400);
+      this.rpsResetTimer = this.setGameTimeout(() => this.resolveRps(), 400);
     }
   }
 
@@ -425,6 +496,15 @@ async ngOnInit() {
 
   private normaliseRpsChoice(display: string): string {
     return this.rpsIcons.includes(display) ? display : this.randomRpsIcon();
+  }
+
+  private rpsChoiceWins(left: string, right: string): boolean {
+    const [rock, scissors, paper] = this.rpsIcons;
+    return (
+      (left === rock && right === scissors) ||
+      (left === scissors && right === paper) ||
+      (left === paper && right === rock)
+    );
   }
 
   private clearRpsSpin(team: 'red' | 'blue') {
@@ -448,12 +528,12 @@ async ngOnInit() {
     if (r === b) {
       this.rpsClashResult = 'tie';
       this.cdr.detectChanges();
-      this.rpsResetTimer = setTimeout(() => {
+      this.rpsResetTimer = this.setGameTimeout(() => {
         this.rpsClash = false;
         this.rpsClashResult = null;
         this.rpsIsTie = true;
         this.cdr.detectChanges();
-        this.rpsResetTimer = setTimeout(() => {
+        this.rpsResetTimer = this.setGameTimeout(() => {
           this.rpsIsTie = false;
           this.rpsRedChoice = null;
           this.rpsBlueChoice = null;
@@ -467,28 +547,21 @@ async ngOnInit() {
       }, 1600);
       return;
     }
-    const redWins =
-      (r === '✊' && b === '✌️') ||
-      (r === '✌️' && b === '✋') ||
-      (r === '✋' && b === '✊');
+    const redWins = this.rpsChoiceWins(r, b);
     this.rpsClashResult = redWins ? 'red-wins' : 'blue-wins';
     this.cdr.detectChanges();
-    this.rpsResetTimer = setTimeout(() => {
+    this.rpsResetTimer = this.setGameTimeout(() => {
+      this.currentTurn = redWins ? 'red' : 'blue';
+      this.showRpsModal = false;
       this.rpsClash = false;
       this.rpsClashResult = null;
-      this.rpsWinner = redWins ? 'red' : 'blue';
+      this.rpsRedChoice = null;
+      this.rpsBlueChoice = null;
+      this.rpsWinner = null;
+      this.rpsRedSpinning = false;
+      this.rpsBlueSpinning = false;
+      this.clearRpsSpinTimers();
       this.cdr.detectChanges();
-      this.rpsResetTimer = setTimeout(() => {
-        this.currentTurn = this.rpsWinner!;
-        this.showRpsModal = false;
-        this.rpsRedChoice = null;
-        this.rpsBlueChoice = null;
-        this.rpsWinner = null;
-        this.rpsRedSpinning = false;
-        this.rpsBlueSpinning = false;
-        this.clearRpsSpinTimers();
-        this.cdr.detectChanges();
-      }, 2000);
     }, 1300);
   }
 
@@ -505,7 +578,7 @@ async ngOnInit() {
   }
 
   private deferUpdateItemsScrollState() {
-    setTimeout(() => this.updateItemsScrollState(), 0);
+    this.setGameTimeout(() => this.updateItemsScrollState(), 0);
   }
 
   private updateItemsScrollState() {
@@ -538,7 +611,7 @@ toggleItemFace(item: Item, index: number) {
 private centerItemsScroll() {
   const scroller = this.itemsScrollerElement;
   if (!scroller) return;
-  setTimeout(() => {
+  this.setGameTimeout(() => {
     const maxScroll = scroller.scrollWidth - scroller.clientWidth;
     if (maxScroll > 0) {
       scroller.scrollLeft = maxScroll / 2;
@@ -550,7 +623,7 @@ private updateItemsAlignment() {
   const container = this.itemsScrollerElement;
   if (!container) return;
   // Wait a tick for the DOM to be stable
-  setTimeout(() => {
+  this.setGameTimeout(() => {
     let totalWidth = 0;
     const children = Array.from(container.children) as HTMLElement[];
     children.forEach(child => {
@@ -619,6 +692,22 @@ resetGame() {
     }
   }
 
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
+  }
+
   imageUrl(blob: Blob, itemId: number): string {
     if (!this.imageUrls.has(itemId)) {
       const url = URL.createObjectURL(blob);
@@ -645,8 +734,12 @@ resetGame() {
     return cups.find(c => c.position === pos);
   }
 
+  isCupCapturable(cup: Cup): boolean {
+    return cup.team !== this.currentTurn && this.capturesRemaining > 0 && this.gameStatus === 'running';
+  }
+
   onCupClick(cup: Cup) {
-    if (cup.team === this.currentTurn || this.capturesRemaining <= 0 || this.gameStatus !== 'running') return;
+    if (!this.isCupCapturable(cup)) return;
     this.captureCup(cup);
   }
 }

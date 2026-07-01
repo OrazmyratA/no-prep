@@ -78,6 +78,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   private activeSpotEl: HTMLElement | null = null;
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
+  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -374,7 +376,9 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearAdvanceTimer();
+    this.clearFeedbackTimers();
     this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
@@ -497,7 +501,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.clearActiveSpot();
     this.penShake = true;
     this.playSound(this.buzzSound);
-    window.setTimeout(() => {
+    this.setFeedbackTimeout(() => {
       this.penShake = false;
       this.cdr.detectChanges();
     }, 450);
@@ -732,7 +736,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       const popup = document.querySelector('.quiz-popup');
       if (popup) {
         popup.classList.add('shake');
-        setTimeout(() => popup.classList.remove('shake'), 500);
+        this.setFeedbackTimeout(() => popup.classList.remove('shake'), 500);
       }
       this.answerLocked = false;
     }
@@ -744,11 +748,11 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     if (el) {
       el.style.transition = 'all 0.3s ease';
       el.style.opacity = '0';
-      setTimeout(() => {
+      this.setFeedbackTimeout(() => {
         el.textContent = this.getResolvedTargetText(q);
         el.classList.add('spot-resolved');
         el.style.opacity = '1';
-        setTimeout(() => {
+        this.setFeedbackTimeout(() => {
           el.style.transition = '';
         }, 300);
       }, 150);
@@ -869,6 +873,10 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       this.objectUrls.push(url);
     }
     return this.imageUrls.get(itemId)!;
+  }
+
+  trackByOption(_: number, option: string): string {
+    return option;
   }
 
   toggleMediaFlip() {
@@ -997,6 +1005,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
 
   resetGame() {
     this.clearAdvanceTimer();
+    this.clearFeedbackTimers();
     this.buildQuestions();
     this.showPopup = false;
     this.answerLocked = false;
@@ -1031,5 +1040,21 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       window.clearTimeout(this.advanceTimer);
       this.advanceTimer = null;
     }
+  }
+
+  private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.feedbackTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.feedbackTimers.add(timer);
+    return timer;
+  }
+
+  private clearFeedbackTimers() {
+    this.feedbackTimers.forEach(timer => clearTimeout(timer));
+    this.feedbackTimers.clear();
   }
 }

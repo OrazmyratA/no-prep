@@ -60,6 +60,8 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('gridContainer') gridContainerRef!: ElementRef<HTMLElement>;
   private resizeObserver: ResizeObserver | null = null;
   private layoutSubscription?: Subscription;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -90,7 +92,7 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
-    setTimeout(() => this.calculateCardSize(), 0);
+    this.setGameTimeout(() => this.calculateCardSize(), 0);
     this.resizeObserver = new ResizeObserver(() => this.calculateCardSize());
     if (this.gameShellRef?.nativeElement) {
       this.resizeObserver.observe(this.gameShellRef.nativeElement);
@@ -100,6 +102,14 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.clearPendingTimers();
+    this.cards.forEach(card => {
+      if (card._flipBackTimeout) {
+        clearTimeout(card._flipBackTimeout);
+        card._flipBackTimeout = null;
+      }
+    });
     if (this.resizeObserver) this.resizeObserver.disconnect();
     this.layoutSubscription?.unsubscribe();
     this.stopActiveAudio();
@@ -181,6 +191,30 @@ private rebuildCardRows() {
   for (let i = 0; i < this.cards.length; i += columns) {
     this.cardRows.push(this.cards.slice(i, i + columns));
   }
+}
+
+trackByRowIndex(index: number): number {
+  return index;
+}
+
+trackByCardItemId(_: number, card: FlipTileCard): number | string {
+  return card.item.id ?? card.item.text ?? card.imageSrc ?? _;
+}
+
+private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+  const timer = setTimeout(() => {
+    this.pendingTimers.delete(timer);
+    if (!this.destroyed) {
+      callback();
+    }
+  }, delay);
+  this.pendingTimers.add(timer);
+  return timer;
+}
+
+private clearPendingTimers() {
+  this.pendingTimers.forEach(timer => clearTimeout(timer));
+  this.pendingTimers.clear();
 }
 
   // ----- Sound Quiz Mode -----
@@ -287,7 +321,7 @@ flipCard(index: number) {
       this.allAudioItemsMatched = true;
       this.soundQuizActive = false;
       this.playSound(this.rewardSound);
-      setTimeout(() => { this.gameFinished = true; this.cdr.detectChanges(); }, 600);
+      this.setGameTimeout(() => { this.gameFinished = true; this.cdr.detectChanges(); }, 600);
     } else {
       showAppNotification(this.langService.translate('clickSpeakerForNext'), 'info');
     }
@@ -307,20 +341,20 @@ private wrongFlipWithFeedback(index: number, card: any) {
   this.cdr.detectChanges();
 
   // Set a timeout to give the student time to see the card
-  card._flipBackTimeout = setTimeout(() => {
+  card._flipBackTimeout = this.setGameTimeout(() => {
     // Play buzz sound
     this.playSound(this.buzzSound);
 
     card.shake = true;
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       card.shake = false;
       this.cdr.detectChanges();
     }, 500);
 
     // Close the card after a further short delay (so the shake can be seen)
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       card.flipped = false;
       card._flipBackTimeout = null;
       this.cdr.detectChanges();
@@ -334,7 +368,7 @@ private wrongFlipWithFeedback(index: number, card: any) {
       // Shake animation
       const el = document.getElementById(`card-${index}`);
       el?.classList.add('shake');
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         card.flipped = false;
         el?.classList.remove('shake');
         this.cdr.detectChanges();
@@ -376,7 +410,7 @@ private rebuildCards(items: Item[]) {
   }));
   this.selectedIndex = null;
   this.rebuildCardRows();
-  setTimeout(() => this.calculateCardSize(), 0);
+  this.setGameTimeout(() => this.calculateCardSize(), 0);
 }
 
   // Override randomSelect and eliminate to disable in sound mode
@@ -401,7 +435,7 @@ private rebuildCards(items: Item[]) {
       this.selectedIndex = null;
       this.playSound(this.collectSound);
       this.rebuildCardRows();
-      setTimeout(() => this.calculateCardSize(), 0);
+      this.setGameTimeout(() => this.calculateCardSize(), 0);
     }
   }
 

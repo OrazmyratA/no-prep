@@ -19,8 +19,8 @@
       <div class="grid-overlay"
           [style.gridTemplateColumns]="'repeat(' + gridSize + ', 1fr)'"
           [style.gridTemplateRows]="'repeat(' + gridSize + ', 1fr)'">
-        <ng-container *ngFor="let row of gridRevealed; let r = index">
-          <div *ngFor="let cell of row; let c = index"
+        <ng-container *ngFor="let row of gridRevealed; let r = index; trackBy: trackByIndex">
+          <div *ngFor="let cell of row; let c = index; trackBy: trackByIndex"
               class="grid-cell"
               [class.revealed]="gridRevealed[r][c]">
           </div>
@@ -43,8 +43,10 @@
     <!-- Skip button -->
     <button (click)="skipToNext()"
             [disabled]="isPaused"
-            class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-      {{ 'skipToNext' | translate }}
+            aria-label="Skip"
+            title="Skip"
+            class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold w-12 h-12 rounded-full shadow-lg transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+      <img src="assets/images/skip.png" alt="" class="w-7 h-7 object-contain">
     </button>
   </div>
 
@@ -66,7 +68,7 @@
       </div>
       <!-- Multiple-choice options -->
       <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
-        <button *ngFor="let opt of quizOptions"
+        <button *ngFor="let opt of quizOptions; trackBy: trackByOptionId"
                 [attr.data-opt-id]="opt.id"
                 (click)="onQuizAnswer(opt)"
                 [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
@@ -93,7 +95,7 @@
     <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
 <h2 class="text-3xl font-bold text-center mb-6">🏆 {{ 'gameResults' | translate }} 🏆</h2>
       <div class="space-y-4">
-        <div *ngFor="let entry of rankedTeamsWithPosition" class="flex items-center gap-3">
+        <div *ngFor="let entry of rankedTeamsWithPosition; trackBy: trackByRankedTeam" class="flex items-center gap-3">
           <div class="w-12 text-center font-bold text-xl">{{ entry.medal }}</div>
           <div class="w-28 font-semibold" [style.color]="entry.team.color">{{ entry.team.name }}</div>
           <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">

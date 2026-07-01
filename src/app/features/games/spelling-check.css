@@ -1,6 +1,6 @@
 .game-container {
   width: 100vw;
-  min-height: 100vh;
+  min-height: 100dvh;
   background:
     radial-gradient(circle at 18% 16%, rgba(255, 214, 102, 0.2), transparent 28%),
     linear-gradient(135deg, #123c69, #2f6f73 52%, #5f4b8b);
@@ -37,7 +37,7 @@
 
 .game-board {
   width: min(920px, 94vw);
-  min-height: min(660px, calc(100vh - 2rem));
+  min-height: min(660px, calc(100dvh - 2rem));
   background: rgba(255, 255, 255, 0.14);
   border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 22px;
@@ -383,12 +383,17 @@
 }
 
 .nav-btn {
-  min-width: 118px;
+  width: 3.2rem;
+  height: 3rem;
   border: 0;
   border-radius: 999px;
   background: rgba(255, 250, 240, 0.92);
   color: #17324d;
-  padding: 0.68rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 1.15rem;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 10px 22px rgba(12, 19, 32, 0.16);
@@ -407,6 +412,11 @@
 .nav-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.skip-icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  object-fit: contain;
 }
 
 .victory-overlay {
@@ -570,8 +580,13 @@
   }
 
   .nav-btn {
-    min-width: 82px;
-    padding: 0.38rem 0.55rem;
-    font-size: 0.74rem;
+    width: 2.75rem;
+    height: 2.55rem;
+    font-size: 0.9rem;
+  }
+
+  .skip-icon {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 }

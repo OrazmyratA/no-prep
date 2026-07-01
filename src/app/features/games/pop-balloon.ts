@@ -98,6 +98,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private liftTimeout?: ReturnType<typeof setTimeout>;
   private dropTimeout?: ReturnType<typeof setTimeout>;
   private victoryTimeout?: ReturnType<typeof setTimeout>;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
   private stringTrackFrame?: number;
   private gameStartTime = 0;
 
@@ -190,9 +192,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       console.error('Failed to load items', error);
     } finally {
       this.loading = false;
-      setTimeout(() => this.queueGiftLift(), 100);
+      this.setGameTimeout(() => this.queueGiftLift(), 100);
       if (this.teamCount === 2) {
-        setTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
+        this.setGameTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
       }
       this.cdr.detectChanges();
     }
@@ -226,14 +228,16 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
-    setTimeout(() => this.updateAllStringParams(), 0);
+    this.setGameTimeout(() => this.updateAllStringParams(), 0);
     this.layoutSubscription = this.resizeService.layoutChanged$.subscribe(() => this.recalculateLayout());
     this.resizeService.requestLayoutRefresh();
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearGiftTimers();
     this.clearRpsTimers();
+    this.clearPendingTimers();
     this.cancelStringTracking();
     this.layoutSubscription?.unsubscribe();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
@@ -496,7 +500,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.quizOverlayVisible = false;
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       team.quizOverlayVisible = true;
       this.cdr.detectChanges();
     }, 50);
@@ -597,15 +601,15 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       this.playSound(this.buzzSound);
       const el = document.getElementById(this.quizOptionDomId(team.id, selected.id));
       el?.classList.add('shake');
-      setTimeout(() => el?.classList.remove('shake'), 500);
+      this.setGameTimeout(() => el?.classList.remove('shake'), 500);
       if (team.selectedBalloonIndex !== null) {
         this.shakeBalloon(team.balloons[team.selectedBalloonIndex]);
       }
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         team.quizClosing = true;
         team.quizOverlayVisible = false;
         this.cdr.detectChanges();
-        setTimeout(() => {
+        this.setGameTimeout(() => {
           this.closeBalloonQuiz(team);
           this.cdr.detectChanges();
           if (this.teamCount === 2 && this.teamMode) {
@@ -628,17 +632,17 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     el?.classList.add('correct-flash');
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       const index = team.selectedBalloonIndex;
       team.quizClosing = true;
       team.quizOverlayVisible = false;
       this.cdr.detectChanges();
 
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.closeBalloonQuiz(team);
         this.cdr.detectChanges();
         if (index !== null) {
-          setTimeout(() => this.completeBalloonPop(index, team.id), 360);
+          this.setGameTimeout(() => this.completeBalloonPop(index, team.id), 360);
         }
       }, 650);
     }, 700);
@@ -653,7 +657,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (team) team.score = team.balloons.filter(b => b.popped).length;
     this.playSound(this.popSound);
     team.showCenterPopEffect = true;
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       team.showCenterPopEffect = false;
       this.cdr.detectChanges();
     }, 850);
@@ -682,10 +686,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!balloon) return;
     balloon.wrongShake = false;
     this.cdr.detectChanges();
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       balloon.wrongShake = true;
       this.cdr.detectChanges();
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         balloon.wrongShake = false;
         this.cdr.detectChanges();
       }, 600);
@@ -713,11 +717,11 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.quizClosing = true;
     team.quizOverlayVisible = false;
     this.cdr.detectChanges();
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.closeBalloonQuiz(team);
       this.cdr.detectChanges();
       if (index !== null) {
-        setTimeout(() => this.completeBalloonPop(index, teamId), 360);
+        this.setGameTimeout(() => this.completeBalloonPop(index, teamId), 360);
       }
     }, 650);
   }
@@ -729,7 +733,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.quizClosing = true;
     team.quizOverlayVisible = false;
     this.cdr.detectChanges();
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.closeBalloonQuiz(team);
       this.cdr.detectChanges();
       if (this.teamCount === 2 && this.teamMode) {
@@ -744,6 +748,22 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
     }
+  }
+
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
   }
 
   // ... (rest of the helper methods: buildRowCounts, distributeAcrossRows, buildRowCombos, string update methods, gift lift/drop, etc.)
@@ -1047,6 +1067,7 @@ private dropGiftAndRevealReward(teamId = 0) {
   resetGame() {
     this.clearGiftTimers();
     this.clearRpsTimers();
+    this.clearPendingTimers();
     this.rpsPhase = false;
     this.rpsClash = false;
     this.rpsClashResult = null;
@@ -1056,7 +1077,7 @@ private dropGiftAndRevealReward(teamId = 0) {
     this.queueGiftLift();
     this.giftRisingComplete = false;
     if (this.teamCount === 2) {
-      setTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
+      this.setGameTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
     }
   }
 
@@ -1122,8 +1143,6 @@ private dropGiftAndRevealReward(teamId = 0) {
   }
 
   private lockRpsChoice(teamIndex: number) {
-    this.playSound(this.cashSound);
-
     const interval = this.rpsSpinIntervals[teamIndex];
     if (interval) {
       clearInterval(interval);
@@ -1207,6 +1226,22 @@ private dropGiftAndRevealReward(teamId = 0) {
 
   onMenuOpenChange(isOpen: boolean) {
     this.menuOpen = isOpen;
+  }
+
+  trackByTeamId(_: number, team: PopTeam): number {
+    return team.id;
+  }
+
+  trackByBalloonId(_: number, balloon: Balloon): number {
+    return balloon.id;
+  }
+
+  trackByOptionId(index: number, item: Item): number | string {
+    return item.id ?? item.text ?? index;
+  }
+
+  trackByRankedTeam(_: number, entry: { team: PopTeam; position: number; medal: string }): number {
+    return entry.team.id;
   }
 
   get poppedCount(): number {

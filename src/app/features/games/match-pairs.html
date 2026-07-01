@@ -24,10 +24,10 @@
       <div #gridContainer class="game-grid"
            [style.gap.px]="gap"
            [style.height.px]="boardHeight">
-        <div *ngFor="let row of cardRows; let rowIndex = index"
+        <div *ngFor="let row of cardRows; let rowIndex = index; trackBy: trackByRowIndex"
              class="game-row"
              [style.gap.px]="gap">
-          <div *ngFor="let card of row; let colIndex = index"
+          <div *ngFor="let card of row; let colIndex = index; trackBy: trackByCardId"
                (click)="onCardClick(rowIndex * gridColumns + colIndex)"
                class="card"
                [class.flipped]="card.flipped"
@@ -60,7 +60,7 @@
 
     <!-- Game Info -->
     <div class="match-info mt-4 text-white text-center">
-      <p>{{ 'matchPairsRemaining' | translate }}: {{ cards.filter(c => !c.matched).length / 2 }} / {{ items.length }} {{ 'matchPairsPairs' | translate }}</p>
+      <p>{{ 'matchPairsRemaining' | translate }}: {{ remainingPairs }} / {{ items.length }} {{ 'matchPairsPairs' | translate }}</p>
     </div>
 
     <!-- Reset Button -->

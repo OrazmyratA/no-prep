@@ -9,7 +9,7 @@
     <!-- Header with score and progress -->
     <div class="quiz-header">
       <div class="score">{{ 'score' | translate }}: {{ score }} / {{ questions.length }}</div>
-      <div class="progress">{{ 'testAbcQuestion' | translate }} {{ currentIndex + 1 }} {{ 'testAbcOf' | translate }} {{ questions.length }}</div>
+      <div class="progress">{{ currentIndex + 1 }} / {{ questions.length }}</div>
     </div>
 
     <!-- Question area -->
@@ -54,7 +54,7 @@
 
     <!-- Options grid (3 items) -->
     <div class="options-area">
-      <div *ngFor="let opt of questions[currentIndex].options"
+      <div *ngFor="let opt of questions[currentIndex].options; trackBy: trackByOptionId"
            class="option-card"
            [class.selected]="selectedCorrect && opt.id === selectedOptionId"
            [class.disabled]="answeredQuestions.has(currentIndex)"
@@ -74,8 +74,12 @@
 
     <!-- Navigation buttons -->
     <div class="nav-buttons">
-      <button class="nav-btn prev" (click)="previousQuestion()" [disabled]="currentIndex === 0">◀ {{ 'previous' | translate }}</button>
-      <button class="nav-btn next" (click)="nextQuestion()" [disabled]="currentIndex === questions.length - 1">{{ 'next' | translate }} ▶</button>
+      <button class="nav-btn prev" (click)="previousQuestion()" [disabled]="currentIndex === 0" aria-label="Previous" title="Previous">
+        <span aria-hidden="true">&#9664;</span>
+      </button>
+      <button class="nav-btn next" (click)="nextQuestion()" [disabled]="currentIndex === questions.length - 1" aria-label="Next" title="Next">
+        <span aria-hidden="true">&#9654;</span>
+      </button>
     </div>
   </div>
 

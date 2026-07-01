@@ -2,7 +2,7 @@
 .game-container {
   position: relative;
   width: 100vw;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
   background:
     radial-gradient(circle at 15% 15%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 40%),
@@ -164,7 +164,7 @@
   --float-delay: 0s;
   --balloon-rotate: 0deg;
   border-radius: 60% 60% 45% 45%;
-  transform: translateY(100vh) rotate(var(--balloon-rotate));
+  transform: translateY(100dvh) rotate(var(--balloon-rotate));
   opacity: 0;
   transition: left 0.65s cubic-bezier(0.22, 1, 0.36, 1),
     top 0.65s cubic-bezier(0.22, 1, 0.36, 1),
@@ -810,7 +810,7 @@
 
 @keyframes balloonRise {
   0% {
-    transform: translateY(100vh) rotate(var(--balloon-rotate));
+    transform: translateY(100dvh) rotate(var(--balloon-rotate));
     opacity: 0;
   }
   60% {

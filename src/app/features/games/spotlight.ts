@@ -42,6 +42,9 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   private layoutSubscription?: Subscription;
   private activeAudio: HTMLAudioElement | null = null;
   private activeAudioUrl: string | null = null;
+  private revealTimer: ReturnType<typeof setTimeout> | null = null;
+  private startTimer: ReturnType<typeof setTimeout> | null = null;
+  private destroyed = false;
 
 
   constructor(
@@ -55,7 +58,9 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   ngAfterViewInit() {
     // Ensure canvas is sized and centered after view init
     this.resizeCanvas();
-    this.startSpotlightJourney();
+    if (this.currentItem) {
+      this.startSpotlightJourney();
+    }
     this.layoutSubscription = this.resizeService.layoutChanged$.subscribe(() => this.recalculateLayout());
     this.resizeService.requestLayoutRefresh();
   }
@@ -85,12 +90,21 @@ export class SpotlightComponent implements OnInit, OnDestroy {
       this.loading = false;
       this.cdr.detectChanges();
       // Initialize spotlight position to center
-      setTimeout(() => this.startSpotlightJourney(), 100);
+      this.clearStartTimer();
+      this.startTimer = setTimeout(() => {
+        this.startTimer = null;
+        if (!this.destroyed) {
+          this.startSpotlightJourney();
+        }
+      }, 100);
     }
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearTimer();
+    this.clearRevealTimer();
+    this.clearStartTimer();
     this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
@@ -98,6 +112,20 @@ export class SpotlightComponent implements OnInit, OnDestroy {
     if (this.drawFrame !== null) {
       cancelAnimationFrame(this.drawFrame);
       this.drawFrame = null;
+    }
+  }
+
+  private clearRevealTimer() {
+    if (this.revealTimer) {
+      clearTimeout(this.revealTimer);
+      this.revealTimer = null;
+    }
+  }
+
+  private clearStartTimer() {
+    if (this.startTimer) {
+      clearTimeout(this.startTimer);
+      this.startTimer = null;
     }
   }
 
@@ -330,9 +358,12 @@ private loadItem(index: number) {
   }
 
   revealAllScreen() {
+    this.clearRevealTimer();
     this.revealAll = true;
     this.scheduleDraw();
-    setTimeout(() => {
+    this.revealTimer = setTimeout(() => {
+      this.revealTimer = null;
+      if (this.destroyed) return;
       this.revealAll = false;
       this.scheduleDraw();
     }, 3000);

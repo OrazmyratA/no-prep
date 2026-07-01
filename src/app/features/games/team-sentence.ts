@@ -598,6 +598,18 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     return Array.from({ length: depth }, (_, i) => i);
   }
 
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  trackByWordTile(_: number, tile: WordTile): number {
+    return tile.id;
+  }
+
+  trackByMine(_: number, mine: Mine): number {
+    return mine.id;
+  }
+
   get cardItemImageUrl(): string | null {
     if (!this.cardItem?.image || this.cardItem.id === undefined) return null;
     return this.imageUrl(this.cardItem.image, this.cardItem.id);

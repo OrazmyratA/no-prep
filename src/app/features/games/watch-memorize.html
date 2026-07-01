@@ -33,10 +33,10 @@
   <div #gridContainer class="recall-grid" 
        [style.gap.px]="gridGap"
        [style.height.px]="recallBoardHeight">
-    <div *ngFor="let row of recallRows; let rowIndex = index"
+    <div *ngFor="let row of recallRows; let rowIndex = index; trackBy: trackByRowIndex"
          class="recall-row"
          [style.gap.px]="gridGap">
-      <div *ngFor="let item of row; let colIndex = index"
+      <div *ngFor="let item of row; let colIndex = index; trackBy: trackByItemId"
            (click)="onGridClick(rowIndex * gridColumns + colIndex)"
            class="grid-item"
            [class.selected]="selectedIndices.has(rowIndex * gridColumns + colIndex)"

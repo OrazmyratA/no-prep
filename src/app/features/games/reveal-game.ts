@@ -65,6 +65,8 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   private imageUrls: Map<number, string> = new Map();
   private objectUrls: string[] = [];
   private transitionLock = false;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   fastRevealMode = false;
   private fastRevealInterval: any;
@@ -141,8 +143,10 @@ teamColors = ['#ff4d4d', '#ff8a00', '#00c2ff', '#7dff3b', '#ff4fd8', '#9b5cff', 
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.clearTimers();
+    this.clearPendingTimers();
     [this.collectSound, this.correctSound, this.buzzSound, this.captureSound, this.rewardSound].forEach(s => s?.pause());
     const container = this.hostElement.nativeElement.querySelector('.team-buttons-container');
     if (container) container.remove();
@@ -347,7 +351,7 @@ private updateTeamButtons() {
     this.pauseGame();
     this.quizPending = true;
 
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       if (!this.simpleConfirmMode) {
         const team = this.teams.find(t => t.id === teamId);
         if (team) {
@@ -410,7 +414,7 @@ private updateTeamButtons() {
       const el = document.querySelector(`[data-opt-id="${selected.id}"]`);
       el?.classList.add('correct-flash');
 
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.closeQuizAndResetTurn();
         this.startFastReveal();
       }, 1000);
@@ -426,7 +430,7 @@ private updateTeamButtons() {
       const el = document.querySelector(`[data-opt-id="${selected.id}"]`);
       el?.classList.add('shake');
 
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.closeQuizAndResetTurn();
         this.cdr.detectChanges();
       }, 600);
@@ -442,7 +446,7 @@ private updateTeamButtons() {
       const team = this.teams.find(t => t.id === this.currentAnsweringTeamId);
       if (team) { team.score++; this.updateTeamButtons(); }
     }
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.closeQuizAndResetTurn();
       this.startFastReveal();
     }, 600);
@@ -483,7 +487,36 @@ private updateTeamButtons() {
     this.fastRevealInterval = null;
   }
 
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
+  }
+
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  trackByOptionId(index: number, item: Item): number | string {
+    return item.id ?? item.text ?? index;
+  }
+
+  trackByRankedTeam(_: number, entry: { team: Team; position: number; medal: string }): number {
+    return entry.team.id;
+  }
+
   startNextItem(playCorrectAudio = false) {
+    this.clearPendingTimers();
     this.transitionLock = false;
 
 if (this.currentIndex >= this.items.length) {
@@ -624,7 +657,7 @@ if (this.currentIndex >= this.items.length) {
     if (this.fastRevealInterval) clearInterval(this.fastRevealInterval);
     this.clearTimers();
     this.captureSound?.play();
-    this.timer = setTimeout(() => {
+    this.timer = this.setGameTimeout(() => {
       this.currentIndex++;
       this.startNextItem(true);
     }, 1500);
@@ -646,7 +679,7 @@ if (this.currentIndex >= this.items.length) {
     this.fadeOutOptionIds.clear();
     this.pauseGame();
     this.cdr.detectChanges();
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
     }, 10);
@@ -763,6 +796,7 @@ closeVictoryPopup() {
 
   resetGame() {
     this.clearTimers();
+    this.clearPendingTimers();
     this.items = this.shuffleItems(this.items);
     this.currentIndex = 0;
     this.gameFinished = false;

@@ -32,7 +32,7 @@
   </div>
 
   <div class="teams-board" [style.--team-count]="teamCount">
-    <section *ngFor="let team of teams"
+    <section *ngFor="let team of teams; trackBy: trackByTeamId"
              class="team-lane"
              [class.strings-ready]="team.stringsReady"
              [class.team-completed]="team.completed"
@@ -44,7 +44,7 @@
         <strong>{{ team.score }} / {{ team.balloons.length }}</strong>
       </div>
 
-      <div *ngFor="let balloon of team.balloons; let i = index"
+      <div *ngFor="let balloon of team.balloons; let i = index; trackBy: trackByBalloonId"
            [id]="balloonDomId(team.id, balloon.id)"
            class="balloon"
            [class.popped]="balloon.popped"
@@ -69,7 +69,7 @@
         <div class="balloon-content" [style.background]="balloon.color"></div>
       </div>
 
-      <div *ngFor="let balloon of team.balloons"
+      <div *ngFor="let balloon of team.balloons; trackBy: trackByBalloonId"
            class="balloon-string"
            [class.hidden]="balloon.popped || team.selectedItem"
            aria-hidden="true"
@@ -94,7 +94,7 @@
 
       <div *ngIf="!teamMode" class="game-info lane-info">
         <div class="progress">
-          {{ 'popBalloonPopped' | translate }}: {{ team.score }} / {{ team.balloons.length }}
+          {{ team.score }} / {{ team.balloons.length }}
         </div>
       </div>
 
@@ -127,7 +127,7 @@
 
         <!-- Multiple-choice: images in reverse mode, text in normal mode -->
         <div *ngIf="!team.simpleConfirmMode" class="balloon-options" [class.balloon-image-options]="reverseMode">
-          <button *ngFor="let opt of team.quizOptions"
+          <button *ngFor="let opt of team.quizOptions; trackBy: trackByOptionId"
                   type="button"
                   class="quiz-option"
                   [class.quiz-image-option]="reverseMode"
@@ -178,7 +178,7 @@
     <div class="victory-content team-results-content">
       <h2 class="victory-title">🏆 {{ 'gameResults' | translate }} 🏆</h2>
       <div class="team-results-list">
-        <div *ngFor="let entry of rankedTeamsWithPosition" class="team-result-row">
+        <div *ngFor="let entry of rankedTeamsWithPosition; trackBy: trackByRankedTeam" class="team-result-row">
           <div class="team-medal">{{ entry.medal }}</div>
           <div class="team-result-name" [style.color]="entry.team.color">{{ entry.team.name }}</div>
           <div class="team-result-bar">

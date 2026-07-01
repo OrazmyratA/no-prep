@@ -2,6 +2,7 @@
   position: relative;
   width: 100vw;
   height: 100dvh;
+  min-height: 100dvh;
   padding: clamp(0.55rem, 1.3vw, 1rem);
   color: #fff;
   overflow: hidden;

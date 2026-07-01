@@ -64,7 +64,6 @@
       (keydown.space)="onChooseKeydown($event, 'left')"
     >
       <div *ngIf="quizVisible && quizWinner?.side === 'left'" class="panel-your-turn-badge">{{ 'yourTurn' | translate }}</div>
-      <div class="rps-team-name" [style.color]="leftTeam.color">{{ 'rpsBlueTeam' | translate }}</div>
 
       <div class="rps-choice-box" [style.background]="leftTeam.color"
            [class.box-chosen]="leftTeam.choice !== null && !leftTeam.isSpinning">
@@ -93,7 +92,6 @@
       (keydown.space)="onChooseKeydown($event, 'right')"
     >
       <div *ngIf="quizVisible && quizWinner?.side === 'right'" class="panel-your-turn-badge">{{ 'yourTurn' | translate }}</div>
-      <div class="rps-team-name" [style.color]="rightTeam.color">{{ 'rpsRedTeam' | translate }}</div>
 
       <div class="rps-choice-box" [style.background]="rightTeam.color"
            [class.box-chosen]="rightTeam.choice !== null && !rightTeam.isSpinning">

@@ -79,6 +79,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   private spinIntervals: any[] = [];
   private miscTimers: any[] = [];
   private lightningTimer: any = null;
+  private destroyed = false;
 
   // Sounds
   private cashSound: HTMLAudioElement | null = null;
@@ -239,8 +240,6 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   }
 
   private lockRpsChoice(team: RPSTeam) {
-    this.playSound(this.cashSound);
-
     if (team.spinInterval) {
       clearInterval(team.spinInterval);
       this.spinIntervals = this.spinIntervals.filter(i => i !== team.spinInterval);
@@ -303,7 +302,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.playSound(this.powerUpSound);
     this.cdr.detectChanges();
     clearTimeout(this.lightningTimer);
-    this.lightningTimer = setTimeout(() => {
+    this.lightningTimer = this.setTrackedTimeout(() => {
       this.lightningTimer = null;
       this.lightningVisible = false;
       this.cdr.detectChanges();
@@ -517,6 +516,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearAllTimers();
     if (this.resizeListener) {
       window.removeEventListener('resize', this.resizeListener);
@@ -597,7 +597,9 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   private setTrackedTimeout(callback: () => void, delay: number): any {
     const timer = setTimeout(() => {
       this.miscTimers = this.miscTimers.filter(t => t !== timer);
-      callback();
+      if (!this.destroyed) {
+        callback();
+      }
     }, delay);
     this.miscTimers.push(timer);
     return timer;

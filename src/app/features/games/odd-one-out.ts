@@ -45,6 +45,8 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   private correctSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private winSound: HTMLAudioElement | null = null;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   // Image handling
   private objectUrls: string[] = [];
@@ -102,13 +104,16 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearTimer();
+    this.clearPendingTimers();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
     [this.correctSound, this.buzzSound, this.winSound].forEach(s => s?.pause());
   }
 
   startGame() {
+    this.clearPendingTimers();
     this.remainingItems = [...this.items];
     this.score = 0;
     this.totalRounds = this.items.length;
@@ -209,7 +214,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
         this.roundActive = false;
         this.clearTimer();
         this.highlightCorrectItem();
-        setTimeout(() => this.nextRound(), 1500);
+        this.setGameTimeout(() => this.nextRound(), 1500);
       }
       this.cdr.detectChanges();
     }, 1000);
@@ -234,12 +239,12 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
       this.clearTimer();
       this.isRevealingOdd = true;   // non-odd items start fading out
       this.cdr.detectChanges();
-      setTimeout(() => this.nextRound(), 3000);
+      this.setGameTimeout(() => this.nextRound(), 3000);
     } else {
       this.playSound(this.buzzSound);
       const element = document.querySelector(`[data-item-id="${item.id}"]`);
       element?.classList.add('shake');
-      setTimeout(() => element?.classList.remove('shake'), 500);
+      this.setGameTimeout(() => element?.classList.remove('shake'), 500);
     }
     this.cdr.detectChanges();
   }
@@ -247,7 +252,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   private highlightCorrectItem() {
     const element = document.querySelector(`[data-item-id="${this.currentOddItem!.id}"]`);
     element?.classList.add('correct-glow');
-    setTimeout(() => element?.classList.remove('correct-glow'), 1000);
+    this.setGameTimeout(() => element?.classList.remove('correct-glow'), 1000);
   }
 
   private endGame() {
@@ -262,6 +267,22 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
     }
+  }
+
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
   }
 
   private parseBooleanParam(value: unknown, defaultValue: boolean): boolean {
@@ -288,6 +309,10 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
       this.objectUrls.push(url);
     }
     return this.imageUrls.get(itemId)!;
+  }
+
+  trackByRoundItem(index: number, roundItem: RoundItem): number | string {
+    return roundItem.item.id ?? `${roundItem.item.text ?? 'item'}-${index}`;
   }
 
   resetGame() {

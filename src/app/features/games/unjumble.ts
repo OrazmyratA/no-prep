@@ -48,6 +48,8 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   private currentItemAudio: HTMLAudioElement | null = null;
   private currentItemAudioUrl: string | null = null;
   private advanceTimer: number | null = null;
+  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -99,7 +101,9 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearAdvanceTimer();
+    this.clearFeedbackTimers();
     this.stopCurrentItemAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
@@ -276,6 +280,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
   resetGame() {
     this.clearAdvanceTimer();
+    this.clearFeedbackTimers();
     this.stopCurrentItemAudio();
     this.currentIndex = 0;
     this.gameFinished = false;
@@ -312,7 +317,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     this.playSound(this.flipSound, 0.3);
 
     // After animation, remove from source and add to target
-    setTimeout(() => {
+    this.setFeedbackTimeout(() => {
       const currentIdx = this.sourceWords.findIndex(w => w.id === word.id);
       if (currentIdx !== -1) this.sourceWords.splice(currentIdx, 1);
       this.targetWords.push(word);
@@ -343,7 +348,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     this.animatingTiles.set(tileId, { tileId, animationType: 'shake' });
     this.cdr.detectChanges();
 
-    setTimeout(() => {
+    this.setFeedbackTimeout(() => {
       this.animatingTiles.delete(tileId);
       this.cdr.detectChanges();
     }, 600);
@@ -387,5 +392,21 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       window.clearTimeout(this.advanceTimer);
       this.advanceTimer = null;
     }
+  }
+
+  private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.feedbackTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.feedbackTimers.add(timer);
+    return timer;
+  }
+
+  private clearFeedbackTimers() {
+    this.feedbackTimers.forEach(timer => clearTimeout(timer));
+    this.feedbackTimers.clear();
   }
 }

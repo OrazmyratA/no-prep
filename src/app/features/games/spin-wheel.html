@@ -68,7 +68,7 @@
 
         <!-- Multiple-choice options -->
         <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
-          <button *ngFor="let opt of quizOptions"
+          <button *ngFor="let opt of quizOptions; trackBy: trackByOptionId"
                   [attr.data-opt-id]="opt.id"
                   (click)="onQuizAnswer(opt)"
                   [class.fade-out]="fadeOutOptionIds.has(opt.id!)"

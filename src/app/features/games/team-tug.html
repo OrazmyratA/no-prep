@@ -10,7 +10,6 @@
     <div class="status-bar">
       <div class="score-pill left-pill" [class.highlight]="leftTeam.isAboutToWin">
         <strong>{{ leftTeam.score }}</strong>
-        <small>{{ 'teamTugClicks' | translate }}</small>
       </div>
       <div *ngIf="enableTimer && timerRemaining !== null" class="timer-pill" aria-live="polite">
         <span class="timer-label">{{ 'teamTugTimer' | translate }}</span>
@@ -18,7 +17,6 @@
       </div>
       <div class="score-pill right-pill" [class.highlight]="rightTeam.isAboutToWin">
         <strong>{{ rightTeam.score }}</strong>
-        <small>{{ 'teamTugClicks' | translate }}</small>
       </div>
     </div>
 
@@ -109,11 +107,9 @@
       <div class="winner-scoreboard">
         <div class="score-chip left-chip">
           <strong>{{ leftTeam.score }}</strong>
-          <small>{{ 'teamTugClicks' | translate }}</small>
         </div>
         <div class="score-chip right-chip">
           <strong>{{ rightTeam.score }}</strong>
-          <small>{{ 'teamTugClicks' | translate }}</small>
         </div>
       </div>
       <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
@@ -126,11 +122,9 @@
       <div class="winner-scoreboard">
         <div class="score-chip left-chip">
           <strong>{{ leftTeam.score }}</strong>
-          <small>{{ 'teamTugClicks' | translate }}</small>
         </div>
         <div class="score-chip right-chip">
           <strong>{{ rightTeam.score }}</strong>
-          <small>{{ 'teamTugClicks' | translate }}</small>
         </div>
       </div>
       <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
@@ -143,14 +137,12 @@
       <div class="winner-scoreboard">
         <div class="score-chip left-chip">
           <strong>{{ leftTeam.score }}</strong>
-          <small>{{ 'teamTugClicks' | translate }}</small>
         </div>
         <div class="score-chip right-chip">
           <strong>{{ rightTeam.score }}</strong>
-          <small>{{ 'teamTugClicks' | translate }}</small>
         </div>
       </div>
-      <p class="winner-clips">{{ 'teamTugTotalClicks' | translate }} {{ leftTeam.score }},{{ rightTeam.score }}</p>
+      <p class="winner-clips">{{ leftTeam.score }} / {{ rightTeam.score }}</p>
       <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
     </div>
   </div>

@@ -37,6 +37,8 @@ export class TestAbcComponent implements OnInit, OnDestroy {
   private captureSound: HTMLAudioElement | null = null;
   private activeAudio: HTMLAudioElement | null = null;
   private activeAudioUrl: string | null = null;
+  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
 
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
@@ -111,6 +113,8 @@ export class TestAbcComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.clearFeedbackTimers();
     this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
@@ -118,6 +122,7 @@ export class TestAbcComponent implements OnInit, OnDestroy {
   }
 
   private async buildQuestions() {
+    this.clearFeedbackTimers();
     this.stopActiveAudio();
     this.questions = [];
 
@@ -233,7 +238,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
       }
       this.cdr.detectChanges();
 
-      setTimeout(() => {
+      this.setFeedbackTimeout(() => {
         if (this.answeredQuestions.size >= this.questions.length) {
           this.gameFinished = true;
           this.playSound(this.winSound);
@@ -248,7 +253,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
       this.playSound(this.buzzSound);
       const el = document.querySelector(`[data-opt-id="${selectedItem.id}"]`);
       el?.classList.add('shake');
-      setTimeout(() => el?.classList.remove('shake'), 500);
+      this.setFeedbackTimeout(() => el?.classList.remove('shake'), 500);
     }
     this.cdr.detectChanges();
   }
@@ -338,6 +343,10 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
     return this.imageUrls.get(itemId)!;
   }
 
+  trackByOptionId(index: number, option: Item): number | string {
+    return option.id ?? option.text ?? index;
+  }
+
   resetGame() {
     this.stopActiveAudio();
     this.buildQuestions();
@@ -392,5 +401,21 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
       URL.revokeObjectURL(this.activeAudioUrl);
       this.activeAudioUrl = null;
     }
+  }
+
+  private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.feedbackTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.feedbackTimers.add(timer);
+    return timer;
+  }
+
+  private clearFeedbackTimers() {
+    this.feedbackTimers.forEach(timer => clearTimeout(timer));
+    this.feedbackTimers.clear();
   }
 }

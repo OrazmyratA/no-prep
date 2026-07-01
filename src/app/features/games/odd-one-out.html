@@ -22,12 +22,8 @@
 
     <section class="playground">
       <article class="rectangle left">
-        <div class="set-pill">
-          <span>{{ 'oddOneOutLeftSet' | translate }}</span>
-          <span>{{ (oddSide === 'left' ? 'oddOneOutOddHere' : 'oddOneOutMirrorSet') | translate }}</span>
-        </div>
         <div class="items-area">
-          <div *ngFor="let ri of leftSet"
+          <div *ngFor="let ri of leftSet; trackBy: trackByRoundItem"
                class="item-card"
                [attr.data-item-id]="ri.item.id"
                [style.top]="ri.position.top"
@@ -44,12 +40,8 @@
       </article>
 
       <article class="rectangle right">
-        <div class="set-pill">
-          <span>{{ 'oddOneOutRightSet' | translate }}</span>
-          <span>{{ (oddSide === 'right' ? 'oddOneOutOddHere' : 'oddOneOutMirrorSet') | translate }}</span>
-        </div>
         <div class="items-area">
-          <div *ngFor="let ri of rightSet"
+          <div *ngFor="let ri of rightSet; trackBy: trackByRoundItem"
                class="item-card"
                [attr.data-item-id]="ri.item.id"
                [style.top]="ri.position.top"

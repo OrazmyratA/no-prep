@@ -31,6 +31,9 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   private phaseTransitionTimer: any;
   private winPopupTimer: any;
   private animationFrame: any;
+  private layoutTimer: ReturnType<typeof setTimeout> | null = null;
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private destroyed = false;
   private activeAnimation:
     | { element: HTMLElement; startLeft: number; endLeft: number; duration: number; startedAt: number; elapsed: number }
     | null = null;
@@ -104,6 +107,7 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearTimers();
     this.resizeObserver?.disconnect();
     this.layoutSubscription?.unsubscribe();
@@ -139,7 +143,13 @@ private calculateGridLayout() {
   if (this.scrollPhase || this.gridItems.length === 0) return;
 
   // Wait one tick for the DOM to be ready
-  setTimeout(() => {
+  if (this.layoutTimer) {
+    clearTimeout(this.layoutTimer);
+  }
+  this.layoutTimer = setTimeout(() => {
+    this.layoutTimer = null;
+    if (this.destroyed) return;
+
     const shell = this.gameShellRef?.nativeElement;
     const gridContainer = this.gridContainerRef?.nativeElement;
     const header = shell?.querySelector('.watch-title') as HTMLElement | null;
@@ -212,6 +222,14 @@ private rebuildRecallRows() {
   for (let i = 0; i < this.gridItems.length; i += columns) {
     this.recallRows.push(this.gridItems.slice(i, i + columns));
   }
+}
+
+trackByRowIndex(index: number): number {
+  return index;
+}
+
+trackByItemId(index: number, item: Item): number | string {
+  return item.id ?? item.text ?? index;
 }
 
   private startGame() {
@@ -299,13 +317,21 @@ const endLeft = container.offsetWidth;    // fully off‑screen right         //
       clearTimeout(this.winPopupTimer);
       this.winPopupTimer = null;
     }
+    if (this.layoutTimer) {
+      clearTimeout(this.layoutTimer);
+      this.layoutTimer = null;
+    }
+    if (this.feedbackTimer) {
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
+    }
   }
 
 private runActiveAnimation() {
-  if (!this.activeAnimation || this.isPaused) return;
+  if (!this.activeAnimation || this.isPaused || this.destroyed) return;
 
   const animate = (time: number) => {
-    if (!this.activeAnimation || this.isPaused) return;
+    if (!this.activeAnimation || this.isPaused || this.destroyed) return;
 
     const state = this.activeAnimation;
     const elapsed = state.elapsed + (time - state.startedAt);
@@ -398,7 +424,13 @@ private runActiveAnimation() {
       const element = document.querySelectorAll('.grid-item')[index] as HTMLElement;
       if (element) {
         element.classList.add('incorrect');
-        setTimeout(() => element.classList.remove('incorrect'), 500);
+        if (this.feedbackTimer) {
+          clearTimeout(this.feedbackTimer);
+        }
+        this.feedbackTimer = setTimeout(() => {
+          this.feedbackTimer = null;
+          element.classList.remove('incorrect');
+        }, 500);
       }
       this.playSound(this.buzzSound, 0.4);
     }

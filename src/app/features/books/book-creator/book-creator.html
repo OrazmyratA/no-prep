@@ -4,58 +4,9 @@
       <button type="button" class="icon-btn" (click)="goBack()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
         <img src="assets/images/book/back.png" alt="">
       </button>
-
-      <div class="creator-title">
-        <input
-          *ngIf="book"
-          class="book-title-input"
-          [(ngModel)]="book.title"
-          (focus)="beginHistoryCapture()"
-          (ngModelChange)="markBookDirty()"
-          (blur)="commitHistoryCapture()"
-          [attr.aria-label]="'creatorBookTitle' | translate">
-      </div>
     </div>
 
     <div class="creator-actions creator-toolbar-middle" *ngIf="book">
-      <button
-        type="button"
-        class="icon-tool-btn page-strip-toggle-btn"
-        [class.active]="pageStripToggleActive"
-        (click)="togglePageStrip()"
-        [title]="'readerGoToPage' | translate"
-        [attr.aria-label]="'readerGoToPage' | translate">
-        <img src="assets/images/book/content.png" alt="">
-      </button>
-      <div class="toolbar-page-stepper" *ngIf="activePages.length > 1">
-        <button
-          type="button"
-          (click)="selectPage(activePageIndex - 1)"
-          [disabled]="activePageIndex <= 0"
-          [title]="'previousPage' | translate"
-          [attr.aria-label]="'previousPage' | translate">
-          <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
-        </button>
-        <input
-          type="number"
-          min="1"
-          [max]="activePages.length"
-          [(ngModel)]="pageJumpValue"
-          (focus)="startPageJump()"
-          (keydown.enter)="commitPageJump()"
-          (keydown.escape)="cancelPageJump()"
-          (blur)="commitPageJump()"
-          [attr.aria-label]="'readerGoToPage' | translate">
-        <span>/ {{ activePages.length }}</span>
-        <button
-          type="button"
-          (click)="selectPage(activePageIndex + 1)"
-          [disabled]="activePageIndex >= activePages.length - 1"
-          [title]="'nextPage' | translate"
-          [attr.aria-label]="'nextPage' | translate">
-          <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
-        </button>
-      </div>
       <div class="toolbar-group">
         <button type="button" class="icon-tool-btn" (click)="undo()" [disabled]="!canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">
           <img src="assets/images/book/undo.png" alt="">
@@ -85,6 +36,35 @@
         </button>
         <button type="button" class="icon-tool-btn" (click)="takeCreatorScreenshot()" [disabled]="creatorScreenshotting" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate">
           <img src="assets/images/book/screenshot.png" alt="">
+        </button>
+      </div>
+      <div class="toolbar-page-stepper" *ngIf="activePages.length > 1">
+        <button
+          type="button"
+          (click)="selectPage(activePageIndex - 1)"
+          [disabled]="activePageIndex <= 0"
+          [title]="'previousPage' | translate"
+          [attr.aria-label]="'previousPage' | translate">
+          <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+        </button>
+        <input
+          type="number"
+          min="1"
+          [max]="activePages.length"
+          [(ngModel)]="pageJumpValue"
+          (focus)="startPageJump()"
+          (keydown.enter)="commitPageJump()"
+          (keydown.escape)="cancelPageJump()"
+          (blur)="commitPageJump()"
+          [attr.aria-label]="'readerGoToPage' | translate">
+        <span>/ {{ activePages.length }}</span>
+        <button
+          type="button"
+          (click)="selectPage(activePageIndex + 1)"
+          [disabled]="activePageIndex >= activePages.length - 1"
+          [title]="'nextPage' | translate"
+          [attr.aria-label]="'nextPage' | translate">
+          <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
         </button>
       </div>
       <div class="toolbar-group insert-group">
@@ -186,6 +166,20 @@
       *ngIf="pageStripOpen || inspectorOpen"
       (click)="closeMobilePanels()">
     </div>
+    <div class="page-strip-collapsed-rail" *ngIf="showPageStripRail">
+      <button type="button" class="page-strip-toggle-btn rail-toggle" (click)="togglePageStrip()" title="Show pages" aria-label="Show pages">
+        <img class="drawer-toggle-icon page-strip-show-icon" src="assets/images/book/sidebar.png" alt="">
+      </button>
+    </div>
+    <button
+      type="button"
+      class="page-strip-toggle-btn page-strip-edge-toggle"
+      *ngIf="isPageStripVisible"
+      (click)="togglePageStrip()"
+      title="Hide pages"
+      aria-label="Hide pages">
+      <img class="drawer-toggle-icon page-strip-hide-icon" src="assets/images/book/sidebar.png" alt="">
+    </button>
     <aside class="page-strip page-lanes" [class.open]="pageStripOpen" (scroll)="onCreatorThumbScroll($event)">
       <section class="page-lane" [class.active-lane]="activePageSource === 'main'">
         <div class="lane-header">
@@ -501,15 +495,40 @@
 
     <div class="inspector-collapsed-rail" *ngIf="inspectorCollapsed">
       <button type="button" class="inspector-toggle-btn" (click)="toggleInspector()" title="Show settings" aria-label="Show settings">
-        <img class="drawer-toggle-icon drawer-toggle-hide inspector-show-icon" src="assets/images/book/hide.png" alt="">
+        <img class="drawer-toggle-icon inspector-show-icon" src="assets/images/book/sidebar.png" alt="">
       </button>
     </div>
 
+    <button
+      type="button"
+      class="inspector-toggle-btn inspector-edge-toggle"
+      *ngIf="isInspectorVisible"
+      (click)="toggleInspector()"
+      title="Hide settings"
+      aria-label="Hide settings">
+      <img class="drawer-toggle-icon inspector-hide-icon" src="assets/images/book/sidebar.png" alt="">
+    </button>
     <aside class="inspector" [class.open]="inspectorOpen" *ngIf="!inspectorCollapsed">
-      <button type="button" class="inspector-toggle-btn inspector-hide-btn" (click)="toggleInspector()" title="Hide settings" aria-label="Hide settings">
-        <img class="drawer-toggle-icon drawer-toggle-hide inspector-hide-icon" src="assets/images/book/hide.png" alt="">
-      </button>
       <h2 *ngIf="!selectedElement">{{ activePageLabel }}</h2>
+      <div class="page-title-editor" *ngIf="!selectedElement">
+        <input
+          *ngIf="activePageSource === 'main'"
+          class="book-title-input"
+          [(ngModel)]="book.title"
+          (focus)="beginHistoryCapture()"
+          (ngModelChange)="markBookDirty()"
+          (blur)="commitHistoryCapture()"
+          [attr.aria-label]="'creatorBookTitle' | translate">
+        <ng-container *ngIf="activePageSource === 'workbook' && activeWorkbook as workbook">
+          <input
+            class="book-title-input"
+            [(ngModel)]="workbook.title"
+            (focus)="beginHistoryCapture()"
+            (ngModelChange)="markBookDirty()"
+            (blur)="commitHistoryCapture()"
+            aria-label="Workbook title">
+        </ng-container>
+      </div>
       <div class="page-action-grid" *ngIf="selectedPage && !selectedElement">
         <button
           type="button"
@@ -894,8 +913,11 @@
                   min="0"
                   [max]="getGuideTrackDuration(track)"
                   step="0.01"
-                  [value]="previewGuideTrackId === track.id ? previewGuideCurrentTime : 0"
+                  [value]="getGuideTrackCurrentTime(track)"
+                  (pointerdown)="prepareGuideTrackSeek($event, element, track)"
+                  (click)="$event.stopPropagation()"
                   (input)="seekGuideTrack($event, element, track)"
+                  (change)="seekGuideTrack($event, element, track)"
                   aria-label="Audio track progress">
                 <button
                   *ngFor="let pin of track.pins"

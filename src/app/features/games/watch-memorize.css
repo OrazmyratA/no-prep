@@ -1,3 +1,9 @@
+.game-container {
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+
 /* ----- Scroll stage ----- */
 .scroll-stage {
   display: flex;
@@ -192,11 +198,41 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .game-container {
+    padding: 0.5rem !important;
+  }
+
+  .watch-title {
+    font-size: 1.45rem !important;
+    line-height: 1.1;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .scroll-container {
+    min-height: 210px;
+  }
+
   .scrolling-item {
     width: min(50vh, 85vw);
   }
   .scrolling-item p {
     font-size: 0.9rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .watch-title {
+    font-size: 1.25rem !important;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .scroll-stage {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .scroll-container {
+    height: 58vh;
+    min-height: 160px;
   }
 }
 
