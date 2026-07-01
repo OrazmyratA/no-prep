@@ -41,12 +41,6 @@ import {
   SpeakingSessionSummary
 } from './book-reader.types';
 import {
-  createSpeakingSessionAudioBlob,
-  createZipBlob,
-  escapeHtml,
-  getAudioExtension
-} from './book-reader-export-utils';
-import {
   clamp,
   getClampedFocusRect,
   getRotatedAspectRatio,
@@ -72,6 +66,7 @@ import { BookReaderTaskController } from './book-reader-task-controller';
 import { BookReaderGuideController } from './book-reader-guide-controller';
 import { BookReaderSpeakingPackController } from './book-reader-speaking-pack-controller';
 import { BookReaderSpeakingSessionController } from './book-reader-speaking-session-controller';
+import { BookReaderSpeakingPlaybackController } from './book-reader-speaking-playback-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -101,6 +96,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly guideController = new BookReaderGuideController(this);
   private readonly speakingPackController = new BookReaderSpeakingPackController(this);
   private readonly speakingSessionController = new BookReaderSpeakingSessionController(this);
+  private readonly speakingPlaybackController = new BookReaderSpeakingPlaybackController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -1833,43 +1829,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   async removeAiPack(pack: InstalledAiLanguagePack): Promise<void> {
     await this.speakingPackController.removeAiPack(pack);
   }
+
   toggleSpeakingAttemptPlayback(attempt: BookSpeakingAttempt, source: 'student' | 'ai' = 'student'): void {
-    const playbackId = this.getSpeakingAttemptPlaybackId(attempt, source);
-    if (this.playingSpeakingAttemptId === playbackId) {
-      this.stopSpeakingPlayback();
-      return;
-    }
-    const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
-    if (!blob) {
-      if (source === 'ai' && attempt.audio) {
-        void this.processSpeakingAttemptAudio(attempt);
-        return;
-      }
-      showAppNotification(source === 'ai'
-        ? 'This attempt has no speaking response yet.'
-        : 'This attempt has no recorded audio yet.', 'info');
-      return;
-    }
-    this.stopSpeakingPlayback();
-    const audio = new Audio(this.getSpeakingAttemptAudioUrl(attempt, source));
-    audio.volume = this.speakingVoiceVolume;
-    this.speakingPlaybackAudio = audio;
-    this.playingSpeakingAttemptId = playbackId;
-    audio.onended = () => this.stopSpeakingPlayback();
-    audio.onerror = () => {
-      this.stopSpeakingPlayback();
-      showAppNotification(source === 'ai'
-        ? 'Could not play this speaking response.'
-        : 'Could not play this speaking attempt.', 'error');
-    };
-    void audio.play()
-      .then(() => this.updateSpeakingPlaybackProgress())
-      .catch(() => {
-        this.stopSpeakingPlayback();
-        showAppNotification(source === 'ai'
-          ? 'Could not play this speaking response.'
-          : 'Could not play this speaking attempt.', 'error');
-      });
+    this.speakingPlaybackController.toggleSpeakingAttemptPlayback(attempt, source);
   }
 
   private async processSpeakingAttemptAudio(attempt: BookSpeakingAttempt): Promise<void> {
@@ -1892,199 +1854,32 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async exportSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
-    if (!this.book) return;
-    try {
-      const element = this.findElementById(attempt.elementId);
-      const folder = 'No-Prep Speaking Attempts';
-      let audioFilename = '';
-      if (attempt.audio) {
-        const extension = getAudioExtension(attempt.audioMimeType || attempt.audio.type);
-        audioFilename = `speaking-attempt-${attempt.attemptId}.${extension}`;
-        await this.platformFile.saveBlobToDownloads(attempt.audio, audioFilename, folder);
-      }
-      let responseAudioFilename = '';
-      if (attempt.responseAudio) {
-        const extension = getAudioExtension(attempt.responseAudioMimeType || attempt.responseAudio.type);
-        responseAudioFilename = `speaking-attempt-${attempt.attemptId}-ai-response.${extension}`;
-        await this.platformFile.saveBlobToDownloads(attempt.responseAudio, responseAudioFilename, folder);
-      }
-      const report = [
-        '<!doctype html><html><head><meta charset="utf-8">',
-        '<title>NoPrep Speaking Attempt</title>',
-        '<style>body{font-family:Arial,sans-serif;max-width:760px;margin:32px auto;line-height:1.5;color:#111827}section{border:1px solid #d1d5db;border-radius:12px;padding:18px;margin:14px 0}h1{font-size:24px}dt{font-weight:700}dd{margin:0 0 10px}</style>',
-        '</head><body>',
-        `<h1>${escapeHtml(this.book.title || 'NoPrep Book')} Speaking Attempt</h1>`,
-        '<section>',
-        `<dl><dt>Task</dt><dd>${escapeHtml(this.getSpeakingAiTitle(element))}</dd>`,
-        `<dt>Language</dt><dd>${escapeHtml(this.getSpeakingAiLanguage(element))}</dd>`,
-        `<dt>Started</dt><dd>${escapeHtml(attempt.startedAt)}</dd>`,
-        `<dt>Duration</dt><dd>${Math.round(attempt.durationSeconds || 0)} seconds</dd>`,
-        `<dt>Student audio file</dt><dd>${audioFilename ? escapeHtml(audioFilename) : 'No audio recorded'}</dd>`,
-        `<dt>Teacher voice file</dt><dd>${responseAudioFilename ? escapeHtml(responseAudioFilename) : 'No speaking response recorded'}</dd></dl>`,
-        '</section>',
-        '<section><h2>Transcript</h2>',
-        `<p>${escapeHtml(attempt.transcript || 'Speech transcript will appear here after the Speaking Pack is ready.')}</p>`,
-        '</section></body></html>'
-      ].join('');
-      await this.platformFile.saveTextToDownloads(
-        report,
-        `speaking-attempt-${attempt.attemptId}.html`,
-        'text/html',
-        folder
-      );
-      showAppNotification('Speaking attempt exported.', 'success');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not export speaking attempt.';
-      showAppNotification(`Export failed: ${message}`, 'error');
-    }
+    await this.speakingPlaybackController.exportSpeakingAttempt(attempt);
   }
 
   async exportSpeakingSession(session: SpeakingSessionSummary): Promise<void> {
-    if (!this.book) return;
-    try {
-      const firstAttempt = session.attempts[0];
-      const element = firstAttempt ? this.findElementById(firstAttempt.elementId) : this.activeSpeakingElement;
-      const safeSessionId = this.createSpeakingExportSlug(session);
-      const transcriptSections: string[] = [];
-      const conversationAudioFilename = 'conversation.wav';
-
-      const orderedAttempts = this.sortSpeakingAttemptsByTurn(session.attempts);
-      const conversationAudio = await createSpeakingSessionAudioBlob(orderedAttempts);
-
-      for (const [index, attempt] of orderedAttempts.entries()) {
-        const turnNumber = Number.isFinite(Number(attempt.turnIndex)) ? Number(attempt.turnIndex) + 1 : index + 1;
-        transcriptSections.push([
-          `<h3>Turn ${turnNumber}</h3>`,
-          `<p><strong>Student:</strong> ${escapeHtml(this.getSpeakingAttemptStudentText(attempt) || '[no speech detected]')}</p>`,
-          `<p><strong>AI:</strong> ${escapeHtml(this.getSpeakingAttemptAiText(attempt) || '[no AI response]')}</p>`
-        ].join(''));
-      }
-
-      const report = [
-        '<!doctype html><html><head><meta charset="utf-8">',
-        '<title>NoPrep Speaking Conversation</title>',
-        '<style>body{font-family:Arial,sans-serif;max-width:820px;margin:32px auto;line-height:1.5;color:#111827}section{border:1px solid #d1d5db;border-radius:12px;padding:18px;margin:14px 0}h1{font-size:24px}.files{white-space:pre-wrap;color:#475569}</style>',
-        '</head><body>',
-        `<h1>${escapeHtml(this.book.title || 'NoPrep Book')} Speaking Conversation</h1>`,
-        '<section>',
-        `<p><strong>Task:</strong> ${escapeHtml(this.getSpeakingAiTitle(element))}</p>`,
-        `<p><strong>Language:</strong> ${escapeHtml(this.getSpeakingAiLanguage(element))}</p>`,
-        `<p><strong>Started:</strong> ${escapeHtml(session.startedAt)}</p>`,
-        `<p><strong>Turns:</strong> ${session.attempts.length}</p>`,
-        `<p><strong>Total audio time:</strong> ${Math.round(session.durationSeconds || 0)} seconds</p>`,
-        `<p class="files"><strong>Conversation audio:</strong>\n${escapeHtml(conversationAudio ? conversationAudioFilename : 'No combined audio could be created')}</p>`,
-        '</section>',
-        `<section><h2>Conversation</h2>${transcriptSections.join('')}</section>`,
-        '</body></html>'
-      ].join('');
-
-      const packageBlob = await createZipBlob([
-        { name: 'conversation.html', data: report },
-        ...(conversationAudio ? [{ name: conversationAudioFilename, data: conversationAudio }] : [])
-      ]);
-      await this.platformFile.saveBlobToDownloads(packageBlob, `speaking-${safeSessionId}-conversation.zip`);
-      showAppNotification('Speaking conversation exported.', 'success');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not export speaking conversation.';
-      showAppNotification(`Export failed: ${message}`, 'error');
-    }
+    await this.speakingPlaybackController.exportSpeakingSession(session);
   }
 
   async toggleSpeakingSessionPlayback(session: SpeakingSessionSummary): Promise<void> {
-    const playbackId = this.getSpeakingSessionPlaybackId(session);
-    if (this.playingSpeakingAttemptId === playbackId && this.speakingPlaybackAudio) {
-      if (this.speakingPlaybackAudio.paused) {
-        try {
-          await this.speakingPlaybackAudio.play();
-          this.updateSpeakingPlaybackProgress();
-        } catch {
-          this.stopSpeakingPlayback();
-          showAppNotification('Could not play this speaking conversation.', 'error');
-        }
-      } else {
-        this.pauseSpeakingPlayback();
-      }
-      this.forceUiRefresh();
-      return;
-    }
-
-    const conversationAudio = await createSpeakingSessionAudioBlob(this.sortSpeakingAttemptsByTurn(session.attempts));
-    if (!conversationAudio) {
-      showAppNotification('This conversation has no recorded audio yet.', 'info');
-      return;
-    }
-
-    this.stopSpeakingPlayback();
-    const url = URL.createObjectURL(conversationAudio);
-    const audio = new Audio(url);
-    audio.volume = this.speakingVoiceVolume;
-    this.speakingSessionPlaybackUrl = url;
-    this.speakingPlaybackAudio = audio;
-    this.playingSpeakingAttemptId = playbackId;
-    audio.onended = () => this.stopSpeakingPlayback();
-    audio.onerror = () => {
-      this.stopSpeakingPlayback();
-      showAppNotification('Could not play this speaking conversation.', 'error');
-    };
-    try {
-      await audio.play();
-      this.updateSpeakingPlaybackProgress();
-    } catch {
-      this.stopSpeakingPlayback();
-      showAppNotification('Could not play this speaking conversation.', 'error');
-    }
+    await this.speakingPlaybackController.toggleSpeakingSessionPlayback(session);
   }
 
   isSpeakingSessionPlaying(session: SpeakingSessionSummary): boolean {
-    return this.playingSpeakingAttemptId === this.getSpeakingSessionPlaybackId(session)
-      && !!this.speakingPlaybackAudio
-      && !this.speakingPlaybackAudio.paused;
+    return this.speakingPlaybackController.isSpeakingSessionPlaying(session);
   }
 
   async deleteSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
-    const attempts = this.speakingAttempts.get(attempt.elementId) ?? [];
-    this.speakingAttempts.set(attempt.elementId, attempts.filter((item) => item.key !== attempt.key));
-    if (this.playingSpeakingAttemptId?.startsWith(`${attempt.attemptId}:`)) this.stopSpeakingPlayback();
-    this.revokeSpeakingAttemptAudioUrl(attempt.key);
-    await this.speakingAttemptService.delete(attempt.key);
-    this.forceUiRefresh();
+    await this.speakingPlaybackController.deleteSpeakingAttempt(attempt);
   }
 
   async deleteSpeakingSession(session: SpeakingSessionSummary): Promise<void> {
-    if (!session.attempts.length) return;
-    if (session.sessionId === this.activeSpeakingSessionId && !window.confirm('Delete the active speaking conversation?')) return;
-    if (this.playingSpeakingAttemptId === this.getSpeakingSessionPlaybackId(session)) this.stopSpeakingPlayback();
-    this.speakingSessionNameDrafts.delete(session.sessionId);
-    for (const attempt of session.attempts) {
-      const attempts = this.speakingAttempts.get(attempt.elementId) ?? [];
-      this.speakingAttempts.set(attempt.elementId, attempts.filter((item) => item.key !== attempt.key));
-      if (this.playingSpeakingAttemptId?.startsWith(`${attempt.attemptId}:`)) this.stopSpeakingPlayback();
-      this.revokeSpeakingAttemptAudioUrl(attempt.key);
-      await this.speakingAttemptService.delete(attempt.key);
-    }
-    if (session.sessionId === this.activeSpeakingSessionId) {
-      this.resetSpeakingSessionState();
-      this.moveOwlToCorner();
-    }
-    showAppNotification('Speaking conversation deleted.', 'success');
-    this.forceUiRefresh();
+    await this.speakingPlaybackController.deleteSpeakingSession(session);
   }
 
   async renameSpeakingSession(session: SpeakingSessionSummary, value: string): Promise<void> {
-    const name = String(value || '').trim();
-    const currentName = session.sessionName.trim();
-    const defaultName = this.formatSpeakingSessionDefaultName(session);
-    const storedName = name && name !== defaultName ? name : '';
-    this.speakingSessionNameDrafts.set(session.sessionId, storedName || defaultName);
-    if (storedName === currentName) return;
-    session.sessionName = storedName;
-    for (const attempt of session.attempts) {
-      attempt.sessionName = storedName || undefined;
-      await this.speakingAttemptService.save(attempt);
-    }
-    this.forceUiRefresh();
+    await this.speakingPlaybackController.renameSpeakingSession(session, value);
   }
-
   getElementAssetUrl(element: BookElement): string {
     if (!this.book) return '';
     const src = String(element.data?.['src'] || '');
@@ -3171,104 +2966,21 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private stopSpeakingPlayback(): void {
-    if (this.speakingPlaybackFrame) {
-      cancelAnimationFrame(this.speakingPlaybackFrame);
-      this.speakingPlaybackFrame = 0;
-    }
-    if (this.speakingPlaybackAudio) {
-      this.speakingPlaybackAudio.pause();
-      this.speakingPlaybackAudio = null;
-    }
-    if (this.speakingSessionPlaybackUrl) {
-      URL.revokeObjectURL(this.speakingSessionPlaybackUrl);
-      this.speakingSessionPlaybackUrl = null;
-    }
-    this.playingSpeakingAttemptId = null;
-    this.forceUiRefresh();
-  }
-
-  private pauseSpeakingPlayback(): void {
-    if (this.speakingPlaybackFrame) {
-      cancelAnimationFrame(this.speakingPlaybackFrame);
-      this.speakingPlaybackFrame = 0;
-    }
-    this.speakingPlaybackAudio?.pause();
+    this.speakingPlaybackController.stopSpeakingPlayback();
   }
 
   private playSpeakingAttemptAudio(attempt: BookSpeakingAttempt, source: 'student' | 'ai'): void {
-    const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
-    if (!blob) return;
-    const playbackId = this.getSpeakingAttemptPlaybackId(attempt, source);
-    this.stopSpeakingPlayback();
-    const audio = new Audio(this.getSpeakingAttemptAudioUrl(attempt, source));
-    audio.volume = this.speakingVoiceVolume;
-    this.speakingPlaybackAudio = audio;
-    this.playingSpeakingAttemptId = playbackId;
-    audio.onended = () => this.stopSpeakingPlayback();
-    audio.onerror = () => this.stopSpeakingPlayback();
-    void audio.play()
-      .then(() => this.updateSpeakingPlaybackProgress())
-      .catch(() => this.stopSpeakingPlayback());
-  }
-
-  private updateSpeakingPlaybackProgress(): void {
-    if (!this.speakingPlaybackAudio || !this.playingSpeakingAttemptId) return;
-    const audio = this.speakingPlaybackAudio;
-    const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
-    this.speakingProgress[this.playingSpeakingAttemptId] = duration ? (audio.currentTime / duration) * 100 : 0;
-    this.forceUiRefresh();
-    this.speakingPlaybackFrame = requestAnimationFrame(() => this.updateSpeakingPlaybackProgress());
-  }
-
-  private getSpeakingAttemptPlaybackId(attempt: BookSpeakingAttempt, source: 'student' | 'ai'): string {
-    return `${attempt.attemptId}:${source}`;
-  }
-
-  private getSpeakingSessionPlaybackId(session: SpeakingSessionSummary): string {
-    return `session:${session.sessionId}`;
-  }
-
-  private getSpeakingAttemptAudioCacheKey(attempt: BookSpeakingAttempt, source: 'student' | 'ai'): string {
-    return `${attempt.key}:${source}`;
-  }
-
-  private getSpeakingAttemptAudioUrl(attempt: BookSpeakingAttempt, source: 'student' | 'ai' = 'student'): string {
-    const key = this.getSpeakingAttemptAudioCacheKey(attempt, source);
-    const cached = this.speakingAttemptAudioUrls.get(key);
-    if (cached) return cached;
-    const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
-    const url = URL.createObjectURL(blob as Blob);
-    this.speakingAttemptAudioUrls.set(key, url);
-    return url;
-  }
-
-  private revokeSpeakingAttemptAudioUrl(key: string): void {
-    for (const [cacheKey, url] of Array.from(this.speakingAttemptAudioUrls.entries())) {
-      if (cacheKey === key || cacheKey.startsWith(`${key}:`)) {
-        URL.revokeObjectURL(url);
-        this.speakingAttemptAudioUrls.delete(cacheKey);
-      }
-    }
+    this.speakingPlaybackController.playSpeakingAttemptAudio(attempt, source);
   }
 
   private revokeSpeakingAttemptAudioUrls(): void {
-    for (const url of this.speakingAttemptAudioUrls.values()) {
-      URL.revokeObjectURL(url);
-    }
-    this.speakingAttemptAudioUrls.clear();
+    this.speakingPlaybackController.revokeSpeakingAttemptAudioUrls();
   }
 
   private playSpeakingUiSound(src: string): void {
     const audio = new Audio(src);
     audio.volume = 0.85;
     void audio.play().catch(() => undefined);
-  }
-
-  private createSpeakingExportSlug(session: SpeakingSessionSummary): string {
-    return this.formatSpeakingSession(session)
-      .replace(/[^0-9A-Za-z]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 64) || 'speaking-session';
   }
 
   private unlockSpeakingAi(element: BookElement, page: BookPage): void {
