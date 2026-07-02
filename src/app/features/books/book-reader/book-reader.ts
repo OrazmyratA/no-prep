@@ -51,11 +51,6 @@ import {
   getSafeBookTopicItems
 } from './book-reader-topic-snapshot';
 import {
-  getYouTubeEmbedUrlString,
-  getYouTubeVideoId,
-  isExternalUrl
-} from './book-reader-url-utils';
-import {
   clonePageAnnotations,
   cloneStrokeAnnotation,
   cloneTextAnnotation,
@@ -70,6 +65,7 @@ import { BookReaderSpeakingPlaybackController } from './book-reader-speaking-pla
 import { BookReaderSpeakingRecordingController } from './book-reader-speaking-recording-controller';
 import { BookReaderSpeakingAiController } from './book-reader-speaking-ai-controller';
 import { BookReaderNavigationController } from './book-reader-navigation-controller';
+import { BookReaderMediaController } from './book-reader-media-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -103,6 +99,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly speakingRecordingController = new BookReaderSpeakingRecordingController(this);
   private readonly speakingAiController = new BookReaderSpeakingAiController(this);
   private readonly navigationController = new BookReaderNavigationController(this);
+  private readonly mediaController = new BookReaderMediaController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -1726,56 +1723,35 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.speakingPlaybackController.renameSpeakingSession(session, value);
   }
   getElementAssetUrl(element: BookElement): string {
-    if (!this.book) return '';
-    const src = String(element.data?.['src'] || '');
-    if (isExternalUrl(src)) {
-      return src;
-    }
-    return src ? this.getCachedAssetUrl(src) : '';
+    return this.mediaController.getElementAssetUrl(element);
   }
 
   getElementMediaUrl(element: BookElement): string {
-    if (!this.book) return '';
-    const src = String(element.data?.['src'] || '');
-    if (isExternalUrl(src)) {
-      return src;
-    }
-    return src ? this.getCachedAssetFileUrl(src) : '';
+    return this.mediaController.getElementMediaUrl(element);
   }
 
   isYouTubeVideo(element: BookElement | null): boolean {
-    return !!getYouTubeEmbedUrlString(element);
+    return this.mediaController.isYouTubeVideo(element);
   }
 
   getYouTubeEmbedUrl(element: BookElement | null): SafeResourceUrl | null {
-    const embedUrl = getYouTubeEmbedUrlString(element);
-    return embedUrl ? this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl) : null;
+    return this.mediaController.getYouTubeEmbedUrl(element);
   }
 
   getYouTubeWatchUrl(element: BookElement | null): string {
-    const videoId = getYouTubeVideoId(element);
-    return videoId ? `https://www.youtube.com/watch?v=${videoId}` : this.getElementAssetUrl(element as BookElement);
+    return this.mediaController.getYouTubeWatchUrl(element);
   }
 
   openVideoExternally(element: BookElement | null): void {
-    if (!element || element.type !== 'video') return;
-    const url = this.getYouTubeWatchUrl(element);
-    const api = (window as any)?.electronAPI;
-    if (typeof api?.openExternalUrl === 'function') {
-      void api.openExternalUrl(url);
-      return;
-    }
-    window.open(url, '_blank', 'noopener');
+    this.mediaController.openVideoExternally(element);
   }
 
   getElementText(element: BookElement): string {
-    return String(element.data?.['content'] || element.data?.['text'] || element.data?.['label'] || element.type);
+    return this.mediaController.getElementText(element);
   }
 
   getPagePdfUrl(page: BookPage): string {
-    if (!this.book || page.type !== 'pdf') return '';
-    const sourcePdf = page.sourcePdf || this.activeWorkbook?.sourcePdf || this.book.sourcePdf || '';
-    return sourcePdf ? this.getCachedAssetUrl(sourcePdf) : '';
+    return this.mediaController.getPagePdfUrl(page);
   }
 
   onPdfPageSize(size: { width: number; height: number }): void {
