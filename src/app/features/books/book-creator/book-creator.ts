@@ -42,6 +42,7 @@ import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
+import { BookCreatorMediaController } from './book-creator-media-controller';
 import { BookCreatorNavigationController } from './book-creator-navigation-controller';
 import { BookCreatorPageImportController } from './book-creator-page-import-controller';
 import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
@@ -234,6 +235,7 @@ Tomorrow I will help my mom.`;
   private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
+  private readonly mediaController = new BookCreatorMediaController(this);
   private readonly navigationController = new BookCreatorNavigationController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
@@ -416,15 +418,11 @@ Tomorrow I will help my mom.`;
   }
 
   async addImage(): Promise<void> {
-    if (!this.book) return;
-    this.captureHistory();
-    this.addElement('image', { src: '', label: 'Image' }, 0.16, 0.12);
+    await this.mediaController.addImage();
   }
 
   async addVideo(): Promise<void> {
-    if (!this.book) return;
-    this.captureHistory();
-    this.addElement('video', { src: '', label: 'Video' }, 0.12, 0.1);
+    await this.mediaController.addVideo();
   }
 
   async addWorkbookFromPdf(): Promise<void> {
@@ -440,8 +438,7 @@ Tomorrow I will help my mom.`;
   }
 
   addImageToCurrentPage(): void {
-    this.ensureSelectedPageForStarter();
-    this.addImage();
+    this.mediaController.addImageToCurrentPage();
   }
 
   addFocus(): void {
@@ -519,8 +516,7 @@ Tomorrow I will help my mom.`;
   }
 
   addAnswerKey(): void {
-    this.captureHistory();
-    this.addElement('answerKey', { src: '', label: 'Answer key' }, 0.08, 0.08);
+    this.mediaController.addAnswerKey();
   }
 
   addSpeakingAi(): void {
@@ -571,39 +567,15 @@ Tomorrow I will help my mom.`;
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
-    if (!this.book || (element.type !== 'image' && element.type !== 'answerKey')) return;
-    this.captureHistory();
-
-    if (!blob) {
-      element.data['src'] = '';
-      element.data['label'] = element.type === 'answerKey' ? 'Answer key' : 'Image';
-      return;
-    }
-
-    const dataUrl = await this.blobToDataUrl(blob);
-    const prefix = element.type === 'answerKey' ? 'answer-key' : 'image';
-    const saved = await this.bookLibrary.saveAssetData(this.book.id, 'images', dataUrl, prefix);
-    if (!saved) return;
-    element.data['src'] = saved.relativePath;
-    element.data['label'] = saved.fileName;
+    await this.mediaController.onBookImageSelected(blob, element);
   }
 
   async uploadVideoElement(element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'video') return;
-    const asset = await this.bookLibrary.addAsset(this.book.id, 'videos', [
-      { name: 'Videos', extensions: ['mp4', 'webm', 'ogg', 'mov'] }
-    ]);
-    if (!asset) return;
-    this.captureHistory();
-    element.data['src'] = asset.relativePath;
-    element.data['label'] = asset.fileName;
+    await this.mediaController.uploadVideoElement(element);
   }
 
   updateVideoUrl(element: BookElement, value: string): void {
-    if (element.type !== 'video') return;
-    element.data['src'] = String(value || '').trim();
-    element.data['label'] = element.data['src'] ? 'Video URL' : 'Video';
-    this.markBookDirty();
+    this.mediaController.updateVideoUrl(element, value);
   }
 
   async addGuideDotAudio(element: BookElement): Promise<void> {
@@ -1331,12 +1303,7 @@ Tomorrow I will help my mom.`;
   }
 
   getElementAssetUrl(element: BookElement): string {
-    if (!this.book) return '';
-    const src = String(element.data?.['src'] || '');
-    if (this.isExternalUrl(src)) {
-      return src;
-    }
-    return src ? this.getCachedAssetUrl(src) : '';
+    return this.mediaController.getElementAssetUrl(element);
   }
 
   getSelectedElementTypeLabel(): string {
@@ -1362,9 +1329,7 @@ Tomorrow I will help my mom.`;
   }
 
   getPagePdfUrl(page: BookPage, workbook?: BookWorkbook | null): string {
-    if (!this.book) return '';
-    const sourcePdf = page.sourcePdf || workbook?.sourcePdf || this.book.sourcePdf || '';
-    return sourcePdf ? this.getCachedAssetUrl(sourcePdf) : '';
+    return this.mediaController.getPagePdfUrl(page, workbook);
   }
 
   getPageLinkCount(page: BookPage): number {
@@ -1955,12 +1920,7 @@ Tomorrow I will help my mom.`;
   }
 
   private isExternalUrl(value: string): boolean {
-    try {
-      const url = new URL(value);
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
-    }
+    return this.mediaController.isExternalUrl(value);
   }
 
   private refreshSelectedPageRender(): void {
@@ -2125,14 +2085,7 @@ Tomorrow I will help my mom.`;
   }
 
   private getCachedAssetUrl(relativePath: string): string {
-    if (!this.book || !relativePath) return '';
-    const key = `${this.book.id}:${relativePath}`;
-    let url = this.assetUrlCache.get(key);
-    if (!url) {
-      url = this.bookLibrary.getAssetUrl(this.book.id, relativePath);
-      this.assetUrlCache.set(key, url);
-    }
-    return url;
+    return this.mediaController.getCachedAssetUrl(relativePath);
   }
 
   private getWarmNavigationBook(bookId: string): InteractiveBook | null {
