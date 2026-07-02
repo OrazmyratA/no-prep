@@ -61,6 +61,7 @@ import { BookReaderMediaController } from './book-reader-media-controller';
 import { BookReaderAnnotationController } from './book-reader-annotation-controller';
 import { BookReaderFocusController } from './book-reader-focus-controller';
 import { BookReaderVideoController } from './book-reader-video-controller';
+import { BookReaderLayoutController } from './book-reader-layout-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -98,6 +99,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly annotationController = new BookReaderAnnotationController(this);
   private readonly focusController = new BookReaderFocusController(this);
   private readonly videoController = new BookReaderVideoController(this);
+  private readonly layoutController = new BookReaderLayoutController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -107,7 +109,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   zoom = 1;
   twoPageMode = false;
   readerSpreadWidthPx: number | null = null;
-  private readerLayoutFrame = 0;
   private readerInteractionFrame = 0;
   private drawingCanvasFrame = 0;
   pdfUrl = '';
@@ -212,7 +213,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private routeSubscription?: Subscription;
   private lastTextPlacementAt = 0;
   private annotationSaveTimer: number | null = null;
-  private resizeTimer: number | null = null;
   private guideAudioUiFrame = 0;
   private speakingTimer: number | null = null;
   private speakingMediaRecorder: MediaRecorder | null = null;
@@ -278,9 +278,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopSpeakingPlayback();
     void this.flushAnnotationsNow();
     void this.flushTaskResponses();
-    if (this.readerLayoutFrame) {
-      cancelAnimationFrame(this.readerLayoutFrame);
-    }
+    this.layoutController.destroy();
     if (this.readerInteractionFrame) {
       cancelAnimationFrame(this.readerInteractionFrame);
     }
@@ -302,9 +300,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.revokeSpeakingAttemptAudioUrls();
     if (this.guideOverlayPositionFrame) {
       cancelAnimationFrame(this.guideOverlayPositionFrame);
-    }
-    if (this.resizeTimer !== null) {
-      window.clearTimeout(this.resizeTimer);
     }
     if (this.guideOverlayTimer !== null) {
       window.clearTimeout(this.guideOverlayTimer);
@@ -1781,14 +1776,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('window:resize')
   onWindowResize(): void {
-    if (this.resizeTimer !== null) {
-      window.clearTimeout(this.resizeTimer);
-    }
-    this.resizeTimer = window.setTimeout(() => {
-      this.resizeTimer = null;
-      this.updateReaderSpreadWidth();
-      this.moveOwlToCorner();
-    }, 120);
+    this.layoutController.onWindowResize();
   }
 
   @HostListener('document:pointermove', ['$event'])
@@ -1907,104 +1895,35 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updateReaderSpreadWidth(afterLayout?: () => void): void {
-    if (this.readerLayoutFrame) {
-      cancelAnimationFrame(this.readerLayoutFrame);
-    }
-    this.readerLayoutFrame = requestAnimationFrame(() => {
-      this.readerLayoutFrame = 0;
-      const stage = this.readerStage?.nativeElement;
-      if (!stage) return;
-      const columns = this.twoPageMode && this.companionPage && !this.expandedFocusElement ? 2 : 1;
-      const stageRect = stage.getBoundingClientRect();
-      const drawer = this.pageDrawerOpen
-        ? stage.querySelector<HTMLElement>('.reader-page-drawer')?.getBoundingClientRect()
-        : null;
-      const computedStyle = window.getComputedStyle(stage);
-      const gap = Number.parseFloat(computedStyle.columnGap || computedStyle.gap || '0') || 0;
-      const availableWidth = Math.max(220, stageRect.width - (drawer?.width ?? 0) - (drawer ? gap : 0) - 28);
-      const availableHeight = Math.max(260, stageRect.height - 28);
-      const pageAspect = this.getCurrentFrameAspectRatioNumber();
-      const fitByHeight = availableHeight * pageAspect * columns;
-      const fitWidth = Math.min(availableWidth, fitByHeight);
-      this.readerSpreadWidthPx = Math.max(220, fitWidth * this.zoom);
-      this.cdr.detectChanges();
-      this.resetDrawingCanvas();
-      if (afterLayout) {
-        requestAnimationFrame(() => {
-          afterLayout();
-          requestAnimationFrame(afterLayout);
-        });
-      }
-    });
+    this.layoutController.updateReaderSpreadWidth(afterLayout);
   }
 
   private shouldAnchorTwoPageZoom(previousZoom: number): boolean {
-    return this.twoPageMode && !!this.companionPage && this.zoom > 1 && this.zoom !== previousZoom;
+    return this.layoutController.shouldAnchorTwoPageZoom(previousZoom);
   }
 
   private getSinglePageZoomAnchor(): { x: number; y: number } | null {
-    const stage = this.readerStage?.nativeElement;
-    const shell = this.readerCanvasShell?.nativeElement;
-    if (!stage || !shell || shell.offsetWidth <= 0 || shell.offsetHeight <= 0) return null;
-    return {
-      x: clamp((stage.scrollLeft + stage.clientWidth / 2 - shell.offsetLeft) / shell.offsetWidth, 0, 1),
-      y: clamp((stage.scrollTop + stage.clientHeight / 2 - shell.offsetTop) / shell.offsetHeight, 0, 1)
-    };
+    return this.layoutController.getSinglePageZoomAnchor();
   }
 
   private restoreSinglePageZoomAnchor(anchor: { x: number; y: number }): void {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const stage = this.readerStage?.nativeElement;
-        const shell = this.readerCanvasShell?.nativeElement;
-        if (!stage || !shell || this.twoPageMode || this.zoom <= 1) return;
-        const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
-        const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
-        stage.scrollLeft = clamp(
-          shell.offsetLeft + shell.offsetWidth * anchor.x - stage.clientWidth / 2,
-          0,
-          maxLeft
-        );
-        stage.scrollTop = clamp(
-          shell.offsetTop + shell.offsetHeight * anchor.y - stage.clientHeight / 2,
-          0,
-          maxTop
-        );
-      });
-    });
+    this.layoutController.restoreSinglePageZoomAnchor(anchor);
   }
 
   private anchorTwoPageZoomToTopLeft(): void {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const stage = this.readerStage?.nativeElement;
-        if (!stage || !this.twoPageMode || !this.companionPage || this.zoom <= 1) return;
-        stage.scrollLeft = 0;
-        stage.scrollTop = 0;
-      });
-    });
+    this.layoutController.anchorTwoPageZoomToTopLeft();
   }
 
   private centerReaderZoom(): void {
-    const stage = this.readerStage?.nativeElement;
-    const shell = this.readerCanvasShell?.nativeElement;
-    if (!stage || !shell) return;
-    const stageRect = stage.getBoundingClientRect();
-    const shellRect = shell.getBoundingClientRect();
-    const maxLeft = Math.max(0, stage.scrollWidth - stage.clientWidth);
-    const maxTop = Math.max(0, stage.scrollHeight - stage.clientHeight);
-    const deltaX = shellRect.left + shellRect.width / 2 - (stageRect.left + stageRect.width / 2);
-    const deltaY = shellRect.top + shellRect.height / 2 - (stageRect.top + stageRect.height / 2);
-    stage.scrollLeft = clamp(stage.scrollLeft + deltaX, 0, maxLeft);
-    stage.scrollTop = clamp(stage.scrollTop + deltaY, 0, maxTop);
+    this.layoutController.centerReaderZoom();
   }
 
   private getPageAspectRatioNumber(page = this.currentPage): number {
-    return this.focusController.getPageAspectRatioNumber(page);
+    return this.layoutController.getPageAspectRatioNumber(page);
   }
 
   private getCurrentFrameAspectRatioNumber(): number {
-    return this.focusController.getCurrentFrameAspectRatioNumber();
+    return this.layoutController.getCurrentFrameAspectRatioNumber();
   }
 
   private syncSelectedTextBox(pageId = this.selectedText?.pageId, textId = this.selectedText?.textId): void {
