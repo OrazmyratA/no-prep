@@ -1110,48 +1110,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private async finishSpeakingSessionAsync(): Promise<void> {
-    if (this.speakingConversationActive) {
-      await this.stopSpeakingConversation(true);
-    }
-    this.resetSpeakingSessionState();
-    this.moveOwlToCorner();
-    showAppNotification('Speaking session finished.', 'success');
-    this.forceUiRefresh();
+    await this.speakingSessionController.finishSpeakingSessionAsync();
   }
 
   private async startSpeakingSession(): Promise<void> {
-    if (!this.book || !this.activeSpeakingElement) return;
-    const status = await this.refreshSpeakingRuntimeStatus();
-    if (!status.pack) {
-      this.maybePromptForSpeakingPackLink(this.activeSpeakingElement, status);
-      showAppNotification(status.reason || 'Import the required Speaking Pack first.', 'info');
-      return;
-    }
-    if (!status.recordingAvailable) {
-      this.maybePromptForSpeakingPackLink(this.activeSpeakingElement, status);
-      showAppNotification(status.reason || 'Speaking practice is not available on this device.', 'error');
-      return;
-    }
-    if (!status.conversationAvailable) {
-      this.maybePromptForSpeakingPackLink(this.activeSpeakingElement, status);
-    }
-    if (status.speechToTextAvailable && status.textToSpeechAvailable && !status.conversationAvailable) {
-      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
-    } else if (status.speechToTextAvailable && !status.conversationAvailable) {
-      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
-    } else if (!status.conversationAvailable) {
-      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet. Recording-only attempt will start.', 'info');
-    }
-    this.speakingSessionActive = true;
-    this.activeSpeakingSessionId = this.createId('speaking-session');
-    this.speakingSessionStartedAt = Date.now();
-    this.speakingTurnIndex = 0;
-    this.moveOwlToElement(this.activeSpeakingElement, this.activeSpeakingPage || undefined);
-    this.owlTeaching = true;
-    this.owlImage = 'assets/gifs/owl-teaching.gif';
-    this.forceUiRefresh();
-    showAppNotification('Speaking session started.', 'success');
-    this.forceUiRefresh();
+    await this.speakingSessionController.startSpeakingSession();
   }
 
   getSpeakingAttemptProgress(attempt: BookSpeakingAttempt): number {

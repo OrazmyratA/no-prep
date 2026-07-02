@@ -2,6 +2,7 @@ import {
   BookElement,
   BookSpeakingAttempt
 } from '../../../core/book.model';
+import { showAppNotification } from '../../../core/notification';
 import {
   SpeakingChatTurn,
   SpeakingSessionSummary
@@ -146,6 +147,51 @@ export class BookReaderSpeakingSessionController {
 
   getSpeakingTurnActionLabel(): string {
     return this.reader.speakingConversationActive ? 'Stop' : 'Speak';
+  }
+
+  async finishSpeakingSessionAsync(): Promise<void> {
+    if (this.reader.speakingConversationActive) {
+      await this.reader.stopSpeakingConversation(true);
+    }
+    this.reader.resetSpeakingSessionState();
+    this.reader.moveOwlToCorner();
+    showAppNotification('Speaking session finished.', 'success');
+    this.reader.forceUiRefresh();
+  }
+
+  async startSpeakingSession(): Promise<void> {
+    if (!this.reader.book || !this.reader.activeSpeakingElement) return;
+    const status = await this.reader.refreshSpeakingRuntimeStatus();
+    if (!status.pack) {
+      this.reader.maybePromptForSpeakingPackLink(this.reader.activeSpeakingElement, status);
+      showAppNotification(status.reason || 'Import the required Speaking Pack first.', 'info');
+      return;
+    }
+    if (!status.recordingAvailable) {
+      this.reader.maybePromptForSpeakingPackLink(this.reader.activeSpeakingElement, status);
+      showAppNotification(status.reason || 'Speaking practice is not available on this device.', 'error');
+      return;
+    }
+    if (!status.conversationAvailable) {
+      this.reader.maybePromptForSpeakingPackLink(this.reader.activeSpeakingElement, status);
+    }
+    if (status.speechToTextAvailable && status.textToSpeechAvailable && !status.conversationAvailable) {
+      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
+    } else if (status.speechToTextAvailable && !status.conversationAvailable) {
+      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
+    } else if (!status.conversationAvailable) {
+      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet. Recording-only attempt will start.', 'info');
+    }
+    this.reader.speakingSessionActive = true;
+    this.reader.activeSpeakingSessionId = this.reader.createId('speaking-session');
+    this.reader.speakingSessionStartedAt = Date.now();
+    this.reader.speakingTurnIndex = 0;
+    this.reader.moveOwlToElement(this.reader.activeSpeakingElement, this.reader.activeSpeakingPage || undefined);
+    this.reader.owlTeaching = true;
+    this.reader.owlImage = 'assets/gifs/owl-teaching.gif';
+    this.reader.forceUiRefresh();
+    showAppNotification('Speaking session started.', 'success');
+    this.reader.forceUiRefresh();
   }
 
   getSpeakingAttemptProgress(attempt: BookSpeakingAttempt): number {
