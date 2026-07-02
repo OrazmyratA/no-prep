@@ -45,6 +45,7 @@ import { BookCreatorMarkController } from './book-creator-mark-controller';
 import { BookCreatorNavigationController } from './book-creator-navigation-controller';
 import { BookCreatorPageImportController } from './book-creator-page-import-controller';
 import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
+import { BookCreatorSaveController } from './book-creator-save-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 
@@ -235,6 +236,7 @@ Tomorrow I will help my mom.`;
   private readonly navigationController = new BookCreatorNavigationController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
+  private readonly saveController = new BookCreatorSaveController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
 
   async ngOnInit(): Promise<void> {
@@ -324,9 +326,7 @@ Tomorrow I will help my mom.`;
   }
 
   markBookDirty(): void {
-    if (this.book) {
-      this.isDirty = true;
-    }
+    this.saveController.markBookDirty();
   }
 
   onCreatorThumbScroll(event: Event): void {
@@ -1197,77 +1197,39 @@ Tomorrow I will help my mom.`;
   }
 
   async save(): Promise<boolean> {
-    if (!this.book) return true;
-    this.discardPendingMatchEndpoint();
-    const saved = await this.bookLibrary.saveBook(this.book);
-    if (saved) {
-      this.book.updatedAt = saved.updatedAt;
-      this.markBookClean();
-      this.clearHistory();
-      return true;
-    }
-    return false;
+    return this.saveController.save();
   }
 
   async openReader(): Promise<void> {
-    if (!this.book) return;
-    if (!(await this.confirmSaveBeforeLeaving())) return;
-    this.bypassUnsavedGuard = true;
-    const navigated = await this.router.navigate(['/books', this.book.id, 'read'], {
-      state: {
-        warmBook: this.book,
-        pageSource: this.activePageSource,
-        pageId: this.selectedPage?.id,
-        workbookId: this.activeWorkbookId
-      }
-    });
-    this.bypassUnsavedGuard = !navigated;
+    await this.saveController.openReader();
   }
 
   async goBack(): Promise<void> {
-    if (!(await this.confirmSaveBeforeLeaving())) return;
-    this.bypassUnsavedGuard = true;
-    const navigated = await this.router.navigate(['/topics']);
-    this.bypassUnsavedGuard = !navigated;
+    await this.saveController.goBack();
   }
 
   async canDeactivate(): Promise<boolean> {
-    if (this.bypassUnsavedGuard) return true;
-    return this.confirmSaveBeforeLeaving();
+    return this.saveController.canDeactivate();
   }
 
   hasUnsavedChanges(): boolean {
-    return !!this.book && this.isDirty;
+    return this.saveController.hasUnsavedChanges();
   }
 
   canUndo(): boolean {
-    return this.undoStack.length > 0;
+    return this.saveController.canUndo();
   }
 
   canRedo(): boolean {
-    return this.redoStack.length > 0;
+    return this.saveController.canRedo();
   }
 
   undo(): void {
-    if (!this.book || !this.canUndo()) return;
-    const current = this.createBookSnapshot(this.book);
-    const previous = this.undoStack.pop();
-    if (!previous) return;
-    if (current) {
-      this.redoStack.push(current);
-    }
-    this.restoreBookSnapshot(previous);
+    this.saveController.undo();
   }
 
   redo(): void {
-    if (!this.book || !this.canRedo()) return;
-    const current = this.createBookSnapshot(this.book);
-    const next = this.redoStack.pop();
-    if (!next) return;
-    if (current) {
-      this.undoStack.push(current);
-    }
-    this.restoreBookSnapshot(next);
+    this.saveController.redo();
   }
 
   get selectedPage(): BookPage | null {
@@ -1492,21 +1454,11 @@ Tomorrow I will help my mom.`;
   }
 
   beginHistoryCapture(): void {
-    this.pendingHistorySnapshot = this.createBookSnapshot(this.book);
-    this.historyCaptureActive = true;
+    this.saveController.beginHistoryCapture();
   }
 
   commitHistoryCapture(): void {
-    if (!this.historyCaptureActive || !this.book) return;
-    const current = this.createBookSnapshot(this.book);
-    if (current !== this.pendingHistorySnapshot) {
-      if (this.pendingHistorySnapshot) {
-        this.pushUndoSnapshot(this.pendingHistorySnapshot);
-      }
-      this.markBookDirty();
-    }
-    this.pendingHistorySnapshot = '';
-    this.historyCaptureActive = false;
+    this.saveController.commitHistoryCapture();
   }
 
   startPageJump(): void {
@@ -1908,55 +1860,19 @@ Tomorrow I will help my mom.`;
   }
 
   private captureHistory(): void {
-    this.pushUndoSnapshot(this.createBookSnapshot(this.book));
-    this.markBookDirty();
+    this.saveController.captureHistory();
   }
 
   private pushUndoSnapshot(snapshot: string): void {
-    if (!snapshot) return;
-    if (this.undoStack[this.undoStack.length - 1] === snapshot) return;
-    this.undoStack.push(snapshot);
-    while (this.undoStack.length > this.maxHistoryEntries) {
-      this.undoStack.shift();
-    }
-    this.redoStack = [];
+    this.saveController.pushUndoSnapshot(snapshot);
   }
 
   private restoreBookSnapshot(snapshot: string): void {
-    const restored = JSON.parse(snapshot) as InteractiveBook;
-    const selectedPageId = this.selectedPage?.id || '';
-    const selectedElementId = this.selectedElementId;
-    this.book = restored;
-    if (this.activePageSource === 'workbook' && this.activeWorkbookId) {
-      const workbook = restored.workbooks?.find((item) => item.id === this.activeWorkbookId) ?? null;
-      const pageIndex = selectedPageId && workbook
-        ? workbook.pages.findIndex((page) => page.id === selectedPageId)
-        : this.selectedWorkbookPageIndex;
-      this.selectedWorkbookPageIndex = this.clamp(Math.max(0, pageIndex), 0, Math.max(0, (workbook?.pages.length ?? 1) - 1));
-      if (!workbook) {
-        this.activePageSource = 'main';
-        this.activeWorkbookId = null;
-      }
-    } else {
-      const pageIndex = selectedPageId
-        ? restored.pages.findIndex((page) => page.id === selectedPageId)
-        : this.selectedPageIndex;
-      this.selectedPageIndex = this.clamp(Math.max(0, pageIndex), 0, Math.max(0, restored.pages.length - 1));
-    }
-    this.pageJumpValue = String(this.activePageIndex + 1);
-    this.refreshSelectedPageRender();
-    if (selectedElementId && this.selectedPage?.elements.some((element) => element.id === selectedElementId)) {
-      this.selectedElementId = selectedElementId;
-    }
-    this.syncPendingMatchEndpoint();
-    this.markBookDirty();
+    this.saveController.restoreBookSnapshot(snapshot);
   }
 
   private clearHistory(): void {
-    this.undoStack = [];
-    this.redoStack = [];
-    this.pendingHistorySnapshot = '';
-    this.historyCaptureActive = false;
+    this.saveController.clearHistory();
   }
 
   private insertElementCopy(source: BookElement, offset: number): void {
@@ -2246,71 +2162,27 @@ Tomorrow I will help my mom.`;
   }
 
   private async confirmSaveBeforeLeaving(): Promise<boolean> {
-    if (!this.hasUnsavedChanges()) {
-      return true;
-    }
-
-    const choice = await this.getUnsavedChangeChoice();
-    if (choice === 'cancel') {
-      return false;
-    }
-    if (choice === 'discard') {
-      return true;
-    }
-
-    return this.save();
+    return this.saveController.confirmSaveBeforeLeaving();
   }
 
   private async getUnsavedChangeChoice(): Promise<'save' | 'discard' | 'cancel'> {
-    const api = (window as any)?.electronAPI;
-    if (typeof api?.confirmBookUnsavedChanges === 'function') {
-      try {
-        const response = await api.confirmBookUnsavedChanges({
-          title: this.languageService.translate('creatorUnsavedDialogTitle'),
-          message: this.languageService.translate('creatorUnsavedDialogMessage'),
-          detail: this.languageService.translate('creatorUnsavedDialogDetail'),
-          saveLabel: this.languageService.translate('save'),
-          dontSaveLabel: this.languageService.translate('creatorDontSave'),
-          cancelLabel: this.languageService.translate('cancel')
-        });
-        if (response === 'save' || response === 'discard' || response === 'cancel') {
-          return response;
-        }
-      } catch {
-        // Fall back to browser dialogs below.
-      }
-    }
-
-    const save = window.confirm(this.languageService.translate('creatorUnsavedChangesPrompt'));
-    if (save) return 'save';
-    const discard = window.confirm(this.languageService.translate('creatorLeaveWithoutSaving'));
-    return discard ? 'discard' : 'cancel';
+    return this.saveController.getUnsavedChangeChoice();
   }
 
   private async saveBeforeBookFileUpload(): Promise<boolean> {
-    const confirmed = window.confirm(this.languageService.translate('creatorSaveBeforeUpload'));
-    if (!confirmed) return false;
-    return this.save();
+    return this.saveController.saveBeforeBookFileUpload();
   }
 
   private createBookSnapshot(book: InteractiveBook | null): string {
-    if (!book) return '';
-    const snapshot = JSON.stringify(book);
-    return snapshot.length <= this.maxUndoSnapshotBytes ? snapshot : '';
+    return this.saveController.createBookSnapshot(book);
   }
 
   private markBookClean(): void {
-    this.isDirty = false;
-    this.pendingHistorySnapshot = '';
-    this.historyCaptureActive = false;
+    this.saveController.markBookClean();
   }
 
   private get maxHistoryEntries(): number {
-    const pageCount = (this.book?.pages.length ?? 0) + (this.book?.workbooks ?? []).reduce((total, workbook) => total + workbook.pages.length, 0);
-    if (pageCount > 300) return 16;
-    if (pageCount > 160) return 24;
-    if (pageCount > 80) return 36;
-    return 60;
+    return this.saveController.maxHistoryEntries;
   }
 
   private getVirtualPages(pages: BookPage[]): Array<{ page: BookPage; index: number }> {
