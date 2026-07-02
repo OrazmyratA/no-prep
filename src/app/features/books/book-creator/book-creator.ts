@@ -42,6 +42,7 @@ import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
+import { BookCreatorPageImportController } from './book-creator-page-import-controller';
 import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
@@ -164,7 +165,6 @@ Tomorrow I will help my mom.`;
   private previewPitchCleanup: (() => void) | null = null;
   private previewToken = 0;
   private guideTrackSeekTimes: Record<string, number> = {};
-  private draggedPageIndex: number | null = null;
   previewGuideTrackId: string | null = null;
   private timelinePinDragState: {
     elementId: string;
@@ -231,6 +231,7 @@ Tomorrow I will help my mom.`;
   private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
+  private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
 
@@ -421,117 +422,47 @@ Tomorrow I will help my mom.`;
   }
 
   onPageDragStart(index: number, event: DragEvent): void {
-    this.draggedPageIndex = index;
-    event.dataTransfer?.setData('text/plain', String(index));
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
-    }
+    this.pageImportController.onPageDragStart(index, event);
   }
 
   onPageDragOver(event: DragEvent): void {
-    event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
-    }
+    this.pageImportController.onPageDragOver(event);
   }
 
   onPageDrop(targetIndex: number, event: DragEvent): void {
-    event.preventDefault();
-    if (!this.book) return;
-    const sourceIndex = this.draggedPageIndex ?? Number(event.dataTransfer?.getData('text/plain'));
-    this.draggedPageIndex = null;
-    if (!Number.isInteger(sourceIndex) || sourceIndex < 0 || sourceIndex >= this.book.pages.length || sourceIndex === targetIndex) {
-      return;
-    }
-
-    this.captureHistory();
-    const [page] = this.book.pages.splice(sourceIndex, 1);
-    this.book.pages.splice(targetIndex, 0, page);
-    if (this.selectedPageIndex === sourceIndex) {
-      this.selectedPageIndex = targetIndex;
-    } else if (sourceIndex < this.selectedPageIndex && targetIndex >= this.selectedPageIndex) {
-      this.selectedPageIndex--;
-    } else if (sourceIndex > this.selectedPageIndex && targetIndex <= this.selectedPageIndex) {
-      this.selectedPageIndex++;
-    }
-    this.refreshSelectedPageRender();
+    this.pageImportController.onPageDrop(targetIndex, event);
   }
 
   addBlankPage(afterIndex = this.selectedPageIndex): void {
-    if (!this.book) return;
-    const pages = this.activePages;
-    if (!pages.length) return;
-
-    this.captureHistory();
-    const page = this.createBlankPage();
-    pages.splice(afterIndex + 1, 0, page);
-    if (this.activePageSource === 'workbook') {
-      this.selectedWorkbookPageIndex = afterIndex + 1;
-    } else {
-      this.selectedPageIndex = afterIndex + 1;
-    }
-    this.refreshSelectedPageRender();
+    this.pageImportController.addBlankPage(afterIndex);
   }
 
   addBlankPageBefore(): void {
-    if (!this.book) return;
-    const pages = this.activePages;
-    if (!pages.length) return;
-    this.captureHistory();
-    pages.splice(this.activePageIndex, 0, this.createBlankPage());
-    this.refreshSelectedPageRender();
+    this.pageImportController.addBlankPageBefore();
   }
 
   addBlankPageAfter(): void {
-    this.addBlankPage(this.activePageIndex);
+    this.pageImportController.addBlankPageAfter();
   }
 
   addBlankPageAfterIndex(index: number, event?: Event): void {
-    event?.stopPropagation();
-    this.addBlankPage(index);
+    this.pageImportController.addBlankPageAfterIndex(index, event);
   }
 
   addMainBlankPageAfterIndex(index: number, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.book) return;
-    this.captureHistory();
-    this.book.pages.splice(index + 1, 0, this.createBlankPage());
-    this.selectMainPage(index + 1);
+    this.pageImportController.addMainBlankPageAfterIndex(index, event);
   }
 
   addWorkbookBlankPageAfterIndex(workbook: BookWorkbook, index: number, event?: Event): void {
-    event?.stopPropagation();
-    this.captureHistory();
-    workbook.pages.splice(index + 1, 0, this.createBlankPage());
-    this.selectWorkbookPage(workbook, index + 1);
+    this.pageImportController.addWorkbookBlankPageAfterIndex(workbook, index, event);
   }
 
   duplicateSelectedPage(): void {
-    if (!this.book || !this.selectedPage) return;
-    const pages = this.activePages;
-    if (!pages.length) return;
-    this.captureHistory();
-    const copy = this.clonePage(this.selectedPage);
-    copy.id = this.createId('page');
-    copy.hidden = false;
-    pages.splice(this.activePageIndex + 1, 0, copy);
-    if (this.activePageSource === 'workbook') {
-      this.selectedWorkbookPageIndex++;
-    } else {
-      this.selectedPageIndex++;
-    }
-    this.refreshSelectedPageRender();
+    this.pageImportController.duplicateSelectedPage();
   }
 
   toggleSelectedPageHidden(): void {
-    const page = this.selectedPage;
-    if (!page) return;
-    if (!page.hidden && this.visiblePageCount <= 1) {
-      window.alert(this.languageService.translate('creatorKeepOnePageVisible'));
-      return;
-    }
-    this.captureHistory();
-    page.hidden = !page.hidden;
+    this.pageImportController.toggleSelectedPageHidden();
   }
 
   async addImage(): Promise<void> {
@@ -547,55 +478,15 @@ Tomorrow I will help my mom.`;
   }
 
   async addWorkbookFromPdf(): Promise<void> {
-    if (!this.book) return;
-    if (this.hasUnsavedChanges() && !(await this.saveBeforeBookFileUpload())) return;
-    const updated = await this.bookLibrary.addWorkbookFromPdf(this.book.id);
-    if (!updated) return;
-    this.book = updated;
-    const addedWorkbook = this.book.workbooks?.[this.book.workbooks.length - 1] ?? null;
-    this.activePageSource = addedWorkbook ? 'workbook' : 'main';
-    this.activeWorkbookId = addedWorkbook?.id ?? null;
-    this.selectedWorkbookPageIndex = 0;
-    this.pageJumpValue = '1';
-    this.markBookClean();
-    this.clearHistory();
-    this.refreshSelectedPageRender();
+    await this.pageImportController.addWorkbookFromPdf();
   }
 
   async uploadStudentPdf(): Promise<void> {
-    if (!this.book) return;
-    if (this.hasUnsavedChanges() && !(await this.saveBeforeBookFileUpload())) return;
-    const updated = await this.bookLibrary.replaceMainPdf(this.book.id);
-    if (!updated) return;
-    this.book = updated;
-    this.activePageSource = 'main';
-    this.activeWorkbookId = null;
-    this.selectedPageIndex = 0;
-    this.selectedWorkbookPageIndex = 0;
-    this.linkingMainPageId = null;
-    this.pageJumpValue = '1';
-    this.markBookClean();
-    this.clearHistory();
-    this.refreshSelectedPageRender();
+    await this.pageImportController.uploadStudentPdf();
   }
 
   async uploadWorkbookPdf(): Promise<void> {
-    if (!this.book) return;
-    if (this.hasUnsavedChanges() && !(await this.saveBeforeBookFileUpload())) return;
-    const updated = this.primaryWorkbook
-      ? await this.bookLibrary.replaceWorkbookPdf(this.book.id, this.primaryWorkbook.id)
-      : await this.bookLibrary.replaceWorkbookPdf(this.book.id, null);
-    if (!updated) return;
-    this.book = updated;
-    const workbook = this.primaryWorkbook;
-    this.activePageSource = 'workbook';
-    this.activeWorkbookId = workbook?.id ?? null;
-    this.selectedWorkbookPageIndex = 0;
-    this.linkingMainPageId = null;
-    this.pageJumpValue = '1';
-    this.markBookClean();
-    this.clearHistory();
-    this.refreshSelectedPageRender();
+    await this.pageImportController.uploadWorkbookPdf();
   }
 
   addImageToCurrentPage(): void {
