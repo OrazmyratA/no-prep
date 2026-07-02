@@ -6,10 +6,7 @@ import {
   BookPageAnnotations,
   BookTaskResponse
 } from '../../../core/book.model';
-import {
-  BakedDrawingCanvas,
-  ReaderAnnotationAction
-} from './book-reader.types';
+import { ReaderAnnotationAction } from './book-reader.types';
 import {
   clamp,
   getClampedFocusRect
@@ -20,9 +17,14 @@ import {
   cloneTextAnnotation,
   createTextImageDataUrl
 } from './book-reader-annotation-utils';
+import { BookReaderDrawingCanvasController } from './book-reader-drawing-canvas-controller';
 
 export class BookReaderAnnotationController {
-  constructor(private readonly reader: any) {}
+  private readonly drawingCanvasController: BookReaderDrawingCanvasController;
+
+  constructor(private readonly reader: any) {
+    this.drawingCanvasController = new BookReaderDrawingCanvasController(this, this.reader);
+  }
 
   onPageFrameClick(event: MouseEvent): void {
     this.placeTextFromPointer(event);
@@ -256,13 +258,13 @@ export class BookReaderAnnotationController {
   startDrawing(event: PointerEvent): void {
     const pageFrame = this.getPageFrameFromEvent(event);
     const page = pageFrame ? this.getVisiblePageById(pageFrame.dataset['pageId'] || '') : this.reader.currentPage;
-    const canvas = this.getCanvasFromEvent(event);
+    const canvas = this.drawingCanvasController.getCanvasFromEvent(event);
     if (!this.reader.isInkModeActive() || !canvas || !page || !this.reader.annotations) return;
     event.preventDefault();
     canvas.setPointerCapture?.(event.pointerId);
     this.reader.drawing = true;
     this.reader.drawingStartedInInkMode = true;
-    const point = this.getCanvasPoint(event, canvas);
+    const point = this.drawingCanvasController.getCanvasPoint(event, canvas);
     this.reader.activeStroke = {
       id: this.reader.createId('stroke'),
       pageId: page.id,
@@ -277,12 +279,12 @@ export class BookReaderAnnotationController {
 
   continueDrawing(event: PointerEvent): void {
     if (!this.reader.drawingStartedInInkMode || !this.reader.drawing || !this.reader.activeStroke) return;
-    const canvas = this.getCanvasFromEvent(event) ?? this.getCanvasForPageId(this.reader.activeStroke.pageId);
+    const canvas = this.drawingCanvasController.getCanvasFromEvent(event) ?? this.drawingCanvasController.getCanvasForPageId(this.reader.activeStroke.pageId);
     if (!canvas) return;
     event.preventDefault();
     const events = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [event];
     for (const pointerEvent of events) {
-      this.reader.appendStrokePoint(this.getCanvasPoint(pointerEvent as PointerEvent, canvas));
+      this.reader.appendStrokePoint(this.drawingCanvasController.getCanvasPoint(pointerEvent as PointerEvent, canvas));
     }
     this.redrawDrawingCanvas(this.reader.activeStroke.pageId);
   }
@@ -429,36 +431,11 @@ export class BookReaderAnnotationController {
   }
 
   resizeDrawingCanvas(width: number, height: number): void {
-    if (this.reader.drawingCanvasFrame) {
-      cancelAnimationFrame(this.reader.drawingCanvasFrame);
-    }
-    this.reader.drawingCanvasFrame = requestAnimationFrame(() => {
-      this.reader.drawingCanvasFrame = 0;
-      const targets = this.getDrawingCanvasElements();
-      const ratio = window.devicePixelRatio || 1;
-      for (const canvas of targets) {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = Math.max(1, Math.floor((rect.width || width) * ratio));
-        canvas.height = Math.max(1, Math.floor((rect.height || height) * ratio));
-      }
-      this.redrawDrawingCanvas();
-    });
+    this.drawingCanvasController.resizeDrawingCanvas(width, height);
   }
 
   resetDrawingCanvas(): void {
-    if (this.reader.drawingCanvasFrame) {
-      cancelAnimationFrame(this.reader.drawingCanvasFrame);
-    }
-    this.reader.drawingCanvasFrame = requestAnimationFrame(() => {
-      this.reader.drawingCanvasFrame = 0;
-      for (const canvas of this.getDrawingCanvasElements()) {
-        const rect = canvas.getBoundingClientRect();
-        const ratio = window.devicePixelRatio || 1;
-        canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-        canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-      }
-      this.redrawDrawingCanvas();
-    });
+    this.drawingCanvasController.resetDrawingCanvas();
   }
 
   getPagePointFromEvent(frame: HTMLElement | null, event: MouseEvent | PointerEvent): { x: number; y: number } | null {
@@ -478,28 +455,15 @@ export class BookReaderAnnotationController {
   }
 
   redrawDrawingCanvas(pageId?: string): void {
-    const canvases = this.getDrawingCanvasElements();
-    if (!canvases.length) {
-      return;
-    }
-
-    for (const canvas of canvases) {
-      const canvasPageId = canvas.dataset['pageId'] || '';
-      if (pageId && canvasPageId !== pageId) continue;
-      this.redrawSingleCanvas(canvas, canvasPageId);
-    }
+    this.drawingCanvasController.redrawDrawingCanvas(pageId);
   }
 
   invalidateDrawingCache(pageId?: string): void {
-    if (pageId) {
-      this.reader.bakedDrawingCanvases.delete(pageId);
-      return;
-    }
-    this.reader.bakedDrawingCanvases.clear();
+    this.drawingCanvasController.invalidateDrawingCache(pageId);
   }
 
   clearDrawingCache(): void {
-    this.reader.bakedDrawingCanvases.clear();
+    this.drawingCanvasController.clearDrawingCache();
   }
 
   getPageAnnotations(pageId: string): BookPageAnnotations {
@@ -573,14 +537,6 @@ export class BookReaderAnnotationController {
     text.y = clamp((elementRect.top + elementRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
   }
 
-  private getCanvasPoint(event: PointerEvent, canvas: HTMLCanvasElement): { x: number; y: number } {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
-    };
-  }
-
   private deleteStrokeFromPointer(page: BookPage, frame: HTMLElement, event: MouseEvent | PointerEvent): void {
     const point = this.getPagePointFromEvent(frame, event);
     if (!point) return;
@@ -588,7 +544,7 @@ export class BookReaderAnnotationController {
     let bestIndex = -1;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const [index, stroke] of annotations.strokes.entries()) {
-      const distance = this.getStrokeDistance(point, stroke);
+      const distance = this.drawingCanvasController.getStrokeDistance(point, stroke);
       if (distance < bestDistance) {
         bestDistance = distance;
         bestIndex = index;
@@ -599,84 +555,6 @@ export class BookReaderAnnotationController {
     this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: cloneStrokeAnnotation(removed) });
     this.redrawDrawingCanvas(page.id);
     void this.saveAnnotations();
-  }
-
-  private getStrokeDistance(point: { x: number; y: number }, stroke: BookAnnotationStroke): number {
-    if (!stroke.points.length) return Number.POSITIVE_INFINITY;
-    let best = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < stroke.points.length; index++) {
-      const current = stroke.points[index];
-      const previous = stroke.points[index - 1] ?? current;
-      best = Math.min(best, this.getPointSegmentDistance(point, previous, current));
-    }
-    return best;
-  }
-
-  private getPointSegmentDistance(
-    point: { x: number; y: number },
-    start: { x: number; y: number },
-    end: { x: number; y: number }
-  ): number {
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
-    const amount = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
-    return Math.hypot(point.x - (start.x + amount * dx), point.y - (start.y + amount * dy));
-  }
-
-  private redrawSingleCanvas(canvas: HTMLCanvasElement, pageId: string): void {
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context || !pageId) return;
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    const baked = this.getBakedDrawingCanvas(pageId, canvas);
-    if (baked) {
-      context.drawImage(baked.canvas, 0, 0);
-    }
-    if (this.reader.activeStroke?.pageId === pageId) {
-      this.drawStroke(context, canvas, this.reader.activeStroke);
-    }
-  }
-
-  private getBakedDrawingCanvas(pageId: string, visibleCanvas: HTMLCanvasElement): BakedDrawingCanvas | null {
-    const width = visibleCanvas.width;
-    const height = visibleCanvas.height;
-    if (!width || !height) return null;
-
-    const cached = this.reader.bakedDrawingCanvases.get(pageId);
-    if (cached && cached.width === width && cached.height === height) {
-      return cached;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    for (const stroke of this.getPageAnnotations(pageId).strokes) {
-      this.drawStroke(context, canvas, stroke);
-    }
-    const baked = { canvas, width, height };
-    this.reader.bakedDrawingCanvases.set(pageId, baked);
-    return baked;
-  }
-
-  private drawStroke(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, stroke: BookAnnotationStroke): void {
-    if (stroke.points.length < 1) return;
-    context.save();
-    context.beginPath();
-    context.lineWidth = stroke.width * (window.devicePixelRatio || 1);
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.strokeStyle = stroke.color;
-    context.globalAlpha = stroke.kind === 'highlighter' ? 0.36 : 1;
-    context.moveTo(stroke.points[0].x * canvas.width, stroke.points[0].y * canvas.height);
-    for (const point of stroke.points.slice(1)) {
-      context.lineTo(point.x * canvas.width, point.y * canvas.height);
-    }
-    context.stroke();
-    context.restore();
   }
 
   getActiveAnnotationPages(): BookPage[] {
@@ -808,20 +686,5 @@ export class BookReaderAnnotationController {
   private getPageFrameFromEvent(event: Event): HTMLElement | null {
     const target = event.target as HTMLElement | null;
     return target?.closest<HTMLElement>('.page-frame') ?? null;
-  }
-
-  private getCanvasFromEvent(event: Event): HTMLCanvasElement | null {
-    const target = event.target as HTMLElement | null;
-    return target?.closest<HTMLCanvasElement>('canvas.drawing-layer') ?? null;
-  }
-
-  private getCanvasForPageId(pageId: string): HTMLCanvasElement | null {
-    const stage = this.reader.readerStage?.nativeElement as HTMLElement | undefined;
-    return stage?.querySelector<HTMLCanvasElement>(`canvas.drawing-layer[data-page-id="${CSS.escape(pageId)}"]`) ?? null;
-  }
-
-  private getDrawingCanvasElements(): HTMLCanvasElement[] {
-    const stage = this.reader.readerStage?.nativeElement as HTMLElement | undefined;
-    return Array.from(stage?.querySelectorAll<HTMLCanvasElement>('canvas.drawing-layer') ?? []);
   }
 }
