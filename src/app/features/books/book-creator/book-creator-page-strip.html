@@ -1,0 +1,136 @@
+<div class="page-strip-collapsed-rail" *ngIf="creator.showPageStripRail">
+  <button type="button" class="page-strip-toggle-btn rail-toggle" (click)="creator.togglePageStrip()" title="Show pages" aria-label="Show pages">
+    <img class="drawer-toggle-icon page-strip-show-icon" src="assets/images/book/sidebar.png" alt="">
+  </button>
+</div>
+<button
+  type="button"
+  class="page-strip-toggle-btn page-strip-edge-toggle"
+  *ngIf="creator.isPageStripVisible"
+  (click)="creator.togglePageStrip()"
+  title="Hide pages"
+  aria-label="Hide pages">
+  <img class="drawer-toggle-icon page-strip-hide-icon" src="assets/images/book/sidebar.png" alt="">
+</button>
+<aside class="page-strip page-lanes" [class.open]="creator.pageStripOpen" (scroll)="creator.onCreatorThumbScroll($event)">
+  <section class="page-lane" [class.active-lane]="creator.activePageSource === 'main'">
+    <div class="lane-header">
+      <span>{{ 'studentBookLabel' | translate }}</span>
+      <strong>{{ creator.book.pages.length }}</strong>
+    </div>
+    <div class="virtual-spacer" [style.height.px]="creator.mainVirtualTopPadding"></div>
+    <div
+      *ngFor="let item of creator.mainVirtualPages; trackBy: creator.trackByVirtualPageId"
+      class="page-thumb a4-thumb"
+      role="button"
+      tabindex="0"
+      draggable="true"
+      [class.selected]="creator.activePageSource === 'main' && item.index === creator.selectedPageIndex"
+      [class.hidden-page]="item.page.hidden"
+      [class.linking]="creator.isLinkingMainPage(item.page)"
+      (dragstart)="creator.onPageDragStart(item.index, $event)"
+      (dragover)="creator.onPageDragOver($event)"
+      (drop)="creator.onPageDrop(item.index, $event)"
+      (click)="creator.selectMainPage(item.index)"
+      (keydown.enter)="creator.selectMainPage(item.index)"
+      (keydown.space)="creator.selectMainPage(item.index)">
+      <div class="thumb-page">
+        <app-pdf-page-canvas
+          *ngIf="item.page.type === 'pdf' && creator.getPagePdfUrl(item.page)"
+          [sourceUrl]="creator.getPagePdfUrl(item.page)"
+          [pageNumber]="item.page.pdfPage || 1"
+          [rotation]="creator.getPageRotation(item.page)"
+          [renderScale]="0.22"
+          [lazy]="true">
+        </app-pdf-page-canvas>
+        <div class="thumb-blank" *ngIf="item.page.type === 'blank'"></div>
+      </div>
+      <span class="page-number">{{ item.index + 1 }}</span>
+      <span class="page-status" *ngIf="item.page.hidden">{{ 'hiddenLabel' | translate }}</span>
+      <span class="page-link-count" *ngIf="creator.getPageLinkCount(item.page)">{{ creator.getPageLinkCount(item.page) }}</span>
+      <span class="page-thumb-actions">
+        <button
+          type="button"
+          class="page-corner-btn link"
+          [title]="'creatorLinkWorkbookPages' | translate"
+          [attr.aria-label]="'creatorLinkWorkbookPages' | translate"
+          (click)="creator.beginWorkbookLinking(item.page, $event)">
+          <img src="assets/images/book/link.png" alt="">
+        </button>
+        <button
+          type="button"
+          class="page-corner-btn add"
+          [title]="'creatorAddBlankPageAfter' | translate"
+          [attr.aria-label]="'creatorAddBlankPageAfter' | translate"
+          (click)="creator.addMainBlankPageAfterIndex(item.index, $event)">+</button>
+        <button
+          type="button"
+          class="page-corner-btn delete"
+          [title]="'creatorDeleteThisPage' | translate"
+          [attr.aria-label]="'creatorDeleteThisPage' | translate"
+          [disabled]="creator.book.pages.length <= 1"
+          (click)="creator.deletePageAt(item.index, $event)">-</button>
+      </span>
+    </div>
+    <div class="virtual-spacer" [style.height.px]="creator.mainVirtualBottomPadding"></div>
+  </section>
+
+  <section class="page-lane workbook-lane" [class.active-lane]="creator.activePageSource === 'workbook'">
+    <div class="lane-header">
+      <span>{{ 'workbookLabel' | translate }}</span>
+      <strong>{{ creator.primaryWorkbook?.pages?.length || 0 }}</strong>
+    </div>
+    <div class="virtual-spacer" [style.height.px]="creator.workbookVirtualTopPadding"></div>
+    <div
+      *ngFor="let item of creator.workbookVirtualPages; trackBy: creator.trackByVirtualPageId"
+      class="page-thumb a4-thumb"
+      role="button"
+      tabindex="0"
+      [class.selected]="creator.activePageSource === 'workbook' && creator.activeWorkbookId === creator.primaryWorkbook?.id && item.index === creator.selectedWorkbookPageIndex"
+      [class.workbook-linked]="creator.primaryWorkbook ? creator.isWorkbookPageLinked(creator.primaryWorkbook.id, item.page.id) : false"
+      (click)="creator.primaryWorkbook && creator.selectWorkbookPage(creator.primaryWorkbook, item.index, $event)"
+      (keydown.enter)="creator.primaryWorkbook && creator.selectWorkbookPage(creator.primaryWorkbook, item.index, $event)"
+      (keydown.space)="creator.primaryWorkbook && creator.selectWorkbookPage(creator.primaryWorkbook, item.index, $event)">
+      <div class="thumb-page">
+        <app-pdf-page-canvas
+          *ngIf="creator.primaryWorkbook && item.page.type === 'pdf' && creator.getPagePdfUrl(item.page, creator.primaryWorkbook)"
+          [sourceUrl]="creator.getPagePdfUrl(item.page, creator.primaryWorkbook)"
+          [pageNumber]="item.page.pdfPage || 1"
+          [rotation]="creator.getPageRotation(item.page)"
+          [renderScale]="0.22"
+          [lazy]="true">
+        </app-pdf-page-canvas>
+        <div class="thumb-blank" *ngIf="item.page.type === 'blank'"></div>
+      </div>
+      <span class="page-number">{{ item.index + 1 }}</span>
+      <span class="linked-check" *ngIf="creator.primaryWorkbook && creator.isWorkbookPageLinked(creator.primaryWorkbook.id, item.page.id)" [title]="'linkedLabel' | translate" [attr.aria-label]="'linkedLabel' | translate">
+        <img src="assets/images/book/switch-book.png" alt="">
+      </span>
+      <span class="page-thumb-actions" *ngIf="creator.primaryWorkbook">
+        <button
+          type="button"
+          class="page-corner-btn add"
+          [title]="'creatorAddBlankPageAfterWorkbook' | translate"
+          [attr.aria-label]="'creatorAddBlankPageAfterWorkbook' | translate"
+          (click)="creator.addWorkbookBlankPageAfterIndex(creator.primaryWorkbook, item.index, $event)">+</button>
+        <button
+          type="button"
+          class="page-corner-btn delete"
+          [title]="'creatorDeleteWorkbookPage' | translate"
+          [attr.aria-label]="'creatorDeleteWorkbookPage' | translate"
+          [disabled]="creator.primaryWorkbook.pages.length <= 1"
+          (click)="creator.deleteWorkbookPageAt(creator.primaryWorkbook, item.index, $event)">-</button>
+      </span>
+    </div>
+    <div class="virtual-spacer" [style.height.px]="creator.workbookVirtualBottomPadding"></div>
+    <button
+      *ngIf="!creator.primaryWorkbook"
+      type="button"
+      class="page-thumb a4-thumb workbook-upload-card"
+      [class.selected]="creator.activePageSource === 'workbook' && !creator.activeWorkbookId"
+      (click)="creator.selectWorkbookPlaceholder($event)">
+      <img src="assets/images/book/switch-book.png" alt="">
+      <span>{{ 'creatorUploadPdf' | translate }}</span>
+    </button>
+  </section>
+</aside>
