@@ -52,6 +52,7 @@ import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 import { BookCreatorTaskSettingsController } from './book-creator-task-settings-controller';
 import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
+import { BookCreatorLayoutController } from './book-creator-layout-controller';
 
 @Component({
   selector: 'app-book-creator',
@@ -208,7 +209,6 @@ Tomorrow I will help my mom.`;
     points: { x: number; y: number }[];
   } | null = null;
   private lastTaskDrawAt = 0;
-  private creatorCanvasFrame = 0;
   private creatorInteractionFrame = 0;
   private guidePinDragFrame = 0;
   private pendingGuidePinPointer: { x: number; y: number } | null = null;
@@ -252,6 +252,7 @@ Tomorrow I will help my mom.`;
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
   private readonly mediaController = new BookCreatorMediaController(this);
   private readonly navigationController = new BookCreatorNavigationController(this);
+  private readonly layoutController = new BookCreatorLayoutController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly saveController = new BookCreatorSaveController(this);
@@ -277,9 +278,7 @@ Tomorrow I will help my mom.`;
     if (this.guidePinDragFrame) {
       cancelAnimationFrame(this.guidePinDragFrame);
     }
-    if (this.creatorCanvasFrame) {
-      cancelAnimationFrame(this.creatorCanvasFrame);
-    }
+    this.layoutController.destroy();
     if (this.creatorInteractionFrame) {
       cancelAnimationFrame(this.creatorInteractionFrame);
     }
@@ -1872,87 +1871,35 @@ Tomorrow I will help my mom.`;
   }
 
   private updateCreatorCanvasWidth(afterLayout?: () => void): void {
-    if (this.creatorCanvasFrame) {
-      cancelAnimationFrame(this.creatorCanvasFrame);
-    }
-    this.creatorCanvasFrame = requestAnimationFrame(() => {
-      this.creatorCanvasFrame = 0;
-      const shell = this.editorCanvasShell?.nativeElement;
-      if (!shell) return;
-      const rect = shell.getBoundingClientRect();
-      const availableWidth = Math.max(220, rect.width - 24);
-      const availableHeight = Math.max(260, rect.height - 24);
-      const pageAspect = this.getPageAspectRatioNumber();
-      const fitWidth = Math.min(availableWidth, availableHeight * pageAspect);
-      this.creatorCanvasWidthPx = Math.max(220, fitWidth * this.creatorZoom);
-      this.cdr.detectChanges();
-      if (afterLayout) {
-        requestAnimationFrame(() => {
-          afterLayout();
-          requestAnimationFrame(afterLayout);
-        });
-      }
-    });
+    this.layoutController.updateCreatorCanvasWidth(afterLayout);
   }
 
   private getCreatorZoomAnchor(): { x: number; y: number } | null {
-    const shell = this.editorCanvasShell?.nativeElement;
-    const canvas = this.editorCanvas?.nativeElement;
-    if (!shell || !canvas || canvas.offsetWidth <= 0 || canvas.offsetHeight <= 0) return null;
-    return {
-      x: this.clamp((shell.scrollLeft + shell.clientWidth / 2 - canvas.offsetLeft) / canvas.offsetWidth, 0, 1),
-      y: this.clamp((shell.scrollTop + shell.clientHeight / 2 - canvas.offsetTop) / canvas.offsetHeight, 0, 1)
-    };
+    return this.layoutController.getCreatorZoomAnchor();
   }
 
   private restoreCreatorZoomAnchor(anchor: { x: number; y: number }): void {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const shell = this.editorCanvasShell?.nativeElement;
-        const canvas = this.editorCanvas?.nativeElement;
-        if (!shell || !canvas || this.creatorZoom <= 1) return;
-        const maxLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
-        const maxTop = Math.max(0, shell.scrollHeight - shell.clientHeight);
-        shell.scrollLeft = this.clamp(canvas.offsetLeft + canvas.offsetWidth * anchor.x - shell.clientWidth / 2, 0, maxLeft);
-        shell.scrollTop = this.clamp(canvas.offsetTop + canvas.offsetHeight * anchor.y - shell.clientHeight / 2, 0, maxTop);
-      });
-    });
+    this.layoutController.restoreCreatorZoomAnchor(anchor);
   }
 
   private centerCreatorZoom(): void {
-    const shell = this.editorCanvasShell?.nativeElement;
-    const canvas = this.editorCanvas?.nativeElement;
-    if (!shell || !canvas) return;
-    const shellRect = shell.getBoundingClientRect();
-    const canvasRect = canvas.getBoundingClientRect();
-    const maxLeft = Math.max(0, shell.scrollWidth - shell.clientWidth);
-    const maxTop = Math.max(0, shell.scrollHeight - shell.clientHeight);
-    const deltaX = canvasRect.left + canvasRect.width / 2 - (shellRect.left + shellRect.width / 2);
-    const deltaY = canvasRect.top + canvasRect.height / 2 - (shellRect.top + shellRect.height / 2);
-    shell.scrollLeft = this.clamp(shell.scrollLeft + deltaX, 0, maxLeft);
-    shell.scrollTop = this.clamp(shell.scrollTop + deltaY, 0, maxTop);
+    this.layoutController.centerCreatorZoom();
   }
 
   private getPageAspectRatioNumber(page = this.selectedPage): number {
-    const match = this.pageAspectRatio.match(/([0-9.]+)\s*\/\s*([0-9.]+)/);
-    if (!match) return this.getRotatedAspectRatio(210 / 297, page);
-    const width = Number(match[1]);
-    const height = Number(match[2]);
-    const baseAspect = width > 0 && height > 0 ? width / height : 210 / 297;
-    return this.getRotatedAspectRatio(baseAspect, page);
+    return this.layoutController.getPageAspectRatioNumber(page);
   }
 
   private getRotatedAspectRatio(baseAspect: number, page: BookPage | null | undefined): number {
-    return this.isSidewaysRotation(this.getPageRotation(page)) ? 1 / Math.max(0.05, baseAspect) : baseAspect;
+    return this.layoutController.getRotatedAspectRatio(baseAspect, page);
   }
 
   private normalizePageRotation(value: unknown): number {
-    const rotation = Math.round((Number(value) || 0) / 90) * 90;
-    return ((rotation % 360) + 360) % 360;
+    return this.layoutController.normalizePageRotation(value);
   }
 
   private isSidewaysRotation(rotation: number): boolean {
-    return rotation === 90 || rotation === 270;
+    return this.layoutController.isSidewaysRotation(rotation);
   }
 
   private async attachReturnedTopic(): Promise<void> {
