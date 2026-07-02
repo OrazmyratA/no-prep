@@ -37,7 +37,7 @@ import {
   normalizeBookGuideTimelines
 } from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
-import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
+import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
@@ -225,6 +225,7 @@ Tomorrow I will help my mom.`;
 
   private readonly markController = new BookCreatorMarkController(this);
   private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
+  private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
@@ -852,14 +853,7 @@ Tomorrow I will help my mom.`;
   }
 
   addGameMarker(): void {
-    this.captureHistory();
-    this.addElement('game', {
-      label: 'Game',
-      gameId: 'anagram',
-      topicId: null,
-      activityMode: 'all',
-      allowedActivityIds: []
-    }, 0.12, 0.1);
+    this.gameController.addGameMarker();
   }
 
   updateSpeakingAiField(element: BookElement, field: string, value: unknown): void {
@@ -891,128 +885,47 @@ Tomorrow I will help my mom.`;
   }
 
   isGameActivityRestricted(element: BookElement): boolean {
-    return element.type === 'game' && element.data['activityMode'] === 'selected';
+    return this.gameController.isGameActivityRestricted(element);
   }
 
   setGameActivityRestriction(element: BookElement, restricted: boolean): void {
-    if (element.type !== 'game' || restricted === this.isGameActivityRestricted(element)) return;
-    this.captureHistory();
-    element.data['activityMode'] = restricted ? 'selected' : 'all';
-    if (restricted && !this.getAllowedGameActivityIds(element).length) {
-      element.data['allowedActivityIds'] = this.games.map((game) => game.id);
-    }
+    this.gameController.setGameActivityRestriction(element, restricted);
   }
 
   isGameActivityAllowed(element: BookElement, gameId: string): boolean {
-    return !this.isGameActivityRestricted(element) || this.getAllowedGameActivityIds(element).includes(gameId);
+    return this.gameController.isGameActivityAllowed(element, gameId);
   }
 
   canToggleGameActivity(element: BookElement, gameId: string): boolean {
-    const allowed = this.getAllowedGameActivityIds(element);
-    return !allowed.includes(gameId) || allowed.length > 1;
+    return this.gameController.canToggleGameActivity(element, gameId);
   }
 
   toggleGameActivity(element: BookElement, gameId: string): void {
-    if (element.type !== 'game' || !this.isGameActivityRestricted(element)) return;
-    const validGameIds = new Set(this.games.map((game) => game.id));
-    if (!validGameIds.has(gameId)) return;
-    const allowed = new Set(this.getAllowedGameActivityIds(element));
-    if (allowed.has(gameId)) {
-      if (allowed.size <= 1) return;
-      allowed.delete(gameId);
-    } else {
-      allowed.add(gameId);
-    }
-    this.captureHistory();
-    element.data['allowedActivityIds'] = this.games
-      .map((game) => game.id)
-      .filter((id) => allowed.has(id));
+    this.gameController.toggleGameActivity(element, gameId);
   }
 
   getAllowedGameActivityIds(element: BookElement): string[] {
-    const rawIds = Array.isArray(element.data['allowedActivityIds'])
-      ? element.data['allowedActivityIds']
-      : [];
-    return normalizeAllowedActivityIds(rawIds);
+    return this.gameController.getAllowedGameActivityIds(element);
   }
 
   async createTopicForGame(element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'game') return;
-    if (!(await this.confirmSaveBeforeLeaving())) return;
-    this.bypassUnsavedGuard = true;
-    const navigated = await this.router.navigate(['/topics/new'], {
-      queryParams: {
-        returnToBookId: this.book.id,
-        bookElementId: element.id
-      }
-    });
-    this.bypassUnsavedGuard = !navigated;
+    await this.gameController.createTopicForGame(element);
   }
 
   async editGameTopic(element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'game') return;
-    const topicId = Number(element.data['topicId']);
-    if (!Number.isFinite(topicId) || topicId <= 0) {
-      await this.createTopicForGame(element);
-      return;
-    }
-    if (!(await this.confirmSaveBeforeLeaving())) return;
-    this.bypassUnsavedGuard = true;
-    const navigated = await this.router.navigate(['/topics', topicId, 'edit'], {
-      queryParams: {
-        returnToBookId: this.book.id,
-        bookElementId: element.id
-      }
-    });
-    this.bypassUnsavedGuard = !navigated;
+    await this.gameController.editGameTopic(element);
   }
 
   async deleteGameTopic(element: BookElement): Promise<void> {
-    if (element.type !== 'game') return;
-    const topicId = Number(element.data['topicId']);
-    const hasTopic = Number.isFinite(topicId) && topicId > 0;
-    const confirmed = window.confirm(this.languageService.translate(hasTopic
-      ? 'creatorConfirmDeleteLinkedTopic'
-      : 'creatorConfirmRemoveGameMarkerLink'));
-    if (!confirmed) return;
-
-    if (hasTopic) {
-      await this.db.deleteTopic(topicId);
-    }
-    this.captureHistory();
-    element.data['topicId'] = null;
-    element.data['topicName'] = '';
-    element.data['bookTopicPath'] = '';
-    element.data['activityMode'] = 'all';
-    element.data['allowedActivityIds'] = [];
+    await this.gameController.deleteGameTopic(element);
   }
 
   async onGameTopicSelected(element: BookElement, topicIdValue: unknown): Promise<void> {
-    if (!this.book || element.type !== 'game') return;
-    const topicId = Number(topicIdValue);
-    if (!Number.isFinite(topicId) || topicId <= 0) {
-      this.clearGameTopicLink(element);
-      return;
-    }
-
-    const topic = await this.db.getTopicById(topicId);
-    if (!topic) return;
-    this.captureHistory();
-    element.data['topicId'] = topic.id || topicId;
-    element.data['topicName'] = topic.name;
-    element.data['label'] = topic.name;
-    const snapshotResult = await this.saveGameTopicSnapshot(element, topicId);
-    element.data['bookTopicPath'] = snapshotResult?.relativePath || element.data['bookTopicPath'] || '';
+    await this.gameController.onGameTopicSelected(element, topicIdValue);
   }
 
   clearGameTopicLink(element: BookElement): void {
-    if (element.type !== 'game') return;
-    this.captureHistory();
-    element.data['topicId'] = null;
-    element.data['topicName'] = '';
-    element.data['bookTopicPath'] = '';
-    element.data['activityMode'] = 'all';
-    element.data['allowedActivityIds'] = [];
+    this.gameController.clearGameTopicLink(element);
   }
 
   deleteSelectedPage(): void {
@@ -2661,61 +2574,11 @@ Tomorrow I will help my mom.`;
   }
 
   private async attachReturnedTopic(): Promise<void> {
-    if (!this.book) return;
-    const query = this.route.snapshot.queryParamMap;
-    const elementId = query.get('linkedElementId');
-    const topicId = Number(query.get('linkedTopicId'));
-    if (!elementId || !Number.isFinite(topicId) || topicId <= 0) {
-      return;
-    }
-
-    const topicTitle = query.get('linkedTopicTitle') || 'Topic';
-    const bookTopicPath = query.get('bookTopicPath') || '';
-    for (const [index, page] of this.book.pages.entries()) {
-      const element = page.elements.find((item) => item.id === elementId && item.type === 'game');
-      if (!element) continue;
-
-      element.data['topicId'] = topicId;
-      element.data['topicName'] = topicTitle;
-      element.data['bookTopicPath'] = bookTopicPath;
-      element.data['label'] = topicTitle;
-      this.selectedPageIndex = index;
-      this.refreshSelectedPageRender();
-      this.selectedElementId = element.id;
-      await this.save();
-      await this.router.navigate(['/books', this.book.id, 'edit'], { replaceUrl: true });
-      return;
-    }
+    await this.gameController.attachReturnedTopic();
   }
 
   private async saveGameTopicSnapshot(element: BookElement, topicId: number) {
-    if (!this.book || !this.bookLibrary.isAvailable) {
-      return null;
-    }
-
-    const topic = await this.db.getTopicById(topicId);
-    const items = await this.db.getItemsSnapshot(topicId);
-    if (!topic) {
-      return null;
-    }
-
-    const snapshot = {
-      version: '1.0',
-      topic: {
-        id: topic.id,
-        name: topic.name,
-        createdAt: topic.createdAt,
-        updatedAt: topic.updatedAt
-      },
-      items: await Promise.all(items.map(async (item) => ({
-        text: item.text || '',
-        image: item.image ? await this.blobToDataUrl(item.image) : null,
-        audio: item.audio ? await this.blobToDataUrl(item.audio) : null,
-        order: item.order
-      })))
-    };
-
-    return this.bookLibrary.saveTopicSnapshot(this.book.id, element.id, snapshot, topic.name);
+    return this.gameController.saveGameTopicSnapshot(element, topicId);
   }
 
   private blobToDataUrl(blob: Blob): Promise<string> {
