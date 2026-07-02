@@ -69,6 +69,7 @@ import { BookReaderSpeakingSessionController } from './book-reader-speaking-sess
 import { BookReaderSpeakingPlaybackController } from './book-reader-speaking-playback-controller';
 import { BookReaderSpeakingRecordingController } from './book-reader-speaking-recording-controller';
 import { BookReaderSpeakingAiController } from './book-reader-speaking-ai-controller';
+import { BookReaderNavigationController } from './book-reader-navigation-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -101,6 +102,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly speakingPlaybackController = new BookReaderSpeakingPlaybackController(this);
   private readonly speakingRecordingController = new BookReaderSpeakingRecordingController(this);
   private readonly speakingAiController = new BookReaderSpeakingAiController(this);
+  private readonly navigationController = new BookReaderNavigationController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -462,233 +464,79 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   previousPage(): void {
-    if (this.currentPageIndex <= 0) return;
-    this.closeExpandedFocus();
-    this.goToPage(this.currentPageIndex - 1, false);
+    this.navigationController.previousPage();
   }
 
   goToPage(index: number, closeDrawer = false): void {
-    if (index < 0 || index >= this.visiblePages.length) return;
-    if (!this.confirmStopSpeakingForInterruption()) return;
-    this.swipeDir?.cancel();
-    this.stopGuideAudioAndReturnHome();
-    if (this.activeSpeakingElement) {
-      this.activeSpeakingElement = null;
-      this.activeSpeakingPage = null;
-      this.speakingPanelExpanded = false;
-      this.resetSpeakingSessionState();
-    }
-    this.closeExpandedFocus();
-    this.currentPageIndex = index;
-    this.refreshPdfUrl();
-    this.resetDrawingCanvas();
-    this.syncPageJumpValue();
-    this.selectedText = null;
-    this.activeTextInput = null;
-    this.closeTaskInput();
-    this.activeMatchEndpoint = null;
-    this.updateReaderSpreadWidth();
-    if (closeDrawer) this.pageDrawerOpen = false;
+    this.navigationController.goToPage(index, closeDrawer);
   }
 
   togglePageDrawer(): void {
-    this.pageDrawerOpen = !this.pageDrawerOpen;
-    this.updateReaderSpreadWidth();
+    this.navigationController.togglePageDrawer();
   }
 
   canSwitchLinkedWorkbook(): boolean {
-    if (this.pageSource === 'workbook') {
-      return !!this.workbookSession;
-    }
-    return !!this.getCurrentWorkbookLink();
+    return this.navigationController.canSwitchLinkedWorkbook();
   }
 
   toggleLinkedWorkbook(): void {
-    if (!this.book) return;
-    if (!this.confirmStopSpeakingForInterruption()) return;
-    this.closeTaskInput();
-    this.stopGuideAudioAndReturnHome();
-    this.activeSpeakingElement = null;
-    this.activeSpeakingPage = null;
-    this.speakingPanelExpanded = false;
-    this.resetSpeakingSessionState();
-    if (this.pageSource === 'workbook') {
-      const mainPageId = this.workbookSession?.mainPageId || '';
-      this.pageSource = 'main';
-      this.activeWorkbookId = null;
-      this.workbookSession = null;
-      this.markVisiblePagesDirty();
-      const returnIndex = this.visiblePages.findIndex((page) => page.id === mainPageId);
-      this.currentPageIndex = returnIndex >= 0 ? returnIndex : 0;
-      this.syncPageJumpValue();
-      this.pageDrawerOpen = true;
-      this.expandedElement = null;
-      this.expandedFocusElement = null;
-      this.refreshPdfUrl();
-      this.resetDrawingCanvas();
-      this.updateReaderSpreadWidth();
-      return;
-    }
-
-    const currentMainPage = this.currentPage;
-    const link = this.getCurrentWorkbookLink();
-    if (!currentMainPage || !link) return;
-    const workbook = this.getWorkbook(link.workbookId);
-    if (!workbook) return;
-    const pageIds = link.pageIds.filter((pageId) => workbook.pages.some((page) => page.id === pageId));
-    if (!pageIds.length) return;
-
-    this.pageSource = 'workbook';
-    this.activeWorkbookId = workbook.id;
-    this.workbookSession = {
-      mainPageId: currentMainPage.id,
-      workbookId: workbook.id,
-      pageIds
-    };
-    this.markVisiblePagesDirty();
-    this.currentPageIndex = 0;
-    this.syncPageJumpValue();
-    this.pageDrawerOpen = true;
-    this.expandedElement = null;
-    this.expandedFocusElement = null;
-    this.refreshPdfUrl();
-    this.resetDrawingCanvas();
-    this.updateReaderSpreadWidth();
+    this.navigationController.toggleLinkedWorkbook();
   }
 
   nextPage(): void {
-    if (this.currentPageIndex >= this.visiblePages.length - 1) return;
-    this.closeExpandedFocus();
-    this.goToPage(this.currentPageIndex + 1, false);
+    this.navigationController.nextPage();
   }
 
   setZoom(value: number): void {
-    this.zoom = Math.min(2, Math.max(0.5, value));
-    this.updateReaderSpreadWidth(() => {
-      if (this.zoom > 1) this.centerReaderZoom();
-    });
+    this.navigationController.setZoom(value);
   }
 
   rotateCurrentPage(): void {
-    const page = this.currentPage;
-    if (!page) return;
-    this.closeExpandedFocus();
-    this.activeTextInput = null;
-    this.selectedText = null;
-    page.rotation = (this.getPageRotation(page) + 90) % 360;
-    this.invalidateDrawingCache(page.id);
-    this.resetDrawingCanvas();
-    this.updateReaderSpreadWidth(() => {
-      if (this.zoom > 1) this.centerReaderZoom();
-    });
-    void this.saveAnnotations();
+    this.navigationController.rotateCurrentPage();
   }
 
   toggleTwoPageMode(): void {
-    if (!this.confirmStopSpeakingForInterruption()) return;
-    this.stopGuideAudioAndReturnHome();
-    this.activeSpeakingElement = null;
-    this.activeSpeakingPage = null;
-    this.speakingPanelExpanded = false;
-    this.resetSpeakingSessionState();
-    this.closeExpandedFocus();
-    this.twoPageMode = !this.twoPageMode;
-    this.selectedText = null;
-    this.activeTextInput = null;
-    this.closeTaskInput();
-    this.updateReaderSpreadWidth(() => {
-      if (this.zoom > 1) this.centerReaderZoom();
-    });
-    if (this.twoPageMode && this.zoom > 1) {
-      this.centerReaderZoom();
-    }
+    this.navigationController.toggleTwoPageMode();
   }
 
   toggleFocusMode(): void {
-    this.closeTaskInput();
-    if (this.expandedFocusElement) {
-      this.closeExpandedFocus();
-      this.focusMode = true;
-      return;
-    }
-    this.focusMode = !this.focusMode;
+    this.navigationController.toggleFocusMode();
   }
 
   toggleDrawMode(): void {
-    this.drawMode = !this.drawMode;
-    if (this.drawMode) {
-      this.highlighterMode = false;
-      this.textMode = false;
-      this.deleteMode = false;
-      this.selectedText = null;
-    }
+    this.navigationController.toggleDrawMode();
   }
 
   toggleHighlighterMode(): void {
-    this.highlighterMode = !this.highlighterMode;
-    if (this.highlighterMode) {
-      this.drawMode = false;
-      this.textMode = false;
-      this.deleteMode = false;
-      this.selectedText = null;
-    }
+    this.navigationController.toggleHighlighterMode();
   }
 
   isInkModeActive(): boolean {
-    return this.drawMode || this.highlighterMode;
+    return this.navigationController.isInkModeActive();
   }
 
   addTemporaryText(): void {
-    this.textMode = !this.textMode;
-    if (this.textMode) {
-      this.drawMode = false;
-      this.highlighterMode = false;
-      this.deleteMode = false;
-      this.selectedText = null;
-    }
+    this.navigationController.addTemporaryText();
   }
 
   toggleDeleteMode(): void {
-    this.deleteMode = !this.deleteMode;
-    this.activeTextInput = null;
-    if (this.deleteMode) {
-      this.textMode = false;
-      this.drawMode = false;
-      this.highlighterMode = false;
-      this.selectedText = null;
-    }
+    this.navigationController.toggleDeleteMode();
   }
 
   selectTextColor(color: string): void {
-    this.textColor = color;
-    if (this.activeTextInput) {
-      this.activeTextInput.color = color;
-    }
-    if (this.selectedText) {
-      const text = this.getPageAnnotations(this.selectedText.pageId).texts.find((item) => item.id === this.selectedText?.textId);
-      if (text) {
-        text.color = color;
-        text.imageDataUrl = createTextImageDataUrl(text.text, color);
-        void this.saveAnnotations();
-      }
-    }
+    this.navigationController.selectTextColor(color);
   }
 
   startPageJump(): void {
-    this.syncPageJumpValue();
+    this.navigationController.startPageJump();
   }
 
   commitPageJump(): void {
-    const pageNumber = Number(this.pageJumpValue);
-    if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > this.visiblePages.length) {
-      this.syncPageJumpValue();
-      return;
-    }
-    this.goToPage(pageNumber - 1, false);
+    this.navigationController.commitPageJump();
   }
 
   cancelPageJump(): void {
-    this.syncPageJumpValue();
+    this.navigationController.cancelPageJump();
   }
 
   onPageFrameClick(event: MouseEvent): void {
