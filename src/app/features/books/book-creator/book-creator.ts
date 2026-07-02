@@ -40,6 +40,7 @@ import {
 import { GAMES } from '../../topics/games.config';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
+import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 
@@ -231,6 +232,7 @@ Tomorrow I will help my mom.`;
   private readonly markController = new BookCreatorMarkController(this);
   private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
+  private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
 
   async ngOnInit(): Promise<void> {
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -811,88 +813,19 @@ Tomorrow I will help my mom.`;
   }
 
   async toggleGuideTrackPreview(element: BookElement): Promise<void> {
-    if (!this.book || element.type !== 'guideDot') return;
-    const track = this.getSelectedGuideTrack(element) ?? this.getGuideDotTracks(element)[0];
-    if (!track) return;
-    this.selectGuideTrack(element, track);
-
-    if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
-      if (this.activePreviewAudio.paused) {
-        const duration = this.getGuideTrackDuration(track);
-        if (duration > 0 && this.activePreviewAudio.currentTime >= duration - 0.05) {
-          this.activePreviewAudio.currentTime = 0;
-          this.previewGuideCurrentTime = 0;
-          this.guideTrackSeekTimes[track.id] = 0;
-          this.applyCreatorGuideState(element, track, 0);
-        }
-        await this.activePreviewAudio.play().catch(() => {});
-      } else {
-        this.activePreviewAudio.pause();
-      }
-      return;
-    }
-
-    const duration = this.getGuideTrackDuration(track);
-    const startTime = duration > 0 && this.previewGuideCurrentTime >= duration - 0.05
-      ? 0
-      : this.previewGuideCurrentTime;
-    this.startGuideTrackPreview(element, track, startTime);
+    await this.guidePreviewController.toggleGuideTrackPreview(element);
   }
 
   stopGuidePreview(): void {
-    if (this.previewGuideTrackId) {
-      const time = this.activePreviewAudio
-        ? this.activePreviewAudio.currentTime
-        : this.previewGuideCurrentTime;
-      this.guideTrackSeekTimes[this.previewGuideTrackId] = Math.max(0, Number(time) || 0);
-    }
-    this.previewToken++;
-    if (this.activePreviewAudio) {
-      this.activePreviewAudio.pause();
-      this.activePreviewAudio = null;
-    }
-    this.previewPitchCleanup?.();
-    this.previewPitchCleanup = null;
-    this.previewGuideElementId = null;
-    this.previewGuideTrackId = null;
-    this.previewBubbleText = '';
-    this.previewGuideImageUrl = '';
-    this.previewGuideCurrentTime = 0;
-    this.previewGuideDuration = 0;
-    this.previewGuidePaused = true;
-    this.previewOwlImage = 'assets/gifs/owl-corner.gif';
+    this.guidePreviewController.stopGuidePreview();
   }
 
   selectGuideTrack(element: BookElement, track: GuideAudioTrack): void {
-    if (element.type !== 'guideDot') return;
-    if (this.activePreviewAudio && this.previewGuideTrackId !== track.id) {
-      this.stopGuidePreview();
-    }
-    const wasPreviewingTrack = this.previewGuideTrackId === track.id;
-    this.selectedGuideTrackId = track.id;
-    this.selectedGuidePinId = null;
-    this.placingGuidePin = false;
-    const rememberedTime = this.guideTrackSeekTimes[track.id] ?? 0;
-    this.previewGuideCurrentTime = wasPreviewingTrack
-      ? this.activePreviewAudio?.currentTime ?? this.previewGuideCurrentTime
-      : this.clamp(rememberedTime, 0, this.getGuideTrackDuration(track));
-    this.previewGuideDuration = track.duration || 0;
-    this.previewGuideElementId = element.id;
-    this.previewGuideTrackId = track.id;
-    this.previewGuidePaused = this.activePreviewAudio?.paused ?? true;
-    this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
-    void this.ensureGuideTrackDuration(track);
+    this.guidePreviewController.selectGuideTrack(element, track);
   }
 
   setGuideTrackPitch(element: BookElement, track: GuideAudioTrack, event: Event): void {
-    const semitones = Number((event.target as HTMLInputElement).value);
-    this.captureHistory();
-    track.pitchSemitones = semitones || undefined;
-    this.markBookDirty();
-    if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
-      this.stopGuidePreview();
-      this.startGuideTrackPreview(element, track, this.previewGuideCurrentTime);
-    }
+    this.guidePreviewController.setGuideTrackPitch(element, track, event);
   }
 
   getGuideTrackPitch(track: GuideAudioTrack): number {
@@ -900,63 +833,27 @@ Tomorrow I will help my mom.`;
   }
 
   selectGuidePin(element: BookElement, track: GuideAudioTrack, pin: GuideTimelinePin, event?: Event): void {
-    event?.stopPropagation();
-    this.selectedGuideTrackId = track.id;
-    this.selectedGuidePinId = pin.id;
-    this.placingGuidePin = false;
-    this.seekGuideTrackTo(element, track, pin.time);
+    this.guidePreviewController.selectGuidePin(element, track, pin, event);
   }
 
   armGuidePinPlacement(element: BookElement): void {
-    const track = this.getSelectedGuideTrack(element);
-    if (!track) return;
-    if (this.activePreviewAudio && !this.activePreviewAudio.paused) {
-      this.activePreviewAudio.pause();
-    }
-    this.placingGuidePin = !this.placingGuidePin;
+    this.guidePreviewController.armGuidePinPlacement(element);
   }
 
   deleteSelectedGuidePin(element: BookElement): void {
-    const track = this.getSelectedGuideTrack(element);
-    const pinIndex = track?.pins.findIndex((pin) => pin.id === this.selectedGuidePinId) ?? -1;
-    if (!track || pinIndex < 0) return;
-    this.captureHistory();
-    track.pins.splice(pinIndex, 1);
-    this.selectedGuidePinId = null;
-    this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
+    this.guidePreviewController.deleteSelectedGuidePin(element);
   }
 
   adjustSelectedGuidePinTime(element: BookElement, delta: number): void {
-    const track = this.getSelectedGuideTrack(element);
-    const pin = this.getSelectedGuidePin(element);
-    if (!track || !pin) return;
-    this.captureHistory();
-    pin.time = this.clamp(pin.time + delta, 0, this.getGuideTrackDuration(track));
-    this.sortGuidePins(track);
-    this.previewGuideCurrentTime = pin.time;
-    this.seekGuideTrackTo(element, track, pin.time);
+    this.guidePreviewController.adjustSelectedGuidePinTime(element, delta);
   }
 
   async onGuidePinImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
-    if (!this.book) return;
-    const pin = this.getSelectedGuidePin(element);
-    if (!pin) return;
-    if (!blob) {
-      this.captureHistory();
-      delete pin.imageSrc;
-      this.previewGuideImageUrl = '';
-      return;
-    }
-    const dataUrl = await this.blobToDataUrl(blob);
-    const saved = await this.bookLibrary.saveAssetData(this.book.id, 'images', dataUrl, 'guide-pin');
-    if (!saved) return;
-    this.captureHistory();
-    pin.imageSrc = saved.relativePath;
-    this.previewGuideImageUrl = saved.assetUrl || this.getCachedAssetUrl(saved.relativePath);
+    await this.guidePreviewController.onGuidePinImageSelected(blob, element);
   }
 
   getGuidePinImageUrl(pin: GuideTimelinePin | null): string {
-    return pin?.imageSrc ? this.getCachedAssetUrl(pin.imageSrc) : '';
+    return this.guidePreviewController.getGuidePinImageUrl(pin);
   }
 
   addGameMarker(): void {
@@ -2296,16 +2193,11 @@ Tomorrow I will help my mom.`;
   }
 
   prepareGuideTrackSeek(event: Event, element: BookElement, track: GuideAudioTrack): void {
-    event.stopPropagation();
-    this.selectGuideTrack(element, track);
-    void this.ensureGuideTrackDuration(track);
+    this.guidePreviewController.prepareGuideTrackSeek(event, element, track);
   }
 
   seekGuideTrack(event: Event, element: BookElement, track: GuideAudioTrack): void {
-    event.stopPropagation();
-    const input = event.target as HTMLInputElement;
-    this.selectGuideTrack(element, track);
-    this.seekGuideTrackTo(element, track, Number(input.value));
+    this.guidePreviewController.seekGuideTrack(event, element, track);
   }
 
   startGuideTimelinePinDrag(
@@ -2314,34 +2206,11 @@ Tomorrow I will help my mom.`;
     track: GuideAudioTrack,
     pin: GuideTimelinePin
   ): void {
-    event.preventDefault();
-    event.stopPropagation();
-    const timeline = (event.currentTarget as HTMLElement).closest<HTMLElement>('.guide-track-timeline');
-    const rect = timeline?.getBoundingClientRect();
-    if (!rect?.width) return;
-    this.selectGuidePin(element, track, pin);
-    this.activePreviewAudio?.pause();
-    this.beginHistoryCapture();
-    this.timelinePinDragState = {
-      elementId: element.id,
-      trackId: track.id,
-      pinId: pin.id,
-      left: rect.left,
-      width: rect.width,
-      duration: this.getGuideTrackDuration(track)
-    };
-    this.updateTimelinePinFromPointer(event.clientX);
+    this.guidePreviewController.startGuideTimelinePinDrag(event, element, track, pin);
   }
 
   startGuidePagePinDrag(event: PointerEvent, element: BookElement, pin: GuideTimelinePin): void {
-    event.preventDefault();
-    event.stopPropagation();
-    const track = this.getGuideDotTracks(element).find((item) => item.pins.some((candidate) => candidate.id === pin.id));
-    if (!track) return;
-    this.selectGuidePin(element, track, pin);
-    this.beginHistoryCapture();
-    this.pagePinDragState = { elementId: element.id, pinId: pin.id };
-    this.updatePagePinFromPointer(event.clientX, event.clientY);
+    this.guidePreviewController.startGuidePagePinDrag(event, element, pin);
   }
 
   getAssetFileName(relativePath: string): string {
@@ -2607,171 +2476,47 @@ Tomorrow I will help my mom.`;
   }
 
   private startGuideTrackPreview(element: BookElement, track: GuideAudioTrack, startTime: number): void {
-    if (!this.book) return;
-    this.stopGuidePreview();
-    const token = ++this.previewToken;
-    const audio = new Audio(this.bookLibrary.getAssetUrl(this.book.id, track.src));
-    this.activePreviewAudio = audio;
-    this.previewGuideTrackId = track.id;
-    const semitones = track.pitchSemitones ?? 0;
-    if (semitones) {
-      void this.guidePitch.connect(audio, semitones).then((cleanup) => {
-        if (this.previewGuideTrackId === track.id) {
-          this.previewPitchCleanup = cleanup;
-        } else {
-          cleanup();
-        }
-      });
-    }
-    this.previewGuideElementId = element.id;
-    this.previewOwlImage = 'assets/gifs/owl-teaching.gif';
-    this.previewGuidePaused = false;
-    this.previewGuideDuration = track.duration || 0;
-    this.previewGuideCurrentTime = Math.max(0, startTime);
-    this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
-
-    audio.onloadedmetadata = () => {
-      if (token !== this.previewToken) return;
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      if (duration > 0) {
-        track.duration = duration;
-        this.previewGuideDuration = duration;
-        audio.currentTime = this.clamp(startTime, 0, duration);
-      }
-    };
-    audio.ontimeupdate = () => {
-      if (token !== this.previewToken) return;
-      this.previewGuideCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-      this.guideTrackSeekTimes[track.id] = this.previewGuideCurrentTime;
-      this.previewGuideDuration = Number.isFinite(audio.duration) ? audio.duration : this.previewGuideDuration;
-      this.applyCreatorGuideState(element, track, this.previewGuideCurrentTime);
-    };
-    audio.onplay = () => {
-      if (token === this.previewToken) this.previewGuidePaused = false;
-    };
-    audio.onpause = () => {
-      if (token === this.previewToken && !audio.ended) this.previewGuidePaused = true;
-    };
-    audio.onended = () => {
-      if (token !== this.previewToken) return;
-      this.previewGuidePaused = true;
-      this.previewGuideCurrentTime = this.previewGuideDuration;
-      this.guideTrackSeekTimes[track.id] = this.previewGuideCurrentTime;
-    };
-    audio.onerror = () => {
-      if (token === this.previewToken) this.previewGuidePaused = true;
-    };
-    void audio.play().catch(() => {
-      if (token === this.previewToken) this.previewGuidePaused = true;
-    });
+    this.guidePreviewController.startGuideTrackPreview(element, track, startTime);
   }
 
   private seekGuideTrackTo(element: BookElement, track: GuideAudioTrack, value: number): void {
-    const time = this.clamp(Number(value) || 0, 0, this.getGuideTrackDuration(track));
-    const isActiveTrack = this.previewGuideTrackId === track.id;
-    this.previewGuideCurrentTime = time;
-    this.guideTrackSeekTimes[track.id] = time;
-    this.previewGuideDuration = this.getGuideTrackDuration(track);
-    this.previewGuideElementId = element.id;
-    this.previewGuideTrackId = track.id;
-    this.previewOwlImage = 'assets/gifs/owl-teaching.gif';
-    if (this.activePreviewAudio && isActiveTrack) {
-      this.activePreviewAudio.currentTime = time;
-    }
-    this.applyCreatorGuideState(element, track, time);
+    this.guidePreviewController.seekGuideTrackTo(element, track, value);
   }
 
   private applyCreatorGuideState(element: BookElement, track: GuideAudioTrack, time: number): void {
-    const pin = [...(track.pins || [])]
-      .sort((a, b) => a.time - b.time)
-      .filter((candidate) => candidate.time <= time + 0.01)
-      .pop() ?? null;
-    this.previewGuideX = pin?.x ?? element.x + (element.width || 0.08) / 2;
-    this.previewGuideY = pin?.y ?? element.y + (element.height || 0.08) / 2;
-    this.previewBubbleText = pin?.text || '';
-    this.previewGuideImageUrl = pin?.imageSrc ? this.getCachedAssetUrl(pin.imageSrc) : '';
+    this.guidePreviewController.applyCreatorGuideState(element, track, time);
   }
 
   private async ensureGuideTrackDuration(track: GuideAudioTrack): Promise<void> {
-    if (!this.book || (track.duration || 0) > 0) return;
-    const audio = new Audio(this.bookLibrary.getAssetUrl(this.book.id, track.src));
-    await new Promise<void>((resolve) => {
-      audio.preload = 'metadata';
-      audio.onloadedmetadata = () => {
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          track.duration = audio.duration;
-          if (this.selectedGuideTrackId === track.id) {
-            this.previewGuideDuration = audio.duration;
-          }
-        }
-        resolve();
-      };
-      audio.onerror = () => resolve();
-    });
+    await this.guidePreviewController.ensureGuideTrackDuration(track);
   }
 
   private updateTimelinePinFromPointer(clientX: number): void {
-    const drag = this.timelinePinDragState;
-    const element = this.selectedElement;
-    if (!drag || !element || element.id !== drag.elementId) return;
-    const track = this.getGuideDotTracks(element).find((item) => item.id === drag.trackId);
-    const pin = track?.pins.find((item) => item.id === drag.pinId);
-    if (!track || !pin) return;
-    const ratio = this.clamp((clientX - drag.left) / drag.width, 0, 1);
-    pin.time = ratio * drag.duration;
-    this.previewGuideCurrentTime = pin.time;
-    if (this.activePreviewAudio && this.previewGuideTrackId === track.id) {
-      this.activePreviewAudio.currentTime = pin.time;
-    }
-    this.applyCreatorGuideState(element, track, pin.time);
+    this.guidePreviewController.updateTimelinePinFromPointer(clientX);
   }
 
   private updatePagePinFromPointer(clientX: number, clientY: number): void {
-    const drag = this.pagePinDragState;
-    const element = this.selectedElement;
-    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
-    if (!drag || !element || element.id !== drag.elementId || !rect?.width || !rect.height) return;
-    const pin = this.getOrderedGuidePinById(element, drag.pinId);
-    if (!pin) return;
-    pin.x = this.clamp((clientX - rect.left) / rect.width, 0, 1);
-    pin.y = this.clamp((clientY - rect.top) / rect.height, 0, 1);
-    this.previewGuideX = pin.x;
-    this.previewGuideY = pin.y;
+    this.guidePreviewController.updatePagePinFromPointer(clientX, clientY);
   }
 
   private scheduleGuidePinDragFrame(): void {
-    if (this.guidePinDragFrame) return;
-    this.guidePinDragFrame = requestAnimationFrame(() => {
-      this.guidePinDragFrame = 0;
-      this.applyPendingGuidePinPointer();
-    });
+    this.guidePreviewController.scheduleGuidePinDragFrame();
   }
 
   private flushGuidePinDragFrame(): void {
-    if (this.guidePinDragFrame) {
-      cancelAnimationFrame(this.guidePinDragFrame);
-      this.guidePinDragFrame = 0;
-    }
-    this.applyPendingGuidePinPointer();
+    this.guidePreviewController.flushGuidePinDragFrame();
   }
 
   private applyPendingGuidePinPointer(): void {
-    const point = this.pendingGuidePinPointer;
-    if (!point) return;
-    this.pendingGuidePinPointer = null;
-    if (this.timelinePinDragState) {
-      this.updateTimelinePinFromPointer(point.x);
-    } else if (this.pagePinDragState) {
-      this.updatePagePinFromPointer(point.x, point.y);
-    }
+    this.guidePreviewController.applyPendingGuidePinPointer();
   }
 
   private getOrderedGuidePinById(element: BookElement, pinId: string): GuideTimelinePin | null {
-    return getOrderedGuidePins(element).find((item) => item.pin.id === pinId)?.pin ?? null;
+    return this.guidePreviewController.getOrderedGuidePinById(element, pinId);
   }
 
   private sortGuidePins(track: GuideAudioTrack): void {
-    track.pins.sort((a, b) => a.time - b.time);
+    this.guidePreviewController.sortGuidePins(track);
   }
 
   private wait(ms: number): Promise<void> {
