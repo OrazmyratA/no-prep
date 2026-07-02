@@ -1674,14 +1674,6 @@ Tomorrow I will help my mom.`;
     this.saveController.captureHistory();
   }
 
-  private pushUndoSnapshot(snapshot: string): void {
-    this.saveController.pushUndoSnapshot(snapshot);
-  }
-
-  private restoreBookSnapshot(snapshot: string): void {
-    this.saveController.restoreBookSnapshot(snapshot);
-  }
-
   private clearHistory(): void {
     this.saveController.clearHistory();
   }
@@ -1919,24 +1911,12 @@ Tomorrow I will help my mom.`;
     return this.saveController.confirmSaveBeforeLeaving();
   }
 
-  private async getUnsavedChangeChoice(): Promise<'save' | 'discard' | 'cancel'> {
-    return this.saveController.getUnsavedChangeChoice();
-  }
-
   private async saveBeforeBookFileUpload(): Promise<boolean> {
     return this.saveController.saveBeforeBookFileUpload();
   }
 
-  private createBookSnapshot(book: InteractiveBook | null): string {
-    return this.saveController.createBookSnapshot(book);
-  }
-
   private markBookClean(): void {
     this.saveController.markBookClean();
-  }
-
-  private get maxHistoryEntries(): number {
-    return this.saveController.maxHistoryEntries;
   }
 
   private getVirtualPages(pages: BookPage[]): Array<{ page: BookPage; index: number }> {
