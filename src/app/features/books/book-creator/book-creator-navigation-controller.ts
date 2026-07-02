@@ -89,6 +89,25 @@ export class BookCreatorNavigationController {
     return nextIndex >= 0 && nextIndex < this.creator.book.pages.length;
   }
 
+  startPageJump(): void {
+    if (!this.creator.book) return;
+    this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+  }
+
+  commitPageJump(): void {
+    if (!this.creator.book) return;
+    const pageNumber = Number(this.creator.pageJumpValue);
+    if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > this.creator.activePages.length) {
+      this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+      return;
+    }
+    this.selectPage(pageNumber - 1);
+  }
+
+  cancelPageJump(): void {
+    this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+  }
+
   setCreatorZoom(value: number): void {
     this.creator.creatorZoom = this.creator.clamp(Number(value) || 1, 0.55, 2);
     this.creator.updateCreatorCanvasWidth(() => {

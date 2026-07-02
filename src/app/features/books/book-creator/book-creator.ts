@@ -1390,22 +1390,15 @@ Tomorrow I will help my mom.`;
   }
 
   startPageJump(): void {
-    if (!this.book) return;
-    this.pageJumpValue = String(this.activePageIndex + 1);
+    this.navigationController.startPageJump();
   }
 
   commitPageJump(): void {
-    if (!this.book) return;
-    const pageNumber = Number(this.pageJumpValue);
-    if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > this.activePages.length) {
-      this.pageJumpValue = String(this.activePageIndex + 1);
-      return;
-    }
-    this.selectPage(pageNumber - 1);
+    this.navigationController.commitPageJump();
   }
 
   cancelPageJump(): void {
-    this.pageJumpValue = String(this.activePageIndex + 1);
+    this.navigationController.cancelPageJump();
   }
 
   getGuideDotAudioFiles(element: BookElement): string[] {
