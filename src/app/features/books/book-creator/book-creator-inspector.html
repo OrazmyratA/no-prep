@@ -1,0 +1,486 @@
+<div class="inspector-collapsed-rail" *ngIf="creator.inspectorCollapsed">
+  <button type="button" class="inspector-toggle-btn" (click)="creator.toggleInspector()" title="Show settings" aria-label="Show settings">
+    <img class="drawer-toggle-icon inspector-show-icon" src="assets/images/book/sidebar.png" alt="">
+  </button>
+</div>
+
+<button
+  type="button"
+  class="inspector-toggle-btn inspector-edge-toggle"
+  *ngIf="creator.isInspectorVisible"
+  (click)="creator.toggleInspector()"
+  title="Hide settings"
+  aria-label="Hide settings">
+  <img class="drawer-toggle-icon inspector-hide-icon" src="assets/images/book/sidebar.png" alt="">
+</button>
+<aside class="inspector" [class.open]="creator.inspectorOpen" *ngIf="!creator.inspectorCollapsed">
+  <h2 *ngIf="!creator.selectedElement">{{ creator.activePageLabel }}</h2>
+  <div class="page-title-editor" *ngIf="!creator.selectedElement">
+    <input
+      *ngIf="creator.activePageSource === 'main'"
+      class="book-title-input"
+      [(ngModel)]="creator.book.title"
+      (focus)="creator.beginHistoryCapture()"
+      (ngModelChange)="creator.markBookDirty()"
+      (blur)="creator.commitHistoryCapture()"
+      [attr.aria-label]="'creatorBookTitle' | translate">
+    <ng-container *ngIf="creator.activePageSource === 'workbook' && creator.activeWorkbook as workbook">
+      <input
+        class="book-title-input"
+        [(ngModel)]="workbook.title"
+        (focus)="creator.beginHistoryCapture()"
+        (ngModelChange)="creator.markBookDirty()"
+        (blur)="creator.commitHistoryCapture()"
+        aria-label="Workbook title">
+    </ng-container>
+  </div>
+  <div class="page-action-grid" *ngIf="creator.selectedPage && !creator.selectedElement">
+    <button
+      type="button"
+      class="mini-icon-btn"
+      (click)="creator.clearSelectedPageElements()"
+      [disabled]="creator.selectedPage.elements.length === 0"
+      [title]="'creatorClearPageElements' | translate"
+      [attr.aria-label]="'creatorClearPageElements' | translate">
+      <img src="assets/images/book/clear.png" alt="">
+    </button>
+    <button
+      type="button"
+      class="mini-icon-btn"
+      (click)="creator.deleteActiveBookSurface()"
+      [title]="(creator.activePageSource === 'workbook' ? 'creatorDeleteWorkbook' : 'creatorDeleteStudentBook') | translate"
+      [attr.aria-label]="(creator.activePageSource === 'workbook' ? 'creatorDeleteWorkbook' : 'creatorDeleteStudentBook') | translate">
+      <img src="assets/images/book/delete.png" alt="">
+    </button>
+  </div>
+  <div class="page-tool-row" *ngIf="creator.hasCopiedElement() && !creator.selectedElement">
+    <button type="button" class="mini-btn" (click)="creator.pasteCopiedElement()">{{ 'creatorPasteElement' | translate }}</button>
+  </div>
+  <div class="page-tool-row link-help" *ngIf="creator.selectedPage && !creator.selectedElement && creator.activePageSource === 'main'">
+    <button
+      type="button"
+      class="mini-icon-btn"
+      [class.active]="creator.linkingMainPageId === creator.selectedPage.id"
+      (click)="creator.beginWorkbookLinking(creator.selectedPage, $event)"
+      [title]="(creator.linkingMainPageId === creator.selectedPage.id ? 'creatorStopLinking' : 'creatorLinkWorkbookPages') | translate"
+      [attr.aria-label]="(creator.linkingMainPageId === creator.selectedPage.id ? 'creatorStopLinking' : 'creatorLinkWorkbookPages') | translate">
+      <img src="assets/images/book/link.png" alt="">
+    </button>
+    <label class="link-page-input">
+      <input
+        #linkedPagesInput
+        type="text"
+        [ngModel]="creator.getLinkedWorkbookPageNumbers(creator.selectedPage)"
+        (keydown.enter)="creator.setLinkedWorkbookPageNumbers(creator.selectedPage, linkedPagesInput.value)"
+        (blur)="creator.setLinkedWorkbookPageNumbers(creator.selectedPage, linkedPagesInput.value)"
+        placeholder="5, 6, 8, 9">
+    </label>
+  </div>
+
+  <div class="element-inspector" *ngIf="creator.selectedElement as element">
+    <h2>{{ creator.getSelectedElementTypeLabel() }}</h2>
+    <div class="element-action-grid">
+      <button *ngIf="element.type !== 'matchTask'" type="button" class="mini-icon-btn" (click)="creator.duplicateSelectedElement()" [title]="'duplicateLabel' | translate" [attr.aria-label]="'duplicateLabel' | translate">
+        <img src="assets/images/book/duplicate.png" alt="">
+      </button>
+      <button *ngIf="element.type !== 'matchTask'" type="button" class="mini-icon-btn" (click)="creator.copySelectedElement()" [title]="'copyLabel' | translate" [attr.aria-label]="'copyLabel' | translate">
+        <img src="assets/images/book/copy.png" alt="">
+      </button>
+      <button *ngIf="element.type !== 'matchTask'" type="button" class="mini-icon-btn" (click)="creator.pasteCopiedElement()" [disabled]="!creator.hasCopiedElement()" [title]="'pasteLabel' | translate" [attr.aria-label]="'pasteLabel' | translate">
+        <img src="assets/images/book/paste.png" alt="">
+      </button>
+      <button type="button" class="mini-icon-btn danger" (click)="creator.deleteSelectedElement()" [title]="'creatorDeleteSelectedElement' | translate" [attr.aria-label]="'creatorDeleteSelectedElement' | translate">
+        <img src="assets/images/book/delete.png" alt="">
+      </button>
+      <button type="button" class="mini-icon-btn" (click)="creator.moveSelectedElementLayer(-1)" [disabled]="!creator.canMoveSelectedElementLayer(-1)" [title]="'creatorSendBackward' | translate" [attr.aria-label]="'creatorSendBackward' | translate">
+        <img src="assets/images/book/bringt to back.png" alt="">
+      </button>
+      <button type="button" class="mini-icon-btn" (click)="creator.moveSelectedElementLayer(1)" [disabled]="!creator.canMoveSelectedElementLayer(1)" [title]="'creatorBringForward' | translate" [attr.aria-label]="'creatorBringForward' | translate">
+        <img src="assets/images/book/bring to front.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="mini-icon-btn"
+        *ngIf="element.type === 'image' || element.type === 'video' || element.type === 'answerKey'"
+        (click)="creator.replaceElementAsset(element)"
+        [title]="'replaceLabel' | translate"
+        [attr.aria-label]="'replaceLabel' | translate">
+        <img src="assets/images/book/replace.png" alt="">
+      </button>
+    </div>
+    <label *ngIf="element.type === 'note'">
+      {{ 'textOptional' | translate }}
+      <textarea
+        rows="3"
+        [(ngModel)]="element.data['content']"
+        (focus)="creator.beginHistoryCapture()"
+        (ngModelChange)="creator.markBookDirty()"
+        (blur)="creator.commitHistoryCapture()"
+        *ngIf="element.type === 'note'"></textarea>
+    </label>
+    <div class="mark-settings" *ngIf="element.type === 'ink' || element.type === 'highlighter' || element.type === 'text'">
+      <label *ngIf="element.type === 'text'">
+        Text
+        <input
+          type="text"
+          [ngModel]="element.data['text']"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateTextMarkText(element, $event)"
+          (blur)="creator.commitHistoryCapture()">
+      </label>
+      <label>
+        Color
+        <input
+          type="color"
+          [ngModel]="element.data['color'] || (element.type === 'highlighter' ? '#fde047' : element.type === 'text' ? '#111827' : '#2563eb')"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateMarkColor(element, $event)"
+          (blur)="creator.commitHistoryCapture()">
+      </label>
+    </div>
+    <div class="text-task-settings" *ngIf="element.type === 'textTask'">
+      <div
+        class="text-task-answer-row"
+        [class.pending]="last && !answer"
+        *ngFor="let answer of creator.getTextTaskAnswers(element); let i = index; let last = last; trackBy: creator.trackByIndex">
+        <input
+          type="text"
+          [ngModel]="answer"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateTextTaskAnswer(element, i, $event)"
+          (blur)="creator.commitHistoryCapture()"
+          [attr.aria-label]="'Accepted answer ' + (i + 1)">
+        <button
+          type="button"
+          class="mini-icon-btn danger"
+          *ngIf="creator.getTextTaskAnswers(element).length > 1 && (!last || !!answer)"
+          (click)="creator.removeTextTaskAnswer(element, i)"
+          title="Delete accepted answer"
+          aria-label="Delete accepted answer">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+      </div>
+    </div>
+    <div class="choice-task-settings" *ngIf="element.type === 'choiceTask'">
+      <div class="choice-bank-picker">
+        <label>
+          <span>Word bank</span>
+          <select
+            [ngModel]="element.data['wordBankId']"
+            (ngModelChange)="creator.selectChoiceTaskBank(element, $event)">
+            <option *ngFor="let bank of creator.getChoiceTaskBanks()" [value]="bank.id">{{ creator.getWordBankLabel(bank) }}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          class="mini-icon-btn"
+          (click)="creator.createWordBankForTask(element)"
+          title="Create another word bank"
+          aria-label="Create another word bank">+</button>
+      </div>
+      <ng-container *ngIf="creator.getChoiceTaskBank(element) as bank">
+        <div
+          class="text-task-answer-row choice-option-row"
+          [class.pending]="last && !option.text"
+          *ngFor="let option of creator.getWordBankOptions(bank); let i = index; let last = last; trackBy: creator.trackByIndex">
+          <input
+            type="text"
+            [ngModel]="option.text"
+            (focus)="creator.beginHistoryCapture()"
+            (ngModelChange)="creator.updateWordBankOption(bank, i, $event)"
+            (blur)="creator.commitHistoryCapture()"
+            [attr.aria-label]="'Word-bank option ' + (i + 1)">
+          <button
+            type="button"
+            class="mini-icon-btn danger"
+            *ngIf="creator.getWordBankOptions(bank).length > 1 && (!last || !!option.text)"
+            (click)="creator.removeWordBankOption(bank, i)"
+            title="Delete word-bank option"
+            aria-label="Delete word-bank option">
+            <img src="assets/images/book/delete.png" alt="">
+          </button>
+        </div>
+        <label class="choice-correct-answer">
+          <span>Correct answer</span>
+          <select
+            [ngModel]="element.data['correctOptionId']"
+            (ngModelChange)="creator.setChoiceTaskCorrectOption(element, $event)">
+            <option value=""></option>
+            <option *ngFor="let option of creator.getWordBankOptions(bank)" [value]="option.id" [disabled]="!option.text.trim()">
+              {{ option.text }}
+            </option>
+          </select>
+        </label>
+      </ng-container>
+    </div>
+    <div class="circle-task-settings" *ngIf="element.type === 'circleTask'">
+      <label class="circle-correct-toggle">
+        <input
+          type="checkbox"
+          [ngModel]="element.data['correct'] === true"
+          (ngModelChange)="creator.setCircleTaskCorrect(element, $event)">
+        <span>Correct answer</span>
+      </label>
+    </div>
+    <div class="match-task-settings" *ngIf="element.type === 'matchTask'">
+      <div class="choice-bank-picker">
+        <label>
+          <span>Matching</span>
+          <select
+            [ngModel]="element.data['groupId']"
+            (ngModelChange)="creator.setMatchTaskGroup(element, $event)">
+            <option *ngFor="let groupId of creator.getMatchTaskGroupIds()" [value]="groupId">{{ creator.getMatchTaskGroupLabel(groupId) }}</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          class="mini-icon-btn"
+          (click)="creator.createMatchTaskGroup(element)"
+          title="Create another matching group"
+          aria-label="Create another matching group">+</button>
+      </div>
+      <div class="match-pair-summary">
+        <span>{{ creator.getMatchTaskSideLabel(element) }}</span>
+        <strong>{{ creator.getMatchTaskPairNumber(element) }}</strong>
+      </div>
+    </div>
+    <div class="game-link-panel" *ngIf="element.type === 'game'">
+      <div class="linked-topic-card" *ngIf="element.data['topicId']; else noLinkedTopic">
+        <span>{{ 'creatorLinkedTopic' | translate }}</span>
+        <strong>{{ element.data['topicName'] || element.data['label'] || ('creatorTopicNumber' | translate: {id: element.data['topicId']}) }}</strong>
+      </div>
+      <ng-template #noLinkedTopic>
+        <div class="linked-topic-card empty">
+          <span>{{ 'creatorNoTopicLinked' | translate }}</span>
+          <strong>{{ 'creatorCreateOrChooseTopic' | translate }}</strong>
+        </div>
+      </ng-template>
+      <div class="game-topic-actions">
+        <button type="button" class="mini-btn" (click)="creator.createTopicForGame(element)">{{ 'createTopic' | translate }}</button>
+        <button type="button" class="mini-btn" (click)="creator.editGameTopic(element)" [disabled]="!element.data['topicId']">{{ 'creatorEditTopic' | translate }}</button>
+      </div>
+      <label>
+        {{ 'creatorTopicLabel' | translate }}
+        <select
+          [(ngModel)]="element.data['topicId']"
+          (ngModelChange)="creator.onGameTopicSelected(element, $event)">
+          <option [ngValue]="null">{{ 'creatorChooseTopic' | translate }}</option>
+          <option *ngFor="let topic of creator.topics$ | async" [ngValue]="topic.id">{{ topic.name }}</option>
+        </select>
+      </label>
+      <div class="game-activity-panel" *ngIf="element.data['topicId']">
+        <div class="game-activity-heading">
+          <strong>{{ 'activitiesLabel' | translate }}</strong>
+          <span *ngIf="creator.isGameActivityRestricted(element)">{{ creator.getAllowedGameActivityIds(element).length }} / {{ creator.games.length }}</span>
+        </div>
+        <div class="game-activity-mode" role="group" aria-label="Activity access">
+          <button
+            type="button"
+            [class.active]="!creator.isGameActivityRestricted(element)"
+            (click)="creator.setGameActivityRestriction(element, false)">All</button>
+          <button
+            type="button"
+            [class.active]="creator.isGameActivityRestricted(element)"
+            (click)="creator.setGameActivityRestriction(element, true)">Selected</button>
+        </div>
+        <div class="game-activity-grid" *ngIf="creator.isGameActivityRestricted(element)">
+          <button
+            *ngFor="let game of creator.games"
+            type="button"
+            class="game-activity-option"
+            [class.selected]="creator.isGameActivityAllowed(element, game.id)"
+            [disabled]="!creator.canToggleGameActivity(element, game.id)"
+            (click)="creator.toggleGameActivity(element, game.id)"
+            [title]="game.nameKey | translate"
+            [attr.aria-pressed]="creator.isGameActivityAllowed(element, game.id)">
+            <span aria-hidden="true">{{ game.icon }}</span>
+            <small>{{ game.nameKey | translate }}</small>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="image-settings-panel" *ngIf="element.type === 'image'">
+      <app-image-uploader (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
+    </div>
+    <div class="image-settings-panel" *ngIf="element.type === 'answerKey'">
+      <app-image-uploader [contextKey]="element.id" (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
+    </div>
+    <div class="speaking-ai-settings" *ngIf="element.type === 'speakingAi'">
+      <label>
+        Language
+        <input
+          type="text"
+          [ngModel]="element.data['language']"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateSpeakingAiField(element, 'language', $event)"
+          (blur)="creator.commitHistoryCapture()"
+          placeholder="en, tr, ar...">
+      </label>
+      <label>
+        Teacher prompt
+        <textarea
+          rows="18"
+          [ngModel]="element.data['prompt']"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateSpeakingAiField(element, 'prompt', $event)"
+          (blur)="creator.commitHistoryCapture()"
+          [placeholder]="creator.speakingPromptExample"></textarea>
+      </label>
+      <div class="speaking-pack-note">
+        Required pack: {{ creator.getSpeakingAiRequiredPackLabel(element) }}
+      </div>
+      <label>
+        Pack download URL
+        <input
+          type="url"
+          [ngModel]="element.data['packUrl']"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateSpeakingAiField(element, 'packUrl', $event)"
+          (blur)="creator.commitHistoryCapture()"
+          placeholder="https://...">
+      </label>
+      <button type="button" class="mini-btn" (click)="creator.previewSpeakingAi(element)" [disabled]="creator.checkingSpeakingPreview">
+        {{ creator.checkingSpeakingPreview && creator.isSpeakingPreviewVisible(element) ? 'Checking...' : 'Preview' }}
+      </button>
+      <div class="speaking-preview-card" *ngIf="creator.isSpeakingPreviewVisible(element)">
+        <p>{{ creator.getSpeakingPreviewStatusText() }}</p>
+        <div
+          class="speaking-preview-row"
+          *ngFor="let row of creator.getSpeakingPreviewRows()"
+          [class.ready]="row.ready">
+          <span>{{ row.label }}</span>
+          <strong>{{ row.ready ? 'Ready' : 'Missing' }}</strong>
+          <small>{{ creator.getSpeakingPreviewPackMeta(row.pack) }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="video-settings-panel" *ngIf="element.type === 'video'">
+      <button type="button" class="mini-icon-btn wide" (click)="creator.uploadVideoElement(element)" [title]="'creatorUploadVideo' | translate" [attr.aria-label]="'creatorUploadVideo' | translate">
+        <img src="assets/images/book/video.png" alt="">
+        <span>{{ 'upload' | translate }}</span>
+      </button>
+      <label>
+        {{ 'creatorUrlLabel' | translate }}
+        <input
+          type="url"
+          [ngModel]="element.data['src']"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateVideoUrl(element, $event)"
+          (blur)="creator.commitHistoryCapture()"
+          placeholder="https://.../video.mp4">
+      </label>
+    </div>
+    <div class="guide-audio-panel" *ngIf="element.type === 'guideDot'">
+      <div class="guide-track-controls" *ngIf="creator.getSelectedGuideTrack(element) as selectedTrack">
+        <button type="button" class="mini-icon-btn" (click)="creator.toggleGuideTrackPreview(element)" title="Play or pause" aria-label="Play or pause selected track">
+          <img [src]="creator.previewGuideTrackId === selectedTrack.id && !creator.previewGuidePaused ? 'assets/images/book/pause.png' : 'assets/images/book/play.png'" alt="">
+        </button>
+        <button type="button" class="mini-icon-btn danger" (click)="creator.deleteSelectedGuideTrack(element)" title="Delete audio track" aria-label="Delete selected audio track">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+        <button type="button" class="mini-icon-btn" [class.active]="creator.placingGuidePin" (click)="creator.armGuidePinPlacement(element)" title="Place timed position" aria-label="Place a teacher position at the current time">
+          <img src="assets/images/book/pin.png" alt="">
+        </button>
+      </div>
+      <div class="guide-audio-actions">
+        <button type="button" class="mini-icon-btn wide" (click)="creator.addGuideDotAudio(element)" [title]="'creatorAddAudio' | translate" [attr.aria-label]="'creatorAddAudio' | translate">
+          <img src="assets/images/book/audio.png" alt="">
+          <span>{{ 'creatorAddAudio' | translate }}</span>
+        </button>
+        <button
+          type="button"
+          class="mini-icon-btn wide"
+          [class.recording]="creator.recordingGuideElementId === element.id"
+          [class.pending]="creator.requestingMicPermission"
+          (click)="creator.toggleGuideDotRecording(element)"
+          [title]="'record' | translate"
+          [attr.aria-label]="'record' | translate">
+          <span class="record-dot" aria-hidden="true"></span>
+          <span *ngIf="!creator.requestingMicPermission">{{ (creator.recordingGuideElementId === element.id ? 'stopLabel' : 'record') | translate }}</span>
+          <span *ngIf="creator.requestingMicPermission">…</span>
+        </button>
+        <span class="recording-saving-hint" *ngIf="creator.savingRecording">{{ 'save' | translate }}…</span>
+      </div>
+      <div class="guide-place-hint" *ngIf="creator.placingGuidePin">Click the book page to place this position.</div>
+      <div class="audio-list" *ngIf="creator.getGuideDotTracks(element).length">
+        <div
+          class="audio-row"
+          *ngFor="let track of creator.getGuideDotTracks(element); let i = index; trackBy: creator.trackByGuideTrackId"
+          [class.selected]="track.id === creator.selectedGuideTrackId"
+          draggable="true"
+          (dragstart)="creator.onGuideAudioDragStart(i, $event)"
+          (dragover)="creator.onGuideAudioDragOver($event)"
+          (drop)="creator.onGuideAudioDrop(element, i, $event)"
+          (click)="creator.selectGuideTrack(element, track)">
+          <div class="guide-track-timeline">
+            <input
+              type="range"
+              min="0"
+              [max]="creator.getGuideTrackDuration(track)"
+              step="0.01"
+              [value]="creator.getGuideTrackCurrentTime(track)"
+              (pointerdown)="creator.prepareGuideTrackSeek($event, element, track)"
+              (click)="$event.stopPropagation()"
+              (input)="creator.seekGuideTrack($event, element, track)"
+              (change)="creator.seekGuideTrack($event, element, track)"
+              aria-label="Audio track progress">
+            <button
+              *ngFor="let pin of track.pins"
+              type="button"
+              draggable="false"
+              class="guide-timeline-pin"
+              [class.selected]="pin.id === creator.selectedGuidePinId"
+              [style.left.%]="pin.time / creator.getGuideTrackDuration(track) * 100"
+              (click)="creator.selectGuidePin(element, track, pin, $event)"
+              (pointerdown)="creator.startGuideTimelinePinDrag($event, element, track, pin)"
+              [title]="creator.formatGuideTime(pin.time)"
+              aria-label="Timed teacher position">
+            </button>
+          </div>
+          <div class="guide-pitch-row" *ngIf="track.id === creator.selectedGuideTrackId" (click)="$event.stopPropagation()">
+            <span class="guide-pitch-label">♂</span>
+            <input
+              type="range"
+              class="guide-pitch-slider"
+              min="-8"
+              max="10"
+              step="0.5"
+              [value]="creator.getGuideTrackPitch(track)"
+              (input)="creator.setGuideTrackPitch(element, track, $event)"
+              aria-label="Voice pitch">
+            <span class="guide-pitch-label">♀</span>
+            <span class="guide-pitch-value shifted" *ngIf="creator.getGuideTrackPitch(track) !== 0">
+              {{ creator.getGuideTrackPitch(track) > 0 ? '+' : '' }}{{ creator.getGuideTrackPitch(track) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="guide-pin-editor" *ngIf="creator.getSelectedGuidePin(element) as selectedPin">
+        <div class="guide-pin-editor-head">
+          <button type="button" class="tiny-btn" (click)="creator.adjustSelectedGuidePinTime(element, -0.1)">-0.1</button>
+          <button type="button" class="tiny-btn" (click)="creator.adjustSelectedGuidePinTime(element, 0.1)">+0.1</button>
+          <button type="button" class="mini-icon-btn danger" (click)="creator.deleteSelectedGuidePin(element)" title="Delete pin" aria-label="Delete selected pin">
+            <img src="assets/images/book/delete.png" alt="">
+          </button>
+        </div>
+        <label>
+          {{ 'textOptional' | translate }}
+          <textarea
+            rows="3"
+            [(ngModel)]="selectedPin.text"
+            (focus)="creator.beginHistoryCapture()"
+            (ngModelChange)="creator.markBookDirty()"
+            (blur)="creator.commitHistoryCapture()"></textarea>
+        </label>
+        <div class="guide-pin-image" *ngIf="creator.getGuidePinImageUrl(selectedPin) as pinImageUrl">
+          <img [src]="pinImageUrl" alt="">
+        </div>
+        <app-image-uploader
+          [contextKey]="selectedPin.id"
+          (imageSelected)="creator.onGuidePinImageSelected($event, element)">
+        </app-image-uploader>
+      </div>
+    </div>
+  </div>
+</aside>
