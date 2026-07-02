@@ -42,6 +42,7 @@ import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
+import { BookCreatorNavigationController } from './book-creator-navigation-controller';
 import { BookCreatorPageImportController } from './book-creator-page-import-controller';
 import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
@@ -231,6 +232,7 @@ Tomorrow I will help my mom.`;
   private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
+  private readonly navigationController = new BookCreatorNavigationController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
@@ -314,25 +316,11 @@ Tomorrow I will help my mom.`;
   }
 
   selectPage(index: number): void {
-    if (!this.book || index < 0 || index >= this.activePages.length) return;
-    if (this.activePageSource === 'workbook') {
-      this.selectedWorkbookPageIndex = index;
-    } else {
-      this.selectedPageIndex = index;
-    }
-    this.pageJumpValue = String(index + 1);
-    this.refreshSelectedPageRender();
+    this.navigationController.selectPage(index);
   }
 
   rotateSelectedPage(): void {
-    const page = this.selectedPage;
-    if (!page) return;
-    this.captureHistory();
-    page.rotation = (this.getPageRotation(page) + 90) % 360;
-    this.selectedElementId = null;
-    this.activeCreatorTextInput = null;
-    this.markBookDirty();
-    this.refreshSelectedPageRender();
+    this.navigationController.rotateSelectedPage();
   }
 
   markBookDirty(): void {
@@ -353,12 +341,7 @@ Tomorrow I will help my mom.`;
   }
 
   selectMainPage(index: number): void {
-    if (!this.book || index < 0 || index >= this.book.pages.length) return;
-    this.activePageSource = 'main';
-    this.activeWorkbookId = null;
-    this.selectedPageIndex = index;
-    this.pageJumpValue = String(index + 1);
-    this.refreshSelectedPageRender();
+    this.navigationController.selectMainPage(index);
   }
 
   @HostListener('window:resize')
@@ -367,58 +350,23 @@ Tomorrow I will help my mom.`;
   }
 
   selectWorkbookPage(workbook: BookWorkbook, index: number, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.book || index < 0 || index >= workbook.pages.length) return;
-    if (this.linkingMainPageId) {
-      this.toggleWorkbookPageLink(workbook, workbook.pages[index], event);
-    }
-    this.activePageSource = 'workbook';
-    this.activeWorkbookId = workbook.id;
-    this.selectedWorkbookPageIndex = index;
-    this.pageJumpValue = String(index + 1);
-    this.refreshSelectedPageRender();
+    this.navigationController.selectWorkbookPage(workbook, index, event);
   }
 
   selectWorkbookPlaceholder(event?: Event): void {
-    event?.stopPropagation();
-    this.activePageSource = 'workbook';
-    this.activeWorkbookId = null;
-    this.selectedWorkbookPageIndex = 0;
-    this.selectedElementId = null;
-    this.selectedPdfUrl = '';
-    this.pageAspectRatio = '3 / 4';
-    this.pageJumpValue = '1';
+    this.navigationController.selectWorkbookPlaceholder(event);
   }
 
   onEditorWheel(event: WheelEvent): void {
-    if (this.creatorZoom > 1) return;
-    if (!this.book || Math.abs(event.deltaY) < 18) return;
-    event.preventDefault();
-    const now = Date.now();
-    if (now - this.lastEditorWheelAt < 240) return;
-    this.lastEditorWheelAt = now;
-    const direction = event.deltaY > 0 ? 1 : -1;
-    this.selectPage(this.activePageIndex + direction);
+    this.navigationController.onEditorWheel(event);
   }
 
   moveSelectedPage(direction: -1 | 1): void {
-    if (!this.book) return;
-    if (this.activePageSource !== 'main') return;
-    const nextIndex = this.selectedPageIndex + direction;
-    if (nextIndex < 0 || nextIndex >= this.book.pages.length) return;
-
-    this.captureHistory();
-    const [page] = this.book.pages.splice(this.selectedPageIndex, 1);
-    this.book.pages.splice(nextIndex, 0, page);
-    this.selectedPageIndex = nextIndex;
-    this.refreshSelectedPageRender();
+    this.navigationController.moveSelectedPage(direction);
   }
 
   canMoveSelectedPage(direction: -1 | 1): boolean {
-    if (!this.book) return false;
-    if (this.activePageSource !== 'main') return false;
-    const nextIndex = this.selectedPageIndex + direction;
-    return nextIndex >= 0 && nextIndex < this.book.pages.length;
+    return this.navigationController.canMoveSelectedPage(direction);
   }
 
   onPageDragStart(index: number, event: DragEvent): void {
@@ -505,12 +453,7 @@ Tomorrow I will help my mom.`;
   }
 
   setCreatorZoom(value: number): void {
-    this.creatorZoom = this.clamp(Number(value) || 1, 0.55, 2);
-    this.updateCreatorCanvasWidth(() => {
-      if (this.creatorZoom > 1) {
-        this.centerCreatorZoom();
-      }
-    });
+    this.navigationController.setCreatorZoom(value);
   }
 
   addInkMark(): void {
@@ -543,12 +486,7 @@ Tomorrow I will help my mom.`;
   }
 
   toggleInspector(): void {
-    if (this.isPhoneLayout()) {
-      this.inspectorOpen = !this.inspectorOpen;
-      if (this.inspectorOpen) this.pageStripOpen = false;
-      return;
-    }
-    this.inspectorCollapsed = !this.inspectorCollapsed;
+    this.navigationController.toggleInspector();
   }
 
   async takeCreatorScreenshot(): Promise<void> {
@@ -928,39 +866,31 @@ Tomorrow I will help my mom.`;
   }
 
   togglePageStrip(): void {
-    if (this.isPhoneLayout()) {
-      this.pageStripOpen = !this.pageStripOpen;
-      if (this.pageStripOpen) {
-        this.inspectorOpen = false;
-      }
-    } else {
-      this.pageStripCollapsed = !this.pageStripCollapsed;
-    }
+    this.navigationController.togglePageStrip();
   }
 
   get pageStripToggleActive(): boolean {
-    return this.isPhoneLayout() ? this.pageStripOpen : this.pageStripCollapsed;
+    return this.navigationController.pageStripToggleActive;
   }
 
   get isPageStripVisible(): boolean {
-    return this.isPhoneLayout() ? this.pageStripOpen : !this.pageStripCollapsed;
+    return this.navigationController.isPageStripVisible;
   }
 
   get showPageStripRail(): boolean {
-    return this.isPhoneLayout() ? !this.pageStripOpen : this.pageStripCollapsed;
+    return this.navigationController.showPageStripRail;
   }
 
   get isInspectorVisible(): boolean {
-    return this.isPhoneLayout() ? this.inspectorOpen : !this.inspectorCollapsed;
+    return this.navigationController.isInspectorVisible;
   }
 
   closeMobilePanels(): void {
-    this.pageStripOpen = false;
-    this.inspectorOpen = false;
+    this.navigationController.closeMobilePanels();
   }
 
   private isPhoneLayout(): boolean {
-    return window.innerWidth <= 960;
+    return this.navigationController.isPhoneLayout();
   }
 
   onCanvasPointerDown(event: PointerEvent): void {
