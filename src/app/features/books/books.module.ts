@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SharedModule } from '../../shared/shared.module';
 import { BooksRoutingModule } from './books-routing.module';
 import { BookCreatorComponent } from './book-creator/book-creator';
+import { BookCreatorEditorSurfaceComponent } from './book-creator/book-creator-editor-surface';
 import { BookCreatorInspectorComponent } from './book-creator/book-creator-inspector';
 import { BookCreatorPageStripComponent } from './book-creator/book-creator-page-strip';
 import { BookCreatorToolbarComponent } from './book-creator/book-creator-toolbar';
@@ -19,7 +20,7 @@ import { PdfPageCanvasComponent } from './pdf-page-canvas/pdf-page-canvas';
 import { TranslatePipe } from '../../shared/translate-pipe';
 
 @NgModule({
-  declarations: [BookCreatorComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
+  declarations: [BookCreatorComponent, BookCreatorEditorSurfaceComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
   imports: [CommonModule, FormsModule, SharedModule, BooksRoutingModule, TranslatePipe]
 })
 export class BooksModule {}

@@ -1,0 +1,189 @@
+<main #editorCanvasShell class="editor-canvas-shell" [class.zoomed]="creator.creatorZoom > 1">
+  <button
+    type="button"
+    class="creator-page-edge previous"
+    (click)="$event.stopPropagation(); creator.selectPage(creator.activePageIndex - 1)"
+    [disabled]="creator.activePageIndex <= 0"
+    [title]="'previousPage' | translate"
+    [attr.aria-label]="'previousPage' | translate">
+    <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+  </button>
+  <button
+    type="button"
+    class="creator-page-edge next"
+    (click)="$event.stopPropagation(); creator.selectPage(creator.activePageIndex + 1)"
+    [disabled]="creator.activePageIndex >= creator.activePages.length - 1"
+    [title]="'nextPage' | translate"
+    [attr.aria-label]="'nextPage' | translate">
+    <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+  </button>
+  <div class="editor-canvas-scroll-content">
+    <div
+      #editorCanvas
+      class="editor-canvas"
+      [class.screenshotting]="creator.creatorScreenshotting"
+      [class.mark-mode-active]="creator.creatorDrawMode || creator.creatorHighlighterMode"
+      [style.width.px]="creator.creatorCanvasWidthPx"
+      [style.aspect-ratio]="creator.getSelectedPageAspectRatio()"
+      [style.background]="creator.selectedPage?.backgroundColor || '#f8fafc'"
+      (wheel)="creator.onEditorWheel($event)"
+      (click)="creator.onCanvasBackgroundClick($event)"
+      appSwipe
+      [swipeDisabled]="!!creator.placingMatchTask || !!creator.placingTextTask || !!creator.placingChoiceTask || !!creator.placingCircleTask || creator.creatorDrawMode || creator.creatorHighlighterMode || creator.creatorTextMode || creator.isDragging"
+      (swipeLeft)="creator.selectPage(creator.activePageIndex + 1)"
+      (swipeRight)="creator.selectPage(creator.activePageIndex - 1)"
+      (pointerdown)="creator.onCanvasPointerDown($event)">
+    <div class="editor-page-content">
+    <app-pdf-page-canvas
+      *ngIf="creator.selectedPage?.type === 'pdf' && creator.selectedPdfUrl"
+      [sourceUrl]="creator.selectedPdfUrl"
+      [pageNumber]="creator.selectedPage?.pdfPage || 1"
+      [rotation]="creator.getPageRotation(creator.selectedPage)"
+      [renderScale]="1.6"
+      (pageSize)="creator.onPdfPageSize($event)">
+    </app-pdf-page-canvas>
+    <canvas
+      #creatorDrawingCanvas
+      class="creator-live-drawing-layer"
+      [class.active]="creator.creatorDrawMode || creator.creatorHighlighterMode">
+    </canvas>
+    <div class="pdf-placeholder page-starter" *ngIf="!creator.selectedPage || creator.shouldShowPageStarter()">
+      <strong>{{ creator.activePageLabel }}</strong>
+      <span *ngIf="creator.activePageSource === 'main'">{{ 'creatorUploadStudentPdfHint' | translate }}</span>
+      <span *ngIf="creator.activePageSource === 'workbook'">{{ 'creatorUploadWorkbookPdfHint' | translate }}</span>
+      <div class="starter-actions">
+        <button type="button" class="mini-btn" (click)="creator.activePageSource === 'workbook' ? creator.uploadWorkbookPdf() : creator.uploadStudentPdf()">
+          {{ 'creatorUploadPdf' | translate }}
+        </button>
+        <button type="button" class="mini-btn" (click)="creator.addImageToCurrentPage()">
+          {{ 'creatorEnterImage' | translate }}
+        </button>
+      </div>
+    </div>
+
+    <div
+      *ngFor="let element of creator.selectedPage?.elements; trackBy: creator.trackByElementId"
+      class="creator-element"
+      [class.selected]="element.id === creator.selectedElementId"
+      [class.focus-element]="element.type === 'focus'"
+      [class.dot-element]="element.type === 'guideDot'"
+      [class.image-element]="element.type === 'image'"
+      [class.note-element]="element.type === 'note'"
+      [class.answer-key-element]="element.type === 'answerKey'"
+      [class.speaking-ai-element]="element.type === 'speakingAi'"
+      [class.ink-element]="element.type === 'ink'"
+      [class.highlighter-element]="element.type === 'highlighter'"
+      [class.text-mark-element]="element.type === 'text'"
+      [class.game-element]="element.type === 'game'"
+      [class.video-element]="element.type === 'video'"
+      [class.text-task-element]="element.type === 'textTask'"
+      [class.choice-task-element]="element.type === 'choiceTask'"
+      [class.circle-task-element]="element.type === 'circleTask'"
+      [class.correct-target]="element.type === 'circleTask' && element.data['correct'] === true"
+      [class.match-task-element]="element.type === 'matchTask'"
+      [class.match-side-a]="element.type === 'matchTask' && element.data['side'] === 'A'"
+      [class.match-side-b]="element.type === 'matchTask' && element.data['side'] === 'B'"
+      [class.pending-match-endpoint]="element.type === 'matchTask' && creator.isPendingMatchEndpoint(element)"
+      [style.left.%]="element.x * 100"
+      [style.top.%]="element.y * 100"
+      [style.width.%]="(element.width || 0.08) * 100"
+      [style.height.%]="(element.height || 0.08) * 100"
+      (click)="$event.stopPropagation(); creator.selectElement(element.id)"
+      (pointerdown)="creator.startElementDrag($event, element)">
+      <img *ngIf="element.type === 'image' && element.data['src']" [src]="creator.getElementAssetUrl(element)" [alt]="creator.getElementLabel(element)">
+      <img *ngIf="element.type === 'image' && !element.data['src']" class="book-marker-icon" src="assets/images/book/image.png" [alt]="'image' | translate">
+      <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
+      <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+      <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+      <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+      <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
+        <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
+      </span>
+      <span *ngIf="element.type === 'note'" class="note-marker">
+        <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
+      </span>
+      <svg *ngIf="element.type === 'ink' && element.data['points']; else creatorInkFallback" class="creator-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+        <polyline [attr.points]="creator.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <ng-template #creatorInkFallback>
+        <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
+      </ng-template>
+      <svg *ngIf="element.type === 'highlighter' && element.data['points']; else creatorHighlighterFallback" class="creator-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+        <polyline [attr.points]="creator.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+      </svg>
+      <ng-template #creatorHighlighterFallback>
+        <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>
+      </ng-template>
+      <span *ngIf="element.type === 'text'" class="teacher-text-mark" [style.color]="element.data['color'] || '#111827'">
+        <img *ngIf="element.data['imageDataUrl']" [src]="element.data['imageDataUrl']" alt="">
+        <span *ngIf="!element.data['imageDataUrl']">{{ element.data['text'] || 'Text' }}</span>
+      </span>
+      <img *ngIf="element.type === 'answerKey'" class="book-marker-icon" src="assets/images/book/answer key.png" alt="Answer key">
+      <span *ngIf="element.type === 'textTask'" class="text-task-line"></span>
+      <span *ngIf="element.type === 'choiceTask'" class="choice-task-line">{{ creator.getChoiceTaskCorrectText(element) }}</span>
+      <span *ngIf="element.type === 'matchTask'" class="match-task-dot">
+        <span>{{ creator.getMatchTaskPairNumber(element) }}</span>
+        <small>{{ creator.getMatchTaskSideLabel(element) }}</small>
+      </span>
+      <span
+        *ngIf="element.id === creator.selectedElementId && element.type !== 'matchTask' && !creator.isFixedCreatorMark(element)"
+        class="resize-handle"
+        (pointerdown)="creator.startElementResize($event, element)">
+      </span>
+    </div>
+
+    <div
+      *ngIf="creator.activeCreatorTextInput"
+      class="creator-text-editor"
+      [style.left.%]="creator.activeCreatorTextInput.x * 100"
+      [style.top.%]="creator.activeCreatorTextInput.y * 100"
+      [style.width.%]="creator.activeCreatorTextInput.width * 100"
+      [style.height.%]="creator.activeCreatorTextInput.height * 100"
+      [style.color]="creator.activeCreatorTextInput.color"
+      (click)="$event.stopPropagation()"
+      (pointerdown)="$event.stopPropagation()"
+      aria-label="Text">
+      <textarea
+        class="creator-inline-text-input"
+        [(ngModel)]="creator.activeCreatorTextInput.value"
+        (keydown.enter)="creator.commitCreatorTextInputFromKey($event)"
+        (keydown.escape)="creator.cancelCreatorTextInput()"
+        (blur)="creator.commitCreatorTextInput($event)"></textarea>
+    </div>
+
+    <ng-container *ngIf="creator.selectedElement as guideElement">
+      <button
+        *ngFor="let item of creator.getGuidePinSequence(guideElement); trackBy: creator.trackByGuidePinId"
+        type="button"
+        class="creator-guide-pin"
+        [class.selected]="item.pin.id === creator.selectedGuidePinId"
+        [style.left.%]="item.pin.x * 100"
+        [style.top.%]="item.pin.y * 100"
+        (click)="creator.selectGuidePin(guideElement, item.track, item.pin, $event)"
+        (pointerdown)="creator.startGuidePagePinDrag($event, guideElement, item.pin)"
+        [attr.aria-label]="'Guide position ' + item.sequence">
+        <img src="assets/images/book/pin.png" alt="">
+        <span>{{ item.sequence }}</span>
+      </button>
+    </ng-container>
+
+    <div
+      *ngIf="creator.selectedElement as previewElement"
+      class="guide-preview"
+      [class.active]="creator.previewGuideElementId === previewElement.id"
+      [style.left.%]="creator.previewGuideX * 100"
+      [style.top.%]="creator.previewGuideY * 100">
+      <img *ngIf="creator.previewGuideElementId === previewElement.id" [src]="creator.previewOwlImage" [attr.alt]="'creatorTeacherOwlPreview' | translate">
+      <div class="guide-preview-bubble" *ngIf="creator.previewGuideElementId === previewElement.id && creator.previewBubbleText">
+        {{ creator.previewBubbleText }}
+      </div>
+      <img
+        *ngIf="creator.previewGuideElementId === previewElement.id && creator.previewGuideImageUrl"
+        class="guide-preview-media"
+        [src]="creator.previewGuideImageUrl"
+        alt="">
+    </div>
+    </div>
+    </div>
+  </div>
+</main>

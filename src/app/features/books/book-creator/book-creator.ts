@@ -38,6 +38,7 @@ import {
 } from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
 import { BookCreatorElementController } from './book-creator-element-controller';
+import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface';
 import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
@@ -59,10 +60,23 @@ import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-
   styleUrls: ['./book-creator.css']
 })
 export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('editorCanvas') editorCanvas?: ElementRef<HTMLElement>;
-  @ViewChild('editorCanvasShell') editorCanvasShell?: ElementRef<HTMLElement>;
-  @ViewChild('creatorDrawingCanvas') creatorDrawingCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChild(SwipeDirective) swipeDir?: SwipeDirective;
+  @ViewChild(BookCreatorEditorSurfaceComponent) editorSurface?: BookCreatorEditorSurfaceComponent;
+
+  get editorCanvas(): ElementRef<HTMLElement> | undefined {
+    return this.editorSurface?.editorCanvas;
+  }
+
+  get editorCanvasShell(): ElementRef<HTMLElement> | undefined {
+    return this.editorSurface?.editorCanvasShell;
+  }
+
+  get creatorDrawingCanvas(): ElementRef<HTMLCanvasElement> | undefined {
+    return this.editorSurface?.creatorDrawingCanvas;
+  }
+
+  get swipeDir(): SwipeDirective | undefined {
+    return this.editorSurface?.swipeDir;
+  }
 
   book: InteractiveBook | null = null;
   selectedPageIndex = 0;
