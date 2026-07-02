@@ -9,7 +9,6 @@ import { GuidePitchService } from '../../../core/guide-pitch';
 import { DbService } from '../../../core/db';
 import { LanguageService } from '../../../core/language';
 import { showAppNotification } from '../../../core/notification';
-import { InstalledAiLanguagePack } from '../../../core/ai-language-packs';
 import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus } from '../../../core/ai-speaking-runtime';
 import { Topic } from '../../../core/db.model';
 import {
@@ -42,13 +41,8 @@ import { normalizeAllowedActivityIds } from '../../topics/activity-select/activi
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
+import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
-
-type SpeakingPreviewRow = {
-  label: string;
-  pack: InstalledAiLanguagePack | null;
-  ready: boolean;
-};
 
 @Component({
   selector: 'app-book-creator',
@@ -233,6 +227,7 @@ Tomorrow I will help my mom.`;
   private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
+  private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
 
   async ngOnInit(): Promise<void> {
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -868,58 +863,31 @@ Tomorrow I will help my mom.`;
   }
 
   updateSpeakingAiField(element: BookElement, field: string, value: unknown): void {
-    if (element.type !== 'speakingAi') return;
-    element.data[field] = String(value ?? '');
-    if (field === 'language' && this.speakingPreviewElementId === element.id) {
-      this.speakingPreviewStatus = null;
-    }
-    this.markBookDirty();
+    this.speakingPreviewController.updateSpeakingAiField(element, field, value);
   }
 
   getSpeakingAiRequiredPackLabel(element: BookElement): string {
-    if (element.type !== 'speakingAi') return '';
-    const language = String(element.data['language'] || 'en').trim().toLowerCase() || 'en';
-    return `${language.toUpperCase()} Speaking Pack`;
+    return this.speakingPreviewController.getSpeakingAiRequiredPackLabel(element);
   }
 
   async previewSpeakingAi(element: BookElement): Promise<void> {
-    if (element.type !== 'speakingAi') return;
-    this.speakingPreviewElementId = element.id;
-    this.checkingSpeakingPreview = true;
-    this.cdr.detectChanges();
-    try {
-      this.speakingPreviewStatus = await this.aiSpeakingRuntime.getStatusForLanguage(String(element.data['language'] || 'en'));
-      showAppNotification(this.speakingPreviewStatus.reason, this.speakingPreviewStatus.conversationAvailable ? 'success' : 'info');
-    } catch (error: any) {
-      this.speakingPreviewStatus = null;
-      showAppNotification(error?.message || 'Could not check AI speaking packs.', 'error');
-    } finally {
-      this.checkingSpeakingPreview = false;
-      this.cdr.detectChanges();
-    }
+    await this.speakingPreviewController.previewSpeakingAi(element);
   }
 
   isSpeakingPreviewVisible(element: BookElement): boolean {
-    return element.type === 'speakingAi' && this.speakingPreviewElementId === element.id;
+    return this.speakingPreviewController.isSpeakingPreviewVisible(element);
   }
 
   getSpeakingPreviewStatusText(): string {
-    if (this.checkingSpeakingPreview) return 'Checking speaking pack...';
-    return this.speakingPreviewStatus?.reason || 'Click Preview to check this language on this device.';
+    return this.speakingPreviewController.getSpeakingPreviewStatusText();
   }
 
   getSpeakingPreviewRows(): SpeakingPreviewRow[] {
-    const status = this.speakingPreviewStatus;
-    return [
-      { label: 'Listening', pack: status?.featurePacks.speechToText ?? null, ready: !!status?.speechToTextAvailable },
-      { label: 'Conversation', pack: status?.featurePacks.dialogue ?? null, ready: !!status?.dialogueAvailable },
-      { label: 'Voice', pack: status?.featurePacks.textToSpeech ?? null, ready: !!status?.textToSpeechAvailable }
-    ];
+    return this.speakingPreviewController.getSpeakingPreviewRows();
   }
 
-  getSpeakingPreviewPackMeta(pack: InstalledAiLanguagePack | null): string {
-    if (!pack) return 'Install the speaking pack for this language.';
-    return pack.label;
+  getSpeakingPreviewPackMeta(pack: SpeakingPreviewRow['pack']): string {
+    return this.speakingPreviewController.getSpeakingPreviewPackMeta(pack);
   }
 
   isGameActivityRestricted(element: BookElement): boolean {
