@@ -1,0 +1,145 @@
+<div class="creator-toolbar">
+  <div class="creator-toolbar-left">
+    <button type="button" class="icon-btn" (click)="creator.goBack()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
+      <img src="assets/images/book/back.png" alt="">
+    </button>
+  </div>
+
+  <div class="creator-actions creator-toolbar-middle" *ngIf="creator.book">
+    <div class="toolbar-group">
+      <button type="button" class="icon-tool-btn" (click)="creator.undo()" [disabled]="!creator.canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">
+        <img src="assets/images/book/undo.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.redo()" [disabled]="!creator.canRedo()" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate">
+        <img src="assets/images/book/redo.png" alt="">
+      </button>
+    </div>
+    <div class="toolbar-group creator-mark-group">
+      <button type="button" class="icon-tool-btn" (click)="creator.setCreatorZoom(creator.creatorZoom + 0.1)" [title]="'zoomIn' | translate" [attr.aria-label]="'zoomIn' | translate">
+        <img src="assets/images/book/zoom-in.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.setCreatorZoom(creator.creatorZoom - 0.1)" [title]="'zoomOut' | translate" [attr.aria-label]="'zoomOut' | translate">
+        <img src="assets/images/book/zoom-out.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.rotateSelectedPage()" title="Rotate page" aria-label="Rotate page">
+        <img src="assets/images/book/rotate-right.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" [class.active]="creator.creatorDrawMode" (click)="creator.addInkMark()" [title]="'drawLabel' | translate" [attr.aria-label]="'drawLabel' | translate">
+        <img src="assets/images/book/draw.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" [class.active]="creator.creatorHighlighterMode" (click)="creator.addHighlighterMark()" title="Highlighter" aria-label="Highlighter">
+        <img src="assets/images/book/highlighter.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" [class.active]="creator.creatorTextMode" (click)="creator.addTextMark()" title="Text" aria-label="Text">
+        <span aria-hidden="true">T</span>
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.takeCreatorScreenshot()" [disabled]="creator.creatorScreenshotting" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate">
+        <img src="assets/images/book/screenshot.png" alt="">
+      </button>
+    </div>
+    <div class="toolbar-page-stepper" *ngIf="creator.activePages.length > 1">
+      <button
+        type="button"
+        (click)="creator.selectPage(creator.activePageIndex - 1)"
+        [disabled]="creator.activePageIndex <= 0"
+        [title]="'previousPage' | translate"
+        [attr.aria-label]="'previousPage' | translate">
+        <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
+      </button>
+      <input
+        type="number"
+        min="1"
+        [max]="creator.activePages.length"
+        [(ngModel)]="creator.pageJumpValue"
+        (focus)="creator.startPageJump()"
+        (keydown.enter)="creator.commitPageJump()"
+        (keydown.escape)="creator.cancelPageJump()"
+        (blur)="creator.commitPageJump()"
+        [attr.aria-label]="'readerGoToPage' | translate">
+      <span>/ {{ creator.activePages.length }}</span>
+      <button
+        type="button"
+        (click)="creator.selectPage(creator.activePageIndex + 1)"
+        [disabled]="creator.activePageIndex >= creator.activePages.length - 1"
+        [title]="'nextPage' | translate"
+        [attr.aria-label]="'nextPage' | translate">
+        <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
+      </button>
+    </div>
+    <div class="toolbar-group insert-group">
+      <button type="button" class="icon-tool-btn" (click)="creator.addImage()" [title]="'image' | translate" [attr.aria-label]="'creatorAddImage' | translate">
+        <img src="assets/images/book/image.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addVideo()" [title]="'videoLabel' | translate" [attr.aria-label]="'creatorAddVideo' | translate">
+        <img src="assets/images/book/video.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addGameMarker()" [title]="'gameLabel' | translate" [attr.aria-label]="'creatorAddGame' | translate">
+        <img src="assets/images/book/game.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addFocus()" [title]="'focusLabel' | translate" [attr.aria-label]="'creatorAddFocusArea' | translate">
+        <img src="assets/images/book/focus.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addGuideDot()" [title]="'teacherGuideDotLabel' | translate" [attr.aria-label]="'creatorAddTeacherGuideDot' | translate">
+        <img src="assets/images/book/teacher.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addNote()" [title]="'noteLabel' | translate" [attr.aria-label]="'creatorAddNote' | translate">
+        <img src="assets/images/book/note.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addAnswerKey()" title="Answer key" aria-label="Add answer key">
+        <img src="assets/images/book/answer key.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.addSpeakingAi()" title="AI speaking" aria-label="Add AI speaking">
+        <img src="assets/images/book/speaking.png" alt="">
+      </button>
+    </div>
+    <div class="toolbar-group task-insert-group">
+      <button
+        type="button"
+        class="icon-tool-btn"
+        [class.active]="creator.placingMatchTask"
+        (click)="creator.toggleMatchTaskTool()"
+        title="Matching task"
+        aria-label="Place matching pairs">
+        <img src="assets/images/book/match.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="icon-tool-btn"
+        [class.active]="creator.placingTextTask"
+        (click)="creator.toggleTextTaskTool()"
+        title="Text task"
+        aria-label="Draw a text answer task">
+        <img src="assets/images/book/input.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="icon-tool-btn"
+        [class.active]="creator.placingChoiceTask"
+        (click)="creator.toggleChoiceTaskTool()"
+        title="Word-bank gap"
+        aria-label="Draw a word-bank gap">
+        <img src="assets/images/book/multiple-choice.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="icon-tool-btn"
+        [class.active]="creator.placingCircleTask"
+        (click)="creator.toggleCircleTaskTool()"
+        title="Circling task"
+        aria-label="Draw circling choices">
+        <img src="assets/images/book/circle.png" alt="">
+      </button>
+    </div>
+  </div>
+
+  <div class="creator-toolbar-right" *ngIf="creator.book">
+    <div class="toolbar-group">
+      <button type="button" class="icon-tool-btn" (click)="creator.openReader()" [title]="'creatorViewReader' | translate" [attr.aria-label]="'creatorViewReader' | translate">
+        <img src="assets/images/book/view.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn save-tool-btn" [class.dirty]="creator.hasUnsavedChanges()" (click)="creator.save()" [title]="'save' | translate" [attr.aria-label]="'save' | translate">
+        <img src="assets/images/book/save.png" alt="">
+      </button>
+    </div>
+  </div>
+</div>
