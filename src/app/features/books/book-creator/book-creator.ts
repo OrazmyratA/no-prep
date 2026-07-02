@@ -49,6 +49,7 @@ import { BookCreatorPageSurfaceController } from './book-creator-page-surface-co
 import { BookCreatorSaveController } from './book-creator-save-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
+import { BookCreatorTaskSettingsController } from './book-creator-task-settings-controller';
 import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
 
 @Component({
@@ -241,6 +242,7 @@ Tomorrow I will help my mom.`;
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly saveController = new BookCreatorSaveController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
+  private readonly taskSettingsController = new BookCreatorTaskSettingsController(this);
   private readonly workbookLinkController = new BookCreatorWorkbookLinkController(this);
 
   async ngOnInit(): Promise<void> {
@@ -1402,170 +1404,87 @@ Tomorrow I will help my mom.`;
   }
 
   getTextTaskAnswers(element: BookElement): string[] {
-    if (element.type !== 'textTask') return [];
-    return Array.isArray(element.data['acceptedAnswers'])
-      ? element.data['acceptedAnswers'] as string[]
-      : [];
+    return this.taskSettingsController.getTextTaskAnswers(element);
   }
 
   updateTextTaskAnswer(element: BookElement, index: number, value: string): void {
-    if (element.type !== 'textTask') return;
-    const answers = this.getTextTaskAnswers(element);
-    answers[index] = value;
-    while (answers.length > 1 && !answers[answers.length - 1] && !answers[answers.length - 2]) {
-      answers.pop();
-    }
-    if (answers[answers.length - 1] !== '') answers.push('');
-    element.data['acceptedAnswers'] = answers;
-    this.markBookDirty();
+    this.taskSettingsController.updateTextTaskAnswer(element, index, value);
   }
 
   removeTextTaskAnswer(element: BookElement, index: number): void {
-    if (element.type !== 'textTask') return;
-    this.captureHistory();
-    const answers = this.getTextTaskAnswers(element);
-    answers.splice(index, 1);
-    if (!answers.length || answers[answers.length - 1] !== '') answers.push('');
-    element.data['acceptedAnswers'] = answers;
+    this.taskSettingsController.removeTextTaskAnswer(element, index);
   }
 
   getChoiceTaskBanks(): BookWordBank[] {
-    return this.selectedPage?.wordBanks || [];
+    return this.taskSettingsController.getChoiceTaskBanks();
   }
 
   getChoiceTaskBank(element: BookElement): BookWordBank | null {
-    return getPageWordBank(this.selectedPage, getChoiceTaskBankId(element));
+    return this.taskSettingsController.getChoiceTaskBank(element);
   }
 
   getChoiceTaskCorrectText(element: BookElement): string {
-    const bank = this.getChoiceTaskBank(element);
-    const optionId = String(element.data['correctOptionId'] || '');
-    return bank?.options.find((option) => option.id === optionId)?.text || '';
+    return this.taskSettingsController.getChoiceTaskCorrectText(element);
   }
 
   getWordBankOptions(bank: BookWordBank): BookWordBankOption[] {
-    return bank.options || [];
+    return this.taskSettingsController.getWordBankOptions(bank);
   }
 
   getWordBankLabel(bank: BookWordBank): string {
-    const index = this.getChoiceTaskBanks().findIndex((item) => item.id === bank.id);
-    return `Word bank ${Math.max(0, index) + 1}`;
+    return this.taskSettingsController.getWordBankLabel(bank);
   }
 
   createWordBankForTask(element: BookElement): void {
-    if (element.type !== 'choiceTask') return;
-    this.discardPendingMatchEndpoint();
-    this.activeChoiceWordBankId = this.createId('word-bank');
-    this.placingChoiceTask = true;
-    this.placingTextTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.placingGuidePin = false;
-    this.activeMatchGroupId = null;
-    this.selectedElementId = null;
+    this.taskSettingsController.createWordBankForTask(element);
   }
 
   selectChoiceTaskBank(element: BookElement, bankId: string): void {
-    if (element.type !== 'choiceTask' || getChoiceTaskBankId(element) === bankId) return;
-    this.captureHistory();
-    element.data['wordBankId'] = bankId;
-    element.data['correctOptionId'] = '';
+    this.taskSettingsController.selectChoiceTaskBank(element, bankId);
   }
 
   updateWordBankOption(bank: BookWordBank, index: number, value: string): void {
-    const option = bank.options[index];
-    if (!option) return;
-    option.text = value;
-    while (bank.options.length > 1 && !bank.options.at(-1)?.text && !bank.options.at(-2)?.text) {
-      bank.options.pop();
-    }
-    if (bank.options.at(-1)?.text) {
-      bank.options.push({ id: this.createId('word-option'), text: '' });
-    }
-    this.markBookDirty();
+    this.taskSettingsController.updateWordBankOption(bank, index, value);
   }
 
   removeWordBankOption(bank: BookWordBank, index: number): void {
-    const page = this.selectedPage;
-    const option = bank.options[index];
-    if (!page || !option) return;
-    this.captureHistory();
-    bank.options.splice(index, 1);
-    if (!bank.options.length || bank.options.at(-1)?.text) {
-      bank.options.push({ id: this.createId('word-option'), text: '' });
-    }
-    for (const gap of page.elements) {
-      if (gap.type === 'choiceTask' && gap.data['correctOptionId'] === option.id) {
-        gap.data['correctOptionId'] = '';
-      }
-    }
+    this.taskSettingsController.removeWordBankOption(bank, index);
   }
 
   setChoiceTaskCorrectOption(element: BookElement, optionId: string): void {
-    if (element.type !== 'choiceTask' || element.data['correctOptionId'] === optionId) return;
-    this.captureHistory();
-    element.data['correctOptionId'] = optionId;
+    this.taskSettingsController.setChoiceTaskCorrectOption(element, optionId);
   }
 
   setCircleTaskCorrect(element: BookElement, correct: boolean): void {
-    if (element.type !== 'circleTask' || element.data['correct'] === correct) return;
-    this.captureHistory();
-    element.data['correct'] = correct;
+    this.taskSettingsController.setCircleTaskCorrect(element, correct);
   }
 
   getMatchTaskGroupIds(): string[] {
-    const groupIds = (this.selectedPage?.elements || [])
-      .filter((element) => element.type === 'matchTask')
-      .map((element) => getMatchTaskGroupId(element))
-      .filter(Boolean);
-    return Array.from(new Set(groupIds));
+    return this.taskSettingsController.getMatchTaskGroupIds();
   }
 
   getMatchTaskGroupLabel(groupId: string): string {
-    const index = this.getMatchTaskGroupIds().indexOf(groupId);
-    return `Matching ${Math.max(0, index) + 1}`;
+    return this.taskSettingsController.getMatchTaskGroupLabel(groupId);
   }
 
   getMatchTaskPairNumber(element: BookElement): number {
-    const groupId = getMatchTaskGroupId(element);
-    const pairIds = (this.selectedPage?.elements || [])
-      .filter((item) => item.type === 'matchTask' && getMatchTaskGroupId(item) === groupId)
-      .map((item) => getMatchTaskPairId(item));
-    return Math.max(0, Array.from(new Set(pairIds)).indexOf(getMatchTaskPairId(element))) + 1;
+    return this.taskSettingsController.getMatchTaskPairNumber(element);
   }
 
   getMatchTaskSideLabel(element: BookElement): string {
-    return getMatchTaskSide(element) || '';
+    return this.taskSettingsController.getMatchTaskSideLabel(element);
   }
 
   isPendingMatchEndpoint(element: BookElement): boolean {
-    return element.type === 'matchTask' && element.id === this.pendingMatchEndpointId;
+    return this.taskSettingsController.isPendingMatchEndpoint(element);
   }
 
   setMatchTaskGroup(element: BookElement, groupId: string): void {
-    const page = this.selectedPage;
-    if (!page || element.type !== 'matchTask' || !groupId || getMatchTaskGroupId(element) === groupId) return;
-    this.captureHistory();
-    const pairId = getMatchTaskPairId(element);
-    for (const endpoint of page.elements) {
-      if (endpoint.type === 'matchTask' && getMatchTaskPairId(endpoint) === pairId) {
-        endpoint.data['groupId'] = groupId;
-      }
-    }
-    this.activeMatchGroupId = groupId;
+    this.taskSettingsController.setMatchTaskGroup(element, groupId);
   }
 
   createMatchTaskGroup(element: BookElement): void {
-    if (element.type !== 'matchTask') return;
-    this.discardPendingMatchEndpoint();
-    this.activeMatchGroupId = this.createId('match-group');
-    this.placingMatchTask = true;
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingGuidePin = false;
-    this.activeChoiceWordBankId = null;
-    this.selectedElementId = null;
+    this.taskSettingsController.createMatchTaskGroup(element);
   }
 
   getGuideDotTracks(element: BookElement): GuideAudioTrack[] {
