@@ -50,12 +50,6 @@ import {
   dataUrlToBlob,
   getSafeBookTopicItems
 } from './book-reader-topic-snapshot';
-import {
-  clonePageAnnotations,
-  cloneStrokeAnnotation,
-  cloneTextAnnotation,
-  createTextImageDataUrl
-} from './book-reader-annotation-utils';
 import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
 import { BookReaderTaskController } from './book-reader-task-controller';
 import { BookReaderGuideController } from './book-reader-guide-controller';
@@ -66,6 +60,7 @@ import { BookReaderSpeakingRecordingController } from './book-reader-speaking-re
 import { BookReaderSpeakingAiController } from './book-reader-speaking-ai-controller';
 import { BookReaderNavigationController } from './book-reader-navigation-controller';
 import { BookReaderMediaController } from './book-reader-media-controller';
+import { BookReaderAnnotationController } from './book-reader-annotation-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -100,6 +95,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly speakingAiController = new BookReaderSpeakingAiController(this);
   private readonly navigationController = new BookReaderNavigationController(this);
   private readonly mediaController = new BookReaderMediaController(this);
+  private readonly annotationController = new BookReaderAnnotationController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -537,113 +533,39 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onPageFrameClick(event: MouseEvent): void {
-    this.placeTextFromPointer(event);
+    this.annotationController.onPageFrameClick(event);
   }
 
   onPageFramePointerUp(event: PointerEvent): void {
-    this.placeTextFromPointer(event);
+    this.annotationController.onPageFramePointerUp(event);
   }
 
   placeTextFromEvent(event: PointerEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.placeTextFromPointer(event);
+    this.annotationController.placeTextFromEvent(event);
   }
 
   private placeTextFromPointer(event: MouseEvent | PointerEvent): void {
-    const pageFrame = this.getPageFrameFromEvent(event);
-    const page = pageFrame ? this.getVisiblePageById(pageFrame.dataset['pageId'] || '') : this.currentPage;
-    if (this.deleteMode) {
-      if (page && pageFrame) {
-        this.deleteStrokeFromPointer(page, pageFrame, event);
-      }
-      return;
-    }
-    if (!this.textMode || !page || !this.annotations) return;
-    if (Date.now() - this.lastTextPlacementAt < 250) return;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.reader-element') || target?.closest('.reader-page-edge') || target?.closest('.reader-inline-text-input')) return;
-    this.lastTextPlacementAt = Date.now();
-    const point = this.getPagePointFromEvent(pageFrame ?? this.getPrimaryPageFrameElement(), event);
-    if (!point) return;
-    const focusRect = this.isFocusCropActive(page) ? getClampedFocusRect(this.expandedFocusElement) : null;
-    this.activeTextInput = {
-      pageId: page.id,
-      x: point.x,
-      y: point.y,
-      width: focusRect ? focusRect.width * 0.22 : 0.16,
-      height: focusRect ? focusRect.height * 0.12 : 0.045,
-      color: this.textColor,
-      value: ''
-    };
-    this.forceUiRefresh();
-    window.setTimeout(() => {
-      const input = this.readerStage?.nativeElement.querySelector<HTMLInputElement>('.reader-inline-text-input');
-      input?.focus();
-    });
+    this.annotationController.placeTextFromPointer(event);
   }
 
   commitTextInput(event?: FocusEvent | KeyboardEvent): void {
-    const pending = this.activeTextInput;
-    const page = pending ? this.getVisiblePageById(pending.pageId) : null;
-    const text = pending?.value.trim();
-    if (!pending || !page || !this.annotations) {
-      this.activeTextInput = null;
-      return;
-    }
-
-    this.syncActiveTextEditorSize(event);
-    const refreshed = this.activeTextInput ?? pending;
-    const annotations = this.getPageAnnotations(page.id);
-    const existingIndex = refreshed.textId
-      ? annotations.texts.findIndex((item) => item.id === refreshed.textId)
-      : -1;
-
-    if (!text) {
-      this.activeTextInput = null;
-      return;
-    }
-
-    const nextText: BookAnnotationText = {
-      id: this.createId('text'),
-      pageId: page.id,
-      x: refreshed.x,
-      y: refreshed.y,
-      width: refreshed.width,
-      height: refreshed.height,
-      color: refreshed.color,
-      imageDataUrl: createTextImageDataUrl(text, refreshed.color),
-      text,
-      createdAt: refreshed.createdAt ?? Date.now()
-    };
-    if (existingIndex >= 0) {
-      nextText.id = refreshed.textId!;
-      annotations.texts[existingIndex] = nextText;
-    } else {
-      annotations.texts.push(nextText);
-      this.pushUndoAction({ kind: 'add-text', pageId: page.id, item: cloneTextAnnotation(nextText) });
-    }
-    this.textMode = false;
-    this.activeTextInput = null;
-    void this.saveAnnotations();
+    this.annotationController.commitTextInput(event);
   }
 
   cancelTextInput(): void {
-    this.activeTextInput = null;
+    this.annotationController.cancelTextInput();
   }
 
   getCurrentPageTexts(): BookAnnotationText[] {
-    return this.getPageTexts(this.currentPage);
+    return this.annotationController.getCurrentPageTexts();
   }
 
   getPageTexts(page: BookPage | null): BookAnnotationText[] {
-    const pageId = page?.id;
-    return pageId ? this.getPageAnnotations(pageId).texts : [];
+    return this.annotationController.getPageTexts(page);
   }
 
   getPageStrokes(page: BookPage | null): BookAnnotationStroke[] {
-    const pageId = page?.id;
-    return pageId ? this.getPageAnnotations(pageId).strokes : [];
+    return this.annotationController.getPageStrokes(page);
   }
 
   getTaskResponseValue(element: BookElement | null): string {
@@ -780,249 +702,87 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getStrokeBounds(stroke: BookAnnotationStroke): { x: number; y: number; width: number; height: number } {
-    if (!stroke.points.length) return { x: 0, y: 0, width: 0.04, height: 0.04 };
-    const xs = stroke.points.map((point) => point.x);
-    const ys = stroke.points.map((point) => point.y);
-    const padding = 0.018;
-    const minX = clamp(Math.min(...xs) - padding, 0, 1);
-    const minY = clamp(Math.min(...ys) - padding, 0, 1);
-    const maxX = clamp(Math.max(...xs) + padding, 0, 1);
-    const maxY = clamp(Math.max(...ys) + padding, 0, 1);
-    return {
-      x: minX,
-      y: minY,
-      width: Math.max(0.035, maxX - minX),
-      height: Math.max(0.035, maxY - minY)
-    };
+    return this.annotationController.getStrokeBounds(stroke);
   }
 
   getStrokePolylinePoints(stroke: BookAnnotationStroke): string {
-    return stroke.points.map((point) => `${clamp(point.x, 0, 1)},${clamp(point.y, 0, 1)}`).join(' ');
+    return this.annotationController.getStrokePolylinePoints(stroke);
   }
 
   getElementPolylinePoints(element: BookElement): string {
-    const points = Array.isArray(element.data?.['points']) ? element.data['points'] : [];
-    return points
-      .map((point: { x: number; y: number }) => `${Number(point.x) || 0},${Number(point.y) || 0}`)
-      .join(' ');
+    return this.annotationController.getElementPolylinePoints(element);
   }
 
   isTextInputForPage(page: BookPage | null): boolean {
-    return !!page && this.activeTextInput?.pageId === page.id;
+    return this.annotationController.isTextInputForPage(page);
   }
 
   selectTextAnnotation(page: BookPage | null, text: BookAnnotationText, event: MouseEvent): void {
-    if (!page) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (this.deleteMode) {
-      this.deleteTextAnnotation(page.id, text.id);
-      return;
-    }
-    this.textMode = false;
-    this.drawMode = false;
-    this.highlighterMode = false;
-    this.activeTextInput = null;
-    this.selectedText = { pageId: page.id, textId: text.id };
-    this.textColor = text.color || this.textColor;
-    this.forceUiRefresh();
+    this.annotationController.selectTextAnnotation(page, text, event);
   }
 
   isTextSelected(page: BookPage | null, text: BookAnnotationText): boolean {
-    return !!page && this.selectedText?.pageId === page.id && this.selectedText.textId === text.id;
+    return this.annotationController.isTextSelected(page, text);
   }
 
   deleteSelectedText(): void {
-    if (this.activeTextInput) {
-      this.activeTextInput = null;
-      this.textMode = false;
-      return;
-    }
-    this.toggleDeleteMode();
+    this.annotationController.deleteSelectedText();
   }
 
   private deleteTextAnnotation(pageId: string, textId: string): void {
-    const annotations = this.getPageAnnotations(pageId);
-    const index = annotations.texts.findIndex((text) => text.id === textId);
-    if (index < 0) return;
-    const [removed] = annotations.texts.splice(index, 1);
-    this.pushUndoAction({ kind: 'delete-text', pageId, item: cloneTextAnnotation(removed) });
-    this.selectedText = null;
-    void this.saveAnnotations();
+    this.annotationController.deleteTextAnnotation(pageId, textId);
   }
 
   deleteStrokeAnnotation(page: BookPage | null, stroke: BookAnnotationStroke, event: MouseEvent): void {
-    if (!page || !this.deleteMode) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const removed = this.removeStrokeById(page.id, stroke.id);
-    if (!removed) return;
-    this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: cloneStrokeAnnotation(removed) });
-    this.redrawDrawingCanvas(page.id);
-    void this.saveAnnotations();
+    this.annotationController.deleteStrokeAnnotation(page, stroke, event);
   }
 
   commitTextInputFromKey(event: Event): void {
-    const keyboardEvent = event as KeyboardEvent;
-    if (keyboardEvent.shiftKey) return;
-    event.preventDefault();
-    this.commitTextInput(keyboardEvent);
+    this.annotationController.commitTextInputFromKey(event);
   }
 
   startTextEditorDrag(event: PointerEvent): void {
-    const pending = this.activeTextInput;
-    if (!pending) return;
-    event.preventDefault();
-    event.stopPropagation();
-    this.textDrag = { pageId: pending.pageId };
-    (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+    this.annotationController.startTextEditorDrag(event);
   }
 
   startSavedTextDrag(page: BookPage | null, text: BookAnnotationText, event: PointerEvent): void {
-    if (!page) return;
-    const target = event.currentTarget as HTMLElement | null;
-    if (this.isTextSelected(page, text) && target) {
-      const rect = target.getBoundingClientRect();
-      const resizeHandleSize = 20;
-      const nearRight = rect.right - event.clientX <= resizeHandleSize;
-      const nearBottom = rect.bottom - event.clientY <= resizeHandleSize;
-      if (nearRight && nearBottom) {
-        return;
-      }
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    this.selectedText = { pageId: page.id, textId: text.id };
-    this.textDrag = { pageId: page.id, textId: text.id };
-    target?.setPointerCapture?.(event.pointerId);
+    this.annotationController.startSavedTextDrag(page, text, event);
   }
 
   startDrawing(event: PointerEvent): void {
-    const pageFrame = this.getPageFrameFromEvent(event);
-    const page = pageFrame ? this.getVisiblePageById(pageFrame.dataset['pageId'] || '') : this.currentPage;
-    const canvas = this.getCanvasFromEvent(event);
-    if (!this.isInkModeActive() || !canvas || !page || !this.annotations) return;
-    event.preventDefault();
-    canvas.setPointerCapture?.(event.pointerId);
-    this.drawing = true;
-    this.drawingStartedInInkMode = true;
-    const point = this.getCanvasPoint(event, canvas);
-    this.activeStroke = {
-      id: this.createId('stroke'),
-      pageId: page.id,
-      kind: this.highlighterMode ? 'highlighter' : 'pen',
-      color: this.highlighterMode ? this.highlighterColor : this.penColor,
-      width: this.highlighterMode ? this.highlighterWidth : this.penWidth,
-      points: [point],
-      createdAt: Date.now()
-    };
-    this.redrawDrawingCanvas(page.id);
+    this.annotationController.startDrawing(event);
   }
 
   continueDrawing(event: PointerEvent): void {
-    if (!this.drawingStartedInInkMode || !this.drawing || !this.activeStroke) return;
-    const canvas = this.getCanvasFromEvent(event) ?? this.getCanvasForPageId(this.activeStroke.pageId);
-    if (!canvas) return;
-    event.preventDefault();
-    const events = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [event];
-    for (const pointerEvent of events) {
-      this.appendStrokePoint(this.getCanvasPoint(pointerEvent as PointerEvent, canvas));
-    }
-    this.redrawDrawingCanvas(this.activeStroke.pageId);
+    this.annotationController.continueDrawing(event);
   }
 
   stopDrawing(): void {
-    if (this.drawing && this.activeStroke) {
-      const stroke = this.activeStroke;
-      this.getPageAnnotations(stroke.pageId).strokes.push(stroke);
-      this.pushUndoAction({ kind: 'add-stroke', pageId: stroke.pageId, item: cloneStrokeAnnotation(stroke) });
-      this.activeStroke = null;
-      this.invalidateDrawingCache(stroke.pageId);
-      this.redrawDrawingCanvas(stroke.pageId);
-      void this.saveAnnotations();
-    }
-    this.drawing = false;
-    this.drawingStartedInInkMode = false;
+    this.annotationController.stopDrawing();
   }
 
   canUndoAnnotation(): boolean {
-    const pageIds = this.getActiveAnnotationPageIds();
-    return this.undoStack.some((action) => this.isActionInPageScope(action, pageIds)) || pageIds.some((pageId) => {
-      const annotations = this.getPageAnnotations(pageId);
-      return annotations.texts.length > 0 || annotations.strokes.length > 0;
-    });
+    return this.annotationController.canUndoAnnotation();
   }
 
   canRedoAnnotation(): boolean {
-    const pageIds = this.getActiveAnnotationPageIds();
-    return this.redoStack.some((action) => this.isActionInPageScope(action, pageIds));
+    return this.annotationController.canRedoAnnotation();
   }
 
   canClearPageAnnotations(): boolean {
-    const pageIds = new Set(this.getActiveAnnotationPageIds());
-    return this.canUndoAnnotation() || Array.from(this.taskResponses.values()).some((response) =>
-      pageIds.has(response.pageId) && (!!response.value || response.result !== 'unchecked')
-    );
+    return this.annotationController.canClearPageAnnotations();
   }
 
   undoAnnotation(): void {
-    const pageIds = this.getActiveAnnotationPageIds();
-    const actionIndex = this.findLastActionIndex(this.undoStack, pageIds);
-    if (actionIndex >= 0) {
-      const [action] = this.undoStack.splice(actionIndex, 1);
-      this.revertAnnotationAction(action);
-      this.redoStack.push(action);
-    } else {
-      const action = this.createLegacyUndoAction(pageIds);
-      if (!action) return;
-      this.revertAnnotationAction(action);
-      this.redoStack.push(action);
-    }
-    this.selectedText = null;
-    this.redrawDrawingCanvas();
-    void this.saveAnnotations();
+    this.annotationController.undoAnnotation();
   }
 
   redoAnnotation(): void {
-    const pageIds = this.getActiveAnnotationPageIds();
-    const redoIndex = this.findLastActionIndex(this.redoStack, pageIds);
-    if (redoIndex < 0) return;
-    const [action] = this.redoStack.splice(redoIndex, 1);
-    this.applyAnnotationAction(action);
-    this.undoStack.push(action);
-    this.selectedText = null;
-    this.redrawDrawingCanvas();
-    void this.saveAnnotations();
+    this.annotationController.redoAnnotation();
   }
 
   clearPageAnnotations(): void {
-    const pages = this.getActiveAnnotationPages();
-    if (!pages.length || !this.canClearPageAnnotations()) return;
-    const action: ReaderAnnotationAction = {
-      kind: 'clear',
-      pages: pages.map((page) => ({
-        pageId: page.id,
-        before: clonePageAnnotations(this.getPageAnnotations(page.id)),
-        responses: Array.from(this.taskResponses.values())
-          .filter((response) => response.pageId === page.id)
-          .map((response) => ({ ...response }))
-      }))
-    };
-    for (const page of pages) {
-      this.annotations!.pages[page.id] = { texts: [], strokes: [] };
-      this.invalidateDrawingCache(page.id);
-    }
-    const pageIds = pages.map((page) => page.id);
-    for (const [taskId, response] of this.taskResponses) {
-      if (pageIds.includes(response.pageId)) this.taskResponses.delete(taskId);
-    }
-    this.closeTaskInput();
-    this.activeMatchEndpoint = null;
-    void this.taskResponseService.deleteForPages(this.book!.id, pageIds);
-    this.pushUndoAction(action);
-    this.selectedText = null;
-    this.redrawDrawingCanvas();
-    void this.saveAnnotations();
+    this.annotationController.clearPageAnnotations();
   }
 
   get currentSpeechSpeed(): number {
@@ -1882,166 +1642,31 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private resizeDrawingCanvas(width: number, height: number): void {
-    if (this.drawingCanvasFrame) {
-      cancelAnimationFrame(this.drawingCanvasFrame);
-    }
-    this.drawingCanvasFrame = requestAnimationFrame(() => {
-      this.drawingCanvasFrame = 0;
-      const targets = this.getDrawingCanvasElements();
-      const ratio = window.devicePixelRatio || 1;
-      for (const canvas of targets) {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = Math.max(1, Math.floor((rect.width || width) * ratio));
-        canvas.height = Math.max(1, Math.floor((rect.height || height) * ratio));
-      }
-      this.redrawDrawingCanvas();
-    });
+    this.annotationController.resizeDrawingCanvas(width, height);
   }
 
   private resetDrawingCanvas(): void {
-    if (this.drawingCanvasFrame) {
-      cancelAnimationFrame(this.drawingCanvasFrame);
-    }
-    this.drawingCanvasFrame = requestAnimationFrame(() => {
-      this.drawingCanvasFrame = 0;
-      for (const canvas of this.getDrawingCanvasElements()) {
-        const rect = canvas.getBoundingClientRect();
-        const ratio = window.devicePixelRatio || 1;
-        canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-        canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-      }
-      this.redrawDrawingCanvas();
-    });
-  }
-
-  private getCanvasPoint(event: PointerEvent, canvas: HTMLCanvasElement): { x: number; y: number } {
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height))
-    };
+    this.annotationController.resetDrawingCanvas();
   }
 
   private getPagePointFromEvent(frame: HTMLElement | null, event: MouseEvent | PointerEvent): { x: number; y: number } | null {
-    if (!frame) return null;
-    const rect = frame.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    return {
-      x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
-      y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
-    };
+    return this.annotationController.getPagePointFromEvent(frame, event);
   }
 
   private getPageContentRect(pageId: string): DOMRect | null {
-    const frame = this.getPageFrameForPageId(pageId);
-    const content = frame?.querySelector<HTMLElement>('.page-content');
-    return (content ?? frame)?.getBoundingClientRect() ?? null;
-  }
-
-  private deleteStrokeFromPointer(page: BookPage, frame: HTMLElement, event: MouseEvent | PointerEvent): void {
-    const point = this.getPagePointFromEvent(frame, event);
-    if (!point) return;
-    const annotations = this.getPageAnnotations(page.id);
-    let bestIndex = -1;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    for (const [index, stroke] of annotations.strokes.entries()) {
-      const distance = this.getStrokeDistance(point, stroke);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        bestIndex = index;
-      }
-    }
-    if (bestIndex < 0 || bestDistance > 0.025) return;
-    const [removed] = annotations.strokes.splice(bestIndex, 1);
-    this.pushUndoAction({ kind: 'delete-stroke', pageId: page.id, item: cloneStrokeAnnotation(removed) });
-    this.redrawDrawingCanvas(page.id);
-    void this.saveAnnotations();
-  }
-
-  private getStrokeDistance(point: { x: number; y: number }, stroke: BookAnnotationStroke): number {
-    if (!stroke.points.length) return Number.POSITIVE_INFINITY;
-    let best = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < stroke.points.length; index++) {
-      const current = stroke.points[index];
-      const previous = stroke.points[index - 1] ?? current;
-      best = Math.min(best, this.getPointSegmentDistance(point, previous, current));
-    }
-    return best;
-  }
-
-  private getPointSegmentDistance(
-    point: { x: number; y: number },
-    start: { x: number; y: number },
-    end: { x: number; y: number }
-  ): number {
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
-    const amount = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
-    return Math.hypot(point.x - (start.x + amount * dx), point.y - (start.y + amount * dy));
+    return this.annotationController.getPageContentRect(pageId);
   }
 
   private redrawDrawingCanvas(pageId?: string): void {
-    const canvases = this.getDrawingCanvasElements();
-    if (!canvases.length) {
-      return;
-    }
-
-    for (const canvas of canvases) {
-      const canvasPageId = canvas.dataset['pageId'] || '';
-      if (pageId && canvasPageId !== pageId) continue;
-      this.redrawSingleCanvas(canvas, canvasPageId);
-    }
-  }
-
-  private redrawSingleCanvas(canvas: HTMLCanvasElement, pageId: string): void {
-    const context = canvas?.getContext('2d');
-    if (!canvas || !context || !pageId) return;
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    const baked = this.getBakedDrawingCanvas(pageId, canvas);
-    if (baked) {
-      context.drawImage(baked.canvas, 0, 0);
-    }
-    if (this.activeStroke?.pageId === pageId) {
-      this.drawStroke(context, canvas, this.activeStroke);
-    }
-  }
-
-  private getBakedDrawingCanvas(pageId: string, visibleCanvas: HTMLCanvasElement): BakedDrawingCanvas | null {
-    const width = visibleCanvas.width;
-    const height = visibleCanvas.height;
-    if (!width || !height) return null;
-
-    const cached = this.bakedDrawingCanvases.get(pageId);
-    if (cached && cached.width === width && cached.height === height) {
-      return cached;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) return null;
-    for (const stroke of this.getPageAnnotations(pageId).strokes) {
-      this.drawStroke(context, canvas, stroke);
-    }
-    const baked = { canvas, width, height };
-    this.bakedDrawingCanvases.set(pageId, baked);
-    return baked;
+    this.annotationController.redrawDrawingCanvas(pageId);
   }
 
   private invalidateDrawingCache(pageId?: string): void {
-    if (pageId) {
-      this.bakedDrawingCanvases.delete(pageId);
-      return;
-    }
-    this.bakedDrawingCanvases.clear();
+    this.annotationController.invalidateDrawingCache(pageId);
   }
 
   private clearDrawingCache(): void {
-    this.bakedDrawingCanvases.clear();
+    this.annotationController.clearDrawingCache();
   }
 
   private markVisiblePagesDirty(): void {
@@ -2049,44 +1674,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.visiblePagesCache = [];
   }
 
-  private drawStroke(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, stroke: BookAnnotationStroke): void {
-    if (stroke.points.length < 1) return;
-    context.save();
-    context.beginPath();
-    context.lineWidth = stroke.width * (window.devicePixelRatio || 1);
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    context.strokeStyle = stroke.color;
-    context.globalAlpha = stroke.kind === 'highlighter' ? 0.36 : 1;
-    context.moveTo(stroke.points[0].x * canvas.width, stroke.points[0].y * canvas.height);
-    for (const point of stroke.points.slice(1)) {
-      context.lineTo(point.x * canvas.width, point.y * canvas.height);
-    }
-    context.stroke();
-    context.restore();
-  }
-
   private getPageAnnotations(pageId: string): BookPageAnnotations {
-    if (!this.annotations) {
-      this.annotations = this.createEmptyAnnotations(this.book?.id || '');
-    }
-    this.annotations.pages[pageId] ??= { texts: [], strokes: [] };
-    return this.annotations.pages[pageId];
+    return this.annotationController.getPageAnnotations(pageId);
   }
 
   private getActiveAnnotationPages(): BookPage[] {
-    if (this.expandedFocusPage) {
-      return [this.expandedFocusPage];
-    }
-    const pages = [this.currentPage];
-    if (this.twoPageMode && this.companionPage) {
-      pages.push(this.companionPage);
-    }
-    return pages.filter((page): page is BookPage => !!page);
+    return this.annotationController.getActiveAnnotationPages();
   }
 
   private getActiveAnnotationPageIds(): string[] {
-    return this.getActiveAnnotationPages().map((page) => page.id);
+    return this.annotationController.getActiveAnnotationPageIds();
   }
 
   private getAllBookPages(): BookPage[] {
@@ -2098,158 +1695,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private pushUndoAction(action: ReaderAnnotationAction): void {
-    this.undoStack.push(action);
-    this.redoStack = [];
-  }
-
-  private findLastActionIndex(actions: ReaderAnnotationAction[], pageIds: string[]): number {
-    for (let index = actions.length - 1; index >= 0; index--) {
-      if (this.isActionInPageScope(actions[index], pageIds)) return index;
-    }
-    return -1;
-  }
-
-  private isActionInPageScope(action: ReaderAnnotationAction, pageIds: string[]): boolean {
-    if (action.kind === 'clear') {
-      return action.pages.some((page) => pageIds.includes(page.pageId));
-    }
-    return pageIds.includes(action.pageId);
-  }
-
-  private applyAnnotationAction(action: ReaderAnnotationAction): void {
-    if (action.kind === 'add-text') {
-      this.removeTextById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).texts.push(cloneTextAnnotation(action.item));
-      return;
-    }
-    if (action.kind === 'delete-text') {
-      this.removeTextById(action.pageId, action.item.id);
-      return;
-    }
-    if (action.kind === 'add-stroke') {
-      this.removeStrokeById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).strokes.push(cloneStrokeAnnotation(action.item));
-      this.invalidateDrawingCache(action.pageId);
-      return;
-    }
-    if (action.kind === 'delete-stroke') {
-      this.removeStrokeById(action.pageId, action.item.id);
-      return;
-    }
-    for (const page of action.pages) {
-      this.annotations!.pages[page.pageId] = { texts: [], strokes: [] };
-      this.invalidateDrawingCache(page.pageId);
-    }
-    const pageIds = action.pages.map((page) => page.pageId);
-    for (const [taskId, response] of this.taskResponses) {
-      if (pageIds.includes(response.pageId)) this.taskResponses.delete(taskId);
-    }
-    if (this.book) void this.taskResponseService.deleteForPages(this.book.id, pageIds);
-  }
-
-  private revertAnnotationAction(action: ReaderAnnotationAction): void {
-    if (action.kind === 'add-text') {
-      this.removeTextById(action.pageId, action.item.id);
-      return;
-    }
-    if (action.kind === 'delete-text') {
-      this.removeTextById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).texts.push(cloneTextAnnotation(action.item));
-      return;
-    }
-    if (action.kind === 'add-stroke') {
-      this.removeStrokeById(action.pageId, action.item.id);
-      return;
-    }
-    if (action.kind === 'delete-stroke') {
-      this.removeStrokeById(action.pageId, action.item.id);
-      this.getPageAnnotations(action.pageId).strokes.push(cloneStrokeAnnotation(action.item));
-      this.invalidateDrawingCache(action.pageId);
-      return;
-    }
-    for (const page of action.pages) {
-      this.annotations!.pages[page.pageId] = clonePageAnnotations(page.before);
-      this.invalidateDrawingCache(page.pageId);
-      for (const response of page.responses) {
-        this.taskResponses.set(response.taskId, { ...response });
-      }
-    }
-    void this.taskResponseService.saveMany(action.pages.flatMap((page) => page.responses));
-  }
-
-  private createLegacyUndoAction(pageIds: string[]): ReaderAnnotationAction | null {
-    let latest: ReaderAnnotationAction | null = null;
-    let latestCreatedAt = -1;
-    for (const pageId of pageIds) {
-      const annotations = this.getPageAnnotations(pageId);
-      const text = annotations.texts.at(-1);
-      if (text && text.createdAt > latestCreatedAt) {
-        latestCreatedAt = text.createdAt;
-        latest = { kind: 'add-text', pageId, item: cloneTextAnnotation(text) };
-      }
-      const stroke = annotations.strokes.at(-1);
-      if (stroke && stroke.createdAt > latestCreatedAt) {
-        latestCreatedAt = stroke.createdAt;
-        latest = { kind: 'add-stroke', pageId, item: cloneStrokeAnnotation(stroke) };
-      }
-    }
-    return latest;
-  }
-
-  private removeTextById(pageId: string, textId: string): BookAnnotationText | null {
-    const texts = this.getPageAnnotations(pageId).texts;
-    const index = texts.findIndex((text) => text.id === textId);
-    if (index < 0) return null;
-    const [removed] = texts.splice(index, 1);
-    return removed;
+    this.annotationController.pushUndoAction(action);
   }
 
   private removeStrokeById(pageId: string, strokeId: string): BookAnnotationStroke | null {
-    const strokes = this.getPageAnnotations(pageId).strokes;
-    const index = strokes.findIndex((stroke) => stroke.id === strokeId);
-    if (index < 0) return null;
-    const [removed] = strokes.splice(index, 1);
-    this.invalidateDrawingCache(pageId);
-    return removed;
+    return this.annotationController.removeStrokeById(pageId, strokeId);
   }
 
   private getVisiblePageById(pageId: string): BookPage | null {
     return this.visiblePages.find((page) => page.id === pageId) ?? null;
   }
 
-  private getPageFrameFromEvent(event: Event): HTMLElement | null {
-    const target = event.target as HTMLElement | null;
-    return target?.closest<HTMLElement>('.page-frame') ?? null;
-  }
-
-  private getCanvasFromEvent(event: Event): HTMLCanvasElement | null {
-    const target = event.target as HTMLElement | null;
-    return target?.closest<HTMLCanvasElement>('canvas.drawing-layer') ?? null;
-  }
-
-  private getCanvasForPageId(pageId: string): HTMLCanvasElement | null {
-    return this.readerStage?.nativeElement.querySelector<HTMLCanvasElement>(`canvas.drawing-layer[data-page-id="${CSS.escape(pageId)}"]`) ?? null;
-  }
-
   private async saveAnnotations(): Promise<void> {
-    if (!this.annotations) return;
-    this.annotations.updatedAt = new Date().toISOString();
-    if (this.annotationSaveTimer !== null) {
-      window.clearTimeout(this.annotationSaveTimer);
-    }
-    this.annotationSaveTimer = window.setTimeout(() => {
-      void this.flushAnnotationsNow();
-    }, 1200);
+    await this.annotationController.saveAnnotations();
   }
 
   private async flushAnnotationsNow(): Promise<void> {
-    if (this.annotationSaveTimer !== null) {
-      window.clearTimeout(this.annotationSaveTimer);
-      this.annotationSaveTimer = null;
-    }
-    if (!this.annotations) return;
-    this.annotations.updatedAt = new Date().toISOString();
-    await this.bookLibrary.saveBookAnnotations(this.annotations);
+    await this.annotationController.flushAnnotationsNow();
   }
 
   private scheduleTaskResponseSave(): void {
@@ -2541,25 +2003,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('document:pointermove', ['$event'])
   onDocumentPointerMove(event: PointerEvent): void {
-    const drag = this.textDrag;
-    if (!drag) return;
-    const rect = this.getPageContentRect(drag.pageId);
-    if (!rect) return;
-    const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
-    if (this.activeTextInput && !drag.textId) {
-      this.activeTextInput.x = x;
-      this.activeTextInput.y = y;
-      this.scheduleReaderInteractionRefresh();
-      return;
-    }
-    if (drag.textId) {
-      const text = this.getPageAnnotations(drag.pageId).texts.find((item) => item.id === drag.textId);
-      if (!text) return;
-      text.x = x;
-      text.y = y;
-      this.scheduleReaderInteractionRefresh();
-    }
+    this.annotationController.onDocumentPointerMove(event);
   }
 
   private scheduleReaderInteractionRefresh(): void {
@@ -2572,29 +2016,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @HostListener('document:pointerup')
   onDocumentPointerUp(): void {
-    const drag = this.textDrag;
-    if (!drag) {
-      if (this.selectedText) {
-        this.syncSelectedTextBox();
-        void this.saveAnnotations();
-      }
-      return;
-    }
-    this.textDrag = null;
-    this.syncActiveTextEditorSize();
-    if (drag.textId) {
-      this.syncSelectedTextBox(drag.pageId, drag.textId);
-      void this.saveAnnotations();
-    }
+    this.annotationController.onDocumentPointerUp();
   }
 
   @HostListener('document:pointercancel')
   onDocumentPointerCancel(): void {
-    this.swipeDir?.cancel();
-    if (this.textDrag) {
-      this.textDrag = null;
-      this.syncActiveTextEditorSize();
-    }
+    this.annotationController.onDocumentPointerCancel();
   }
 
   private moveOwlToElement(element: BookElement, page = this.currentPage): void {
@@ -2664,10 +2091,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       : this.readerStage?.nativeElement.querySelector<HTMLElement>('.page-frame') ?? null;
   }
 
-  private getDrawingCanvasElements(): HTMLCanvasElement[] {
-    return Array.from(this.readerStage?.nativeElement.querySelectorAll<HTMLCanvasElement>('canvas.drawing-layer') ?? []);
-  }
-
   private getOwlVisibleBounds(teaching: boolean): { minX: number; maxX: number; minY: number; maxY: number } {
     const owlSize = clamp(window.innerWidth * 0.09, 68, 112);
     if (teaching) {
@@ -2690,18 +2113,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private syncActiveTextEditorSize(event?: Event): void {
-    const pending = this.activeTextInput;
-    if (!pending) return;
-    const frameRect = this.getPageContentRect(pending.pageId);
-    const target = event?.target as HTMLElement | null;
-    const editor = target?.closest<HTMLElement>('.reader-text-editor')
-      ?? this.readerStage?.nativeElement.querySelector<HTMLElement>(`.reader-text-editor[data-page-id="${CSS.escape(pending.pageId)}"]`);
-    if (!frameRect || !editor) return;
-    const editorRect = editor.getBoundingClientRect();
-    pending.width = clamp(editorRect.width / frameRect.width, 0.08, 0.9);
-    pending.height = clamp(editorRect.height / frameRect.height, 0.035, 0.45);
-    pending.x = clamp((editorRect.left + editorRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
-    pending.y = clamp((editorRect.top + editorRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
+    this.annotationController.syncActiveTextEditorSize(event);
   }
 
   private updateReaderSpreadWidth(afterLayout?: () => void): void {
@@ -2819,18 +2231,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private syncSelectedTextBox(pageId = this.selectedText?.pageId, textId = this.selectedText?.textId): void {
-    if (!pageId || !textId) return;
-    const frameRect = this.getPageContentRect(pageId);
-    const element = this.readerStage?.nativeElement.querySelector<HTMLElement>(
-      `.temporary-text[data-page-id="${CSS.escape(pageId)}"][data-text-id="${CSS.escape(textId)}"]`
-    );
-    const text = this.getPageAnnotations(pageId).texts.find((item) => item.id === textId);
-    if (!frameRect || !element || !text) return;
-    const elementRect = element.getBoundingClientRect();
-    text.width = clamp(elementRect.width / frameRect.width, 0.06, 0.9);
-    text.height = clamp(elementRect.height / frameRect.height, 0.035, 0.45);
-    text.x = clamp((elementRect.left + elementRect.width / 2 - frameRect.left) / frameRect.width, 0, 1);
-    text.y = clamp((elementRect.top + elementRect.height / 2 - frameRect.top) / frameRect.height, 0, 1);
+    this.annotationController.syncSelectedTextBox(pageId, textId);
   }
 
   private wait(ms: number): Promise<void> {
