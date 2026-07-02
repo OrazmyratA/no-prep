@@ -37,6 +37,7 @@ import {
   normalizeBookGuideTimelines
 } from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
+import { BookCreatorElementController } from './book-creator-element-controller';
 import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
@@ -225,6 +226,7 @@ Tomorrow I will help my mom.`;
 
   private readonly markController = new BookCreatorMarkController(this);
   private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
+  private readonly elementController = new BookCreatorElementController(this);
   private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
@@ -1046,90 +1048,35 @@ Tomorrow I will help my mom.`;
   }
 
   deleteSelectedElement(): void {
-    const page = this.selectedPage;
-    if (!page || !this.selectedElementId) return;
-    const selected = page.elements.find((element) => element.id === this.selectedElementId) ?? null;
-    this.captureHistory();
-    if (selected?.type === 'matchTask') {
-      const pairId = getMatchTaskPairId(selected);
-      const groupId = getMatchTaskGroupId(selected);
-      page.elements = page.elements.filter((element) =>
-        element.type !== 'matchTask'
-        || getMatchTaskPairId(element) !== pairId
-        || getMatchTaskGroupId(element) !== groupId
-      );
-      this.pendingMatchEndpointId = null;
-    } else {
-      page.elements = page.elements.filter((element) => element.id !== this.selectedElementId);
-    }
-    this.pruneUnusedWordBanks(page);
-    this.selectedElementId = null;
+    this.elementController.deleteSelectedElement();
   }
 
   duplicateSelectedElement(): void {
-    const element = this.selectedElement;
-    if (!element) return;
-    this.captureHistory();
-    this.insertElementCopy(element, 0.03);
+    this.elementController.duplicateSelectedElement();
   }
 
   copySelectedElement(): void {
-    const element = this.selectedElement;
-    if (!element) return;
-    this.copiedElement = this.cloneElement(element);
-    const bank = element.type === 'choiceTask' ? this.getChoiceTaskBank(element) : null;
-    this.copiedWordBank = bank ? JSON.parse(JSON.stringify(bank)) as BookWordBank : null;
+    this.elementController.copySelectedElement();
   }
 
   pasteCopiedElement(): void {
-    if (!this.copiedElement) return;
-    this.captureHistory();
-    this.insertElementCopy(this.copiedElement, 0.05);
+    this.elementController.pasteCopiedElement();
   }
 
   moveSelectedElementLayer(direction: -1 | 1): void {
-    const page = this.selectedPage;
-    const element = this.selectedElement;
-    if (!page || !element) return;
-
-    const index = page.elements.findIndex((item) => item.id === element.id);
-    const nextIndex = index + direction;
-    if (index < 0 || nextIndex < 0 || nextIndex >= page.elements.length) return;
-
-    this.captureHistory();
-    [page.elements[index], page.elements[nextIndex]] = [page.elements[nextIndex], page.elements[index]];
+    this.elementController.moveSelectedElementLayer(direction);
   }
 
   canMoveSelectedElementLayer(direction: -1 | 1): boolean {
-    const page = this.selectedPage;
-    const element = this.selectedElement;
-    if (!page || !element) return false;
-
-    const index = page.elements.findIndex((item) => item.id === element.id);
-    const nextIndex = index + direction;
-    return index >= 0 && nextIndex >= 0 && nextIndex < page.elements.length;
+    return this.elementController.canMoveSelectedElementLayer(direction);
   }
 
   hasCopiedElement(): boolean {
-    return !!this.copiedElement;
+    return this.elementController.hasCopiedElement();
   }
 
   async replaceElementAsset(element: BookElement): Promise<void> {
-    if (!this.book || (element.type !== 'image' && element.type !== 'video' && element.type !== 'answerKey')) return;
-
-    const isImage = element.type === 'image' || element.type === 'answerKey';
-    const asset = await this.bookLibrary.addAsset(
-      this.book.id,
-      isImage ? 'images' : 'videos',
-      isImage
-        ? [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }]
-        : [{ name: 'Videos', extensions: ['mp4', 'webm', 'ogg', 'mov'] }]
-    );
-    if (!asset) return;
-
-    this.captureHistory();
-    element.data['src'] = asset.relativePath;
-    element.data['label'] = asset.fileName;
+    await this.elementController.replaceElementAsset(element);
   }
 
   selectElement(elementId: string): void {
@@ -2287,29 +2234,11 @@ Tomorrow I will help my mom.`;
   }
 
   private insertElementCopy(source: BookElement, offset: number): void {
-    const page = this.selectedPage;
-    if (!page) return;
-
-    const copy = this.cloneElement(source);
-    if (copy.type === 'choiceTask' && this.copiedWordBank && !getPageWordBank(page, getChoiceTaskBankId(copy))) {
-      page.wordBanks ??= [];
-      page.wordBanks.push(JSON.parse(JSON.stringify(this.copiedWordBank)) as BookWordBank);
-    }
-    copy.id = this.createId(source.type);
-    copy.x = this.clamp((source.x || 0) + offset, 0, 1 - (source.width || 0.08));
-    copy.y = this.clamp((source.y || 0) + offset, 0, 1 - (source.height || 0.08));
-
-    const sourceIndex = page.elements.findIndex((element) => element.id === source.id);
-    const insertIndex = sourceIndex >= 0 ? sourceIndex + 1 : page.elements.length;
-    page.elements.splice(insertIndex, 0, copy);
-    this.selectedElementId = copy.id;
+    this.elementController.insertElementCopy(source, offset);
   }
 
   private cloneElement(element: BookElement): BookElement {
-    return {
-      ...element,
-      data: JSON.parse(JSON.stringify(element.data || {}))
-    };
+    return this.elementController.cloneElement(element);
   }
 
   private ensureActiveChoiceWordBank(page: BookPage): BookWordBank {
