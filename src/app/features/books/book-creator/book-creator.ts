@@ -53,6 +53,7 @@ import { BookCreatorTaskPlacementController } from './book-creator-task-placemen
 import { BookCreatorTaskSettingsController } from './book-creator-task-settings-controller';
 import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
 import { BookCreatorLayoutController } from './book-creator-layout-controller';
+import { BookCreatorVirtualPageController } from './book-creator-virtual-page-controller';
 
 @Component({
   selector: 'app-book-creator',
@@ -253,6 +254,7 @@ Tomorrow I will help my mom.`;
   private readonly mediaController = new BookCreatorMediaController(this);
   private readonly navigationController = new BookCreatorNavigationController(this);
   private readonly layoutController = new BookCreatorLayoutController(this);
+  private readonly virtualPageController = new BookCreatorVirtualPageController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly saveController = new BookCreatorSaveController(this);
@@ -349,14 +351,7 @@ Tomorrow I will help my mom.`;
   }
 
   onCreatorThumbScroll(event: Event): void {
-    const target = event.target as HTMLElement | null;
-    if (!target) return;
-    this.creatorThumbScrollTop = target.scrollTop;
-    this.creatorThumbViewportHeight = target.clientHeight || this.creatorThumbViewportHeight;
-    const firstThumb = target.querySelector<HTMLElement>('.page-thumb');
-    if (firstThumb?.offsetHeight) {
-      this.creatorThumbItemHeight = firstThumb.offsetHeight + 8;
-    }
+    this.virtualPageController.onCreatorThumbScroll(event);
   }
 
   selectMainPage(index: number): void {
@@ -1944,24 +1939,15 @@ Tomorrow I will help my mom.`;
   }
 
   private getVirtualPages(pages: BookPage[]): Array<{ page: BookPage; index: number }> {
-    const start = this.getVirtualStart(pages.length);
-    const end = this.getVirtualEnd(pages.length);
-    return pages.slice(start, end).map((page, offset) => ({ page, index: start + offset }));
+    return this.virtualPageController.getVirtualPages(pages);
   }
 
   private getVirtualStart(total: number): number {
-    if (total <= 0) return 0;
-    return this.clamp(
-      Math.floor(this.creatorThumbScrollTop / this.creatorThumbItemHeight) - this.virtualThumbBuffer,
-      0,
-      Math.max(0, total - 1)
-    );
+    return this.virtualPageController.getVirtualStart(total);
   }
 
   private getVirtualEnd(total: number): number {
-    if (total <= 0) return 0;
-    const visibleCount = Math.ceil(this.creatorThumbViewportHeight / this.creatorThumbItemHeight) + this.virtualThumbBuffer * 2;
-    return this.clamp(this.getVirtualStart(total) + visibleCount, 0, total);
+    return this.virtualPageController.getVirtualEnd(total);
   }
 
   private getCachedAssetUrl(relativePath: string): string {
