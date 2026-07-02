@@ -42,9 +42,7 @@ import {
 } from './book-reader.types';
 import {
   clamp,
-  getClampedFocusRect,
-  getRotatedAspectRatio,
-  normalizePageRotation
+  getClampedFocusRect
 } from './book-reader-geometry';
 import {
   dataUrlToBlob,
@@ -61,6 +59,7 @@ import { BookReaderSpeakingAiController } from './book-reader-speaking-ai-contro
 import { BookReaderNavigationController } from './book-reader-navigation-controller';
 import { BookReaderMediaController } from './book-reader-media-controller';
 import { BookReaderAnnotationController } from './book-reader-annotation-controller';
+import { BookReaderFocusController } from './book-reader-focus-controller';
 
 @Component({
   selector: 'app-book-reader',
@@ -96,6 +95,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly navigationController = new BookReaderNavigationController(this);
   private readonly mediaController = new BookReaderMediaController(this);
   private readonly annotationController = new BookReaderAnnotationController(this);
+  private readonly focusController = new BookReaderFocusController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -878,20 +878,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     if (element.type === 'focus') {
-      if (this.focusMode) {
-        const pageIndex = page ? this.visiblePages.findIndex((item) => item.id === page.id) : -1;
-        if (pageIndex >= 0 && pageIndex !== this.currentPageIndex) {
-          this.currentPageIndex = pageIndex;
-          this.syncPageJumpValue();
-          this.refreshPdfUrl();
-        }
-        this.expandedFocusElement = element;
-        this.expandedFocusPage = page;
-        this.selectedText = null;
-        this.activeTextInput = null;
-        this.updateReaderSpreadWidth();
-        this.resetDrawingCanvas();
-      }
+      this.focusController.expandFocusElement(element, page);
       return;
     }
 
@@ -1147,53 +1134,27 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   closeExpandedFocus(): void {
-    this.expandedFocusElement = null;
-    this.expandedFocusPage = null;
-    this.updateReaderSpreadWidth();
-    this.resetDrawingCanvas();
+    this.focusController.closeExpandedFocus();
   }
 
   isFocusCropActive(page: BookPage | null): boolean {
-    return !!page && !!this.expandedFocusElement && this.expandedFocusPage?.id === page.id;
+    return this.focusController.isFocusCropActive(page);
   }
 
   getPageAspectRatioFor(page: BookPage | null): string {
-    if (!this.isFocusCropActive(page)) {
-      const aspect = this.getPageAspectRatioNumber(page);
-      return `${Math.max(0.05, aspect)} / 1`;
-    }
-    const focus = getClampedFocusRect(this.expandedFocusElement);
-    const pageAspect = this.getPageAspectRatioNumber(page);
-    return `${Math.max(0.05, pageAspect * focus.width)} / ${Math.max(0.05, focus.height)}`;
+    return this.focusController.getPageAspectRatioFor(page);
   }
 
   getPageRotation(page: BookPage | null | undefined): number {
-    return normalizePageRotation(page?.rotation);
+    return this.focusController.getPageRotation(page);
   }
 
   getFocusContentStyle(page: BookPage | null): Record<string, string> {
-    if (!this.isFocusCropActive(page)) {
-      return {};
-    }
-    const focus = getClampedFocusRect(this.expandedFocusElement);
-    const cacheKey = `${page?.id || ''}:${this.expandedFocusElement?.id || ''}:${focus.x}:${focus.y}:${focus.width}:${focus.height}`;
-    if (cacheKey === this.focusContentStyleCacheKey) {
-      return this.focusContentStyleCacheValue;
-    }
-    this.focusContentStyleCacheKey = cacheKey;
-    this.focusContentStyleCacheValue = {
-      left: `${(-focus.x / focus.width) * 100}%`,
-      top: `${(-focus.y / focus.height) * 100}%`,
-      width: `${(1 / focus.width) * 100}%`,
-      height: `${(1 / focus.height) * 100}%`
-    };
-    return this.focusContentStyleCacheValue;
+    return this.focusController.getFocusContentStyle(page);
   }
 
   getFocusZoomTransform(element: BookElement | null): string {
-    const focus = getClampedFocusRect(element);
-    const scale = Math.min(8, Math.max(1.2, Math.min(1 / focus.width, 1 / focus.height)));
-    return `translate(${-focus.x * 100}%, ${-focus.y * 100}%) scale(${scale})`;
+    return this.focusController.getFocusZoomTransform(element);
   }
 
   isGuideDotEnabled(element: BookElement, page = this.currentPage): boolean {
@@ -2210,24 +2171,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private getPageAspectRatioNumber(page = this.currentPage): number {
-    const baseAspect = this.getBasePageAspectRatioNumber();
-    return getRotatedAspectRatio(baseAspect, this.getPageRotation(page));
-  }
-
-  private getBasePageAspectRatioNumber(): number {
-    const match = this.pageAspectRatio.match(/([0-9.]+)\s*\/\s*([0-9.]+)/);
-    if (!match) return 210 / 297;
-    const width = Number(match[1]);
-    const height = Number(match[2]);
-    return width > 0 && height > 0 ? width / height : 210 / 297;
+    return this.focusController.getPageAspectRatioNumber(page);
   }
 
   private getCurrentFrameAspectRatioNumber(): number {
-    if (!this.expandedFocusElement) {
-      return this.getPageAspectRatioNumber(this.currentPage);
-    }
-    const focus = getClampedFocusRect(this.expandedFocusElement);
-    return Math.max(0.05, this.getPageAspectRatioNumber(this.expandedFocusPage || this.currentPage) * focus.width / focus.height);
+    return this.focusController.getCurrentFrameAspectRatioNumber();
   }
 
   private syncSelectedTextBox(pageId = this.selectedText?.pageId, textId = this.selectedText?.textId): void {
