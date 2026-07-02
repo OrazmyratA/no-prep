@@ -42,6 +42,7 @@ import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
+import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 
@@ -230,6 +231,7 @@ Tomorrow I will help my mom.`;
   private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
+  private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
 
   async ngOnInit(): Promise<void> {
@@ -931,120 +933,23 @@ Tomorrow I will help my mom.`;
   }
 
   deleteSelectedPage(): void {
-    if (!this.book || this.activePages.length <= 1) return;
-
-    const confirmed = window.confirm(this.languageService.translate('creatorConfirmDeletePage'));
-    if (!confirmed) return;
-
-    this.captureHistory();
-    this.activePages.splice(this.activePageIndex, 1);
-    if (this.activePageSource === 'workbook') {
-      this.selectedWorkbookPageIndex = Math.max(0, this.selectedWorkbookPageIndex - 1);
-    } else {
-      this.selectedPageIndex = Math.max(0, this.selectedPageIndex - 1);
-    }
-    this.refreshSelectedPageRender();
+    this.pageSurfaceController.deleteSelectedPage();
   }
 
   clearSelectedPageElements(): void {
-    const page = this.selectedPage;
-    if (!page || page.elements.length === 0) return;
-
-    const confirmed = window.confirm(this.languageService.translate('creatorConfirmClearPageElements'));
-    if (!confirmed) return;
-
-    this.captureHistory();
-    page.elements = [];
-    page.wordBanks = [];
-    this.pendingMatchEndpointId = null;
-    this.selectedElementId = null;
+    this.pageSurfaceController.clearSelectedPageElements();
   }
 
   deleteActiveBookSurface(): void {
-    if (!this.book) return;
-
-    if (this.activePageSource === 'workbook') {
-      const workbook = this.activeWorkbook || this.primaryWorkbook;
-      if (!workbook) return;
-
-      const confirmed = window.confirm(this.languageService.translate('creatorConfirmDeleteWorkbook'));
-      if (!confirmed) return;
-
-      this.captureHistory();
-      this.book.workbooks = (this.book.workbooks || []).filter((item) => item.id !== workbook.id);
-      this.removeWorkbookLinks(workbook.id);
-      this.activePageSource = 'main';
-      this.activeWorkbookId = null;
-      this.selectedWorkbookPageIndex = 0;
-      this.selectedPageIndex = this.clamp(this.selectedPageIndex, 0, Math.max(0, this.book.pages.length - 1));
-      this.pageJumpValue = String(this.selectedPageIndex + 1);
-      this.refreshSelectedPageRender();
-      return;
-    }
-
-    const confirmed = window.confirm(this.languageService.translate('creatorConfirmDeleteStudentBook'));
-    if (!confirmed) return;
-
-    this.captureHistory();
-    this.book.pages = [this.createBlankPage()];
-    this.book.sourcePdf = '';
-    this.book.cover = '';
-    this.book.workbookLinks = {};
-    this.selectedPageIndex = 0;
-    this.selectedElementId = null;
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = null;
-    this.pendingMatchEndpointId = null;
-    this.linkingMainPageId = null;
-    this.pageJumpValue = '1';
-    this.refreshSelectedPageRender();
+    this.pageSurfaceController.deleteActiveBookSurface();
   }
 
   deletePageAt(index: number, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.book || this.book.pages.length <= 1) return;
-    if (index < 0 || index >= this.book.pages.length) return;
-
-    const confirmed = window.confirm(this.languageService.translate('creatorConfirmDeletePage'));
-    if (!confirmed) return;
-
-    this.captureHistory();
-    this.book.pages.splice(index, 1);
-    if (this.selectedPageIndex >= this.book.pages.length) {
-      this.selectedPageIndex = this.book.pages.length - 1;
-    } else if (this.selectedPageIndex > index) {
-      this.selectedPageIndex--;
-    } else if (this.selectedPageIndex === index) {
-      this.selectedPageIndex = Math.max(0, Math.min(index, this.book.pages.length - 1));
-    }
-    this.refreshSelectedPageRender();
+    this.pageSurfaceController.deletePageAt(index, event);
   }
 
   deleteWorkbookPageAt(workbook: BookWorkbook, index: number, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.book || workbook.pages.length <= 1) return;
-    if (index < 0 || index >= workbook.pages.length) return;
-
-    const confirmed = window.confirm(this.languageService.translate('creatorConfirmDeleteWorkbookPage'));
-    if (!confirmed) return;
-
-    this.captureHistory();
-    workbook.pages.splice(index, 1);
-    if (this.activePageSource === 'workbook' && this.activeWorkbookId === workbook.id) {
-      if (this.selectedWorkbookPageIndex >= workbook.pages.length) {
-        this.selectedWorkbookPageIndex = workbook.pages.length - 1;
-      } else if (this.selectedWorkbookPageIndex > index) {
-        this.selectedWorkbookPageIndex--;
-      } else if (this.selectedWorkbookPageIndex === index) {
-        this.selectedWorkbookPageIndex = Math.max(0, Math.min(index, workbook.pages.length - 1));
-      }
-    }
-    this.removeDeletedWorkbookPageLinks(workbook);
-    this.refreshSelectedPageRender();
+    this.pageSurfaceController.deleteWorkbookPageAt(workbook, index, event);
   }
 
   deleteSelectedElement(): void {
