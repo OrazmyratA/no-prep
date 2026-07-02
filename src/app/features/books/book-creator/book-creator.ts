@@ -33,8 +33,7 @@ import {
 } from '../../../core/book-tasks';
 import {
   getGuideTracks,
-  getOrderedGuidePins,
-  normalizeBookGuideTimelines
+  getOrderedGuidePins
 } from '../../../core/guide-timeline';
 import { GAMES } from '../../topics/games.config';
 import { BookCreatorElementController } from './book-creator-element-controller';
@@ -54,6 +53,7 @@ import { BookCreatorTaskSettingsController } from './book-creator-task-settings-
 import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
 import { BookCreatorLayoutController } from './book-creator-layout-controller';
 import { BookCreatorVirtualPageController } from './book-creator-virtual-page-controller';
+import { BookCreatorLoadingController } from './book-creator-loading-controller';
 
 @Component({
   selector: 'app-book-creator',
@@ -255,6 +255,7 @@ Tomorrow I will help my mom.`;
   private readonly navigationController = new BookCreatorNavigationController(this);
   private readonly layoutController = new BookCreatorLayoutController(this);
   private readonly virtualPageController = new BookCreatorVirtualPageController(this);
+  private readonly loadingController = new BookCreatorLoadingController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly saveController = new BookCreatorSaveController(this);
@@ -1955,59 +1956,14 @@ Tomorrow I will help my mom.`;
   }
 
   private getWarmNavigationBook(bookId: string): InteractiveBook | null {
-    const warmBook = history.state?.warmBook as InteractiveBook | undefined;
-    return warmBook?.id === bookId ? warmBook : null;
+    return this.loadingController.getWarmNavigationBook(bookId);
   }
 
   private applyLoadedBook(book: InteractiveBook | null): void {
-    normalizeBookGuideTimelines(book);
-    this.book = book;
-    this.assetUrlCache.clear();
-    this.selectedPageIndex = 0;
-    this.selectedElementId = null;
-    this.placingTextTask = false;
-    this.placingChoiceTask = false;
-    this.placingCircleTask = false;
-    this.placingMatchTask = false;
-    this.activeChoiceWordBankId = null;
-    this.activeMatchGroupId = null;
-    this.pendingMatchEndpointId = null;
-    this.pageJumpValue = '1';
-    this.activePageSource = 'main';
-    this.activeWorkbookId = null;
-    this.selectedWorkbookPageIndex = 0;
-    this.linkingMainPageId = null;
-    this.applyNavigationPageState();
-    this.markBookClean();
-    this.clearHistory();
-    this.refreshSelectedPageRender();
+    this.loadingController.applyLoadedBook(book);
   }
 
   private applyNavigationPageState(): void {
-    if (!this.book) return;
-    const state = history.state || {};
-    const pageId = String(state.pageId || '');
-    const pageSource = state.pageSource === 'workbook' ? 'workbook' : 'main';
-
-    if (pageSource === 'workbook') {
-      const workbookId = String(state.workbookId || '');
-      const workbook = this.book.workbooks?.find((item) => item.id === workbookId) ?? null;
-      const workbookPageIndex = workbook?.pages.findIndex((page) => page.id === pageId) ?? -1;
-      if (workbook && workbookPageIndex >= 0) {
-        this.activePageSource = 'workbook';
-        this.activeWorkbookId = workbook.id;
-        this.selectedWorkbookPageIndex = workbookPageIndex;
-        this.pageJumpValue = String(workbookPageIndex + 1);
-        return;
-      }
-    }
-
-    const pageIndex = this.book.pages.findIndex((page) => page.id === pageId);
-    if (pageIndex >= 0) {
-      this.activePageSource = 'main';
-      this.activeWorkbookId = null;
-      this.selectedPageIndex = pageIndex;
-      this.pageJumpValue = String(pageIndex + 1);
-    }
+    this.loadingController.applyNavigationPageState();
   }
 }
