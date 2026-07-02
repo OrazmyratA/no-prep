@@ -895,7 +895,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (element.type === 'speakingAi') {
-      this.openSpeakingAi(element, page);
+      this.speakingAiController.openSpeakingAi(element, page);
       return;
     }
 
@@ -986,15 +986,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isSpeakingAiEnabled(element: BookElement, page = this.currentPage): boolean {
-    if (!page || element.type !== 'speakingAi') return false;
-    if (this.isPageInActiveSpread(page)) {
-      const items = this.getActiveSpreadSpeakingAi();
-      const index = items.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
-      return index >= 0 && index <= (this.speakingProgress[this.getActiveSpreadSpeakingProgressKey()] ?? 0);
-    }
-    const items = this.getSpeakingAiElements(page);
-    const index = items.findIndex((item) => item.id === element.id);
-    return index >= 0 && index <= (this.speakingProgress[page.id] ?? 0);
+    return this.speakingAiController.isSpeakingAiEnabled(element, page);
   }
 
   getSpeakingAiTitle(element: BookElement | null): string {
@@ -1524,27 +1516,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopDrawing();
   }
 
-  private isPageInActiveSpread(page: BookPage): boolean {
-    return this.twoPageMode && !!this.companionPage && [this.currentPage?.id, this.companionPage.id].includes(page.id);
-  }
-
-  private openSpeakingAi(element: BookElement, page = this.currentPage): void {
-    if (!page || element.type !== 'speakingAi' || !this.isSpeakingAiEnabled(element, page)) return;
-    this.stopGuideAudio();
-    this.unlockSpeakingAi(element, page);
-    if (this.activeSpeakingElement?.id !== element.id) {
-      this.resetSpeakingSessionState();
-    }
-    this.activeSpeakingElement = element;
-    this.activeSpeakingPage = page;
-    this.speakingPanelExpanded = true;
-    this.moveOwlToElement(element, page);
-    this.owlTeaching = false;
-    this.owlImage = 'assets/gifs/owl-corner.gif';
-    void this.refreshSpeakingRuntimeStatus(element).then((status) => this.maybePromptForSpeakingPackLink(element, status));
-    this.forceUiRefresh();
-  }
-
   private async refreshSpeakingRuntimeStatus(element = this.activeSpeakingElement): Promise<AiSpeakingRuntimeStatus> {
     return this.speakingPackController.refreshSpeakingRuntimeStatus(element);
   }
@@ -1657,40 +1628,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const audio = new Audio(src);
     audio.volume = 0.85;
     void audio.play().catch(() => undefined);
-  }
-
-  private unlockSpeakingAi(element: BookElement, page: BookPage): void {
-    if (this.isPageInActiveSpread(page)) {
-      const items = this.getActiveSpreadSpeakingAi();
-      const index = items.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
-      if (index >= 0) {
-        const key = this.getActiveSpreadSpeakingProgressKey();
-        this.speakingProgress[key] = Math.max(this.speakingProgress[key] ?? 0, index + 1);
-      }
-    }
-
-    const items = this.getSpeakingAiElements(page);
-    const index = items.findIndex((item) => item.id === element.id);
-    if (index >= 0) {
-      this.speakingProgress[page.id] = Math.max(this.speakingProgress[page.id] ?? 0, index + 1);
-    }
-  }
-
-  private getSpeakingAiElements(page: BookPage): BookElement[] {
-    return page.elements
-      .map((element, index) => ({ element, index }))
-      .filter(({ element }) => element.type === 'speakingAi')
-      .sort((a, b) => Number(a.element.data['stepNumber'] ?? a.index) - Number(b.element.data['stepNumber'] ?? b.index))
-      .map(({ element }) => element);
-  }
-
-  private getActiveSpreadSpeakingAi(): { page: BookPage; element: BookElement }[] {
-    const pages = [this.currentPage, this.companionPage].filter((page): page is BookPage => !!page);
-    return pages.flatMap((page) => this.getSpeakingAiElements(page).map((element) => ({ page, element })));
-  }
-
-  private getActiveSpreadSpeakingProgressKey(): string {
-    return `speaking-spread:${this.pageSource}:${this.currentPage?.id || ''}:${this.companionPage?.id || ''}`;
   }
 
   private confirmStopSpeakingForInterruption(): boolean {

@@ -4,12 +4,42 @@ import {
 } from '../../../core/ai-speaking-runtime';
 import {
   BookElement,
+  BookPage,
   BookSpeakingAttempt
 } from '../../../core/book.model';
 import { showAppNotification } from '../../../core/notification';
 
 export class BookReaderSpeakingAiController {
   constructor(private readonly reader: any) {}
+
+  isSpeakingAiEnabled(element: BookElement, page = this.reader.currentPage): boolean {
+    if (!page || element.type !== 'speakingAi') return false;
+    if (this.isPageInActiveSpread(page)) {
+      const items = this.getActiveSpreadSpeakingAi();
+      const index = items.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
+      return index >= 0 && index <= (this.reader.speakingProgress[this.getActiveSpreadSpeakingProgressKey()] ?? 0);
+    }
+    const items = this.getSpeakingAiElements(page);
+    const index = items.findIndex((item) => item.id === element.id);
+    return index >= 0 && index <= (this.reader.speakingProgress[page.id] ?? 0);
+  }
+
+  openSpeakingAi(element: BookElement, page = this.reader.currentPage): void {
+    if (!page || element.type !== 'speakingAi' || !this.isSpeakingAiEnabled(element, page)) return;
+    this.reader.stopGuideAudio();
+    this.unlockSpeakingAi(element, page);
+    if (this.reader.activeSpeakingElement?.id !== element.id) {
+      this.reader.resetSpeakingSessionState();
+    }
+    this.reader.activeSpeakingElement = element;
+    this.reader.activeSpeakingPage = page;
+    this.reader.speakingPanelExpanded = true;
+    this.reader.moveOwlToElement(element, page);
+    this.reader.owlTeaching = false;
+    this.reader.owlImage = 'assets/gifs/owl-corner.gif';
+    void this.reader.refreshSpeakingRuntimeStatus(element).then((status: unknown) => this.reader.maybePromptForSpeakingPackLink(element, status));
+    this.reader.forceUiRefresh();
+  }
 
   async tryTranscribeSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
     const taskElement = this.reader.activeSpeakingElement?.id === attempt.elementId
@@ -191,5 +221,43 @@ export class BookReaderSpeakingAiController {
     if (Number.isFinite(aTurn) && !Number.isFinite(bTurn)) return -1;
     if (!Number.isFinite(aTurn) && Number.isFinite(bTurn)) return 1;
     return String(a.startedAt).localeCompare(String(b.startedAt));
+  }
+
+  unlockSpeakingAi(element: BookElement, page: BookPage): void {
+    if (this.isPageInActiveSpread(page)) {
+      const items = this.getActiveSpreadSpeakingAi();
+      const index = items.findIndex((item) => item.element.id === element.id && item.page.id === page.id);
+      if (index >= 0) {
+        const key = this.getActiveSpreadSpeakingProgressKey();
+        this.reader.speakingProgress[key] = Math.max(this.reader.speakingProgress[key] ?? 0, index + 1);
+      }
+    }
+
+    const items = this.getSpeakingAiElements(page);
+    const index = items.findIndex((item) => item.id === element.id);
+    if (index >= 0) {
+      this.reader.speakingProgress[page.id] = Math.max(this.reader.speakingProgress[page.id] ?? 0, index + 1);
+    }
+  }
+
+  getSpeakingAiElements(page: BookPage): BookElement[] {
+    return page.elements
+      .map((element, index) => ({ element, index }))
+      .filter(({ element }) => element.type === 'speakingAi')
+      .sort((a, b) => Number(a.element.data['stepNumber'] ?? a.index) - Number(b.element.data['stepNumber'] ?? b.index))
+      .map(({ element }) => element);
+  }
+
+  getActiveSpreadSpeakingAi(): { page: BookPage; element: BookElement }[] {
+    const pages = [this.reader.currentPage, this.reader.companionPage].filter((page): page is BookPage => !!page);
+    return pages.flatMap((page) => this.getSpeakingAiElements(page).map((element) => ({ page, element })));
+  }
+
+  getActiveSpreadSpeakingProgressKey(): string {
+    return `speaking-spread:${this.reader.pageSource}:${this.reader.currentPage?.id || ''}:${this.reader.companionPage?.id || ''}`;
+  }
+
+  isPageInActiveSpread(page: BookPage): boolean {
+    return this.reader.twoPageMode && !!this.reader.companionPage && [this.reader.currentPage?.id, this.reader.companionPage.id].includes(page.id);
   }
 }
