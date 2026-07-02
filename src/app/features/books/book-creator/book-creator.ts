@@ -48,6 +48,7 @@ import { BookCreatorPageSurfaceController } from './book-creator-page-surface-co
 import { BookCreatorSaveController } from './book-creator-save-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
+import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
 
 @Component({
   selector: 'app-book-creator',
@@ -238,6 +239,7 @@ Tomorrow I will help my mom.`;
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
   private readonly saveController = new BookCreatorSaveController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
+  private readonly workbookLinkController = new BookCreatorWorkbookLinkController(this);
 
   async ngOnInit(): Promise<void> {
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
@@ -1366,85 +1368,35 @@ Tomorrow I will help my mom.`;
   }
 
   getPageLinkCount(page: BookPage): number {
-    if (!this.book) return 0;
-    return (this.book.workbookLinks?.[page.id] ?? [])
-      .reduce((count, link) => count + (Array.isArray(link.pageIds) ? link.pageIds.length : 0), 0);
+    return this.workbookLinkController.getPageLinkCount(page);
   }
 
   getLinkedWorkbookPageNumbers(page: BookPage | null): string {
-    const workbook = this.primaryWorkbook;
-    if (!page || !workbook || !this.book?.workbookLinks) return '';
-    const link = (this.book.workbookLinks[page.id] ?? []).find((item) => item.workbookId === workbook.id);
-    if (!link) return '';
-    return link.pageIds
-      .map((pageId) => workbook.pages.findIndex((item) => item.id === pageId) + 1)
-      .filter((pageNumber) => pageNumber > 0)
-      .join(', ');
+    return this.workbookLinkController.getLinkedWorkbookPageNumbers(page);
   }
 
   setLinkedWorkbookPageNumbers(page: BookPage | null, value: string): void {
-    const workbook = this.primaryWorkbook;
-    if (!this.book || !page || !workbook) return;
-    const pageIds = this.parsePageNumberList(value, workbook.pages.length)
-      .map((pageNumber) => workbook.pages[pageNumber - 1]?.id)
-      .filter((pageId): pageId is string => !!pageId);
-
-    this.captureHistory();
-    this.book.workbookLinks = this.book.workbookLinks && typeof this.book.workbookLinks === 'object'
-      ? this.book.workbookLinks
-      : {};
-    const otherLinks = (this.book.workbookLinks[page.id] ?? []).filter((link) => link.workbookId !== workbook.id);
-    if (pageIds.length) {
-      otherLinks.push({ workbookId: workbook.id, pageIds });
-    }
-    this.book.workbookLinks[page.id] = otherLinks;
+    this.workbookLinkController.setLinkedWorkbookPageNumbers(page, value);
   }
 
   beginWorkbookLinking(page: BookPage, event?: Event): void {
-    event?.stopPropagation();
-    this.selectMainPage(this.book?.pages.findIndex((item) => item.id === page.id) ?? this.selectedPageIndex);
-    this.linkingMainPageId = this.linkingMainPageId === page.id ? null : page.id;
+    this.workbookLinkController.beginWorkbookLinking(page, event);
   }
 
   isLinkingMainPage(page: BookPage): boolean {
-    return this.linkingMainPageId === page.id;
+    return this.workbookLinkController.isLinkingMainPage(page);
   }
 
   isWorkbookPageLinked(workbookId: string, pageId: string): boolean {
-    const mainPageId = this.linkingMainPageId || (this.activePageSource === 'main' ? this.selectedPage?.id : '');
-    if (!mainPageId || !this.book?.workbookLinks) return false;
-    return (this.book.workbookLinks[mainPageId] ?? [])
-      .some((link) => link.workbookId === workbookId && link.pageIds.includes(pageId));
+    return this.workbookLinkController.isWorkbookPageLinked(workbookId, pageId);
   }
 
   toggleWorkbookPageLink(workbook: BookWorkbook, page: BookPage, event?: Event): void {
-    event?.stopPropagation();
-    if (!this.book || !this.linkingMainPageId) return;
-    this.captureHistory();
-    this.book.workbookLinks = this.book.workbookLinks && typeof this.book.workbookLinks === 'object'
-      ? this.book.workbookLinks
-      : {};
-    const links = this.book.workbookLinks[this.linkingMainPageId] ?? [];
-    let link = links.find((item) => item.workbookId === workbook.id);
-    if (!link) {
-      link = { workbookId: workbook.id, pageIds: [] };
-      links.push(link);
-    }
-    if (link.pageIds.includes(page.id)) {
-      link.pageIds = link.pageIds.filter((id) => id !== page.id);
-    } else {
-      link.pageIds = [...link.pageIds, page.id].sort((a, b) =>
-        workbook.pages.findIndex((item) => item.id === a) - workbook.pages.findIndex((item) => item.id === b)
-      );
-    }
-    this.book.workbookLinks[this.linkingMainPageId] = links
-      .map((item) => ({ ...item, pageIds: item.pageIds.filter(Boolean) }))
-      .filter((item) => item.pageIds.length > 0);
+    this.workbookLinkController.toggleWorkbookPageLink(workbook, page, event);
   }
 
   getWorkbookLinksForPage(page: BookPage | null): WorkbookLink[] {
-    if (!page || !this.book?.workbookLinks) return [];
-    return this.book.workbookLinks[page.id] ?? [];
+    return this.workbookLinkController.getWorkbookLinksForPage(page);
   }
 
   shouldShowPageStarter(): boolean {
@@ -1781,49 +1733,15 @@ Tomorrow I will help my mom.`;
   }
 
   private parsePageNumberList(value: string, maxPage: number): number[] {
-    const pageNumbers = new Set<number>();
-    for (const part of String(value || '').split(/[,\s]+/).map((item) => item.trim()).filter(Boolean)) {
-      const rangeMatch = part.match(/^(\d+)-(\d+)$/);
-      if (rangeMatch) {
-        const start = Number(rangeMatch[1]);
-        const end = Number(rangeMatch[2]);
-        const min = Math.min(start, end);
-        const max = Math.max(start, end);
-        for (let page = min; page <= max; page++) {
-          if (page >= 1 && page <= maxPage) pageNumbers.add(page);
-        }
-        continue;
-      }
-      const page = Number(part);
-      if (Number.isInteger(page) && page >= 1 && page <= maxPage) {
-        pageNumbers.add(page);
-      }
-    }
-    return Array.from(pageNumbers).sort((a, b) => a - b);
+    return this.workbookLinkController.parsePageNumberList(value, maxPage);
   }
 
   private removeDeletedWorkbookPageLinks(workbook: BookWorkbook): void {
-    if (!this.book?.workbookLinks) return;
-    const validPageIds = new Set(workbook.pages.map((page) => page.id));
-    for (const [mainPageId, links] of Object.entries(this.book.workbookLinks)) {
-      this.book.workbookLinks[mainPageId] = links
-        .map((link) => link.workbookId === workbook.id
-          ? { ...link, pageIds: link.pageIds.filter((pageId) => validPageIds.has(pageId)) }
-          : link)
-        .filter((link) => link.pageIds.length > 0);
-    }
+    this.workbookLinkController.removeDeletedWorkbookPageLinks(workbook);
   }
 
   private removeWorkbookLinks(workbookId: string): void {
-    if (!this.book?.workbookLinks) return;
-    for (const [mainPageId, links] of Object.entries(this.book.workbookLinks)) {
-      const remainingLinks = links.filter((link) => link.workbookId !== workbookId);
-      if (remainingLinks.length) {
-        this.book.workbookLinks[mainPageId] = remainingLinks;
-      } else {
-        delete this.book.workbookLinks[mainPageId];
-      }
-    }
+    this.workbookLinkController.removeWorkbookLinks(workbookId);
   }
 
   private clonePage(page: BookPage): BookPage {
