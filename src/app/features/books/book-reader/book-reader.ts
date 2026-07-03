@@ -62,6 +62,7 @@ import { BookReaderAnnotationController } from './book-reader-annotation-control
 import { BookReaderFocusController } from './book-reader-focus-controller';
 import { BookReaderVideoController } from './book-reader-video-controller';
 import { BookReaderLayoutController } from './book-reader-layout-controller';
+import { cloneTextAnnotation } from './book-reader-annotation-utils';
 
 @Component({
   selector: 'app-book-reader',
@@ -188,6 +189,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   expandedFocusPage: BookPage | null = null;
   activeTextInput: { pageId: string; textId?: string; x: number; y: number; width: number; height: number; value: string; color: string; createdAt?: number } | null = null;
   selectedText: { pageId: string; textId: string } | null = null;
+  private copiedTextAnnotation: BookAnnotationText | null = null;
   taskResponses = new Map<string, BookTaskResponse>();
   activeTaskElement: BookElement | null = null;
   activeTaskPageId: string | null = null;
@@ -503,6 +505,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isInkModeActive(): boolean {
     return this.navigationController.isInkModeActive();
+  }
+
+  isReaderSurfaceToolActive(): boolean {
+    return this.drawMode || this.highlighterMode || this.textMode;
   }
 
   addTemporaryText(): void {
@@ -947,6 +953,166 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('document:keydown.escape')
   onExpandedVideoEscape(): void {
     this.videoController.onExpandedVideoEscape();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.defaultPrevented || this.isKeyboardEditingTarget(event.target)) return;
+
+    const shortcutKey = event.key.toLowerCase();
+    const commandKey = event.ctrlKey || event.metaKey;
+    if (commandKey) {
+      if (shortcutKey === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          this.redoAnnotation();
+        } else {
+          this.undoAnnotation();
+        }
+        return;
+      }
+      if (shortcutKey === 'y') {
+        event.preventDefault();
+        this.redoAnnotation();
+        return;
+      }
+      if (shortcutKey === 'c') {
+        const text = this.getSelectedTextAnnotation();
+        if (!text) return;
+        event.preventDefault();
+        this.copiedTextAnnotation = cloneTextAnnotation(text);
+        return;
+      }
+      if (shortcutKey === 'v') {
+        if (!this.copiedTextAnnotation) return;
+        event.preventDefault();
+        this.pasteCopiedTextAnnotation();
+        return;
+      }
+      if (shortcutKey === 'd') {
+        if (!this.getSelectedTextAnnotation()) return;
+        event.preventDefault();
+        this.duplicateSelectedTextAnnotation();
+        return;
+      }
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.cancelReaderKeyboardState();
+      return;
+    }
+
+    if (event.key === 'Delete') {
+      if (!this.selectedText) return;
+      event.preventDefault();
+      this.deleteTextAnnotation(this.selectedText.pageId, this.selectedText.textId);
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (this.moveSelectedTextWithKeyboard(event)) {
+        event.preventDefault();
+        return;
+      }
+      if (!this.selectedText && !this.isReaderSurfaceToolActive() && !this.deleteMode && !this.activeTaskElement && !this.activeSpeakingElement) {
+        const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+        if (direction !== 0) {
+          event.preventDefault();
+          direction < 0 ? this.previousPage() : this.nextPage();
+        }
+      }
+    }
+  }
+
+  private cancelReaderKeyboardState(): void {
+    if (this.activeTextInput) {
+      this.cancelTextInput();
+      return;
+    }
+    if (this.expandedFocusElement) {
+      this.closeExpandedFocus();
+      return;
+    }
+    if (this.expandedElement) {
+      this.closeExpandedElement();
+      return;
+    }
+    if (this.drawMode || this.highlighterMode || this.textMode || this.deleteMode || this.focusMode) {
+      this.drawMode = false;
+      this.highlighterMode = false;
+      this.textMode = false;
+      this.deleteMode = false;
+      this.focusMode = false;
+      this.selectedText = null;
+      this.forceUiRefresh();
+      return;
+    }
+    this.selectedText = null;
+    this.activeMatchEndpoint = null;
+    this.closeTaskInput();
+    this.forceUiRefresh();
+  }
+
+  private moveSelectedTextWithKeyboard(event: KeyboardEvent): boolean {
+    const text = this.getSelectedTextAnnotation();
+    if (!text) return false;
+
+    const step = event.altKey ? 0.001 : event.shiftKey ? 0.02 : 0.005;
+    const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+    const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+    if (!dx && !dy) return false;
+
+    const before = cloneTextAnnotation(text);
+    const halfWidth = (text.width || 0.16) / 2;
+    const halfHeight = (text.height || 0.045) / 2;
+    text.x = clamp(text.x + dx, halfWidth, 1 - halfWidth);
+    text.y = clamp(text.y + dy, halfHeight, 1 - halfHeight);
+    if (text.x === before.x && text.y === before.y) return true;
+
+    this.pushUndoAction({ kind: 'move-text', pageId: text.pageId, before, after: cloneTextAnnotation(text) });
+    this.scheduleReaderInteractionRefresh();
+    void this.saveAnnotations();
+    return true;
+  }
+
+  private duplicateSelectedTextAnnotation(): void {
+    const source = this.getSelectedTextAnnotation();
+    if (!source) return;
+    this.insertCopiedTextAnnotation(source, source.pageId, 0.025);
+  }
+
+  private pasteCopiedTextAnnotation(): void {
+    const page = this.currentPage;
+    if (!page || !this.copiedTextAnnotation) return;
+    this.insertCopiedTextAnnotation(this.copiedTextAnnotation, page.id, 0.035);
+  }
+
+  private insertCopiedTextAnnotation(source: BookAnnotationText, pageId: string, offset: number): void {
+    const copy = cloneTextAnnotation(source);
+    copy.id = this.createId('text');
+    copy.pageId = pageId;
+    copy.x = clamp((source.x || 0.5) + offset, (source.width || 0.16) / 2, 1 - (source.width || 0.16) / 2);
+    copy.y = clamp((source.y || 0.5) + offset, (source.height || 0.045) / 2, 1 - (source.height || 0.045) / 2);
+    copy.createdAt = Date.now();
+    this.getPageAnnotations(pageId).texts.push(copy);
+    this.selectedText = { pageId, textId: copy.id };
+    this.pushUndoAction({ kind: 'add-text', pageId, item: cloneTextAnnotation(copy) });
+    this.scheduleReaderInteractionRefresh();
+    void this.saveAnnotations();
+  }
+
+  private getSelectedTextAnnotation(): BookAnnotationText | null {
+    if (!this.selectedText) return null;
+    return this.getPageAnnotations(this.selectedText.pageId).texts.find((text) => text.id === this.selectedText?.textId) ?? null;
+  }
+
+  private isKeyboardEditingTarget(target: EventTarget | null): boolean {
+    const element = target instanceof HTMLElement ? target : null;
+    if (!element) return false;
+    if (element.isContentEditable) return true;
+    return !!element.closest('input, textarea, select, [contenteditable="true"]');
   }
 
   isElectronRuntime(): boolean {

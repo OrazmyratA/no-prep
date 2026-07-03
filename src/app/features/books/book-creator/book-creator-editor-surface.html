@@ -23,6 +23,7 @@
       class="editor-canvas"
       [class.screenshotting]="creator.creatorScreenshotting"
       [class.mark-mode-active]="creator.creatorDrawMode || creator.creatorHighlighterMode"
+      [class.surface-tool-active]="creator.isCreatorSurfaceToolActive()"
       [style.width.px]="creator.creatorCanvasWidthPx"
       [style.aspect-ratio]="creator.getSelectedPageAspectRatio()"
       [style.background]="creator.selectedPage?.backgroundColor || '#f8fafc'"

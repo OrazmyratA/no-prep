@@ -125,6 +125,10 @@ export class BookReaderAnnotationHistoryController {
       this.removeTextById(action.pageId, action.item.id);
       return;
     }
+    if (action.kind === 'move-text') {
+      this.upsertText(action.pageId, cloneTextAnnotation(action.after));
+      return;
+    }
     if (action.kind === 'add-stroke') {
       this.annotation.removeStrokeById(action.pageId, action.item.id);
       this.annotation.getPageAnnotations(action.pageId).strokes.push(cloneStrokeAnnotation(action.item));
@@ -154,6 +158,10 @@ export class BookReaderAnnotationHistoryController {
     if (action.kind === 'delete-text') {
       this.removeTextById(action.pageId, action.item.id);
       this.annotation.getPageAnnotations(action.pageId).texts.push(cloneTextAnnotation(action.item));
+      return;
+    }
+    if (action.kind === 'move-text') {
+      this.upsertText(action.pageId, cloneTextAnnotation(action.before));
       return;
     }
     if (action.kind === 'add-stroke') {
@@ -201,5 +209,15 @@ export class BookReaderAnnotationHistoryController {
     if (index < 0) return null;
     const [removed] = texts.splice(index, 1);
     return removed;
+  }
+
+  private upsertText(pageId: string, text: BookAnnotationText): void {
+    const texts = this.annotation.getPageAnnotations(pageId).texts;
+    const index = texts.findIndex((item: BookAnnotationText) => item.id === text.id);
+    if (index >= 0) {
+      texts[index] = text;
+    } else {
+      texts.push(text);
+    }
   }
 }

@@ -367,6 +367,11 @@
   cursor: not-allowed;
 }
 
+.page-frame.surface-tool-active .reader-element,
+.page-frame.surface-tool-active .temporary-text {
+  pointer-events: none;
+}
+
 @keyframes reader-delete-glow {
   from {
     box-shadow: 0 0 0 0.12rem rgba(239, 68, 68, 0.2), 0 0 0.4rem rgba(239, 68, 68, 0.32);
@@ -375,4 +380,3 @@
     box-shadow: 0 0 0 0.18rem rgba(239, 68, 68, 0.38), 0 0 0.85rem rgba(239, 68, 68, 0.52);
   }
 }
-

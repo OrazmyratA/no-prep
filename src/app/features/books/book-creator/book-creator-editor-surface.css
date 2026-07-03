@@ -105,6 +105,11 @@
   pointer-events: none;
 }
 
+.editor-canvas.surface-tool-active .creator-element,
+.editor-canvas.surface-tool-active .creator-guide-pin {
+  pointer-events: none;
+}
+
 .creator-live-drawing-layer {
   position: absolute;
   inset: 0;

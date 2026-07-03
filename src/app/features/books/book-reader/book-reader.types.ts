@@ -10,6 +10,7 @@ import {
 export type ReaderAnnotationAction =
   | { kind: 'add-text'; pageId: string; item: BookAnnotationText }
   | { kind: 'delete-text'; pageId: string; item: BookAnnotationText }
+  | { kind: 'move-text'; pageId: string; before: BookAnnotationText; after: BookAnnotationText }
   | { kind: 'add-stroke'; pageId: string; item: BookAnnotationStroke }
   | { kind: 'delete-stroke'; pageId: string; item: BookAnnotationStroke }
   | { kind: 'clear'; pages: { pageId: string; before: BookPageAnnotations; responses: BookTaskResponse[] }[] };

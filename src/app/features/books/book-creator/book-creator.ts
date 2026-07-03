@@ -567,9 +567,133 @@ Tomorrow I will help my mom.`;
     this.taskPlacementController.clearTaskPlacementModes();
   }
 
-  @HostListener('document:keydown.escape')
-  finishTaskPlacement(): void {
+  isCreatorSurfaceToolActive(): boolean {
+    return this.creatorDrawMode
+      || this.creatorHighlighterMode
+      || this.creatorTextMode
+      || this.placingTextTask
+      || this.placingChoiceTask
+      || this.placingCircleTask
+      || this.placingMatchTask
+      || this.placingGuidePin;
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  finishTaskPlacement(event?: Event): void {
+    if (event && this.isKeyboardEditingTarget(event.target)) return;
+    event?.preventDefault();
+    this.cancelCreatorKeyboardState();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.defaultPrevented || this.isKeyboardEditingTarget(event.target)) return;
+
+    const shortcutKey = event.key.toLowerCase();
+    const commandKey = event.ctrlKey || event.metaKey;
+    if (commandKey) {
+      if (shortcutKey === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          this.redo();
+        } else {
+          this.undo();
+        }
+        return;
+      }
+      if (shortcutKey === 'y') {
+        event.preventDefault();
+        this.redo();
+        return;
+      }
+      if (shortcutKey === 'c') {
+        if (!this.canUseSelectedElementKeyboardShortcut()) return;
+        event.preventDefault();
+        this.copySelectedElement();
+        return;
+      }
+      if (shortcutKey === 'v') {
+        if (!this.hasCopiedElement()) return;
+        event.preventDefault();
+        this.pasteCopiedElement();
+        return;
+      }
+      if (shortcutKey === 'd') {
+        if (!this.canUseSelectedElementKeyboardShortcut()) return;
+        event.preventDefault();
+        this.duplicateSelectedElement();
+        return;
+      }
+      return;
+    }
+
+    if (event.key === 'Delete') {
+      if (!this.canUseSelectedElementKeyboardShortcut()) return;
+      event.preventDefault();
+      this.deleteSelectedElement();
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (this.moveSelectedElementWithKeyboard(event)) {
+        event.preventDefault();
+        return;
+      }
+      if (!this.selectedElementId && !this.isCreatorSurfaceToolActive()) {
+        const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+        if (direction !== 0) {
+          event.preventDefault();
+          this.selectPage(this.activePageIndex + direction);
+        }
+      }
+    }
+  }
+
+  private cancelCreatorKeyboardState(): void {
+    const hadSurfaceTool = this.isCreatorSurfaceToolActive();
+    this.clearCreatorMarkModes();
     this.taskPlacementController.finishTaskPlacement();
+    this.placingGuidePin = false;
+
+    if (!hadSurfaceTool) {
+      this.selectedElementId = null;
+      this.selectedGuideTrackId = null;
+      this.selectedGuidePinId = null;
+    }
+  }
+
+  private canUseSelectedElementKeyboardShortcut(): boolean {
+    const element = this.selectedElement;
+    return !!element && !this.isFixedCreatorMark(element);
+  }
+
+  private moveSelectedElementWithKeyboard(event: KeyboardEvent): boolean {
+    const element = this.selectedElement;
+    if (!element || this.isFixedCreatorMark(element)) return false;
+
+    const step = event.altKey ? 0.001 : event.shiftKey ? 0.02 : 0.005;
+    const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
+    const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
+    if (!dx && !dy) return false;
+
+    const width = element.width || 0.08;
+    const height = element.height || 0.08;
+    const nextX = this.clamp(element.x + dx, 0, Math.max(0, 1 - width));
+    const nextY = this.clamp(element.y + dy, 0, Math.max(0, 1 - height));
+    if (nextX === element.x && nextY === element.y) return true;
+
+    this.captureHistory();
+    element.x = nextX;
+    element.y = nextY;
+    this.scheduleCreatorInteractionRefresh();
+    return true;
+  }
+
+  private isKeyboardEditingTarget(target: EventTarget | null): boolean {
+    const element = target instanceof HTMLElement ? target : null;
+    if (!element) return false;
+    if (element.isContentEditable) return true;
+    return !!element.closest('input, textarea, select, [contenteditable="true"]');
   }
 
   addGuideDot(): void {
@@ -1038,17 +1162,21 @@ Tomorrow I will help my mom.`;
     }
     if (this.taskDrawState) {
       event.preventDefault();
-      this.updateTaskDraw(event.clientX, event.clientY);
+      const pointerEvent = this.getLatestPointerEvent(event);
+      this.updateTaskDraw(pointerEvent.clientX, pointerEvent.clientY);
       this.scheduleCreatorInteractionRefresh();
       return;
     }
     if (this.timelinePinDragState || this.pagePinDragState) {
       event.preventDefault();
-      this.pendingGuidePinPointer = { x: event.clientX, y: event.clientY };
+      const pointerEvent = this.getLatestPointerEvent(event);
+      this.pendingGuidePinPointer = { x: pointerEvent.clientX, y: pointerEvent.clientY };
       this.scheduleGuidePinDragFrame();
       return;
     }
     if (!this.dragState || !this.editorCanvas) return;
+    event.preventDefault();
+    const pointerEvent = this.getLatestPointerEvent(event);
     const element = this.selectedElement;
     if (!element) return;
     if (this.isFixedCreatorMark(element)) {
@@ -1056,7 +1184,7 @@ Tomorrow I will help my mom.`;
       return;
     }
 
-    const pointer = this.getEditorCanvasPointFromClient(event.clientX, event.clientY);
+    const pointer = this.getEditorCanvasPointFromClient(pointerEvent.clientX, pointerEvent.clientY);
     if (!pointer) return;
     const dx = pointer.x - this.dragState.startPointerX;
     const dy = pointer.y - this.dragState.startPointerY;
@@ -1081,6 +1209,11 @@ Tomorrow I will help my mom.`;
     element.x = this.clamp(this.dragState.startX + dx, 0, 1 - width);
     element.y = this.clamp(this.dragState.startY + dy, 0, 1 - height);
     this.scheduleCreatorInteractionRefresh();
+  }
+
+  private getLatestPointerEvent(event: PointerEvent): PointerEvent {
+    const events = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [];
+    return events.length ? events[events.length - 1] as PointerEvent : event;
   }
 
   private scheduleCreatorInteractionRefresh(): void {

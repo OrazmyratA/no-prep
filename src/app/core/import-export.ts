@@ -22,6 +22,16 @@ export interface ExportData {
   topics: ExportTopic[];
 }
 
+interface BookTopicSnapshot {
+  version: string;
+  topic: {
+    name: string;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  items: ExportTopic['items'];
+}
+
 const MAX_IMPORT_JSON_BYTES = 250 * 1024 * 1024;
 const MAX_IMPORT_TOPICS = 500;
 const MAX_IMPORT_ITEMS_PER_TOPIC = 2000;
@@ -114,13 +124,14 @@ const exportItems = await Promise.all(items.map(async item => ({
       return;
     }
     const content = await file.text();
-    let data: ExportData;
+    let parsed: unknown;
     try {
-      data = JSON.parse(content);
+      parsed = JSON.parse(content);
     } catch (e) {
       showAppNotification('Invalid JSON file', 'error');
       return;
     }
+    const data = this.normalizeImportData(parsed);
     if (!this.validateImportData(data)) {
       showAppNotification('File format not recognized', 'error');
       return;
@@ -182,16 +193,52 @@ const exportItems = await Promise.all(items.map(async item => ({
     return true;
   }
 
+  private normalizeImportData(data: unknown): ExportData | null {
+    if (this.isBookTopicSnapshot(data)) {
+      return {
+        version: this.currentVersion,
+        exportDate: new Date().toISOString(),
+        topics: [{
+          name: data.topic.name,
+          createdAt: data.topic.createdAt || new Date().toISOString(),
+          updatedAt: data.topic.updatedAt || new Date().toISOString(),
+          items: data.items
+        }]
+      };
+    }
+    return data as ExportData;
+  }
+
+  private isBookTopicSnapshot(data: unknown): data is BookTopicSnapshot {
+    if (!data || typeof data !== 'object') return false;
+    const snapshot = data as BookTopicSnapshot;
+    if (snapshot.version !== this.currentVersion) return false;
+    if (!snapshot.topic || typeof snapshot.topic !== 'object') return false;
+    if (!snapshot.topic.name || typeof snapshot.topic.name !== 'string') return false;
+    if (!Array.isArray(snapshot.items)) return false;
+    return !Array.isArray((snapshot as unknown as ExportData).topics);
+  }
+
   private async dataUrlToBlob(dataUrl: string): Promise<Blob> {
     if (!this.isAllowedDataUrl(dataUrl)) {
       throw new Error('Unsupported media data.');
     }
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-    if (blob.size > MAX_IMPORT_MEDIA_BYTES) {
+
+    const match = dataUrl.match(/^data:([^;,]+)(?:;[^,]*)?;base64,([A-Za-z0-9+/=\s]+)$/i);
+    if (!match) {
+      throw new Error('Unsupported media data.');
+    }
+    const mimeType = match[1].toLowerCase();
+    const base64 = match[2].replace(/\s/g, '');
+    const binary = atob(base64);
+    if (binary.length > MAX_IMPORT_MEDIA_BYTES) {
       throw new Error('Imported media is too large.');
     }
-    return blob;
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], { type: mimeType });
   }
 
   private isAllowedDataUrl(value: unknown, expectedKind?: 'image' | 'audio'): boolean {

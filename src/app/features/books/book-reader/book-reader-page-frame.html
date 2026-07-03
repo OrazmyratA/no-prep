@@ -3,6 +3,7 @@
   [class.companion-page-frame]="companion"
   [class.screenshotting]="primary && reader.screenshotting"
   [class.delete-mode]="reader.deleteMode"
+  [class.surface-tool-active]="reader.isReaderSurfaceToolActive()"
   [class.focus-crop-page]="primary && reader.isFocusCropActive(page)"
   (click)="reader.onPageFrameClick($event)"
   appSwipe
