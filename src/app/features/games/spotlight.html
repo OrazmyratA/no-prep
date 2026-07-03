@@ -1,13 +1,13 @@
 <div class="game-container" #itemContainer>
   <!-- Loading overlay -->
   <div *ngIf="loading" class="loading-overlay">
-    <div class="loading-spinner">🔦</div>
+    <div class="loading-spinner">&#128294;</div>
     <p>{{ 'spotlightLoading' | translate }}</p>
   </div>
 
   <!-- Game area -->
   <div *ngIf="!loading && currentItem" class="spotlight-wrapper">
-    <!-- Item display – fills the screen -->
+    <!-- Item display fills the screen -->
     <div class="item-display">
       <div *ngIf="currentItem.image" class="item-image">
         <img [src]="imageUrl(currentItem.image, currentItem.id!)" alt="item">
@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <!-- Spotlight canvas overlay – hides the default cursor -->
+    <!-- Spotlight canvas overlay hides the default cursor -->
     <canvas #spotlightCanvas
             class="spotlight-canvas"
             (mousemove)="onMouseMove($event)"
@@ -31,7 +31,7 @@
 
     <!-- Navigation buttons -->
     <div class="nav-buttons">
-      <button (click)="revealAllScreen()" class="nav-btn reveal" [attr.title]="'spotlightRevealTitle' | translate">👁️</button>
+      <button (click)="revealAllScreen()" class="nav-btn reveal" [attr.title]="'spotlightRevealTitle' | translate">&#128065;</button>
       <button (click)="previousItem()" [disabled]="currentIndex === 0" class="nav-btn prev icon-only" aria-label="Previous" title="Previous">
         <span aria-hidden="true">&#9664;</span>
       </button>
@@ -41,21 +41,29 @@
       </button>
     </div>
 
-      <!-- Top‑left controls (progress + speaker) -->
+    <!-- Top-left controls: progress, speaker, and keyboard help -->
     <div class="top-left-controls">
-      <div class="progress">
-        {{ currentIndex + 1 }} / {{ items.length }}
+      <div class="top-left-control-row">
+        <div class="progress">
+          {{ currentIndex + 1 }} / {{ items.length }}
+        </div>
+        <button *ngIf="currentItem"
+                (click)="playCurrentItemSound()"
+                class="speaker-btn"
+                [class.disabled]="!currentHasAudio"
+                [disabled]="!currentHasAudio">
+          &#128266;
+        </button>
       </div>
-      <button *ngIf="currentItem" 
-              (click)="playCurrentItemSound()" 
-              class="speaker-btn"
-              [class.disabled]="!currentHasAudio"
-              [disabled]="!currentHasAudio">
-        🔊
-      </button>
+      <app-game-keyboard-help
+        class="spotlight-keyboard-help"
+        [shortcuts]="keyboardShortcuts"
+        (openChange)="keyboardHintsVisible = $event"
+        title="Keyboard shortcuts">
+      </app-game-keyboard-help>
     </div>
-  </div>  
+  </div>
 
-<!-- Sandwich Menu (shared component) -->
+  <!-- Sandwich Menu (shared component) -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
 </div>

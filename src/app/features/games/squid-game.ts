@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 
 interface QuizOption {
   text: string;
@@ -56,6 +58,9 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   quizOverlayVisible = false;
   quizPaused = false;
   simpleConfirmMode = false;
+  keyboardSelectedOptionIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = this.buildKeyboardShortcuts();
 
   // Data
   quizItems: Item[] = [];
@@ -103,6 +108,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     const params = this.route.snapshot.queryParams;
     const tc = Number(params['teamCount']);
     if (Number.isFinite(tc) && tc >= 1 && tc <= 6) this.teamCount = tc;
+    this.syncKeyboardShortcuts();
 
     const dist = Number(params['distance']);
     if (Number.isFinite(dist) && dist >= 5 && dist <= 300) this.totalSteps = dist;
@@ -341,6 +347,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       correctAnswer,
       locked: false
     };
+    this.keyboardSelectedOptionIndex = 0;
     this.quizVisible = true;
     this.quizOverlayVisible = false;
     this.cdr.detectChanges();
@@ -353,6 +360,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
 
   onQuizAnswer(option: QuizOption) {
     if (!this.currentQuiz || this.currentQuiz.locked) return;
+    this.keyboardSelectedOptionIndex = Math.max(0, this.currentQuiz.options.indexOf(option));
     this.currentQuiz.locked = true;
 
     const isCorrect = option.text === this.currentQuiz.correctAnswer;
@@ -426,6 +434,126 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
       this.setTrackedTimeout(() => this.processNextQuiz(), 300);
     }, 800);
+  }
+
+  isKeyboardOptionSelected(index: number): boolean {
+    return !!this.currentQuiz && this.quizVisible && !this.currentQuiz.locked && this.keyboardSelectedOptionIndex === index;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameStatus === 'finished') {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    if (this.quizVisible && this.currentQuiz) {
+      this.handleQuizKey(event);
+      return;
+    }
+
+    const teamIndex = getTeamIndexForKey(key, this.teamCount);
+    if (teamIndex >= 0) {
+      const team = this.teams[teamIndex];
+      if (team) {
+        event.preventDefault();
+        this.onMoveClick(team);
+      }
+      return;
+    }
+
+    if (key === 'r') {
+      event.preventDefault();
+      this.resetGame();
+    }
+  }
+
+  private handleQuizKey(event: KeyboardEvent) {
+    if (!this.currentQuiz || this.currentQuiz.locked) return;
+    const key = event.key.toLowerCase();
+
+    if (this.simpleConfirmMode) {
+      if (event.key === 'Enter' || key === 'o' || key === '1') {
+        event.preventDefault();
+        this.onQuizConfirmOk();
+      } else if (event.key === 'Escape' || key === 'x' || key === '2') {
+        event.preventDefault();
+        this.onQuizConfirmOops();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < this.currentQuiz.options.length) {
+        event.preventDefault();
+        this.keyboardSelectedOptionIndex = optionIndex;
+        this.onQuizAnswer(this.currentQuiz.options[optionIndex]);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(1);
+        break;
+      case 'Enter':
+        if (this.currentQuiz.options[this.keyboardSelectedOptionIndex]) {
+          event.preventDefault();
+          this.onQuizAnswer(this.currentQuiz.options[this.keyboardSelectedOptionIndex]);
+        }
+        break;
+    }
+  }
+
+  private moveKeyboardOption(direction: number) {
+    const count = this.currentQuiz?.options.length ?? 0;
+    if (!count) return;
+    this.keyboardSelectedOptionIndex = (this.keyboardSelectedOptionIndex + direction + count) % count;
+    this.cdr.detectChanges();
+  }
+
+  teamKeyboardHint(teamIndex: number): string {
+    return getTeamKeyboardKeys(this.teamCount)[teamIndex]?.toUpperCase() ?? '';
+  }
+
+  private buildKeyboardShortcuts(): GameKeyboardShortcut[] {
+    return [
+      { key: teamKeyboardShortcutLabel(this.teamCount), action: 'Move matching team' },
+      { key: 'O / X', action: 'OK or Oops in simple quiz' },
+      { key: '1-4', action: 'Choose quiz answer' },
+      { key: '← ↑ ↓ →', action: 'Move quiz answer highlight' },
+      { key: 'Enter', action: 'Choose highlighted answer' },
+      { key: 'R', action: 'Start over' }
+    ];
+  }
+
+  private syncKeyboardShortcuts() {
+    this.keyboardShortcuts = this.buildKeyboardShortcuts();
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^[1-9]$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   onQuizConfirmOops() {

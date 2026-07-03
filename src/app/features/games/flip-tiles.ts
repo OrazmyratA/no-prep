@@ -1,10 +1,11 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, AfterViewInit, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface FlipTileCard {
   item: Item;
@@ -32,9 +33,25 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   private rewardSound: HTMLAudioElement | null = null;
 
   gameFinished = false;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play or replay sound' },
+    { key: '1-9 / 0', action: 'Flip numbered card' },
+    { key: '1 then 2', action: 'Flip card 12' },
+    { key: '← ↑ ↓ →', action: 'Move card highlight' },
+    { key: 'Enter', action: 'Flip highlighted card' },
+    { key: 'F', action: 'Toggle selected card fullscreen' },
+    { key: '← / →', action: 'Previous or next fullscreen card' },
+    { key: 'Esc', action: 'Close fullscreen' },
+    { key: 'M', action: 'Random select' },
+    { key: 'E / Del', action: 'Eliminate selected card' },
+    { key: 'R', action: 'Shuffle and restart' }
+  ];
   private cardImageUrls: string[] = [];
   private activeAudio: HTMLAudioElement | null = null;
   private activeAudioUrl: string | null = null;
+  private keyboardNumberBuffer = '';
+  private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Sound Quiz Mode state
   soundQuizActive = false;
@@ -103,6 +120,7 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.destroyed = true;
+    this.clearKeyboardNumberBuffer();
     this.clearPendingTimers();
     this.cards.forEach(card => {
       if (card._flipBackTimeout) {
@@ -285,6 +303,7 @@ private stopActiveAudio() {
 
 flipCard(index: number) {
   const card = this.cards[index];
+  if (!card) return;
   // Already matched cards cannot be interacted with
   if (card.matched) return;
   // If the card is currently in the middle of a wrong‑flip animation, ignore new clicks
@@ -297,7 +316,8 @@ flipCard(index: number) {
       this.flipSound.play().catch(e => console.debug);
     }
     card.flipped = !card.flipped;
-    if (this.selectedIndex === index) this.selectedIndex = null;
+    this.selectedIndex = index;
+    this.cdr.detectChanges();
     return;
   }
 
@@ -325,6 +345,7 @@ flipCard(index: number) {
     } else {
       showAppNotification(this.langService.translate('clickSpeakerForNext'), 'info');
     }
+    this.normalizeKeyboardSelection();
   } else {
     // Wrong match – show the card briefly, then flip back
     this.wrongFlipWithFeedback(index, card);
@@ -408,7 +429,7 @@ private rebuildCards(items: Item[]) {
     matched: false,
     _flipBackTimeout: null
   }));
-  this.selectedIndex = null;
+  this.selectedIndex = this.findNextKeyboardCardIndex(0, 1);
   this.rebuildCardRows();
   this.setGameTimeout(() => this.calculateCardSize(), 0);
 }
@@ -432,7 +453,7 @@ private rebuildCards(items: Item[]) {
     if (this.soundQuizActive) return;
     if (this.selectedIndex !== null) {
       this.cards.splice(this.selectedIndex, 1);
-      this.selectedIndex = null;
+      this.normalizeKeyboardSelection();
       this.playSound(this.collectSound);
       this.rebuildCardRows();
       this.setGameTimeout(() => this.calculateCardSize(), 0);
@@ -463,7 +484,24 @@ private rebuildCards(items: Item[]) {
       this.stopActiveAudio();
       this.fullscreenIndex = newIndex;
       this.fullscreenItem = this.cards[newIndex];
+      this.cdr.detectChanges();
     }
+  }
+
+  openSelectedFullscreen() {
+    if (this.fullscreenVisible) {
+      this.closeFullscreen();
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const index = this.selectedIndex ?? this.cards.findIndex(card => card.flipped || card.matched);
+    if (index < 0 || !this.cards[index]) return;
+    this.stopActiveAudio();
+    this.fullscreenIndex = index;
+    this.fullscreenItem = this.cards[index];
+    this.fullscreenVisible = true;
+    this.cdr.detectChanges();
   }
 
   playFullscreenAudio() {
@@ -471,6 +509,267 @@ private rebuildCards(items: Item[]) {
     if (item?.audio) {
       this.playTrackedAudio(item.audio);
     }
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+
+    if (this.fullscreenVisible) {
+      this.handleFullscreenKey(event);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      if (this.gameFinished) {
+        this.gameFinished = false;
+        this.cdr.detectChanges();
+      }
+      return;
+    }
+
+    if (this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    if (this.gameFinished) return;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(-1);
+        return;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(1);
+        return;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(-this.gridColumns);
+        return;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(this.gridColumns);
+        return;
+      case 'Enter':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.flipSelectedCard();
+        return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.handleKeyboardNumber(digit);
+      return;
+    }
+
+    if (this.isSpaceKey(event)) {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      this.activateSoundQuiz();
+      return;
+    }
+
+    switch (event.key.toLowerCase()) {
+      case 'm':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.randomSelect();
+        break;
+      case 'e':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.eliminate();
+        break;
+      case 'f':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.openSelectedFullscreen();
+        break;
+      case 'delete':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.eliminate();
+        break;
+      case 'r':
+        if (!this.soundQuizActive) {
+          event.preventDefault();
+          this.clearKeyboardNumberBuffer();
+          this.shuffleAndReset();
+        }
+        break;
+      case 'escape':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        break;
+    }
+  }
+
+  private handleFullscreenKey(event: KeyboardEvent) {
+    if (event.key.toLowerCase() === 'f') {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      this.closeFullscreen();
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      this.navigateFullscreen(-1);
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      this.navigateFullscreen(1);
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      this.closeFullscreen();
+      return;
+    }
+
+    if (this.isSpaceKey(event)) {
+      event.preventDefault();
+      this.clearKeyboardNumberBuffer();
+      this.playFullscreenAudio();
+    }
+  }
+
+  private handleKeyboardNumber(digit: string) {
+    if (!this.keyboardNumberBuffer && digit === '0') {
+      this.flipCardFromKeyboard(9);
+      return;
+    }
+
+    this.clearKeyboardNumberTimer();
+    this.keyboardNumberBuffer += digit;
+
+    const cardNumber = Number(this.keyboardNumberBuffer);
+    const isValidCardNumber = cardNumber >= 1 && cardNumber <= this.cards.length;
+    const hasLongerMatch = this.hasLongerKeyboardNumberMatch(this.keyboardNumberBuffer);
+
+    if (hasLongerMatch) {
+      this.keyboardNumberTimer = setTimeout(() => {
+        if (!this.destroyed) {
+          const bufferedNumber = Number(this.keyboardNumberBuffer);
+          if (bufferedNumber >= 1 && bufferedNumber <= this.cards.length) {
+            this.flipCardFromKeyboard(bufferedNumber - 1);
+          }
+        }
+        this.clearKeyboardNumberBuffer();
+      }, 360);
+      return;
+    }
+
+    if (isValidCardNumber) {
+      this.flipCardFromKeyboard(cardNumber - 1);
+      return;
+    }
+
+    this.clearKeyboardNumberBuffer();
+  }
+
+  private flipCardFromKeyboard(index: number) {
+    this.clearKeyboardNumberBuffer();
+    this.flipCard(index);
+    if (this.cards[index]) this.selectedIndex = index;
+    this.cdr.detectChanges();
+  }
+
+  isKeyboardSelected(index: number): boolean {
+    return this.selectedIndex === index && !this.cards[index]?.matched && !this.gameFinished;
+  }
+
+  private flipSelectedCard() {
+    if (this.selectedIndex === null) {
+      this.selectedIndex = this.findNextKeyboardCardIndex(0, 1);
+    }
+    if (this.selectedIndex === null) return;
+    this.flipCard(this.selectedIndex);
+    this.cdr.detectChanges();
+    requestAnimationFrame(() => {
+      if (!this.destroyed) this.cdr.detectChanges();
+    });
+  }
+
+  private moveKeyboardSelection(step: number) {
+    const startIndex = this.selectedIndex === null ? 0 : this.selectedIndex + step;
+    const nextIndex = this.findNextKeyboardCardIndex(startIndex, step);
+    if (nextIndex === null) return;
+    this.selectedIndex = nextIndex;
+    this.cdr.detectChanges();
+  }
+
+  private normalizeKeyboardSelection() {
+    if (this.selectedIndex !== null && this.cards[this.selectedIndex] && !this.cards[this.selectedIndex].matched) return;
+    this.selectedIndex = this.findNextKeyboardCardIndex(this.selectedIndex ?? 0, 1);
+  }
+
+  private findNextKeyboardCardIndex(startIndex: number, step: number): number | null {
+    if (!this.cards.length) return null;
+    const normalizedStep = step === 0 ? 1 : step;
+    let index = this.clampCardIndex(startIndex);
+
+    for (let checked = 0; checked < this.cards.length; checked++) {
+      const card = this.cards[index];
+      if (card && !card.matched) return index;
+      index = this.clampCardIndex(index + normalizedStep);
+    }
+
+    return null;
+  }
+
+  private clampCardIndex(index: number): number {
+    if (index < 0) return 0;
+    if (index >= this.cards.length) return this.cards.length - 1;
+    return index;
+  }
+
+  private hasLongerKeyboardNumberMatch(prefix: string): boolean {
+    for (let cardNumber = 1; cardNumber <= this.cards.length; cardNumber++) {
+      const value = String(cardNumber);
+      if (value.length > prefix.length && value.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isSpaceKey(event: KeyboardEvent): boolean {
+    return event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space';
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
+  }
+
+  private clearKeyboardNumberTimer() {
+    if (!this.keyboardNumberTimer) return;
+    clearTimeout(this.keyboardNumberTimer);
+    this.keyboardNumberTimer = null;
+  }
+
+  private clearKeyboardNumberBuffer() {
+    this.clearKeyboardNumberTimer();
+    this.keyboardNumberBuffer = '';
   }
 
   private createCardImageUrl(blob?: Blob): string | null {

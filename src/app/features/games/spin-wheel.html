@@ -1,4 +1,11 @@
 <div class="min-h-screen bg-gradient-to-br from-indigo-900 to-purple-900 pt-0 pb-1 px-1 flex items-start justify-center">
+  <app-game-keyboard-help
+    class="spin-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div class="spin-layout text-center -mt-1">
     <h2 class="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">{{ 'spinWheelTitle' | translate }}</h2>
 
@@ -57,22 +64,26 @@
         <!-- Simple OK / Oops mode (no text on items) -->
         <div *ngIf="simpleConfirmMode" class="flex justify-center gap-6 mt-4">
           <button (click)="onConfirmOk()"
-                  class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+                  class="quiz-option relative px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">O</span>
             ✓ OK
           </button>
           <button (click)="onConfirmOops()"
-                  class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+                  class="quiz-option relative px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">X</span>
             ✗ Oops!
           </button>
         </div>
 
         <!-- Multiple-choice options -->
         <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
-          <button *ngFor="let opt of quizOptions; trackBy: trackByOptionId"
+          <button *ngFor="let opt of quizOptions; let optIndex = index; trackBy: trackByOptionId"
                   [attr.data-opt-id]="opt.id"
                   (click)="onQuizAnswer(opt)"
                   [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
-                  class="quiz-option px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+                  [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
+                  class="quiz-option relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
             <div *ngIf="!useTextOnWheel">{{ opt.text || '?' }}</div>
             <div *ngIf="useTextOnWheel">
               <img *ngIf="opt.image" [src]="imageUrl(opt.image, opt.id!)" class="w-40 h-32 object-contain mx-auto mb-2">
@@ -83,14 +94,13 @@
       </div>
     </div>
 
-    <!-- Victory Overlay -->
-    <div *ngIf="gameFinished" class="spin-victory-overlay">
-      <div class="spin-victory-card">
-        <h3>{{ 'spinWheelTitle' | translate }}</h3>
-        <p>{{ 'spinWheelNoItemsLeft' | translate }}</p>
-        <button type="button" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-      </div>
-    </div>
+    <app-game-finish-overlay
+      *ngIf="gameFinished"
+      [title]="'spinWheelTitle' | translate"
+      [message]="'spinWheelNoItemsLeft' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
 
     <!-- Sandwich Menu -->
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

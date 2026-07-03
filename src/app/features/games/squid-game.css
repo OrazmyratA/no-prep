@@ -8,6 +8,13 @@
   user-select: none;
 }
 
+.squid-keyboard-help {
+  position: absolute;
+  top: 3.5rem;
+  left: 14px;
+  z-index: 45;
+}
+
 /* ─── Full-screen background cross-fade ──────────────────────── */
 .squid-bg {
   position: absolute;
@@ -232,6 +239,7 @@
 }
 
 .squid-team-btn {
+  position: relative;
   flex: 1;
   min-width: 60px;
   max-width: 110px;
@@ -312,6 +320,7 @@
 }
 
 @media (max-width: 600px) {
+  .squid-keyboard-help { top: 3.1rem; left: 10px; }
   .squid-buttons { flex-wrap: wrap; }
   .team-unit { max-width: 76px; flex: 0 1 76px; gap: 4px; }
   .btn-avatar-indicator { width: 30px; height: 30px; }
@@ -342,6 +351,11 @@
 
 /* Option buttons (from spin-wheel) */
 button.quiz-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
   transition: all 0.2s ease;
 }
 
@@ -352,6 +366,10 @@ button.quiz-option.squid-image-option {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+button.quiz-option.keyboard-selected:not(.fade-out) {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.92), 0 0 26px rgba(59, 130, 246, 0.75);
 }
 
 .squid-opt-img {

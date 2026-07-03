@@ -9,6 +9,13 @@
   -webkit-user-select: none;
 }
 
+.team-sentence-keyboard-help {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 45;
+}
+
 .video-background {
   position: absolute;
   top: 0;
@@ -276,13 +283,26 @@
   margin-left: 25%;
 }
 .team-header h2 {
+  position: relative;
   margin: 0;
   color: white;
   font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 1.85rem;
 }
+
+.team-score-keyboard-hint {
+  position: static;
+  transform: none;
+  flex: 0 0 auto;
+}
+
 .score {
   background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
   color: white;
@@ -592,6 +612,11 @@
 }
 
 @media (max-width: 480px) {
+  .team-sentence-keyboard-help {
+    top: 0.45rem;
+    left: 0.45rem;
+  }
+
   .card-stage {
     right: 0.65rem;
     width: 132px;

@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface WordTile {
   id: string;
@@ -35,6 +36,19 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   solvedIndexes: Set<number> = new Set();
   solvedState: Map<number, { source: WordTile[]; target: WordTile[] }> = new Map();
   animatingTiles: Map<string, AnimatingTile> = new Map();
+  keyboardSelectedSourceIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play item audio' },
+    { key: 'F', action: 'Flip picture card' },
+    { key: '1-9 / 0', action: 'Place numbered word' },
+    { key: '← ↑ ↓ →', action: 'Move word highlight' },
+    { key: 'Enter', action: 'Place highlighted word' },
+    { key: 'Backspace', action: 'Return last placed word' },
+    { key: 'B / N', action: 'Previous or next sentence' },
+    { key: 'S', action: 'Shuffle' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   private objectUrls: string[] = [];
   private imageUrls: Map<number, string> = new Map();
@@ -142,6 +156,8 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       this.targetWords = [];
     }
 
+    this.keyboardSelectedSourceIndex = 0;
+    this.normalizeKeyboardSourceSelection();
     this.cdr.detectChanges();
   }
 
@@ -150,6 +166,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     if (event.previousContainer === event.container) {
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
       this.checkWinCondition();
+      this.normalizeKeyboardSourceSelection();
       this.cdr.detectChanges();
       return;
     }
@@ -163,6 +180,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     );
     this.playSound(this.flipSound, 0.3);
     this.checkWinCondition();
+    this.normalizeKeyboardSourceSelection();
     this.cdr.detectChanges();
   }
 
@@ -190,6 +208,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       const j = Math.floor(Math.random() * (i + 1));
       [this.sourceWords[i], this.sourceWords[j]] = [this.sourceWords[j], this.sourceWords[i]];
     }
+    this.normalizeKeyboardSourceSelection();
     this.cdr.detectChanges();
     this.playSound(this.flipSound, 0.2);
   }
@@ -286,6 +305,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.solvedIndexes.clear();
     this.solvedState.clear();
+    this.keyboardSelectedSourceIndex = 0;
     this.loadItem(0);
   }
 
@@ -300,6 +320,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
   selectWordByClick(word: WordTile, wordIndex: number) {
     if (this.animatingTiles.has(word.id)) return;
+    this.keyboardSelectedSourceIndex = Math.max(0, wordIndex);
     const nextTargetIndex = this.targetWords.length;
 
     // Get the word that should be at this position
@@ -322,6 +343,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       if (currentIdx !== -1) this.sourceWords.splice(currentIdx, 1);
       this.targetWords.push(word);
       this.animatingTiles.delete(word.id);
+      this.normalizeKeyboardSourceSelection();
       this.cdr.detectChanges();
 
       // Check win condition
@@ -339,6 +361,75 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     return this.animatingTiles.get(tileId)?.animationType ?? '';
   }
 
+  isKeyboardSourceSelected(index: number): boolean {
+    return !this.gameFinished && this.keyboardSelectedSourceIndex === index;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.placeKeyboardSourceWord(digit === '0' ? 9 : Number(digit) - 1);
+      return;
+    }
+
+    switch (event.key) {
+      case ' ':
+        event.preventDefault();
+        this.playCurrentItemAudio();
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardSourceSelection(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardSourceSelection(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.placeKeyboardSourceWord(this.keyboardSelectedSourceIndex);
+        break;
+      case 'Backspace':
+        event.preventDefault();
+        this.returnLastPlacedWord();
+        break;
+      default:
+        if (key === 'f') {
+          event.preventDefault();
+          this.toggleMediaFlip();
+        } else if (key === 'b') {
+          event.preventDefault();
+          this.previousItem();
+        } else if (key === 'n') {
+          event.preventDefault();
+          this.nextItem();
+        } else if (key === 's') {
+          event.preventDefault();
+          this.shuffle();
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
   private triggerFadeAnimation(tileId: string) {
     this.animatingTiles.set(tileId, { tileId, animationType: 'fade' });
     this.cdr.detectChanges();
@@ -352,6 +443,53 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       this.animatingTiles.delete(tileId);
       this.cdr.detectChanges();
     }, 600);
+  }
+
+  private moveKeyboardSourceSelection(direction: number) {
+    if (!this.sourceWords.length) return;
+    this.keyboardSelectedSourceIndex = (this.keyboardSelectedSourceIndex + direction + this.sourceWords.length) % this.sourceWords.length;
+    this.cdr.detectChanges();
+  }
+
+  private placeKeyboardSourceWord(index: number) {
+    if (index < 0 || index >= this.sourceWords.length) {
+      this.playSound(this.buzzSound, 0.25);
+      return;
+    }
+    this.selectWordByClick(this.sourceWords[index], index);
+  }
+
+  private returnLastPlacedWord() {
+    const word = this.targetWords.pop();
+    if (!word) {
+      this.playSound(this.buzzSound, 0.25);
+      return;
+    }
+
+    this.clearAdvanceTimer();
+    this.solvedIndexes.delete(this.currentIndex);
+    this.solvedState.delete(this.currentIndex);
+    this.sourceWords.push(word);
+    this.keyboardSelectedSourceIndex = this.sourceWords.length - 1;
+    this.playSound(this.flipSound, 0.25);
+    this.cdr.detectChanges();
+  }
+
+  private normalizeKeyboardSourceSelection() {
+    if (!this.sourceWords.length) {
+      this.keyboardSelectedSourceIndex = 0;
+      return;
+    }
+    this.keyboardSelectedSourceIndex = Math.max(0, Math.min(this.keyboardSelectedSourceIndex, this.sourceWords.length - 1));
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private completeCurrentSentence() {

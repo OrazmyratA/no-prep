@@ -1,4 +1,11 @@
 <div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-purple-900 to-indigo-800 p-4 flex flex-col game-container">
+  <app-game-keyboard-help
+    class="match-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div class="w-full mx-auto flex flex-col flex-1 min-h-0">
     <div class="match-header flex items-center justify-center">
       <button (click)="peek()"
@@ -30,28 +37,34 @@
           <div *ngFor="let card of row; let colIndex = index; trackBy: trackByCardId"
                (click)="onCardClick(rowIndex * gridColumns + colIndex)"
                class="card"
-               [class.flipped]="card.flipped"
                [class.matched]="card.matched"
-               [class.shake]="card.shake"
-               [style.width.px]="cardSize"
-               [style.height.px]="cardSize">
-            <!-- Front (hidden) -->
-            <div class="card-front">
-              {{ rowIndex * gridColumns + colIndex + 1 }}
-            </div>
-            <!-- Back (revealed) -->
-            <div class="card-back">
-              <ng-container *ngIf="card.imageSrc; else textOnlyBack">
-                <div class="flex items-center justify-center h-3/5">
-                  <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
-                </div>
-                <p *ngIf="card.item.text" class="text-center mt-2 px-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
-              </ng-container>
-              <ng-template #textOnlyBack>
-                <div class="flex items-center justify-center h-full px-2">
-                  <p class="text-center font-semibold leading-tight" [style.fontSize.px]="cardTextSize + 4">{{ card.item.text }}</p>
-                </div>
-              </ng-template>
+               [class.keyboard-selected]="isKeyboardSelected(rowIndex * gridColumns + colIndex)"
+               role="button"
+               [attr.aria-label]="'Card ' + (rowIndex * gridColumns + colIndex + 1)"
+               [attr.aria-disabled]="card.flipped || card.matched || isPeeking || gameFinished"
+                [class.shake]="card.shake"
+                [style.width.px]="cardSize"
+                [style.height.px]="cardSize">
+            <span *ngIf="keyboardHintsVisible && !card.matched" class="game-keyboard-hint-badge">{{ rowIndex * gridColumns + colIndex + 1 }}</span>
+            <div class="card-inner" [class.flipped]="card.flipped">
+              <!-- Front (hidden) -->
+              <div class="card-front">
+                {{ rowIndex * gridColumns + colIndex + 1 }}
+              </div>
+              <!-- Back (revealed) -->
+              <div class="card-back">
+                <ng-container *ngIf="card.imageSrc; else textOnlyBack">
+                  <div class="flex items-center justify-center h-3/5">
+                    <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+                  </div>
+                  <p *ngIf="card.item.text" class="text-center mt-2 px-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
+                </ng-container>
+                <ng-template #textOnlyBack>
+                  <div class="flex items-center justify-center h-full px-2">
+                    <p class="text-center font-semibold leading-tight" [style.fontSize.px]="cardTextSize + 4">{{ card.item.text }}</p>
+                  </div>
+                </ng-template>
+              </div>
             </div>
           </div>
         </div>
@@ -71,16 +84,12 @@
       </button>
     </div>
 
-    <!-- Winner Overlay -->
-    <div *ngIf="gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl">{{ 'matchPairsYouGotThemAll' | translate }}</p>
-        <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
-        </div>
-      </div>
-    </div>
+    <app-game-finish-overlay
+      *ngIf="gameFinished"
+      [title]="'matchPairsYouGotThemAll' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
 
     <!-- Sandwich Menu -->
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

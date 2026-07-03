@@ -1,0 +1,41 @@
+<div class="game-finish-overlay" role="dialog" aria-modal="true" [attr.aria-label]="title">
+  <div class="game-finish-card">
+    <div *ngIf="icon" class="game-finish-icon" aria-hidden="true">{{ icon }}</div>
+
+    <h2 *ngIf="title" class="game-finish-title">{{ title }}</h2>
+    <p *ngIf="message" class="game-finish-message">{{ message }}</p>
+
+    <div *ngIf="rankings.length" class="game-finish-rankings">
+      <div
+        *ngFor="let ranking of rankings; trackBy: trackByRanking"
+        class="game-finish-ranking-row"
+      >
+        <span class="game-finish-medal">{{ ranking.medal || ranking.position }}</span>
+        <span class="game-finish-name" [style.color]="ranking.color || null">{{ ranking.name }}</span>
+        <strong *ngIf="ranking.score !== undefined" class="game-finish-score">{{ ranking.score }}</strong>
+      </div>
+    </div>
+
+    <ng-content></ng-content>
+
+    <div class="game-finish-actions" [class.secondary-first]="!primaryFirst">
+      <button
+        type="button"
+        class="game-finish-btn game-finish-primary"
+        aria-keyshortcuts="Enter Space"
+        (click)="playAgain.emit()"
+      >
+        {{ playAgainLabel | translate }}
+      </button>
+      <button
+        *ngIf="showActivities"
+        type="button"
+        class="game-finish-btn game-finish-secondary"
+        aria-keyshortcuts="G"
+        (click)="activities.emit()"
+      >
+        {{ activitiesLabel | translate }}
+      </button>
+    </div>
+  </div>
+</div>

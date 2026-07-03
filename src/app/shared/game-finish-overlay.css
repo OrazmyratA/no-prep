@@ -1,0 +1,128 @@
+.game-finish-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 4vw, 32px);
+  background: rgba(2, 6, 23, 0.68);
+}
+
+.game-finish-card {
+  width: min(520px, 100%);
+  max-height: min(86dvh, 620px);
+  overflow: auto;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  padding: clamp(20px, 4vw, 32px);
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+}
+
+.game-finish-icon {
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.game-finish-title {
+  margin: 0;
+  font-size: clamp(1.5rem, 4.5vw, 2.15rem);
+  line-height: 1.12;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.game-finish-message {
+  margin: 12px 0 0;
+  font-size: clamp(1rem, 2.7vw, 1.25rem);
+  line-height: 1.35;
+  font-weight: 600;
+  color: #374151;
+}
+
+.game-finish-rankings {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.game-finish-ranking-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  text-align: left;
+}
+
+.game-finish-medal {
+  font-weight: 900;
+  text-align: center;
+}
+
+.game-finish-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.game-finish-score {
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.game-finish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.game-finish-actions.secondary-first {
+  flex-direction: row-reverse;
+}
+
+.game-finish-btn {
+  min-width: 132px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 9999px;
+  padding: 10px 20px;
+  color: #ffffff;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.game-finish-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.game-finish-primary {
+  background: #2563eb;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+}
+
+.game-finish-secondary {
+  background: #7c3aed;
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.24);
+}
+
+@media (max-height: 520px) {
+  .game-finish-card {
+    padding: 16px;
+  }
+
+  .game-finish-actions {
+    margin-top: 16px;
+  }
+}

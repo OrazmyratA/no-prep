@@ -35,6 +35,13 @@
   background: rgba(168, 85, 247, 0.16);
 }
 
+.test-abc-keyboard-help {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  z-index: 30;
+}
+
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -193,6 +200,14 @@
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
   border-color: rgba(59, 130, 246, 0.32);
 }
+.option-card.keyboard-selected:not(.disabled):not(.fade-out) {
+  outline: 4px solid #facc15;
+  outline-offset: 5px;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 18px 38px rgba(15, 23, 42, 0.24),
+    0 0 0 8px rgba(250, 204, 21, 0.2);
+}
 .option-card.disabled {
   pointer-events: none;
   opacity: 0.55;
@@ -218,6 +233,24 @@
   transform: scale(0.95);
   pointer-events: none;
   transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.option-number-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.84);
+  color: #fefce8;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.18);
 }
 @keyframes shake {
   0%,100% { transform: translateX(0); }
@@ -387,6 +420,12 @@
     min-height: 120px;
   }
 
+  .option-number-badge {
+    width: 1.55rem;
+    height: 1.55rem;
+    font-size: 0.82rem;
+  }
+
   .option-text {
     font-size: 0.85rem;
   }
@@ -437,6 +476,11 @@
     max-width: 190px;
   }
 
+  .test-abc-keyboard-help {
+    top: 50px;
+    left: 10px;
+  }
+
   .progress {
     font-size: 0.78rem;
   }
@@ -482,6 +526,14 @@
     min-height: clamp(82px, 28dvh, 108px);
     padding: 5px;
     border-radius: 13px;
+  }
+
+  .option-number-badge {
+    top: 5px;
+    left: 5px;
+    width: 1.45rem;
+    height: 1.45rem;
+    font-size: 0.78rem;
   }
 
   .option-image img {

@@ -1,4 +1,10 @@
 <div class="rps-wrapper">
+  <app-game-keyboard-help
+    class="rps-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
 
   <!-- Background -->
   <img src="assets/images/castle-clash-bg.png" class="rps-bg" alt="">
@@ -63,6 +69,7 @@
       (keydown.enter)="onChooseKeydown($event, 'left')"
       (keydown.space)="onChooseKeydown($event, 'left')"
     >
+      <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">A</span>
       <div *ngIf="quizVisible && quizWinner?.side === 'left'" class="panel-your-turn-badge">{{ 'yourTurn' | translate }}</div>
 
       <div class="rps-choice-box" [style.background]="leftTeam.color"
@@ -91,6 +98,7 @@
       (keydown.enter)="onChooseKeydown($event, 'right')"
       (keydown.space)="onChooseKeydown($event, 'right')"
     >
+      <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">L</span>
       <div *ngIf="quizVisible && quizWinner?.side === 'right'" class="panel-your-turn-badge">{{ 'yourTurn' | translate }}</div>
 
       <div class="rps-choice-box" [style.background]="rightTeam.color"
@@ -130,8 +138,14 @@
       <!-- Simple confirm (teacher Ok/Oops mode or not enough quiz items) -->
       <ng-container *ngIf="simpleConfirmMode">
         <div class="quiz-confirm-buttons">
-          <button class="quiz-confirm-ok"   (click)="onConfirmOk()">✓</button>
-          <button class="quiz-confirm-oops" (click)="onConfirmOops()">✗</button>
+          <button class="quiz-confirm-ok"   (click)="onConfirmOk()">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">O</span>
+            ✓
+          </button>
+          <button class="quiz-confirm-oops" (click)="onConfirmOops()">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">X</span>
+            ✗
+          </button>
         </div>
       </ng-container>
 
@@ -141,14 +155,16 @@
              [class.image-options]="reverseMode"
              [class.long-text]="!reverseMode && hasLongOptions">
           <button
-            *ngFor="let opt of quizOptions; trackBy: trackQuizOption"
+            *ngFor="let opt of quizOptions; let optIndex = index; trackBy: trackQuizOption"
             class="rps-quiz-option"
             [class.correct-flash]="opt.state === 'correct'"
             [class.shake]="opt.state === 'wrong'"
             [class.fade-out]="opt.state === 'fade'"
+            [class.keyboard-selected]="isKeyboardQuizOptionSelected(optIndex)"
             [disabled]="quizLocked"
             (click)="onQuizAnswer(opt)"
           >
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
             <img *ngIf="reverseMode && opt.imageSrc" [src]="opt.imageSrc" class="option-image" alt="">
             <span *ngIf="!reverseMode">{{ opt.text }}</span>
           </button>
@@ -159,34 +175,23 @@
   </div>
 
   <!-- Victory overlay -->
-  <div *ngIf="victoryVisible && victoryTeam" class="victory-overlay">
-    <div class="victory-content">
-      <div class="celebration">
-        <div class="confetti">🎉</div>
-        <div class="confetti">🌟</div>
-        <div class="confetti">🥳</div>
-        <div class="confetti">👍</div>
-        <div class="confetti">✨</div>
-      </div>
-      <h2 class="victory-title">{{ 'popBalloonVictory' | translate }}</h2>
-      <div class="victory-team-name" [style.color]="victoryTeam.color">
-        {{ (victoryTeam.side === 'left' ? 'rpsBlueTeam' : 'rpsRedTeam') | translate }}
-      </div>
-      <div class="gift-box-popup">
-        <img src="assets/gifs/gift-opened.gif"
-             alt="Opened Gift"
-             class="gift-image-popup">
-        <div class="reward-number">{{ rewardNumber }}</div>
-      </div>
-      <p class="victory-message">{{ 'popBalloonSurprise' | translate }} {{ rewardNumber }}!</p>
-      <div class="popup-actions">
-        <button (click)="resetGame()" class="btn btn-primary">{{ 'playAgain' | translate }}</button>
-        <button (click)="onMenuAction('activity')" class="btn btn-secondary">
-          {{ 'activitiesLabel' | translate }}
-        </button>
-      </div>
+  <app-game-finish-overlay
+    *ngIf="victoryVisible && victoryTeam"
+    [title]="'popBalloonVictory' | translate"
+    [message]="('popBalloonSurprise' | translate) + ' ' + rewardNumber + '!'"
+    (playAgain)="resetGame()"
+    (activities)="onMenuAction('activity')">
+    <div class="victory-team-name" [style.color]="victoryTeam.color">
+      {{ (victoryTeam.side === 'left' ? 'rpsBlueTeam' : 'rpsRedTeam') | translate }}
     </div>
-  </div>
+    <div class="gift-box-popup">
+      <img src="assets/gifs/gift-opened.gif"
+           alt="Opened Gift"
+           class="gift-image-popup">
+      <div class="reward-number">{{ rewardNumber }}</div>
+    </div>
+  </app-game-finish-overlay>
+
 
   <!-- Sandwich menu -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface WordTile {
   id: number;
@@ -66,6 +67,14 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   currentSoundWords: string[] = [];
   correctTeam: 'left' | 'right' | null = null;
   shakingTileIds = new Set<string>();
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play current card audio' },
+    { key: 'F', action: 'Flip card' },
+    { key: 'A / L', action: 'Add next word for left or right team' },
+    { key: 'B / N / K', action: 'Previous, next, or skip in one-by-one mode' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   private correctSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
@@ -584,9 +593,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
 
   onCardSpeakerClick(event: Event) {
     event.stopPropagation();
-    if (this.cardItem?.audio) {
-      this.playTrackedAudio(this.cardItem.audio);
-    }
+    this.playCurrentCardAudio();
     this.unlockCurrentCardSentence();
   }
   get cardHasAudio(): boolean {
@@ -704,6 +711,53 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     if (nextIndex !== null) this.loadOneByOneItem(nextIndex);
   }
 
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case ' ':
+        event.preventDefault();
+        this.playCurrentCardAudio();
+        this.unlockCurrentCardSentence();
+        break;
+      default:
+        if (key === 'f') {
+          event.preventDefault();
+          this.onCardClick();
+        } else if (key === 'a') {
+          event.preventDefault();
+          this.chooseNextExpectedWord('left');
+        } else if (key === 'l') {
+          event.preventDefault();
+          this.chooseNextExpectedWord('right');
+        } else if (key === 'b') {
+          event.preventDefault();
+          this.previousOneByOneItem();
+        } else if (key === 'n') {
+          event.preventDefault();
+          this.nextOneByOneItem();
+        } else if (key === 'k') {
+          event.preventDefault();
+          this.skipOneByOneItem();
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
   private playTrackedAudio(blob: Blob | undefined) {
     if (!blob) return;
     this.stopActiveAudio();
@@ -753,6 +807,33 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       ? [this.currentSoundSentence]
       : this.currentSoundSentence.split(/\s+/).filter(Boolean);
     this.cdr.detectChanges();
+  }
+
+  private playCurrentCardAudio() {
+    if (this.cardItem?.audio) {
+      this.playTrackedAudio(this.cardItem.audio);
+    }
+  }
+
+  private chooseNextExpectedWord(team: 'left' | 'right') {
+    if (team === 'right' && this.singleTeamMode) return;
+    if (!this.gameActive || this.correctTeam !== null) return;
+    this.unlockCurrentCardSentence();
+    const targetTeam = this.teams[team];
+    if (this.isFrozen(targetTeam)) return;
+    const expectedWord = this.currentSoundWords[targetTeam.sentenceWords.length];
+    if (!expectedWord) return;
+    const tile = targetTeam.floatingWords.find(wordTile => wordTile.word === expectedWord);
+    if (tile) {
+      this.onWordClick(team, tile);
+    } else {
+      this.playSound(this.buzzSound);
+    }
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   resetGame() {

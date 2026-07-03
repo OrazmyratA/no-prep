@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface Cup {
   id: string;
@@ -38,6 +39,17 @@ export class CupClashComponent implements OnInit, OnDestroy {
   gameStatus: 'ready' | 'running' | 'finished' = 'ready';
   winner: 'red' | 'blue' | null = null;
   missedTurn = false;
+  keyboardSelectedCaptureIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'A / L', action: 'Choose red or blue in RPS' },
+    { key: 'Space', action: 'Roll current team dice' },
+    { key: '← ↑ ↓ →', action: 'Move capture highlight' },
+    { key: 'Enter', action: 'Capture highlighted cup' },
+    { key: '1-9 / 0', action: 'Reveal numbered item card' },
+    { key: 'B / N', action: 'Scroll item cards' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   // RPS state (who goes first)
   showRpsModal = false;
@@ -82,6 +94,7 @@ export class CupClashComponent implements OnInit, OnDestroy {
   itemsCanScrollRight = false;
   readonly itemScrollStep = 280;
   flippedItems = new Set<number>();
+  keyboardSelectedItemIndex = 0;
   @ViewChild('itemsScroller', { static: false })
   set itemsScroller(ref: ElementRef<HTMLDivElement> | undefined) {
     this.itemsScrollerElement = ref?.nativeElement;
@@ -215,6 +228,7 @@ async ngOnInit() {
     this.diceRolling = false;
     this.clearDiceAnimationTimer();
     this.capturesRemaining = 0;
+    this.keyboardSelectedCaptureIndex = 0;
     this.missedTurn = false;
     this.gameStatus = 'running';
     this.winner = null;
@@ -416,6 +430,8 @@ async ngOnInit() {
 
     if (this.capturesRemaining === 0) {
       this.switchTurn();
+    } else {
+      this.normalizeKeyboardCaptureSelection();
     }
   }
 
@@ -427,6 +443,7 @@ async ngOnInit() {
     this.diceLanding = false;
     this.clearDiceAnimationTimer();
     this.capturesRemaining = 0;
+    this.keyboardSelectedCaptureIndex = 0;
     this.cdr.detectChanges();
   }
 
@@ -552,6 +569,7 @@ async ngOnInit() {
     this.cdr.detectChanges();
     this.rpsResetTimer = this.setGameTimeout(() => {
       this.currentTurn = redWins ? 'red' : 'blue';
+      this.keyboardSelectedCaptureIndex = 0;
       this.showRpsModal = false;
       this.rpsClash = false;
       this.rpsClashResult = null;
@@ -595,6 +613,7 @@ async ngOnInit() {
   }
 
 toggleItemFace(item: Item, index: number) {
+  this.keyboardSelectedItemIndex = index;
   const key = this.getItemKey(item, index);
   const isCurrentlyFlipped = this.flippedItems.has(key);
   if (!isCurrentlyFlipped) {
@@ -670,6 +689,7 @@ private recalculateLayout() {
 resetGame() {
   this.startGame();
   this.flippedItems.clear();
+  this.keyboardSelectedItemIndex = 0;
   this.shuffleItems();
   this.centerItemsScroll();
   this.updateItemsAlignment();
@@ -683,6 +703,81 @@ resetGame() {
   onMenuAction(action: string) {
     if (action === 'activity') this.goToActivities();
     else if (action === 'startover') this.resetGame();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameStatus === 'finished') {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    if (this.showRpsModal) {
+      if (key === 'a') {
+        event.preventDefault();
+        this.rpsChoose('red');
+      } else if (key === 'l') {
+        event.preventDefault();
+        this.rpsChoose('blue');
+      } else if (key === 'r') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const itemIndex = digit === '0' ? 9 : Number(digit) - 1;
+      if (this.items[itemIndex]) {
+        event.preventDefault();
+        this.keyboardSelectedItemIndex = itemIndex;
+        this.toggleItemFace(this.items[itemIndex], itemIndex);
+        this.scrollItemIntoView(itemIndex);
+        this.cdr.detectChanges();
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case ' ':
+        event.preventDefault();
+        this.rollTeamDice(this.currentTurn);
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardCaptureSelection(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardCaptureSelection(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.captureKeyboardSelectedCup();
+        break;
+      default:
+        if (key === 'b') {
+          event.preventDefault();
+          this.scrollItems('left');
+        } else if (key === 'n') {
+          event.preventDefault();
+          this.scrollItems('right');
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
   }
 
   private playSound(sound: HTMLAudioElement | null) {
@@ -738,8 +833,72 @@ resetGame() {
     return cup.team !== this.currentTurn && this.capturesRemaining > 0 && this.gameStatus === 'running';
   }
 
+  isKeyboardCupSelected(cup: Cup): boolean {
+    const selected = this.capturableCups[this.keyboardSelectedCaptureIndex];
+    return !!selected && selected.id === cup.id && this.isCupCapturable(cup);
+  }
+
+  isKeyboardItemSelected(index: number): boolean {
+    return this.keyboardSelectedItemIndex === index;
+  }
+
+  itemKeyboardNumber(index: number): string | null {
+    if (index < 0 || index > 9) return null;
+    return index === 9 ? '0' : String(index + 1);
+  }
+
+  private scrollItemIntoView(index: number) {
+    const scroller = this.itemsScrollerElement;
+    const item = scroller?.children.item(index) as HTMLElement | null;
+    item?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    this.deferUpdateItemsScrollState();
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
   onCupClick(cup: Cup) {
     if (!this.isCupCapturable(cup)) return;
+    const index = this.capturableCups.findIndex(target => target.id === cup.id);
+    this.keyboardSelectedCaptureIndex = Math.max(0, index);
     this.captureCup(cup);
+  }
+
+  private get capturableCups(): Cup[] {
+    const opponentCups = this.currentTurn === 'red' ? this.blueCups : this.redCups;
+    return opponentCups.filter(cup => this.isCupCapturable(cup)).sort((a, b) => a.position - b.position);
+  }
+
+  private moveKeyboardCaptureSelection(direction: number) {
+    const cups = this.capturableCups;
+    if (!cups.length) return;
+    this.keyboardSelectedCaptureIndex = (this.keyboardSelectedCaptureIndex + direction + cups.length) % cups.length;
+    this.cdr.detectChanges();
+  }
+
+  private captureKeyboardSelectedCup() {
+    const cups = this.capturableCups;
+    if (!cups.length) return;
+    this.normalizeKeyboardCaptureSelection();
+    const cup = cups[this.keyboardSelectedCaptureIndex];
+    if (cup) {
+      this.captureCup(cup);
+      this.cdr.detectChanges();
+    }
+  }
+
+  private normalizeKeyboardCaptureSelection() {
+    const cups = this.capturableCups;
+    if (!cups.length) {
+      this.keyboardSelectedCaptureIndex = 0;
+      return;
+    }
+    this.keyboardSelectedCaptureIndex = Math.max(0, Math.min(this.keyboardSelectedCaptureIndex, cups.length - 1));
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"], [role="button"]');
   }
 }

@@ -8,6 +8,44 @@ app-root {
   height: 100%;
 }
 
+.game-keyboard-hint-badge {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.38rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.86);
+  border: 2px solid rgba(255, 255, 255, 0.84);
+  color: #fefce8;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  box-shadow: 0 7px 14px rgba(15, 23, 42, 0.24);
+}
+
+.game-keyboard-hint-badge[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .game-keyboard-hint-badge {
+    top: 0.24rem;
+    left: 0.24rem;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.28rem;
+    font-size: 0.62rem;
+    border-width: 1px;
+  }
+}
+
 /* ── Dual-range slider (doll timing in squid-game settings) ─────── */
 .doll-slider-wrap {
   position: relative;
@@ -125,4 +163,40 @@ body.app-theme-active:not(.app-theme-excluded) .game-container::after {
 
 .app-notification-error {
   background: rgba(220, 38, 38, 0.95);
+}
+
+.keyboard-selected:not(.fade-out):not(.matched) {
+  position: relative;
+  outline: none !important;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.9),
+    0 0 22px rgba(250, 204, 21, 0.95),
+    0 0 40px rgba(34, 211, 238, 0.45) !important;
+}
+
+.keyboard-selected:not(.fade-out):not(.matched)::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: inherit;
+  padding: 4px;
+  background: conic-gradient(from var(--keyboard-selected-angle, 0deg), transparent 0 58%, #22d3ee 64%, #facc15 72%, #ffffff 78%, transparent 84% 100%);
+  pointer-events: none;
+  z-index: 30;
+  animation: keyboard-selected-orbit 1.05s linear infinite;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@property --keyboard-selected-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes keyboard-selected-orbit {
+  to { --keyboard-selected-angle: 360deg; }
 }

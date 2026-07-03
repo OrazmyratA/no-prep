@@ -15,6 +15,14 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  position: relative;
+}
+
+.reveal-keyboard-help {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 30;
 }
 
 .reveal-container {
@@ -102,6 +110,12 @@
   transition: opacity 0.6s ease, transform 0.6s ease;
 }
 
+.quiz-option.keyboard-selected:not(.fade-out) {
+  outline: 5px solid #facc15;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.3), 0 0 28px rgba(250, 204, 21, 0.85);
+}
+
 .quiz-option.shake {
   animation: shake 0.45s ease;
 }
@@ -162,6 +176,11 @@
 }
 
 @media (max-width: 480px) {
+  .reveal-keyboard-help {
+    top: 0.5rem;
+    left: 0.5rem;
+  }
+
   .selected-item-container {
     max-height: 36vh;
     padding: 14px;
@@ -179,6 +198,11 @@
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
+  .reveal-keyboard-help {
+    top: 0.35rem;
+    left: 0.5rem;
+  }
+
   .game-shell {
     justify-content: flex-start;
     padding: 0.35rem 0.65rem;
@@ -286,6 +310,29 @@
 .team-btn span {
   position: relative;
   z-index: 2;
+}
+
+.team-btn .team-btn-key-badge {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.35rem;
+  z-index: 12;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.45rem;
+  height: 1.45rem;
+  padding: 0 0.38rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.86);
+  border: 2px solid rgba(255, 255, 255, 0.84);
+  color: #fefce8;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: none;
+  box-shadow: 0 7px 14px rgba(15, 23, 42, 0.24);
 }
 
 .team-btn::before {

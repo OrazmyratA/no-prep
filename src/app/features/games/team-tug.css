@@ -21,6 +21,13 @@
   z-index: 0;
 }
 
+.team-tug-keyboard-help {
+  position: absolute;
+  top: 4.25rem;
+  left: 1rem;
+  z-index: 30;
+}
+
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -235,6 +242,7 @@
   margin: 10px;
 }
 .team-button {
+  position: relative;
   flex: 1;
   border-radius: 50px;
   border: none;
@@ -245,12 +253,17 @@
   color: #0f172a;
   box-shadow: 0 15px 30px rgba(0, 0, 0, 0.35);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   transition: transform 0.25s ease, filter 0.25s ease;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
+
 .team-button:hover {
   transform: translateY(-2px);
 }
@@ -424,6 +437,11 @@
     gap: 0.35rem;
   }
 
+  .team-tug-keyboard-help {
+    top: 2.8rem;
+    left: 0.55rem;
+  }
+
   .score-pill,
   .timer-pill {
     min-width: 76px;
@@ -496,6 +514,7 @@
     padding: 0.35rem 0.25rem;
     font-size: 0.78rem;
     line-height: 1.05;
+    gap: 0.25rem;
   }
 
   .about-to-win {

@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 type MatchMode = 'prefix' | 'suffix' | 'contains' | 'whole';
 
@@ -58,13 +59,23 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   currentCorrectAnswer = '';
   answerLocked = false;
   answeredQuestions = new Set<number>();
-  skippedQuestions = new Set<number>();
   isMediaFlipped = false;
   penDragging = false;
   penShake = false;
   penPlaced = false;
   penX = 0;
   penY = 0;
+  keyboardSelectedOptionIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play item audio' },
+    { key: 'F', action: 'Flip picture card' },
+    { key: 'Enter / P', action: 'Place pen on missing part' },
+    { key: '1 / 2 / 3', action: 'Choose popup answer' },
+    { key: '← ↑ ↓ →', action: 'Move popup answer highlight' },
+    { key: 'B / N', action: 'Previous or next question' },
+    { key: 'R', action: 'Start over' }
+  ];
   private activePointerId: number | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
@@ -152,8 +163,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.penPlaced = false;
     this.answerLocked = false;
     this.isMediaFlipped = false;
+    this.keyboardSelectedOptionIndex = 0;
     this.answeredQuestions.clear();
-    this.skippedQuestions.clear();
     this.clearActiveSpot();
     this.cdr.detectChanges();
   }
@@ -670,6 +681,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       [options[i], options[j]] = [options[j], options[i]];
     }
     this.popupOptions = options;
+    this.keyboardSelectedOptionIndex = 0;
   }
 
   private addUniqueDistractors(target: string[], pool: string[], correctAnswer: string) {
@@ -707,6 +719,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
 
   onQuizAnswer(selected: string) {
     if (this.answerLocked) return;
+    this.keyboardSelectedOptionIndex = Math.max(0, this.popupOptions.indexOf(selected));
     this.answerLocked = true;
     if (selected === this.currentCorrectAnswer) {
       this.playSound(this.collectSound);
@@ -714,7 +727,6 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
         this.score++;
       }
       this.answeredQuestions.add(this.currentIndex);
-      this.skippedQuestions.delete(this.currentIndex);
       this.animatePlaceholderReplacement();
       this.clearAdvanceTimer();
       this.advanceTimer = window.setTimeout(() => {
@@ -789,31 +801,11 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.goToQuestion(this.currentIndex - 1);
   }
 
-  skipQuestion() {
-    if (this.answerLocked || this.isCurrentAnswered) return;
-    this.skippedQuestions.add(this.currentIndex);
-    this.goToNextUnfinished();
-  }
-
   nextQuestion() {
     if (this.answerLocked) return;
     if (this.currentIndex + 1 < this.questions.length) {
       this.goToQuestion(this.currentIndex + 1);
       return;
-    }
-
-    const firstUnanswered = this.findFirstUnansweredQuestion();
-    if (firstUnanswered !== -1) {
-      this.goToQuestion(firstUnanswered);
-    }
-  }
-
-  private goToNextUnfinished() {
-    for (let i = this.currentIndex + 1; i < this.questions.length; i++) {
-      if (!this.answeredQuestions.has(i)) {
-        this.goToQuestion(i);
-        return;
-      }
     }
 
     const firstUnanswered = this.findFirstUnansweredQuestion();
@@ -879,6 +871,59 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     return option;
   }
 
+  isKeyboardOptionSelected(index: number): boolean {
+    return this.showPopup && !this.answerLocked && this.keyboardSelectedOptionIndex === index;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    if (this.showPopup) {
+      this.handlePopupKey(event);
+      return;
+    }
+
+    switch (event.key) {
+      case ' ':
+        event.preventDefault();
+        this.playCurrentItemAudio();
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.placePenOnTarget();
+        break;
+      default:
+        if (key === 'f') {
+          event.preventDefault();
+          this.toggleMediaFlip();
+        } else if (key === 'p') {
+          event.preventDefault();
+          this.placePenOnTarget();
+        } else if (key === 'b') {
+          event.preventDefault();
+          this.previousQuestion();
+        } else if (key === 'n') {
+          event.preventDefault();
+          this.nextQuestion();
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
   toggleMediaFlip() {
     this.isMediaFlipped = !this.isMediaFlipped;
     this.playSound(this.captureSound, 0.65);
@@ -886,10 +931,75 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
 
   playCurrentAudio(event: Event) {
     event.stopPropagation();
+    this.playCurrentItemAudio();
+  }
+
+  private playCurrentItemAudio() {
     const audio = this.currentItem?.audio;
     if (audio) {
       this.playTrackedAudio(audio);
     }
+  }
+
+  private handlePopupKey(event: KeyboardEvent) {
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < this.popupOptions.length) {
+        event.preventDefault();
+        this.keyboardSelectedOptionIndex = optionIndex;
+        this.onQuizAnswer(this.popupOptions[optionIndex]);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (this.popupOptions[this.keyboardSelectedOptionIndex] !== undefined) {
+          this.onQuizAnswer(this.popupOptions[this.keyboardSelectedOptionIndex]);
+        }
+        break;
+    }
+  }
+
+  private moveKeyboardOption(direction: number) {
+    if (!this.popupOptions.length) return;
+    this.keyboardSelectedOptionIndex = (this.keyboardSelectedOptionIndex + direction + this.popupOptions.length) % this.popupOptions.length;
+    this.cdr.detectChanges();
+  }
+
+  private placePenOnTarget() {
+    if (this.answerLocked || this.showPopup || this.isCurrentAnswered) return;
+    const target = this.getTargetSpot();
+    if (!target) {
+      this.onWrongPenDrop();
+      return;
+    }
+
+    this.clearActiveSpot();
+    this.activeSpotEl = target;
+    this.activeSpotEl.classList.add('spot-active');
+    this.onCorrectPenDrop(target);
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^[1-9]$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private playTrackedAudio(blob: Blob) {

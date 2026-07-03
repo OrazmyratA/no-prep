@@ -1,4 +1,11 @@
 <div class="game-board cup-clash-board" [style.--cup-size]="cupSize">
+  <app-game-keyboard-help
+    class="cup-clash-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <!-- RPS modal — who goes first? -->
   <div *ngIf="showRpsModal" class="rps-overlay">
     <div class="rps-modal" [class.rps-hidden]="hideRpsChooser">
@@ -25,6 +32,7 @@
             class="rps-btn rps-btn-red"
             (click)="rpsChoose('red')"
             [disabled]="!!rpsRedChoice || !!rpsWinner">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">A</span>
             🔴
           </button>
         </div>
@@ -41,6 +49,7 @@
             class="rps-btn rps-btn-blue"
             (click)="rpsChoose('blue')"
             [disabled]="!!rpsBlueChoice || !!rpsWinner">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">L</span>
             🔵
           </button>
         </div>
@@ -98,6 +107,7 @@
                  [attr.data-cup-id]="cup.id"
                  [attr.data-team]="cup.team"
                  [class.clickable]="isCupCapturable(cup)"
+                 [class.keyboard-selected]="isKeyboardCupSelected(cup)"
                  (click)="onCupClick(cup)">
               <img [src]="'assets/images/cup1-red.png'" alt="red cup" class="cup-image">
               <span *ngIf="isCupCapturable(cup)" class="capture-marker" aria-hidden="true">❌</span>
@@ -126,6 +136,7 @@
                  [attr.data-cup-id]="cup.id"
                  [attr.data-team]="cup.team"
                  [class.clickable]="isCupCapturable(cup)"
+                 [class.keyboard-selected]="isKeyboardCupSelected(cup)"
                  (click)="onCupClick(cup)">
               <img [src]="'assets/images/cup1-blue.png'" alt="blue cup" class="cup-image">
               <span *ngIf="isCupCapturable(cup)" class="capture-marker" aria-hidden="true">❌</span>
@@ -169,6 +180,7 @@
       [disabled]="!canRollForTeam('red')"
       [attr.aria-label]="'cupClashRedTeam' | translate"
       (click)="rollTeamDice('red')">
+      <span *ngIf="keyboardHintsVisible && canRollForTeam('red')" class="game-keyboard-hint-badge">Space</span>
       <span class="team-dice" [class.rolling]="isTeamDiceRolling('red')" [class.landing]="isTeamDiceLanding('red')">
         <span class="dice-cube" [ngClass]="'show-' + teamDiceFaceValue('red')">
           <span
@@ -196,6 +208,7 @@
       [disabled]="!canRollForTeam('blue')"
       [attr.aria-label]="'cupClashBlueTeam' | translate"
       (click)="rollTeamDice('blue')">
+      <span *ngIf="keyboardHintsVisible && canRollForTeam('blue')" class="game-keyboard-hint-badge">Space</span>
       <span class="team-dice" [class.rolling]="isTeamDiceRolling('blue')" [class.landing]="isTeamDiceLanding('blue')">
         <span class="dice-cube" [ngClass]="'show-' + teamDiceFaceValue('blue')">
           <span
@@ -227,9 +240,11 @@
            tabindex="0"
            [attr.aria-pressed]="isItemFlipped(item, idx)"
            [class.flipped]="isItemFlipped(item, idx)"
+           [class.keyboard-selected]="isKeyboardItemSelected(idx)"
            (click)="toggleItemFace(item, idx)"
            (keydown.enter)="toggleItemFace(item, idx)"
            (keydown.space)="toggleItemFace(item, idx)">
+          <span *ngIf="keyboardHintsVisible && itemKeyboardNumber(idx) as itemNumber" class="item-keyboard-number">{{ itemNumber }}</span>
           <div class="item-card">
             <div class="item-face front">
               <img *ngIf="item.image" [src]="imageUrl(item.image, item.id!)" alt="item">
@@ -255,17 +270,14 @@
     </button>
   </div>
 
-  <!-- Winner popup -->
-  <div *ngIf="gameStatus === 'finished'" class="winner-overlay">
-    <div class="winner-card">
-      <h2 *ngIf="winner === 'red'">{{ 'cupClashRedWins' | translate }}</h2>
-      <h2 *ngIf="winner === 'blue'">{{ 'cupClashBlueWins' | translate }}</h2>
-      <h2 *ngIf="!winner">{{ 'cupClashDraw' | translate }}</h2>
-      <p>{{ 'cupClashFinalScore' | translate }}: {{ 'cupClashRed' | translate }} {{ redCups.length }} – {{ blueCups.length }} {{ 'cupClashBlue' | translate }}</p>
-      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
-    </div>
-  </div>
+  <app-game-finish-overlay
+    *ngIf="gameStatus === 'finished'"
+    [title]="winner === 'red' ? ('cupClashRedWins' | translate) : (winner === 'blue' ? ('cupClashBlueWins' | translate) : ('cupClashDraw' | translate))"
+    [message]="('cupClashFinalScore' | translate) + ': ' + ('cupClashRed' | translate) + ' ' + redCups.length + ' - ' + blueCups.length + ' ' + ('cupClashBlue' | translate)"
+    (playAgain)="resetGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
+
 
   <!-- Sandwich Menu -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

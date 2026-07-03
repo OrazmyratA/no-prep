@@ -8,6 +8,14 @@
     <p>{{ 'oddOneOutLoading' | translate }}</p>
   </div>
 
+  <app-game-keyboard-help
+    *ngIf="!loading && gameActive"
+    class="odd-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div *ngIf="!loading && gameActive" class="game-board">
     <header class="game-header">
       <div class="score-card">
@@ -28,9 +36,11 @@
                [attr.data-item-id]="ri.item.id"
                [style.top]="ri.position.top"
                [style.left]="ri.position.left"
+               [class.keyboard-selected]="isKeyboardItemSelected(ri, 'left')"
                [class.fading-out]="isRevealingOdd && ri.item.id !== currentOddItem?.id"
                [class.odd-winner]="isRevealingOdd && ri.item.id === currentOddItem?.id"
                (click)="onItemClick(ri.item, 'left')">
+            <span *ngIf="keyboardHintsVisible && itemKeyboardNumber(ri, 'left') !== null" class="item-keyboard-number">{{ itemKeyboardNumber(ri, 'left') }}</span>
             <div *ngIf="ri.item.image" class="item-image">
               <img [src]="imageUrl(ri.item.image, ri.item.id!)" alt="item">
             </div>
@@ -46,9 +56,11 @@
                [attr.data-item-id]="ri.item.id"
                [style.top]="ri.position.top"
                [style.left]="ri.position.left"
+               [class.keyboard-selected]="isKeyboardItemSelected(ri, 'right')"
                [class.fading-out]="isRevealingOdd && ri.item.id !== currentOddItem?.id"
                [class.odd-winner]="isRevealingOdd && ri.item.id === currentOddItem?.id"
                (click)="onItemClick(ri.item, 'right')">
+            <span *ngIf="keyboardHintsVisible && itemKeyboardNumber(ri, 'right') !== null" class="item-keyboard-number">{{ itemKeyboardNumber(ri, 'right') }}</span>
             <div *ngIf="ri.item.image" class="item-image">
               <img [src]="imageUrl(ri.item.image, ri.item.id!)" alt="item">
             </div>
@@ -59,16 +71,13 @@
     </section>
   </div>
 
-  <div *ngIf="gameFinished" class="winner-overlay">
-    <div class="winner-card">
-      <h2>{{ 'oddOneOutVictory' | translate }}</h2>
-      <p class="winner-score">{{ 'oddOneOutFinalScore' | translate }} {{ score }} / {{ totalRounds }}</p>
-      <div class="winner-actions">
-        <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-        <button class="ghost" (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
-      </div>
-    </div>
-  </div>
+  <app-game-finish-overlay
+    *ngIf="gameFinished"
+    [title]="'oddOneOutVictory' | translate"
+    [message]="('oddOneOutFinalScore' | translate) + ' ' + score + ' / ' + totalRounds"
+    (playAgain)="resetGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
 
   <app-sandwich-menu (action)="onMenuAction($event)" (menuOpenChange)="onMenuOpenChange($event)"></app-sandwich-menu>
 </div>

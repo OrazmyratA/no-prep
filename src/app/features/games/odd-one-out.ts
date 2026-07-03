@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface RoundItem {
   item: Item;
@@ -28,6 +29,15 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   loading = true;
   score = 0;
   totalRounds = 0;
+  keyboardSelectedItemIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: '1-9 / 0', action: 'Choose numbered item' },
+    { key: '← ↑ ↓ →', action: 'Move item highlight' },
+    { key: 'Enter', action: 'Choose highlighted item' },
+    { key: 'P', action: 'Pause or resume timer' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   // Settings
   itemAmount = 2; // smaller set count
@@ -120,11 +130,13 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     this.gameActive = true;
     this.gameFinished = false;
     this.isRevealingOdd = false;
+    this.keyboardSelectedItemIndex = 0;
     this.nextRound();
   }
 
   private nextRound() {
     this.isRevealingOdd = false;
+    this.keyboardSelectedItemIndex = 0;
     if (this.remainingItems.length === 0) {
       this.endGame();
       return;
@@ -229,6 +241,8 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
 
   onItemClick(item: Item, side: 'left' | 'right') {
     if (!this.roundActive || !this.currentOddItem) return;
+    const clickedIndex = this.selectableRoundItems.findIndex(entry => entry.roundItem.item === item && entry.side === side);
+    this.keyboardSelectedItemIndex = Math.max(0, clickedIndex);
 
     const isCorrect = (item.id === this.currentOddItem.id) && (side === this.oddSide);
 
@@ -315,8 +329,66 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     return roundItem.item.id ?? `${roundItem.item.text ?? 'item'}-${index}`;
   }
 
+  isKeyboardItemSelected(roundItem: RoundItem, side: 'left' | 'right'): boolean {
+    const selected = this.selectableRoundItems[this.keyboardSelectedItemIndex];
+    return !!selected && selected.roundItem === roundItem && selected.side === side && this.roundActive;
+  }
+
+  itemKeyboardNumber(roundItem: RoundItem, side: 'left' | 'right'): number | null {
+    const index = this.selectableRoundItems.findIndex(entry => entry.roundItem === roundItem && entry.side === side);
+    return index >= 0 && index < 10 ? (index === 9 ? 0 : index + 1) : null;
+  }
+
   resetGame() {
     this.startGame();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.chooseKeyboardItem(digit === '0' ? 9 : Number(digit) - 1);
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardItem(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardItem(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.chooseKeyboardItem(this.keyboardSelectedItemIndex);
+        break;
+      default:
+        if (key === 'p') {
+          event.preventDefault();
+          this.togglePause();
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
   }
 
   goToActivities() {
@@ -337,5 +409,46 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
         this.startRoundTimer();
       }
     }
+  }
+
+  private get selectableRoundItems(): Array<{ roundItem: RoundItem; side: 'left' | 'right' }> {
+    return [
+      ...this.leftSet.map(roundItem => ({ roundItem, side: 'left' as const })),
+      ...this.rightSet.map(roundItem => ({ roundItem, side: 'right' as const }))
+    ];
+  }
+
+  private moveKeyboardItem(direction: number) {
+    const items = this.selectableRoundItems;
+    if (!items.length || !this.roundActive) return;
+    this.keyboardSelectedItemIndex = (this.keyboardSelectedItemIndex + direction + items.length) % items.length;
+    this.cdr.detectChanges();
+  }
+
+  private chooseKeyboardItem(index: number) {
+    const entry = this.selectableRoundItems[index];
+    if (!entry || !this.roundActive) return;
+    this.keyboardSelectedItemIndex = index;
+    this.onItemClick(entry.roundItem.item, entry.side);
+  }
+
+  private togglePause() {
+    if (!this.gameActive || this.gameFinished || !this.roundActive) return;
+    this.isPaused = !this.isPaused;
+    if (this.isPaused) {
+      this.clearTimer();
+    } else {
+      this.startRoundTimer();
+    }
+    this.cdr.detectChanges();
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 }

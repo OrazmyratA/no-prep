@@ -216,7 +216,7 @@ describe('SpellingCheckComponent', () => {
     expect(component.penShake).toBe(true);
   });
 
-  it('returns to skipped unfinished questions after the last item is completed', () => {
+  it('returns to unfinished questions after the last item is completed', () => {
     vi.useFakeTimers();
     const component = makeComponent();
     const first = makeItem('The cat is on the mat.');
@@ -243,7 +243,7 @@ describe('SpellingCheckComponent', () => {
     ];
     component.currentCorrectAnswer = 'on';
 
-    component.skipQuestion();
+    component.nextQuestion();
     expect(component.currentIndex).toBe(1);
 
     component.onQuizAnswer('on');
@@ -252,7 +252,7 @@ describe('SpellingCheckComponent', () => {
     expect(component.currentIndex).toBe(0);
     expect(component.gameFinished).toBe(false);
     expect(component.answeredQuestions.has(1)).toBe(true);
-    expect(component.skippedQuestions.has(0)).toBe(true);
+    expect(component.answeredQuestions.has(0)).toBe(false);
     vi.useRealTimers();
   });
 });

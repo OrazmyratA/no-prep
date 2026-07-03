@@ -1,4 +1,11 @@
 <div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-green-900 to-teal-800 p-4 flex flex-col game-container">
+  <app-game-keyboard-help
+    class="flip-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div class="w-full mx-auto flex flex-col flex-1 min-h-0">
     <!-- Header with title and speaker button -->
     <div class="flip-header flex justify-between items-center">
@@ -28,8 +35,10 @@
                (click)="flipCard(rowIndex * gridColumns + colIndex)"
                class="card"
                [class.shake]="card.shake"
+               [class.keyboard-selected]="isKeyboardSelected(rowIndex * gridColumns + colIndex)"
                [style.width.px]="cardSize"
                [style.height.px]="cardSize">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ rowIndex * gridColumns + colIndex + 1 }}</span>
             <div class="relative w-full h-full card-container" [class.flipped]="card.flipped || card.matched">
               <!-- Front -->
               <div class="card-face card-front">
@@ -73,28 +82,13 @@
   </div>
 </div>
 
+<app-game-finish-overlay
+  *ngIf="gameFinished"
+  [title]="'flipTilesComplete' | translate"
+  (playAgain)="shuffleAndReset()"
+  (activities)="onMenuAction('activity')">
+</app-game-finish-overlay>
 
-<!-- Win overlay -->
-<div *ngIf="gameFinished" class="fullscreen-overlay" style="background:rgba(0,0,0,0.72);">
-  <div class="fullscreen-content" style="max-width:420px; flex-direction:column; gap:0;" (click)="$event.stopPropagation()">
-    <div class="fullscreen-card" style="text-align:center; padding:2rem 1.5rem;">
-      <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎉🌟🥳</div>
-      <h2 style="font-size:1.6rem; font-weight:900; color:#1a1a1a; margin-bottom:1rem;">
-        {{ 'flipTilesComplete' | translate }}
-      </h2>
-      <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
-        <button (click)="shuffleAndReset()"
-                class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-          {{ 'playAgain' | translate }}
-        </button>
-        <button (click)="onMenuAction('activity')"
-                class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
-          {{ 'activitiesLabel' | translate }}
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Fullscreen Overlay Modal -->
 <div *ngIf="fullscreenVisible" class="fullscreen-overlay" (click)="closeFullscreen()">

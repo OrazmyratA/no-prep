@@ -1,4 +1,11 @@
 <div class="relative h-screen overflow-hidden bg-gradient-to-br from-green-900 to-teal-800 p-3 flex flex-col">
+  <app-game-keyboard-help
+    class="unjumble-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div class="w-full flex-1 min-h-0 flex flex-col">
     <h2 class="text-2xl font-bold text-white mb-1 text-center">{{ 'unjumbleTitle' | translate }}</h2>
     <div *ngIf="!loading && !gameFinished && currentItem"
@@ -64,9 +71,11 @@
         <div *ngFor="let word of sourceWords; let i = index; trackBy: trackByWordId"
              cdkDrag
              (click)="selectWordByClick(word, i)"
-             [class.animate-fade]="getAnimationType(word.id) === 'fade'"
-             [class.animate-shake]="getAnimationType(word.id) === 'shake'"
-             class="word-tile word-tile-source px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg cursor-pointer hover:bg-yellow-400 transition text-lg">
+             [class.keyboard-selected]="isKeyboardSourceSelected(i)"
+              [class.animate-fade]="getAnimationType(word.id) === 'fade'"
+              [class.animate-shake]="getAnimationType(word.id) === 'shake'"
+              class="word-tile word-tile-source px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg cursor-pointer hover:bg-yellow-400 transition text-lg">
+          <span *ngIf="keyboardHintsVisible && i < 10" class="game-keyboard-hint-badge">{{ i === 9 ? 0 : i + 1 }}</span>
           {{ word.word }}
         </div>
       </div>
@@ -93,16 +102,12 @@
       </div>
     </div>
 
-    <!-- Game Finished Overlay -->
-    <div *ngIf="gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl mb-4">{{ 'unjumbleAllSentencesSolved' | translate }}</p>
-        <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
-        </div>
-      </div>
-    </div>
+    <app-game-finish-overlay
+      *ngIf="gameFinished"
+      [title]="'unjumbleAllSentencesSolved' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
 
     <!-- Sandwich Menu -->
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

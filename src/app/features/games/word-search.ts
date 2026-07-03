@@ -1,10 +1,11 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService, SupportedLanguage } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface GridCell {
   letter: string;
@@ -53,6 +54,15 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
   gameFinished = false;
   loading = true;
   gridSize = 0;
+  keyboardSelectedWordIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: '1-9 / 0', action: 'Reveal numbered word' },
+    { key: '↑ / ↓', action: 'Move word highlight' },
+    { key: 'Enter / Space', action: 'Reveal highlighted word' },
+    { key: 'Esc', action: 'Clear word highlight' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   private colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
@@ -211,6 +221,7 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
 
   onWordClick(index: number) {
     if (this.words[index].found) return;
+    this.keyboardSelectedWordIndex = index;
     this.selectedWordIndex = this.selectedWordIndex === index ? null : index;
     this.cdr.detectChanges();
   }
@@ -340,7 +351,6 @@ private prepareWords(): Array<{ text: string; answer: string }> {
 
     this.words = placements;
     this.gridSize = size;
-    this.selectedWordIndex = null;
     this.gameFinished = false;
     this.clearVictoryTimeout();
     this.grid = rawGrid.map((row, r) =>
@@ -351,6 +361,8 @@ private prepareWords(): Array<{ text: string; answer: string }> {
         isFound: false
       }))
     );
+    this.keyboardSelectedWordIndex = this.findNextWordIndex(0, 1) ?? 0;
+    this.selectedWordIndex = this.words[this.keyboardSelectedWordIndex]?.found ? null : this.keyboardSelectedWordIndex;
     this.resizeService.requestLayoutRefresh();
 
     return true;
@@ -545,6 +557,102 @@ private prepareWords(): Array<{ text: string; answer: string }> {
     this.clearVictoryTimeout();
     this.buildGrid();
     this.cdr.detectChanges();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.victoryPending || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.revealKeyboardWord(digit === '0' ? 9 : Number(digit) - 1);
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardWord(-1);
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardWord(1);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        this.revealKeyboardWord(this.keyboardSelectedWordIndex);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        this.selectedWordIndex = null;
+        this.cdr.detectChanges();
+        break;
+      default:
+        if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
+  private moveKeyboardWord(direction: number) {
+    const nextIndex = this.findNextWordIndex(this.keyboardSelectedWordIndex + direction, direction);
+    if (nextIndex === null) return;
+    this.keyboardSelectedWordIndex = nextIndex;
+    this.selectedWordIndex = nextIndex;
+    this.playSound(this.flipSound, 0.15);
+    this.cdr.detectChanges();
+  }
+
+  private revealKeyboardWord(index: number) {
+    const word = this.words[index];
+    if (!word || word.found) {
+      this.playSound(this.flipSound, 0.15);
+      return;
+    }
+
+    this.keyboardSelectedWordIndex = index;
+    this.revealWord(word);
+    const nextIndex = this.findNextWordIndex(index + 1, 1);
+    this.keyboardSelectedWordIndex = nextIndex ?? index;
+    this.selectedWordIndex = nextIndex;
+    this.cdr.detectChanges();
+  }
+
+  private findNextWordIndex(startIndex: number, direction: number): number | null {
+    if (!this.words.length) return null;
+    const step = direction < 0 ? -1 : 1;
+    let index = Math.max(0, Math.min(this.words.length - 1, startIndex));
+    for (let checked = 0; checked < this.words.length; checked++) {
+      const word = this.words[index];
+      if (word && !word.found) return index;
+      index += step;
+      if (index < 0) index = this.words.length - 1;
+      if (index >= this.words.length) index = 0;
+    }
+    return null;
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   onMenuAction(action: string) {

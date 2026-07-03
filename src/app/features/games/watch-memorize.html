@@ -1,4 +1,11 @@
 <div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-purple-900 to-pink-800 p-4 flex flex-col game-container">
+  <app-game-keyboard-help
+    class="watch-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div class="w-full px-2 flex flex-col flex-1 min-h-0">
     <h2 class="watch-title text-4xl font-bold text-white mb-4 text-center">{{ 'watchMemorizeTitle' | translate }}</h2>
 
@@ -9,7 +16,13 @@
 
     <!-- Scrolling Phase -->
     <div *ngIf="!loading && scrollPhase && scrollingItems.length > 0" class="scroll-stage mb-8">
-      <div class="scroll-container" [class.paused]="isPaused">
+      <div
+        class="scroll-container"
+        [class.paused]="isPaused"
+        role="button"
+        [attr.aria-pressed]="isPaused"
+        [attr.aria-label]="isPaused ? 'Resume moving cards' : 'Pause moving cards'"
+        (click)="togglePauseFromTouch($event)">
         <div *ngIf="currentScrollItem" class="scrolling-item">
           <ng-container *ngIf="currentScrollItem.image; else scrollTextOnly">
             <div class="scrolling-item-media">
@@ -40,9 +53,14 @@
            (click)="onGridClick(rowIndex * gridColumns + colIndex)"
            class="grid-item"
            [class.selected]="selectedIndices.has(rowIndex * gridColumns + colIndex)"
-           [style.width.px]="cardSize"
-           [style.height.px]="cardSize">
-        <ng-container *ngIf="item.image; else recallTextOnly">
+           [class.keyboard-selected]="isKeyboardSelected(rowIndex * gridColumns + colIndex)"
+           role="button"
+           [attr.aria-label]="'Card ' + (rowIndex * gridColumns + colIndex + 1)"
+            [attr.aria-disabled]="selectedIndices.has(rowIndex * gridColumns + colIndex) || gameFinished"
+            [style.width.px]="cardSize"
+            [style.height.px]="cardSize">
+         <span *ngIf="keyboardHintsVisible && !selectedIndices.has(rowIndex * gridColumns + colIndex)" class="game-keyboard-hint-badge">{{ rowIndex * gridColumns + colIndex + 1 }}</span>
+         <ng-container *ngIf="item.image; else recallTextOnly">
           <div class="grid-item-media w-full flex-1 flex items-center justify-center min-h-0">
             <img [src]="imageUrl(item.image!, item.id!)" class="w-full h-full object-contain">
           </div>
@@ -63,16 +81,12 @@
       <p class="text-xl">{{ 'watchMemorizeNoItems' | translate }}</p>
     </div>
 
-    <!-- Game Finished Overlay -->
-    <div *ngIf="showWinPopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl mb-4">{{ 'watchMemorizeYouGotThemAll' | translate }}</p>
-        <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
-        </div>
-      </div>
-    </div>
+    <app-game-finish-overlay
+      *ngIf="showWinPopup"
+      [title]="'watchMemorizeYouGotThemAll' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
 
     <!-- Sandwich Menu -->
     <app-sandwich-menu

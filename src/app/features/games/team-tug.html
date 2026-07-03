@@ -1,4 +1,11 @@
 <div class="game-container">
+  <app-game-keyboard-help
+    class="team-tug-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <!-- Loading -->
   <div *ngIf="loading" class="loading-overlay">
     <div class="loading-spinner">⚙</div>
@@ -55,6 +62,7 @@
               [class.about-to-win]="leftTeam.isAboutToWin"
               (pointerdown)="onTeamButtonPress($event, 'left', leftButtonOrder ? true : false)"
             >
+              <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">A</span>
               {{ leftFirstButtonLabel }}
             </button>
             <button
@@ -63,6 +71,7 @@
               [class.about-to-win]="leftTeam.isAboutToWin"
               (pointerdown)="onTeamButtonPress($event, 'left', leftButtonOrder ? false : true)"
             >
+              <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">S</span>
               {{ leftSecondButtonLabel }}
             </button>
           </div>
@@ -84,6 +93,7 @@
               [class.about-to-win]="rightTeam.isAboutToWin"
               (pointerdown)="onTeamButtonPress($event, 'right', rightButtonOrder ? true : false)"
             >
+              <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">K</span>
               {{ rightFirstButtonLabel }}
             </button>
             <button
@@ -92,6 +102,7 @@
               [class.about-to-win]="rightTeam.isAboutToWin"
               (pointerdown)="onTeamButtonPress($event, 'right', rightButtonOrder ? false : true)"
             >
+              <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">L</span>
               {{ rightSecondButtonLabel }}
             </button>
           </div>
@@ -100,52 +111,24 @@
     </section>
   </div>
 
-  <!-- Winner overlays -->
-  <div *ngIf="gameStatus === 'leftWin'" class="winner-announcement">
-    <div class="winner-card">
-      <h2>🎉 {{ 'teamTugWins' | translate }}! 🎉</h2>
-      <div class="winner-scoreboard">
-        <div class="score-chip left-chip">
-          <strong>{{ leftTeam.score }}</strong>
-        </div>
-        <div class="score-chip right-chip">
-          <strong>{{ rightTeam.score }}</strong>
-        </div>
+  <app-game-finish-overlay
+    *ngIf="gameStatus === 'leftWin' || gameStatus === 'rightWin' || gameStatus === 'draw'"
+    [title]="gameStatus === 'draw' ? ('teamTugDraw' | translate) : ('teamTugWins' | translate)"
+    [message]="leftTeam.score + ' / ' + rightTeam.score"
+    (playAgain)="resetGame()"
+    (activities)="onMenuAction('activity')">
+    <div class="winner-scoreboard">
+      <div class="score-chip left-chip">
+        <strong>{{ leftTeam.score }}</strong>
       </div>
-      <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+      <div class="score-chip right-chip">
+        <strong>{{ rightTeam.score }}</strong>
+      </div>
     </div>
-  </div>
+  </app-game-finish-overlay>
 
-  <div *ngIf="gameStatus === 'rightWin'" class="winner-announcement">
-    <div class="winner-card">
-      <h2>🎉 {{ 'teamTugWins' | translate }}! 🎉</h2>
-      <div class="winner-scoreboard">
-        <div class="score-chip left-chip">
-          <strong>{{ leftTeam.score }}</strong>
-        </div>
-        <div class="score-chip right-chip">
-          <strong>{{ rightTeam.score }}</strong>
-        </div>
-      </div>
-      <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-    </div>
-  </div>
 
-  <div *ngIf="gameStatus === 'draw'" class="winner-announcement">
-    <div class="winner-card">
-      <h2>💜 {{ 'teamTugDraw' | translate }} 💜</h2>
-      <div class="winner-scoreboard">
-        <div class="score-chip left-chip">
-          <strong>{{ leftTeam.score }}</strong>
-        </div>
-        <div class="score-chip right-chip">
-          <strong>{{ rightTeam.score }}</strong>
-        </div>
-      </div>
-      <p class="winner-clips">{{ leftTeam.score }} / {{ rightTeam.score }}</p>
-      <button class="reset-btn" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-    </div>
-  </div>
+
 
   <!-- Sandwich Menu -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

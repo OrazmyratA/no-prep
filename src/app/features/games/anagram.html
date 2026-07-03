@@ -1,4 +1,11 @@
 <div class="relative h-screen overflow-hidden bg-gradient-to-br from-blue-900 to-purple-800 p-3 flex flex-col">
+  <app-game-keyboard-help
+    class="anagram-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div class="w-full flex-1 min-h-0 flex flex-col">
     <h2 class="text-2xl font-bold text-white mb-1 text-center">{{ 'gameAnagramName' | translate }}</h2>
     <div *ngIf="!loading && !gameFinished && currentItem"
@@ -65,9 +72,11 @@
         <div *ngFor="let tile of sourceLetters; let tileIdx = index; trackBy: trackByTileId"
              cdkDrag
              (click)="selectLetterByClick(tile, tileIdx)"
-             [class.animate-fly]="getAnimationType(tile.id) === 'fly'"
-             [class.animate-shake]="getAnimationType(tile.id) === 'shake'"
-             class="w-11 h-11 md:w-16 md:h-16 bg-yellow-400 rounded-lg shadow-lg flex items-center justify-center text-2xl md:text-3xl font-bold cursor-pointer hover:bg-yellow-300 transition transform hover:scale-110">
+             [class.keyboard-selected]="isKeyboardSourceSelected(tileIdx)"
+              [class.animate-fly]="getAnimationType(tile.id) === 'fly'"
+              [class.animate-shake]="getAnimationType(tile.id) === 'shake'"
+              class="source-letter-tile w-11 h-11 md:w-16 md:h-16 bg-yellow-400 rounded-lg shadow-lg flex items-center justify-center text-2xl md:text-3xl font-bold cursor-pointer hover:bg-yellow-300 transition transform hover:scale-110">
+          <span *ngIf="keyboardHintsVisible && tileIdx < 10" class="game-keyboard-hint-badge">{{ tileIdx === 9 ? 0 : tileIdx + 1 }}</span>
           {{ tile.letter }}
         </div>
       </div>
@@ -94,16 +103,12 @@
       </div>
     </div>
 
-    <!-- Game Finished Overlay -->
-    <div *ngIf="gameFinished" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-8 text-center">
-        <p class="text-2xl mb-4">{{ 'gameFinishedAllAnagramsSolved' | translate }}</p>
-        <div class="space-x-4">
-          <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
-          <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
-        </div>
-      </div>
-    </div>
+    <app-game-finish-overlay
+      *ngIf="gameFinished"
+      [title]="'gameFinishedAllAnagramsSolved' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
 
     <!-- Sandwich Menu -->
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

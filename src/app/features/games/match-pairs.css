@@ -2,6 +2,14 @@
   height: 100dvh;
   min-height: 100dvh;
   box-sizing: border-box;
+  position: relative;
+}
+
+.match-keyboard-help {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 90;
 }
 
 .game-board-container {
@@ -32,13 +40,22 @@
 
 .card {
   position: relative;
-  transition: transform 0.8s ease, opacity 0.3s ease;
-  transform-style: preserve-3d;
+  transition: opacity 0.3s ease;
   cursor: pointer;
   flex-shrink: 0;
+  border-radius: 0.9rem;
 }
 
-.card.flipped {
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.8s ease;
+  transform-style: preserve-3d;
+  border-radius: 0.75rem;
+}
+
+.card-inner.flipped {
   transform: rotateY(180deg);
 }
 
@@ -46,6 +63,13 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s;
+}
+
+.card.keyboard-selected:not(.matched) {
+  outline: 4px solid #facc15;
+  outline-offset: 4px;
+  border-radius: 0.9rem;
+  filter: drop-shadow(0 0 14px rgba(250, 204, 21, 0.75));
 }
 
 .card-front, .card-back {
@@ -104,6 +128,11 @@
 @media (max-height: 560px), (max-width: 640px) {
   .game-container {
     padding: 0.5rem !important;
+  }
+
+  .match-keyboard-help {
+    top: 0.5rem;
+    left: 0.5rem;
   }
 
   .match-header h2 {

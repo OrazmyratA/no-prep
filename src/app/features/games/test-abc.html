@@ -1,4 +1,11 @@
 <div class="game-container">
+  <app-game-keyboard-help
+    class="test-abc-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <!-- Loading -->
   <div *ngIf="loading" class="loading-overlay">
     <div class="loading-spinner">📝</div>
@@ -54,13 +61,15 @@
 
     <!-- Options grid (3 items) -->
     <div class="options-area">
-      <div *ngFor="let opt of questions[currentIndex].options; trackBy: trackByOptionId"
+      <div *ngFor="let opt of questions[currentIndex].options; let optIndex = index; trackBy: trackByOptionId"
            class="option-card"
            [class.selected]="selectedCorrect && opt.id === selectedOptionId"
+           [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
            [class.disabled]="answeredQuestions.has(currentIndex)"
            [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
            [attr.data-opt-id]="opt.id"
            (click)="onOptionClick(opt)">
+        <span *ngIf="keyboardHintsVisible" class="option-number-badge">{{ optIndex + 1 }}</span>
         <!-- In word→image mode, options are images -->
         <div *ngIf="!reverseMode && opt.image" class="option-image">
           <img [src]="imageUrl(opt.image, opt.id!)" alt="option">
@@ -83,15 +92,14 @@
     </div>
   </div>
 
-  <!-- Victory Popup -->
-  <div *ngIf="gameFinished" class="winner-overlay">
-    <div class="winner-card">
-      <h2>{{ 'testAbcQuizComplete' | translate }} 🎉</h2>
-      <p>{{ 'testAbcYourScore' | translate }}: {{ score }} / {{ questions.length }}</p>
-      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
-    </div>
-  </div>
+  <app-game-finish-overlay
+    *ngIf="gameFinished"
+    [title]="'testAbcQuizComplete' | translate"
+    [message]="('testAbcYourScore' | translate) + ': ' + score + ' / ' + questions.length"
+    (playAgain)="resetGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
+
 
   <!-- Sandwich Menu -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

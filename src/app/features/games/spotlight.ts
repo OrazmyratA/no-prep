@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 @Component({
   selector: 'app-spotlight',
@@ -28,6 +29,16 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   isDrawing = false;
   loading = true;
   revealAll = false;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play item audio' },
+    { key: '← ↑ ↓ →', action: 'Move spotlight' },
+    { key: 'Shift + arrows', action: 'Move faster' },
+    { key: 'V', action: 'Reveal screen' },
+    { key: 'M', action: 'Random item' },
+    { key: 'B / N', action: 'Previous or next item' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   currentHasAudio = false;
   // Collection timer
@@ -212,6 +223,86 @@ private loadItem(index: number) {
     const coords = this.translatePointerPosition(touch.clientX, touch.clientY);
     if (!coords) return;
     this.setSpotlightPosition(coords.canvasX, coords.canvasY, coords.cssX, coords.cssY);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || !this.currentItem || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.moveSpotlightByKeyboard(-this.getKeyboardMoveStep(event), 0);
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.moveSpotlightByKeyboard(this.getKeyboardMoveStep(event), 0);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveSpotlightByKeyboard(0, -this.getKeyboardMoveStep(event));
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveSpotlightByKeyboard(0, this.getKeyboardMoveStep(event));
+        break;
+      case ' ':
+      case 'Spacebar':
+        event.preventDefault();
+        if (!event.repeat) this.playCurrentItemSound();
+        break;
+      default:
+        if (!event.repeat) this.handleLetterShortcut(event);
+        break;
+    }
+  }
+
+  private handleLetterShortcut(event: KeyboardEvent) {
+    switch (event.key.toLowerCase()) {
+      case 'v':
+        event.preventDefault();
+        this.revealAllScreen();
+        break;
+      case 'm':
+        event.preventDefault();
+        this.randomItem();
+        break;
+      case 'b':
+        event.preventDefault();
+        this.previousItem();
+        break;
+      case 'n':
+        event.preventDefault();
+        this.nextItem();
+        break;
+      case 'r':
+        event.preventDefault();
+        this.resetGame();
+        break;
+    }
+  }
+
+  private getKeyboardMoveStep(event: KeyboardEvent): number {
+    return event.shiftKey ? 52 : 24;
+  }
+
+  private moveSpotlightByKeyboard(deltaX: number, deltaY: number) {
+    const canvas = this.canvasRef?.nativeElement;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const nextCssX = this.pointerLeft + deltaX;
+    const nextCssY = this.pointerTop + deltaY;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    this.setSpotlightPosition(nextCssX * scaleX, nextCssY * scaleY, nextCssX, nextCssY);
+    this.cdr.detectChanges();
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private setSpotlightPosition(canvasX: number, canvasY: number, cssX: number, cssY: number, runChecks = true) {

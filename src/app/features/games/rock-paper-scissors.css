@@ -11,6 +11,13 @@
   box-sizing: border-box;
 }
 
+.rps-keyboard-help {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 45;
+}
+
 /* ── Background ──────────────────────────────────────────────── */
 .rps-bg {
   position: absolute;
@@ -320,6 +327,11 @@
 }
 
 .rps-quiz-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
   flex: 1;
   min-width: 0;
   padding: 12px 16px;
@@ -350,6 +362,11 @@
 .rps-quiz-option:not(:disabled):hover {
   background: rgba(255, 255, 255, 0.35);
   transform: scale(1.05);
+}
+
+.rps-quiz-option.keyboard-selected:not(.fade-out) {
+  border-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.92), 0 0 28px rgba(251, 191, 36, 0.75);
 }
 
 .rps-quiz-option.correct-flash {
@@ -423,6 +440,10 @@
 
 .quiz-confirm-ok,
 .quiz-confirm-oops {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 76px;
   height: 76px;
   border-radius: 50%;
@@ -678,6 +699,10 @@
 }
 
 @media (max-width: 760px) {
+  .rps-keyboard-help {
+    top: 10px;
+    left: 10px;
+  }
 
   .rps-powerup-badge {
     max-width: calc(100vw - 112px);

@@ -5,6 +5,14 @@
   height: 100dvh;
   min-height: 100dvh;
   box-sizing: border-box;
+  position: relative;
+}
+
+.flip-keyboard-help {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 90;
 }
 
 /* ===== FLEX GRID WRAPPER – centered & responsive ===== */
@@ -40,6 +48,7 @@
   cursor: pointer;
   margin: 0;
   flex-shrink: 0;
+  border-radius: 0.75rem;
 }
 
 /* ===== FLIP CARD CONTAINER ===== */
@@ -283,6 +292,11 @@
 @media (max-width: 640px) {
   .game-container {
     padding: 0.5rem !important;
+  }
+
+  .flip-keyboard-help {
+    top: 0.5rem;
+    left: 0.5rem;
   }
 
   .flip-header h2 {

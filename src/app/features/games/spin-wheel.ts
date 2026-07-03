@@ -1,9 +1,10 @@
-import { Component, OnInit, ViewChild, ElementRef, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 @Component({
   selector: 'app-spin-wheel',
@@ -18,6 +19,16 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   currentItems: Item[] = [];
   spinning = false;
   loading = true;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Enter', action: 'Spin wheel or choose highlighted answer' },
+    { key: '1 / 2 / 3', action: 'Choose quiz answer' },
+    { key: '← / →', action: 'Move quiz answer highlight' },
+    { key: 'O', action: 'OK in confirm mode' },
+    { key: 'X / Esc', action: 'Oops in confirm mode' },
+    { key: 'E', action: 'Eliminate current segment' },
+    { key: 'R', action: 'Start over' }
+  ];
   private rotation = 0;
   private ctx: CanvasRenderingContext2D | null = null;
   private objectUrls: string[] = [];
@@ -52,6 +63,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   simpleConfirmMode = false;
   forceSimpleMode = true;
   gameFinished = false;
+  keyboardSelectedOptionIndex = 0;
   private victoryPending = false;
 
   // Constants for wheel geometry
@@ -400,6 +412,7 @@ if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
   if (canShowQuiz) {
     this.setGameTimeout(() => {
       this.simpleConfirmMode = false;
+      this.keyboardSelectedOptionIndex = 0;
       this.showQuiz = true;
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
@@ -407,6 +420,7 @@ if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
   } else {
     this.setGameTimeout(() => {
       this.simpleConfirmMode = true;
+      this.keyboardSelectedOptionIndex = 0;
       this.showQuiz = true;
       this.quizOverlayVisible = true;
       this.cdr.detectChanges();
@@ -415,6 +429,7 @@ if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
 } else {
   this.setGameTimeout(() => {
     this.simpleConfirmMode = true;
+    this.keyboardSelectedOptionIndex = 0;
     this.showQuiz = true;
     this.quizOverlayVisible = true;
     this.cdr.detectChanges();
@@ -508,6 +523,7 @@ private buildQuizOptions(): boolean {
     [options[i], options[j]] = [options[j], options[i]];
   }
   this.quizOptions = options;
+  this.keyboardSelectedOptionIndex = 0;
   return true;
 }
   // new flag for the 3‑second effect
@@ -558,6 +574,114 @@ onQuizAnswer(selected: Item) {
     this.setGameTimeout(() => el?.classList.remove('shake'), 500);
   }
 }
+
+  isKeyboardOptionSelected(index: number): boolean {
+    return !this.simpleConfirmMode && this.showQuiz && this.keyboardSelectedOptionIndex === index && !this.quizAnswerLocked;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    if (this.showQuiz) {
+      this.handleQuizKey(event);
+      return;
+    }
+
+    switch (event.key) {
+      case 'Enter':
+        event.preventDefault();
+        if (this.gameFinished) {
+          this.resetGame();
+        } else {
+          this.spin();
+        }
+        break;
+      default:
+        this.handleWheelShortcut(event);
+        break;
+    }
+  }
+
+  private handleWheelShortcut(event: KeyboardEvent) {
+    switch (event.key.toLowerCase()) {
+      case 'e':
+        event.preventDefault();
+        this.eliminate();
+        break;
+      case 'r':
+        event.preventDefault();
+        this.resetGame();
+        break;
+    }
+  }
+
+  private handleQuizKey(event: KeyboardEvent) {
+    if (this.simpleConfirmMode) {
+      this.handleSimpleConfirmKey(event);
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < this.quizOptions.length) {
+        event.preventDefault();
+        this.keyboardSelectedOptionIndex = optionIndex;
+        this.onQuizAnswer(this.quizOptions[optionIndex]);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.onQuizAnswer(this.quizOptions[this.keyboardSelectedOptionIndex]);
+        break;
+    }
+  }
+
+  private handleSimpleConfirmKey(event: KeyboardEvent) {
+    const key = event.key.toLowerCase();
+    if (event.key === 'Enter' || key === 'o' || key === '1') {
+      event.preventDefault();
+      this.onConfirmOk();
+      return;
+    }
+
+    if (event.key === 'Escape' || key === 'x' || key === '2') {
+      event.preventDefault();
+      this.onConfirmOops();
+    }
+  }
+
+  private moveKeyboardOption(direction: number) {
+    if (this.quizOptions.length === 0) return;
+    const count = this.quizOptions.length;
+    this.keyboardSelectedOptionIndex = (this.keyboardSelectedOptionIndex + direction + count) % count;
+    this.cdr.detectChanges();
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^[1-9]$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
+  }
+
   onConfirmOk() {
     if (!this.selectedItem || this.gameFinished || this.eliminationLong) return;
     this.playSound(this.collectSound);

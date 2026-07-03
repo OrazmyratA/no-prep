@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, ViewChild, AfterViewInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface Card {
   id: number;
@@ -28,6 +29,16 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   flippedCards: Card[] = [];
   gameFinished = false;
   isPeeking = false;
+  keyboardSelectedIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: '1-9 / 0', action: 'Flip numbered card' },
+    { key: '1 then 2', action: 'Flip card 12' },
+    { key: '← ↑ ↓ →', action: 'Move card highlight' },
+    { key: 'Enter', action: 'Flip highlighted card' },
+    { key: 'P', action: 'Peek at cards' },
+    { key: 'R', action: 'Shuffle and restart' }
+  ];
   gridColumns = 4;
   gridRows = 1;
   cardRows: Card[][] = [];
@@ -49,6 +60,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private layoutSubscription?: Subscription;
   private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   private destroyed = false;
+  private keyboardNumberBuffer = '';
+  private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -88,6 +101,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.destroyed = true;
+    this.clearKeyboardNumberBuffer();
     this.clearPendingTimers();
     this.layoutSubscription?.unsubscribe();
     [this.flipSound, this.buzzSound, this.collectSound, this.rewardSound].forEach(sound => sound?.pause());
@@ -234,6 +248,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cards = pairs;
     this.flippedCards = [];
     this.gameFinished = false;
+    this.keyboardSelectedIndex = this.findNextKeyboardCardIndex(0, 1) ?? 0;
     this.rebuildCardRows();
     this.calculateCardSize();
     this.cdr.detectChanges();
@@ -244,10 +259,14 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!card || card.flipped || card.matched || this.gameFinished || this.isPeeking) return;
     if (this.flippedCards.length === 2) return;
 
+    this.keyboardSelectedIndex = index;
     this.playSound(this.flipSound);
     card.flipped = true;
     this.flippedCards.push(card);
     this.cdr.detectChanges();
+    requestAnimationFrame(() => {
+      if (!this.destroyed) this.cdr.detectChanges();
+    });
 
     if (this.flippedCards.length === 2) {
       this.checkMatch();
@@ -284,6 +303,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
         cardA.flipped = false;
         cardB.flipped = false;
         this.flippedCards = [];
+        this.normalizeKeyboardSelection();
 
         // Check win condition
         if (this.cards.every(c => c.matched)) {
@@ -305,6 +325,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
           cardA.flipped = false;
           cardB.flipped = false;
           this.flippedCards = [];
+          this.normalizeKeyboardSelection();
           this.cdr.detectChanges();
         }, 500);
       }, 2500);
@@ -320,6 +341,181 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   resetGame() {
     this.setupGame();
+  }
+
+  isKeyboardSelected(index: number): boolean {
+    return this.keyboardSelectedIndex === index && !this.cards[index]?.matched && !this.gameFinished;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.isKeyboardEventFromInteractiveElement(event) || this.gameFinished) return;
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.handleKeyboardNumber(digit);
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(-1);
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(1);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(-this.gridColumns);
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.moveKeyboardSelection(this.gridColumns);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.onCardClick(this.keyboardSelectedIndex);
+        break;
+      default:
+        this.handleLetterShortcut(event);
+        break;
+    }
+  }
+
+  private handleLetterShortcut(event: KeyboardEvent) {
+    switch (event.key.toLowerCase()) {
+      case 'p':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.peek();
+        break;
+      case 'r':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.resetGame();
+        break;
+      case 'escape':
+        this.clearKeyboardNumberBuffer();
+        break;
+    }
+  }
+
+  private handleKeyboardNumber(digit: string) {
+    if (!this.keyboardNumberBuffer && digit === '0') {
+      this.flipCardFromKeyboard(9);
+      return;
+    }
+
+    this.clearKeyboardNumberTimer();
+    this.keyboardNumberBuffer += digit;
+
+    const cardNumber = Number(this.keyboardNumberBuffer);
+    const isValidCardNumber = cardNumber >= 1 && cardNumber <= this.cards.length;
+    const hasLongerMatch = this.hasLongerKeyboardNumberMatch(this.keyboardNumberBuffer);
+
+    if (hasLongerMatch) {
+      this.keyboardNumberTimer = setTimeout(() => {
+        if (!this.destroyed) {
+          const bufferedNumber = Number(this.keyboardNumberBuffer);
+          if (bufferedNumber >= 1 && bufferedNumber <= this.cards.length) {
+            this.flipCardFromKeyboard(bufferedNumber - 1);
+          }
+        }
+        this.clearKeyboardNumberBuffer();
+      }, 360);
+      return;
+    }
+
+    if (isValidCardNumber) {
+      this.flipCardFromKeyboard(cardNumber - 1);
+      return;
+    }
+
+    this.clearKeyboardNumberBuffer();
+  }
+
+  private flipCardFromKeyboard(index: number) {
+    this.clearKeyboardNumberBuffer();
+    if (!this.cards[index]) return;
+    this.keyboardSelectedIndex = index;
+    this.onCardClick(index);
+    this.cdr.detectChanges();
+    requestAnimationFrame(() => {
+      if (!this.destroyed) this.cdr.detectChanges();
+    });
+  }
+
+  private moveKeyboardSelection(step: number) {
+    const nextIndex = this.findNextKeyboardCardIndex(this.keyboardSelectedIndex + step, step);
+    if (nextIndex === null) return;
+    this.keyboardSelectedIndex = nextIndex;
+    this.cdr.detectChanges();
+  }
+
+  private normalizeKeyboardSelection() {
+    if (this.cards[this.keyboardSelectedIndex] && !this.cards[this.keyboardSelectedIndex].matched) return;
+    this.keyboardSelectedIndex = this.findNextKeyboardCardIndex(this.keyboardSelectedIndex, 1) ?? 0;
+  }
+
+  private findNextKeyboardCardIndex(startIndex: number, step: number): number | null {
+    if (!this.cards.length) return null;
+
+    const direction = step < 0 ? -1 : 1;
+    const normalizedStep = step === 0 ? direction : step;
+    let index = this.clampCardIndex(startIndex);
+
+    for (let checked = 0; checked < this.cards.length; checked++) {
+      const card = this.cards[index];
+      if (card && !card.matched) return index;
+      index = this.clampCardIndex(index + normalizedStep);
+    }
+
+    return null;
+  }
+
+  private clampCardIndex(index: number): number {
+    if (index < 0) return 0;
+    if (index >= this.cards.length) return this.cards.length - 1;
+    return index;
+  }
+
+  private hasLongerKeyboardNumberMatch(prefix: string): boolean {
+    for (let cardNumber = 1; cardNumber <= this.cards.length; cardNumber++) {
+      const value = String(cardNumber);
+      if (value.length > prefix.length && value.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
+  }
+
+  private clearKeyboardNumberTimer() {
+    if (!this.keyboardNumberTimer) return;
+    clearTimeout(this.keyboardNumberTimer);
+    this.keyboardNumberTimer = null;
+  }
+
+  private clearKeyboardNumberBuffer() {
+    this.clearKeyboardNumberTimer();
+    this.keyboardNumberBuffer = '';
   }
 
   private createCardImageUrl(blob?: Blob): string | null {

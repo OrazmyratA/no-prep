@@ -10,6 +10,13 @@
       </div>
     </header>
 
+    <app-game-keyboard-help
+      class="word-search-keyboard-help"
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+
     <div *ngIf="loading" class="word-search-loading">
       <div class="loading-spinner"></div>
     </div>
@@ -30,6 +37,7 @@
             [class.word-item-selected]="selectedWordIndex === i && !word.found"
             [class.word-item-found]="word.found"
             [style.--word-found-color]="word.found ? word.color : null">
+            <span *ngIf="keyboardHintsVisible && i < 10" class="word-number-badge">{{ i === 9 ? 0 : i + 1 }}</span>
             <span [class.line-through]="word.found">{{ word.text }}</span>
           </button>
         </div>
@@ -53,16 +61,12 @@
       </section>
     </main>
 
-    <!-- Game Finished Overlay -->
-    <div *ngIf="gameFinished" class="finish-overlay">
-      <div class="finish-card">
-        <p>{{ 'wordSearchAllWordsFound' | translate }}</p>
-        <div class="finish-actions">
-          <button type="button" class="finish-secondary" (click)="onMenuAction('activity')">{{ 'activitiesLabel' | translate }}</button>
-          <button type="button" class="finish-primary" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-        </div>
-      </div>
-    </div>
+    <app-game-finish-overlay
+      *ngIf="gameFinished"
+      [title]="'wordSearchAllWordsFound' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
 
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
   </div>

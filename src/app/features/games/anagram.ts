@@ -1,9 +1,10 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface LetterTile {
   id: string;
@@ -43,6 +44,19 @@ export class AnagramComponent implements OnInit, OnDestroy {
   solvedWordState: Map<number, { target: (LetterTile | null)[]; source: LetterTile[] }> = new Map();
   targetIndexToOriginalIndex: number[] = [];
   animatingTiles: Map<string, AnimatingTile> = new Map();
+  keyboardSelectedSourceIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play item audio' },
+    { key: 'F', action: 'Flip picture card' },
+    { key: '1-9 / 0', action: 'Place numbered letter' },
+    { key: '← ↑ ↓ →', action: 'Move letter highlight' },
+    { key: 'Enter', action: 'Place highlighted letter' },
+    { key: 'Backspace', action: 'Return last placed letter' },
+    { key: 'B / N', action: 'Previous or next word' },
+    { key: 'S', action: 'Shuffle' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   private objectUrls: string[] = [];
   private imageUrls: Map<number, string> = new Map();
@@ -144,6 +158,8 @@ export class AnagramComponent implements OnInit, OnDestroy {
     }
 
     this.targetDropListIds = Array.from({ length: this.targetLetters.length }, (_, i) => `target-${i}`);
+    this.keyboardSelectedSourceIndex = 0;
+    this.normalizeKeyboardSourceSelection();
     this.cdr.detectChanges();
   }
 
@@ -191,6 +207,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     sourceData.splice(event.previousIndex, 1);
     this.targetLetters[targetIndex] = tile;
     this.playSound(this.flipSound, 0.3);
+    this.normalizeKeyboardSourceSelection();
     this.cdr.detectChanges();
 
     if (this.targetLetters.every(slot => slot !== null)) {
@@ -225,6 +242,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
       const j = Math.floor(Math.random() * (i + 1));
       [this.sourceLetters[i], this.sourceLetters[j]] = [this.sourceLetters[j], this.sourceLetters[i]];
     }
+    this.normalizeKeyboardSourceSelection();
     this.cdr.detectChanges();
     this.playSound(this.flipSound, 0.2);
   }
@@ -319,6 +337,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.solvedWordIndexes.clear();
     this.solvedWordState.clear();
+    this.keyboardSelectedSourceIndex = 0;
     this.loadItem(0);
   }
 
@@ -332,6 +351,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
   }
 
   selectLetterByClick(tile: LetterTile, tileIndex: number) {
+    this.keyboardSelectedSourceIndex = Math.max(0, tileIndex);
     // Find the first empty target slot
     const targetIndex = this.targetLetters.findIndex(slot => slot === null);
 
@@ -356,6 +376,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
       this.sourceLetters.splice(tileIndex, 1);
       this.targetLetters[targetIndex] = tile;
       this.animatingTiles.delete(tile.id);
+      this.normalizeKeyboardSourceSelection();
       this.cdr.detectChanges();
 
       if (this.targetLetters.every(slot => slot !== null)) {
@@ -372,6 +393,75 @@ export class AnagramComponent implements OnInit, OnDestroy {
     return this.animatingTiles.get(tileId)?.animationType ?? '';
   }
 
+  isKeyboardSourceSelected(index: number): boolean {
+    return !this.gameFinished && this.keyboardSelectedSourceIndex === index;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.placeKeyboardSourceLetter(digit === '0' ? 9 : Number(digit) - 1);
+      return;
+    }
+
+    switch (event.key) {
+      case ' ':
+        event.preventDefault();
+        this.playCurrentItemAudio();
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardSourceSelection(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardSourceSelection(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.placeKeyboardSourceLetter(this.keyboardSelectedSourceIndex);
+        break;
+      case 'Backspace':
+        event.preventDefault();
+        this.returnLastPlacedLetter();
+        break;
+      default:
+        if (key === 'f') {
+          event.preventDefault();
+          this.toggleMediaFlip();
+        } else if (key === 'b') {
+          event.preventDefault();
+          this.previousItem();
+        } else if (key === 'n') {
+          event.preventDefault();
+          this.nextItem();
+        } else if (key === 's') {
+          event.preventDefault();
+          this.shuffle();
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
   private triggerFlyAnimation(tileId: string) {
     this.animatingTiles.set(tileId, { tileId, animationType: 'fly' });
     this.cdr.detectChanges();
@@ -385,6 +475,57 @@ export class AnagramComponent implements OnInit, OnDestroy {
       this.animatingTiles.delete(tileId);
       this.cdr.detectChanges();
     }, 600);
+  }
+
+  private moveKeyboardSourceSelection(direction: number) {
+    if (!this.sourceLetters.length) return;
+    this.keyboardSelectedSourceIndex = (this.keyboardSelectedSourceIndex + direction + this.sourceLetters.length) % this.sourceLetters.length;
+    this.cdr.detectChanges();
+  }
+
+  private placeKeyboardSourceLetter(index: number) {
+    if (index < 0 || index >= this.sourceLetters.length) {
+      this.playSound(this.buzzSound, 0.25);
+      return;
+    }
+    this.selectLetterByClick(this.sourceLetters[index], index);
+  }
+
+  private returnLastPlacedLetter() {
+    const targetIndex = this.targetLetters.map(Boolean).lastIndexOf(true);
+    if (targetIndex === -1) {
+      this.playSound(this.buzzSound, 0.25);
+      return;
+    }
+
+    this.clearAdvanceTimer();
+    this.solvedWordIndexes.delete(this.currentIndex);
+    this.solvedWordState.delete(this.currentIndex);
+    const tile = this.targetLetters[targetIndex];
+    this.targetLetters[targetIndex] = null;
+    if (tile) {
+      this.sourceLetters.push(tile);
+      this.keyboardSelectedSourceIndex = this.sourceLetters.length - 1;
+    }
+    this.playSound(this.flipSound, 0.25);
+    this.cdr.detectChanges();
+  }
+
+  private normalizeKeyboardSourceSelection() {
+    if (!this.sourceLetters.length) {
+      this.keyboardSelectedSourceIndex = 0;
+      return;
+    }
+    this.keyboardSelectedSourceIndex = Math.max(0, Math.min(this.keyboardSelectedSourceIndex, this.sourceLetters.length - 1));
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private completeCurrentWord() {

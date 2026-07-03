@@ -4,6 +4,13 @@
     <source src="assets/videos/underwater.mp4" type="video/mp4">
   </video>
 
+  <app-game-keyboard-help
+    class="team-sentence-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div *ngIf="loading" class="loading-overlay">
     <div class="loading-spinner">📝</div>
     <p>{{ 'teamSentenceLoading' | translate }}</p>
@@ -42,7 +49,7 @@
     <!-- Left team side -->
     <div class="team-side left" [class.single-team]="singleTeamMode" [class.frozen]="isLeftFrozen()">
       <div class="team-header">
-        <h2><span class="score">{{ teams.left.score }}</span></h2>
+        <h2><span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge team-score-keyboard-hint">A</span><span class="score">{{ teams.left.score }}</span></h2>
       </div>
       <div class="sentence-area" [class.correct]="correctTeam === 'left'">
         <div *ngFor="let word of teams.left.sentenceWords; let i = index; trackBy: trackByIndex" 
@@ -99,7 +106,7 @@
     <!-- Right team side -->
     <div *ngIf="!singleTeamMode" class="team-side right" [class.frozen]="isRightFrozen()">
       <div class="team-header">
-        <h2><span class="score">{{ teams.right.score }}</span></h2>
+        <h2><span class="score">{{ teams.right.score }}</span><span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge team-score-keyboard-hint">L</span></h2>
       </div>
       <div class="sentence-area" [class.correct]="correctTeam === 'right'">
         <div *ngFor="let word of teams.right.sentenceWords; let i = index; trackBy: trackByIndex" 
@@ -137,15 +144,14 @@
     </div>
   </div>
 
-  <!-- Winner overlay -->
-  <div *ngIf="gameFinished" class="winner-overlay">
-    <div class="winner-card">
-      <h2>🏆 {{ winner === 'left' ? ('teamSentenceLeftTeam' | translate) : ('teamSentenceRightTeam' | translate) }} {{ 'teamSentenceWins' | translate }}! 🏆</h2>
-      <p>{{ 'teamSentenceFinalScore' | translate }}: {{ teams.left.score }} - {{ teams.right.score }}</p>
-      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
-    </div>
-  </div>
+  <app-game-finish-overlay
+    *ngIf="gameFinished"
+    [title]="(winner === 'left' ? ('teamSentenceLeftTeam' | translate) : ('teamSentenceRightTeam' | translate)) + ' ' + ('teamSentenceWins' | translate)"
+    [message]="('teamSentenceFinalScore' | translate) + ': ' + teams.left.score + ' - ' + teams.right.score"
+    (playAgain)="resetGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
+
 
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
 </div>

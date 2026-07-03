@@ -1,10 +1,12 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 
 type RPSChoice = 'rock' | 'paper' | 'scissors';
 
@@ -57,6 +59,8 @@ interface PopTeam {
   quizAnswerLocked: boolean;
   fadeOutOptionIds: Set<number>;
   showCenterPopEffect: boolean;
+  keyboardSelectedBalloonIndex: number;
+  keyboardSelectedOptionIndex: number;
 }
 
 @Component({
@@ -86,6 +90,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   loading = true;
   menuOpen = false;
   stringsReady = false;
+  keyboardSelectedTeamIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = this.buildKeyboardShortcuts();
   @ViewChild('giftBox') giftBoxRef!: ElementRef<HTMLElement>;
   @ViewChild('giftImage') giftImageRef!: ElementRef<HTMLImageElement>;
 
@@ -155,6 +162,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     const rawTeamCount = Number(params['teamCount'] ?? 1);
     this.teamCount = Math.min(4, Math.max(1, Number.isFinite(rawTeamCount) ? rawTeamCount : 1));
     this.teamMode = this.teamCount > 1;
+    this.syncKeyboardShortcuts();
     this.reverseMode = params['reverseMode'] === 'true';
     this.forceSimpleMode = params['simpleMode'] !== 'false';
     this.initGame();
@@ -274,7 +282,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       quizOptions: [],
       quizAnswerLocked: false,
       fadeOutOptionIds: new Set<number>(),
-      showCenterPopEffect: false
+      showCenterPopEffect: false,
+      keyboardSelectedBalloonIndex: 0,
+      keyboardSelectedOptionIndex: 0
     }));
     this.balloons = this.teams[0]?.balloons ?? [];
   }
@@ -302,7 +312,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       quizOptions: [],
       quizAnswerLocked: false,
       fadeOutOptionIds: new Set<number>(),
-      showCenterPopEffect: false
+      showCenterPopEffect: false,
+      keyboardSelectedBalloonIndex: 0,
+      keyboardSelectedOptionIndex: 0
     }];
     this.balloons = this.teams[0].balloons;
   }
@@ -457,6 +469,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (balloon.popped || !this.gameActive || team.showQuiz || team.quizAnswerLocked) return;
     if (this.teamCount === 2 && this.teamMode && this.rpsWinnerTeamId !== teamId) return;
 
+    this.keyboardSelectedTeamIndex = Math.max(0, this.teams.findIndex(t => t.id === team.id));
+    team.keyboardSelectedBalloonIndex = index;
     if (!this.openBalloonQuiz(index, team.id)) {
       this.completeBalloonPop(index, team.id);
     }
@@ -492,6 +506,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.selectedBalloonIndex = index;
     team.selectedItem = item;
     team.quizOptions = options;
+    team.keyboardSelectedOptionIndex = 0;
     team.simpleConfirmMode = simpleMode;
     team.showQuiz = true;
     team.quizClosing = false;
@@ -596,6 +611,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   onQuizAnswer(selected: Item, teamId = 0) {
     const team = this.getTeam(teamId);
     if (!team?.showQuiz || !team.selectedItem || team.quizAnswerLocked) return;
+    team.keyboardSelectedOptionIndex = Math.max(0, team.quizOptions.findIndex(opt => opt.id === selected.id));
 
     if (selected.id !== team.selectedItem.id) {
       this.playSound(this.buzzSound);
@@ -654,7 +670,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!balloon || balloon.popped) return;
 
     balloon.popped = true;
-    if (team) team.score = team.balloons.filter(b => b.popped).length;
+    if (team) {
+      team.score = team.balloons.filter(b => b.popped).length;
+      this.normalizeKeyboardBalloonSelection(team);
+    }
     this.playSound(this.popSound);
     team.showCenterPopEffect = true;
     this.setGameTimeout(() => {
@@ -707,6 +726,260 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.quizAnswerLocked = false;
     team.fadeOutOptionIds.clear();
     team.showCenterPopEffect = false;
+    team.keyboardSelectedOptionIndex = 0;
+  }
+
+  isKeyboardBalloonSelected(team: PopTeam, index: number): boolean {
+    return (
+      !this.hasActiveQuiz() &&
+      !this.showVictoryPopup &&
+      this.teams[this.keyboardSelectedTeamIndex]?.id === team.id &&
+      team.keyboardSelectedBalloonIndex === index &&
+      !team.balloons[index]?.popped &&
+      !team.completed
+    );
+  }
+
+  balloonDisplayNumber(team: PopTeam, index: number): number | null {
+    const balloon = team.balloons[index];
+    if (!balloon || balloon.popped) return null;
+
+    let displayNumber = 0;
+    for (let i = 0; i <= index; i++) {
+      if (!team.balloons[i]?.popped) displayNumber++;
+    }
+    return displayNumber;
+  }
+
+  isKeyboardOptionSelected(team: PopTeam, index: number): boolean {
+    return team.showQuiz && !team.simpleConfirmMode && !team.quizAnswerLocked && team.keyboardSelectedOptionIndex === index;
+  }
+
+  private buildKeyboardShortcuts(): GameKeyboardShortcut[] {
+    const shortcuts: GameKeyboardShortcut[] = [];
+    if (this.teamMode) {
+      shortcuts.push({
+        key: teamKeyboardShortcutLabel(this.teamCount),
+        action: this.teamCount === 2 ? 'Select or RPS team' : 'Select team'
+      });
+    }
+
+    shortcuts.push(
+      { key: '1-4', action: 'Choose quiz answer' },
+      { key: '1-9 / 0', action: 'Pop numbered balloon' },
+      { key: '← ↑ ↓ →', action: 'Move balloon or answer highlight' },
+      { key: 'Enter', action: 'Pop highlighted balloon or choose answer' },
+      { key: 'O', action: 'OK in confirm mode' },
+      { key: 'X / Esc', action: 'Oops in confirm mode' },
+      { key: 'R', action: 'Start over' }
+    );
+
+    return shortcuts;
+  }
+
+  private syncKeyboardShortcuts() {
+    this.keyboardShortcuts = this.buildKeyboardShortcuts();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.menuOpen || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const activeQuizTeam = this.teams.find(team => team.showQuiz);
+    if (activeQuizTeam) {
+      this.handleQuizKey(event, activeQuizTeam);
+      return;
+    }
+
+    if (this.rpsPhase && this.teamCount === 2) {
+      this.handleRpsKey(event);
+      return;
+    }
+
+    const teamKeyIndex = getTeamIndexForKey(event.key, this.teamCount);
+    if (this.teamMode && teamKeyIndex >= 0 && teamKeyIndex < this.teams.length) {
+      event.preventDefault();
+      this.keyboardSelectedTeamIndex = teamKeyIndex;
+      this.normalizeKeyboardBalloonSelection(this.teams[teamKeyIndex]);
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.handleGameDigit(digit);
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardBalloon(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardBalloon(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.popKeyboardSelectedBalloon();
+        break;
+      default:
+        if (event.key.toLowerCase() === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
+  private handleGameDigit(digit: string) {
+    const displayNumber = digit === '0' ? 10 : Number(digit);
+    const team = this.teamMode
+      ? (this.teams[this.keyboardSelectedTeamIndex] ?? this.teams[0])
+      : this.teams[0];
+    if (!team) return;
+
+    this.popBalloonByDisplayNumber(team, displayNumber);
+  }
+
+  private handleRpsKey(event: KeyboardEvent) {
+    const key = event.key.toLowerCase();
+    if (key === 'a' || key === '1') {
+      event.preventDefault();
+      this.onRpsChoose(0);
+    } else if (key === 'l' || key === '2') {
+      event.preventDefault();
+      this.onRpsChoose(1);
+    } else if (key === 'r') {
+      event.preventDefault();
+      this.resetGame();
+    }
+  }
+
+  private handleQuizKey(event: KeyboardEvent, team: PopTeam) {
+    if (team.simpleConfirmMode) {
+      this.handleSimpleConfirmKey(event, team);
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < team.quizOptions.length) {
+        event.preventDefault();
+        team.keyboardSelectedOptionIndex = optionIndex;
+        this.onQuizAnswer(team.quizOptions[optionIndex], team.id);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(team, -1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(team, 1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.onQuizAnswer(team.quizOptions[team.keyboardSelectedOptionIndex], team.id);
+        break;
+    }
+  }
+
+  private handleSimpleConfirmKey(event: KeyboardEvent, team: PopTeam) {
+    const key = event.key.toLowerCase();
+    if (event.key === 'Enter' || key === 'o' || key === '1') {
+      event.preventDefault();
+      this.onConfirmOk(team.id);
+      return;
+    }
+
+    if (event.key === 'Escape' || key === 'x' || key === '2') {
+      event.preventDefault();
+      this.onConfirmOops(team.id);
+    }
+  }
+
+  private moveKeyboardOption(team: PopTeam, direction: number) {
+    if (!team.quizOptions.length) return;
+    const count = team.quizOptions.length;
+    team.keyboardSelectedOptionIndex = (team.keyboardSelectedOptionIndex + direction + count) % count;
+    this.cdr.detectChanges();
+  }
+
+  private moveKeyboardBalloon(direction: number) {
+    const team = this.teams[this.keyboardSelectedTeamIndex] ?? this.teams[0];
+    if (!team) return;
+    const nextIndex = this.findNextKeyboardBalloonIndex(team, team.keyboardSelectedBalloonIndex + direction, direction);
+    if (nextIndex === null) return;
+    team.keyboardSelectedBalloonIndex = nextIndex;
+    this.cdr.detectChanges();
+  }
+
+  private popKeyboardSelectedBalloon() {
+    const team = this.teams[this.keyboardSelectedTeamIndex] ?? this.teams[0];
+    if (!team) return;
+    this.normalizeKeyboardBalloonSelection(team);
+    this.popBalloon(team.keyboardSelectedBalloonIndex, team.id);
+  }
+
+  private popBalloonByDisplayNumber(team: PopTeam, displayNumber: number) {
+    const index = this.findBalloonIndexByDisplayNumber(team, displayNumber);
+    if (index === null) return;
+
+    this.keyboardSelectedTeamIndex = Math.max(0, this.teams.findIndex(t => t.id === team.id));
+    team.keyboardSelectedBalloonIndex = index;
+    this.popBalloon(index, team.id);
+  }
+
+  private findBalloonIndexByDisplayNumber(team: PopTeam, displayNumber: number): number | null {
+    if (displayNumber < 1) return null;
+
+    let currentNumber = 0;
+    for (let index = 0; index < team.balloons.length; index++) {
+      if (team.balloons[index].popped) continue;
+      currentNumber++;
+      if (currentNumber === displayNumber) return index;
+    }
+    return null;
+  }
+
+  private normalizeKeyboardBalloonSelection(team: PopTeam) {
+    if (team.balloons[team.keyboardSelectedBalloonIndex] && !team.balloons[team.keyboardSelectedBalloonIndex].popped) return;
+    team.keyboardSelectedBalloonIndex = this.findNextKeyboardBalloonIndex(team, team.keyboardSelectedBalloonIndex, 1) ?? 0;
+  }
+
+  private findNextKeyboardBalloonIndex(team: PopTeam, startIndex: number, step: number): number | null {
+    if (!team.balloons.length) return null;
+    const normalizedStep = step < 0 ? -1 : 1;
+    let index = Math.max(0, Math.min(team.balloons.length - 1, startIndex));
+    for (let checked = 0; checked < team.balloons.length; checked++) {
+      const balloon = team.balloons[index];
+      if (balloon && !balloon.popped) return index;
+      index += normalizedStep;
+      if (index < 0) index = team.balloons.length - 1;
+      if (index >= team.balloons.length) index = 0;
+    }
+    return null;
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   onConfirmOk(teamId = 0) {

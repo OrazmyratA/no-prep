@@ -4,6 +4,14 @@
     <p>{{ 'spellingCheckLoading' | translate }}</p>
   </div>
 
+  <app-game-keyboard-help
+    *ngIf="!loading && !gameFinished && questions.length"
+    class="spelling-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <div *ngIf="!loading && !gameFinished && questions.length" class="game-board">
     <div class="header">
       <div class="score">{{ 'score' | translate }}: {{ score }} / {{ questions.length }}</div>
@@ -48,11 +56,13 @@
       <div *ngIf="showPopup" class="quiz-popup">
         <div class="popup-content">
           <button
-            *ngFor="let opt of popupOptions; trackBy: trackByOption"
+            *ngFor="let opt of popupOptions; let optIndex = index; trackBy: trackByOption"
             type="button"
             class="popup-option"
+            [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
             (click)="onQuizAnswer(opt)"
           >
+            <span *ngIf="keyboardHintsVisible" class="popup-option-number">{{ optIndex + 1 }}</span>
             {{ opt }}
           </button>
         </div>
@@ -82,24 +92,20 @@
       <button class="nav-btn" type="button" (click)="previousQuestion()" [disabled]="currentIndex === 0 || answerLocked" aria-label="Previous" title="Previous">
         <span aria-hidden="true">&#9664;</span>
       </button>
-      <button class="nav-btn skip" type="button" (click)="skipQuestion()" [disabled]="answerLocked || isCurrentAnswered" aria-label="Skip" title="Skip">
-        <img src="assets/images/skip.png" alt="" class="skip-icon">
-      </button>
       <button class="nav-btn" type="button" (click)="nextQuestion()" [disabled]="answerLocked || (currentIndex === questions.length - 1 && answeredQuestions.size >= questions.length)" aria-label="Next" title="Next">
         <span aria-hidden="true">&#9654;</span>
       </button>
     </div>
   </div>
 
-  <!-- Victory Popup -->
-  <div *ngIf="gameFinished" class="victory-overlay">
-    <div class="victory-card">
-      <h2>{{ 'spellingCheckVictory' | translate }} 🎉</h2>
-      <p>{{ 'spellingCheckScore' | translate }}: {{ score }} / {{ questions.length }}</p>
-      <button (click)="resetGame()">{{ 'playAgain' | translate }}</button>
-      <button (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
-    </div>
-  </div>
+  <app-game-finish-overlay
+    *ngIf="gameFinished"
+    [title]="'spellingCheckVictory' | translate"
+    [message]="('spellingCheckScore' | translate) + ': ' + score + ' / ' + questions.length"
+    (playAgain)="resetGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
+
 
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
 </div>

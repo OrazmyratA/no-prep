@@ -1,4 +1,11 @@
 <div #host class="game-shell">
+  <app-game-keyboard-help
+    class="reveal-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="setKeyboardHintsVisible($event)"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
   <h2 class="text-4xl font-bold text-white mb-2">{{ 'revealGameTitle' | translate }}</h2>
 
   <!-- Loading -->
@@ -58,21 +65,25 @@
       <!-- Simple OK / Oops mode (no text on item) -->
       <div *ngIf="simpleConfirmMode" class="flex justify-center gap-6 mt-4">
         <button (click)="onConfirmOk()"
-                class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+                class="quiz-option relative px-10 py-5 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">O</span>
           ✓ OK
         </button>
         <button (click)="onConfirmOops()"
-                class="quiz-option px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+                class="quiz-option relative px-10 py-5 rounded-2xl bg-gradient-to-r from-red-500 to-orange-600 text-white font-bold text-2xl hover:scale-105 transition transform min-w-[160px] shadow-lg">
+          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">X</span>
           ✗ Oops!
         </button>
       </div>
       <!-- Multiple-choice options -->
       <div *ngIf="!simpleConfirmMode" class="flex flex-wrap justify-center gap-4">
-        <button *ngFor="let opt of quizOptions; trackBy: trackByOptionId"
+        <button *ngFor="let opt of quizOptions; let optIndex = index; trackBy: trackByOptionId"
                 [attr.data-opt-id]="opt.id"
                 (click)="onQuizAnswer(opt)"
                 [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
-                class="quiz-option px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+                [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
+                class="quiz-option relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
           {{ opt.text || '?' }}
         </button>
       </div>
@@ -80,50 +91,41 @@
   </div>
 
   <!-- Non‑team mode (class mode) victory popup -->
-  <div *ngIf="!loading && gameFinished && !teamMode" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-xl p-8 text-center">
-      <p class="text-2xl mb-4">{{ 'revealGameAllRevealed' | translate }}</p>
-      <div class="space-x-4">
-        <button (click)="onMenuAction('activity')" class="bg-purple-500 text-white px-6 py-2 rounded-full">{{ 'activitiesLabel' | translate }}</button>
-        <button (click)="resetGame()" class="bg-blue-500 text-white px-6 py-2 rounded-full">{{ 'playAgain' | translate }}</button>
-      </div>
-    </div>
-  </div>
+  <app-game-finish-overlay
+    *ngIf="!loading && gameFinished && !teamMode"
+    [title]="'revealGameAllRevealed' | translate"
+    (playAgain)="resetGame()"
+    (activities)="onMenuAction('activity')">
+  </app-game-finish-overlay>
 
-  <!-- Team mode victory popup with rankings – background click does NOT close -->
-  <div *ngIf="!loading && gameFinished && teamMode" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 shadow-2xl">
-<h2 class="text-3xl font-bold text-center mb-6">🏆 {{ 'gameResults' | translate }} 🏆</h2>
-      <div class="space-y-4">
-        <div *ngFor="let entry of rankedTeamsWithPosition; trackBy: trackByRankedTeam" class="flex items-center gap-3">
-          <div class="w-12 text-center font-bold text-xl">{{ entry.medal }}</div>
-          <div class="w-28 font-semibold" [style.color]="entry.team.color">{{ entry.team.name }}</div>
-          <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
-            <div *ngIf="entry.team.score > 0"
-                 class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
-                 [style.width.%]="(entry.team.score / maxScore) * 100"
-                 [style.backgroundColor]="entry.team.color"
-                 [style.transition]="'width 0.5s ease-out'">
-              {{ entry.team.score }}
-            </div>
-            <div *ngIf="entry.team.score < 0"
-                 class="h-full flex items-center pl-3 text-gray-400 font-bold">
-              {{ entry.team.score }}
-            </div>
+  <app-game-finish-overlay
+    *ngIf="!loading && gameFinished && teamMode"
+    [title]="'gameResults' | translate"
+    (playAgain)="resetGame()"
+    (activities)="onMenuAction('activity')">
+    <div class="space-y-4 mt-6">
+      <div *ngFor="let entry of rankedTeamsWithPosition; trackBy: trackByRankedTeam" class="flex items-center gap-3">
+        <div class="w-12 text-center font-bold text-xl">{{ entry.medal }}</div>
+        <div class="w-28 font-semibold text-left" [style.color]="entry.team.color">{{ entry.team.name }}</div>
+        <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+          <div *ngIf="entry.team.score > 0"
+               class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
+               [style.width.%]="(entry.team.score / maxScore) * 100"
+               [style.backgroundColor]="entry.team.color"
+               [style.transition]="'width 0.5s ease-out'">
+            {{ entry.team.score }}
+          </div>
+          <div *ngIf="entry.team.score < 0"
+               class="h-full flex items-center pl-3 text-gray-400 font-bold">
+            {{ entry.team.score }}
           </div>
         </div>
       </div>
-
-      <div class="flex justify-center gap-4 mt-8">
-        <button (click)="onMenuAction('activity')" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-full transition">
-          {{ 'activitiesLabel' | translate }}
-        </button>
-        <button (click)="resetGame()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full transition">
-          {{ 'playAgain' | translate }}
-        </button>
-      </div>
     </div>
-  </div>
+  </app-game-finish-overlay>
+
+
+  <!-- Team mode victory popup with rankings – background click does NOT close -->
 
   <!-- Sandwich Menu -->
   <app-sandwich-menu (action)="onMenuAction($event)" (menuOpenChange)="onMenuOpenChange($event)"></app-sandwich-menu>

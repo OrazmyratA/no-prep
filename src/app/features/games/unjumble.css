@@ -4,6 +4,13 @@
   box-sizing: border-box;
 }
 
+.unjumble-keyboard-help {
+  position: absolute;
+  top: 3.25rem;
+  left: 0.75rem;
+  z-index: 30;
+}
+
 .media-stage {
   display: flex;
   justify-content: center;
@@ -136,11 +143,21 @@
 }
 
 .word-tile {
+  position: relative;
   user-select: none;
   max-width: min(100%, 18rem);
   line-height: 1.2;
   overflow-wrap: anywhere;
   touch-action: none;
+}
+
+.word-tile-source.keyboard-selected {
+  outline: 4px solid #facc15;
+  outline-offset: 4px;
+  box-shadow:
+    0 14px 30px rgba(15, 23, 42, 0.32),
+    0 0 0 8px rgba(250, 204, 21, 0.22);
+  transform: scale(1.06);
 }
 
 .long-sentence .word-tile {
@@ -196,6 +213,11 @@
     padding: 0.45rem !important;
   }
 
+  .unjumble-keyboard-help {
+    top: 2.15rem;
+    left: 0.45rem;
+  }
+
   :host h2 {
     font-size: clamp(1rem, 5.5dvh, 1.5rem) !important;
     line-height: 1;
@@ -229,4 +251,5 @@
     font-size: 0.86rem !important;
     border-radius: 0.45rem !important;
   }
+
 }

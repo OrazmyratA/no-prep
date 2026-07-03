@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, ViewChild, AfterViewInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 @Component({
   selector: 'app-watch-memorize',
@@ -27,6 +28,16 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   loading = true;
   speed = 5; // seconds per item
   count = 3; // number of items to show
+  keyboardSelectedIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'P / tap area', action: 'Pause or resume moving cards' },
+    { key: '1-9 / 0', action: 'Choose numbered card' },
+    { key: '1 then 2', action: 'Choose card 12' },
+    { key: '← ↑ ↓ →', action: 'Move card highlight' },
+    { key: 'Enter', action: 'Choose highlighted card' },
+    { key: 'R', action: 'Shuffle and restart' }
+  ];
   private scrollTimer: any;
   private phaseTransitionTimer: any;
   private winPopupTimer: any;
@@ -51,6 +62,8 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   gridTextSize = 14;
   private resizeObserver: ResizeObserver | null = null;
   private layoutSubscription?: Subscription;
+  private keyboardNumberBuffer = '';
+  private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Sound effects
   private flipSound: HTMLAudioElement | null = null;
@@ -108,6 +121,7 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
 
   ngOnDestroy() {
     this.destroyed = true;
+    this.clearKeyboardNumberBuffer();
     this.clearTimers();
     this.resizeObserver?.disconnect();
     this.layoutSubscription?.unsubscribe();
@@ -257,6 +271,7 @@ trackByItemId(index: number, item: Item): number | string {
     this.showWinPopup = false;
     this.isPaused = false;
     this.activeAnimation = null;
+    this.keyboardSelectedIndex = 0;
     this.selectedIndices.clear();
     this.clearTimers();
     this.cdr.detectChanges();
@@ -269,6 +284,7 @@ private nextScrollItem() {
   if (this.currentScrollIndex + 1 >= this.scrollingItems.length) {
     this.phaseTransitionTimer = setTimeout(() => {
       this.scrollPhase = false;
+      this.keyboardSelectedIndex = this.findNextKeyboardGridIndex(0, 1) ?? 0;
       this.calculateGridLayout();
       this.cdr.detectChanges();
     }, 500);
@@ -380,6 +396,23 @@ private runActiveAnimation() {
     }
   }
 
+  private togglePauseFromKeyboard() {
+    if (!this.scrollPhase || this.gameFinished) return;
+    if (this.isPaused) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
+    this.cdr.detectChanges();
+  }
+
+  togglePauseFromTouch(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.clearKeyboardNumberBuffer();
+    this.togglePauseFromKeyboard();
+  }
+
   private applySettings(params: Record<string, unknown>) {
     const rawSpeed = Number(params['speed']);
     if (Number.isFinite(rawSpeed)) {
@@ -399,12 +432,15 @@ private runActiveAnimation() {
     if (this.scrollPhase || this.gameFinished) return;
 
     const clickedItem = this.gridItems[index];
+    if (!clickedItem) return;
+    this.keyboardSelectedIndex = index;
     const isCorrect = this.scrollingItems.includes(clickedItem);
 
     if (isCorrect) {
       if (!this.selectedIndices.has(index)) {
         this.selectedIndices.add(index);
         this.playSound(this.collectSound, 0.5);
+        this.normalizeKeyboardSelection();
 
         // Check if all correct items have been selected
         const allCorrectSelected = this.scrollingItems.every(item =>
@@ -435,6 +471,183 @@ private runActiveAnimation() {
       this.playSound(this.buzzSound, 0.4);
     }
     this.cdr.detectChanges();
+  }
+
+  isKeyboardSelected(index: number): boolean {
+    return (
+      !this.scrollPhase &&
+      !this.gameFinished &&
+      this.keyboardSelectedIndex === index &&
+      !this.selectedIndices.has(index)
+    );
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.isKeyboardEventFromInteractiveElement(event) || this.loading || this.showWinPopup) return;
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null && !this.scrollPhase && !this.gameFinished) {
+      event.preventDefault();
+      this.handleKeyboardNumber(digit);
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        this.handleGridArrowKey(event, -1);
+        break;
+      case 'ArrowRight':
+        this.handleGridArrowKey(event, 1);
+        break;
+      case 'ArrowUp':
+        this.handleGridArrowKey(event, -this.gridColumns);
+        break;
+      case 'ArrowDown':
+        this.handleGridArrowKey(event, this.gridColumns);
+        break;
+      case 'Enter':
+        if (!this.scrollPhase && !this.gameFinished) {
+          event.preventDefault();
+          this.clearKeyboardNumberBuffer();
+          this.onGridClick(this.keyboardSelectedIndex);
+        }
+        break;
+      default:
+        this.handleLetterShortcut(event);
+        break;
+    }
+  }
+
+  private handleGridArrowKey(event: KeyboardEvent, step: number) {
+    if (this.scrollPhase || this.gameFinished) return;
+    event.preventDefault();
+    this.clearKeyboardNumberBuffer();
+    this.moveKeyboardSelection(step);
+  }
+
+  private handleLetterShortcut(event: KeyboardEvent) {
+    switch (event.key.toLowerCase()) {
+      case 'p':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.togglePauseFromKeyboard();
+        break;
+      case 'r':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.resetGame();
+        break;
+      case 'escape':
+        this.clearKeyboardNumberBuffer();
+        break;
+    }
+  }
+
+  private handleKeyboardNumber(digit: string) {
+    if (!this.keyboardNumberBuffer && digit === '0') {
+      this.chooseGridItemFromKeyboard(9);
+      return;
+    }
+
+    this.clearKeyboardNumberTimer();
+    this.keyboardNumberBuffer += digit;
+
+    const cardNumber = Number(this.keyboardNumberBuffer);
+    const isValidCardNumber = cardNumber >= 1 && cardNumber <= this.gridItems.length;
+    const hasLongerMatch = this.hasLongerKeyboardNumberMatch(this.keyboardNumberBuffer);
+
+    if (hasLongerMatch) {
+      this.keyboardNumberTimer = setTimeout(() => {
+        if (!this.destroyed) {
+          const bufferedNumber = Number(this.keyboardNumberBuffer);
+          if (bufferedNumber >= 1 && bufferedNumber <= this.gridItems.length) {
+            this.chooseGridItemFromKeyboard(bufferedNumber - 1);
+          }
+        }
+        this.clearKeyboardNumberBuffer();
+      }, 360);
+      return;
+    }
+
+    if (isValidCardNumber) {
+      this.chooseGridItemFromKeyboard(cardNumber - 1);
+      return;
+    }
+
+    this.clearKeyboardNumberBuffer();
+  }
+
+  private chooseGridItemFromKeyboard(index: number) {
+    this.clearKeyboardNumberBuffer();
+    if (!this.gridItems[index]) return;
+    this.keyboardSelectedIndex = index;
+    this.onGridClick(index);
+    this.cdr.detectChanges();
+  }
+
+  private moveKeyboardSelection(step: number) {
+    const nextIndex = this.findNextKeyboardGridIndex(this.keyboardSelectedIndex + step, step);
+    if (nextIndex === null) return;
+    this.keyboardSelectedIndex = nextIndex;
+    this.cdr.detectChanges();
+  }
+
+  private normalizeKeyboardSelection() {
+    if (this.gridItems[this.keyboardSelectedIndex] && !this.selectedIndices.has(this.keyboardSelectedIndex)) return;
+    this.keyboardSelectedIndex = this.findNextKeyboardGridIndex(this.keyboardSelectedIndex, 1) ?? 0;
+  }
+
+  private findNextKeyboardGridIndex(startIndex: number, step: number): number | null {
+    if (!this.gridItems.length) return null;
+
+    const direction = step < 0 ? -1 : 1;
+    const normalizedStep = step === 0 ? direction : step;
+    let index = this.clampGridIndex(startIndex);
+
+    for (let checked = 0; checked < this.gridItems.length; checked++) {
+      if (this.gridItems[index] && !this.selectedIndices.has(index)) return index;
+      index = this.clampGridIndex(index + normalizedStep);
+    }
+
+    return null;
+  }
+
+  private clampGridIndex(index: number): number {
+    if (index < 0) return 0;
+    if (index >= this.gridItems.length) return this.gridItems.length - 1;
+    return index;
+  }
+
+  private hasLongerKeyboardNumberMatch(prefix: string): boolean {
+    for (let cardNumber = 1; cardNumber <= this.gridItems.length; cardNumber++) {
+      const value = String(cardNumber);
+      if (value.length > prefix.length && value.startsWith(prefix)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
+  }
+
+  private clearKeyboardNumberTimer() {
+    if (!this.keyboardNumberTimer) return;
+    clearTimeout(this.keyboardNumberTimer);
+    this.keyboardNumberTimer = null;
+  }
+
+  private clearKeyboardNumberBuffer() {
+    this.clearKeyboardNumberTimer();
+    this.keyboardNumberBuffer = '';
   }
 
   private playSound(sound: HTMLAudioElement | null, volume: number = 1.0) {

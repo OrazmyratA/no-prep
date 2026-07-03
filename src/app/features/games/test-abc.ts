@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface Question {
   correctItem: Item;
@@ -28,8 +29,19 @@ export class TestAbcComponent implements OnInit, OnDestroy {
   reverseMode = false; // false: word→image, true: image→word
   selectedOptionId: number | null = null;
   selectedCorrect = false;
+  keyboardSelectedOptionIndex = 0;
   answeredQuestions = new Map<number, number>();
   fadeOutOptionIds = new Set<number>();
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'Space', action: 'Play question audio' },
+    { key: 'F', action: 'Flip question card' },
+    { key: '1 / 2 / 3', action: 'Choose an answer' },
+    { key: '← ↑ ↓ →', action: 'Move answer highlight' },
+    { key: 'Enter', action: 'Choose highlighted answer' },
+    { key: 'B / N', action: 'Previous or next question' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   private correctSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
@@ -158,6 +170,7 @@ export class TestAbcComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.selectedOptionId = null;
     this.selectedCorrect = false;
+    this.keyboardSelectedOptionIndex = 0;
     this.fadeOutOptionIds.clear();
     this.cdr.detectChanges();
   }
@@ -217,6 +230,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
 
   onOptionClick(selectedItem: Item) {
     if (this.answeredQuestions.has(this.currentIndex) || this.gameFinished) return;
+    this.keyboardSelectedOptionIndex = Math.max(0, this.questions[this.currentIndex]?.options.indexOf(selectedItem) ?? 0);
     const currentQ = this.questions[this.currentIndex];
     const isCorrect = selectedItem.id === currentQ.correctItem.id;
 
@@ -264,6 +278,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
       this.currentIndex++;
       this.isFlipped = false;
       this.answered = false;
+      this.keyboardSelectedOptionIndex = 0;
       // Restore previous selection if this question was already answered
       const answeredItemId = this.answeredQuestions.get(this.currentIndex);
       if (answeredItemId) {
@@ -288,6 +303,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
         this.answered = false;
         this.selectedOptionId = null;
         this.selectedCorrect = false;
+        this.keyboardSelectedOptionIndex = 0;
         this.fadeOutOptionIds.clear();
       }
     }
@@ -307,6 +323,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
       this.currentIndex--;
       this.isFlipped = false;
       this.answered = false;
+      this.keyboardSelectedOptionIndex = 0;
       const answeredItemId = this.answeredQuestions.get(this.currentIndex);
       if (answeredItemId) {
         this.selectedOptionId = answeredItemId;
@@ -347,6 +364,73 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
     return option.id ?? option.text ?? index;
   }
 
+  isKeyboardOptionSelected(index: number): boolean {
+    return !this.gameFinished &&
+      !this.answeredQuestions.has(this.currentIndex) &&
+      this.keyboardSelectedOptionIndex === index;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (this.selectKeyboardOption(optionIndex)) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case ' ':
+        event.preventDefault();
+        this.playCurrentQuestionAudio();
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(1);
+        break;
+      case 'Enter':
+        if (this.selectKeyboardOption(this.keyboardSelectedOptionIndex)) {
+          event.preventDefault();
+        }
+        break;
+      default:
+        if (key === 'f') {
+          event.preventDefault();
+          this.toggleFlip();
+        } else if (key === 'b') {
+          event.preventDefault();
+          this.previousQuestion();
+        } else if (key === 'n') {
+          event.preventDefault();
+          this.nextQuestion();
+        } else if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        }
+        break;
+    }
+  }
+
   resetGame() {
     this.stopActiveAudio();
     this.buildQuestions();
@@ -374,10 +458,38 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
 
   playAudioAndStay(event: Event) {
     event.stopPropagation();
+    this.playCurrentQuestionAudio();
+  }
+
+  private playCurrentQuestionAudio() {
     const currentItem = this.questions[this.currentIndex]?.correctItem;
     if (currentItem?.audio) {
       this.playTrackedAudio(currentItem.audio);
     }
+  }
+
+  private moveKeyboardOption(direction: number) {
+    const options = this.questions[this.currentIndex]?.options ?? [];
+    if (!options.length || this.answeredQuestions.has(this.currentIndex)) return;
+    this.keyboardSelectedOptionIndex = (this.keyboardSelectedOptionIndex + direction + options.length) % options.length;
+    this.cdr.detectChanges();
+  }
+
+  private selectKeyboardOption(index: number): boolean {
+    const options = this.questions[this.currentIndex]?.options ?? [];
+    if (this.answeredQuestions.has(this.currentIndex) || index < 0 || index >= options.length) return false;
+    this.keyboardSelectedOptionIndex = index;
+    this.onOptionClick(options[index]);
+    return true;
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^[1-9]$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private playTrackedAudio(blob: Blob) {

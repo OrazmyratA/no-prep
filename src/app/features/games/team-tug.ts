@@ -1,8 +1,9 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface Team {
   name: string;
@@ -52,6 +53,13 @@ export class TeamTugComponent implements OnInit, OnDestroy {
 
   loading = true;
   gameActive = false; // for template
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'A / S', action: 'Left team first or second answer' },
+    { key: 'K / L', action: 'Right team first or second answer' },
+    { key: 'R', action: 'Start over' },
+    { key: 'Enter', action: 'Play again after winner' }
+  ];
 
   // Sounds
   private correctSound: HTMLAudioElement | null = null;
@@ -225,6 +233,44 @@ export class TeamTugComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameStatus !== 'running') {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    switch (key) {
+      case 'a':
+        event.preventDefault();
+        this.onTeamButtonClick('left', this.leftButtonOrder ? true : false);
+        break;
+      case 's':
+        event.preventDefault();
+        this.onTeamButtonClick('left', this.leftButtonOrder ? false : true);
+        break;
+      case 'k':
+        event.preventDefault();
+        this.onTeamButtonClick('right', this.rightButtonOrder ? true : false);
+        break;
+      case 'l':
+        event.preventDefault();
+        this.onTeamButtonClick('right', this.rightButtonOrder ? false : true);
+        break;
+      case 'r':
+        event.preventDefault();
+        this.resetGame();
+        break;
+    }
+  }
+
   private getCharacterBounds() {
     const halfWidth = this.characterWidth / 2;
     return { left: halfWidth, right: 100 - halfWidth };
@@ -323,6 +369,11 @@ export class TeamTugComponent implements OnInit, OnDestroy {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
     }
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {

@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 type RPSChoice = 'rock' | 'paper' | 'scissors';
 
@@ -63,6 +64,17 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   quizOptions: QuizOption[] = [];
   quizCorrectAnswer = '';
   quizLocked = false;
+  keyboardSelectedQuizIndex = 0;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'A', action: 'Spin or lock blue team' },
+    { key: 'L', action: 'Spin or lock red team' },
+    { key: 'O / X', action: 'OK or Oops in simple quiz' },
+    { key: '1-3', action: 'Choose quiz answer' },
+    { key: '← →', action: 'Move quiz highlight' },
+    { key: 'Enter', action: 'Choose highlighted answer or replay' },
+    { key: 'R', action: 'Start over' }
+  ];
 
   // Victory state
   victoryVisible = false;
@@ -182,6 +194,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.quizOptions = [];
     this.quizCorrectAnswer = '';
     this.quizLocked = false;
+    this.keyboardSelectedQuizIndex = 0;
     this.victoryVisible = false;
     this.victoryTeam = null;
     this.victoryPending = false;
@@ -313,6 +326,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     this.quizWinner = winner;
     this.quizLocked = false;
     this.simpleConfirmMode = false;
+    this.keyboardSelectedQuizIndex = 0;
 
     if (this.quizItems.length === 0) {
       this.quizImageSrc = null;
@@ -346,6 +360,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
   private openSimpleConfirm() {
     this.simpleConfirmMode = true;
     this.quizOptions = [];
+    this.keyboardSelectedQuizIndex = 0;
     this.quizVisible = true;
     this.quizOverlayVisible = false;
     this.cdr.detectChanges();
@@ -354,6 +369,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   onConfirmOk() {
     if (!this.quizWinner) return;
+    this.quizLocked = true;
     const winner = this.quizWinner;
     this.quizWinner = null;
     this.playSound(this.collectSound);
@@ -369,6 +385,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   onConfirmOops() {
     if (!this.quizWinner) return;
+    this.quizLocked = true;
     const winner = this.quizWinner;
     this.quizWinner = null;
     this.playSound(this.buzzSound);
@@ -385,6 +402,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   onQuizAnswer(opt: QuizOption) {
     if (this.quizLocked || !this.quizWinner) return;
+    this.keyboardSelectedQuizIndex = Math.max(0, this.quizOptions.indexOf(opt));
     this.quizLocked = true;
 
     const isCorrect = opt.text === this.quizCorrectAnswer;
@@ -607,6 +625,104 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
 
   trackQuizOption(_index: number, opt: QuizOption): string {
     return opt.text;
+  }
+
+  isKeyboardQuizOptionSelected(index: number): boolean {
+    return this.quizVisible && !this.quizLocked && this.keyboardSelectedQuizIndex === index;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    const key = event.key.toLowerCase();
+    if (this.gameFinished) {
+      if (key === 'r' || event.key === 'Enter') {
+        event.preventDefault();
+        this.resetGame();
+      }
+      return;
+    }
+
+    if (this.quizVisible) {
+      this.handleQuizKey(event);
+      return;
+    }
+
+    if (key === 'a') {
+      event.preventDefault();
+      this.onChoose('left');
+    } else if (key === 'l') {
+      event.preventDefault();
+      this.onChoose('right');
+    } else if (key === 'r') {
+      event.preventDefault();
+      this.resetGame();
+    }
+  }
+
+  private handleQuizKey(event: KeyboardEvent) {
+    if (this.quizLocked) return;
+    const key = event.key.toLowerCase();
+
+    if (this.simpleConfirmMode) {
+      if (event.key === 'Enter' || key === 'o' || key === '1') {
+        event.preventDefault();
+        this.onConfirmOk();
+      } else if (event.key === 'Escape' || key === 'x' || key === '2') {
+        event.preventDefault();
+        this.onConfirmOops();
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < this.quizOptions.length) {
+        event.preventDefault();
+        this.keyboardSelectedQuizIndex = optionIndex;
+        this.onQuizAnswer(this.quizOptions[optionIndex]);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardQuizSelection(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardQuizSelection(1);
+        break;
+      case 'Enter':
+        if (this.quizOptions[this.keyboardSelectedQuizIndex]) {
+          event.preventDefault();
+          this.onQuizAnswer(this.quizOptions[this.keyboardSelectedQuizIndex]);
+        }
+        break;
+    }
+  }
+
+  private moveKeyboardQuizSelection(direction: number) {
+    const count = this.quizOptions.length;
+    if (!count) return;
+    this.keyboardSelectedQuizIndex = (this.keyboardSelectedQuizIndex + direction + count) % count;
+    this.cdr.detectChanges();
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^[1-9]$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (!target) return false;
+    return !!target.closest('input, textarea, select, button, a, [contenteditable="true"]');
   }
 
   get hasLongOptions(): boolean {

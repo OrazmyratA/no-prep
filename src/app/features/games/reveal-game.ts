@@ -4,12 +4,15 @@ import {
   OnDestroy,
   ChangeDetectorRef,
   ElementRef,
+  HostListener,
   ViewChild,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 
 interface Team {
   id: number;
@@ -40,6 +43,8 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   gameActive = false;
   gameFinished = false;
   loading = true;
+  keyboardHintsVisible = false;
+  keyboardShortcuts: GameKeyboardShortcut[] = this.buildKeyboardShortcuts(6);
   private timer: any;
 
   public totalTime = 25;
@@ -75,6 +80,7 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   quizOverlayVisible = false;
   quizOptions: Item[] = [];
   quizAnswerLocked = false;
+  keyboardSelectedOptionIndex = 0;
   fadeOutOptionIds = new Set<number>();
   simpleConfirmMode = false;
 
@@ -174,6 +180,7 @@ teamColors = ['#ff4d4d', '#ff8a00', '#00c2ff', '#7dff3b', '#ff4fd8', '#9b5cff', 
       });
     }
     this.createTeamButtons();
+    this.syncKeyboardShortcuts();
   }
 
 private createTeamButtons() {
@@ -220,9 +227,7 @@ private createTeamButtons() {
     btn.style.transition = 'transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease';
     btn.style.overflow = 'hidden';
 
-    const scoreSpan = document.createElement('span');
-    scoreSpan.textContent = String(team.score);
-    btn.appendChild(scoreSpan);
+    this.renderTeamButtonContent(btn, team, index);
     btn.setAttribute('data-team-id', String(team.id));
 
     if (this.teams.length === 1) {
@@ -254,12 +259,8 @@ private updateTeamButtons() {
     const teamId = Number(btn.getAttribute('data-team-id'));
     const team = this.teams.find(t => t.id === teamId);
     if (team) {
-      btn.textContent = '';
-      const scoreSpan = document.createElement('span');
-      scoreSpan.style.fontSize = '1.7rem';
-      scoreSpan.style.fontWeight = '900';
-      scoreSpan.textContent = String(team.score);
-      btn.appendChild(scoreSpan);
+      const teamIndex = this.teams.findIndex(t => t.id === team.id);
+      this.renderTeamButtonContent(btn, team, teamIndex);
       btn.setAttribute('aria-label', `${team.name} ${team.score}`);
     }
     btn.classList.remove('team-btn-active');
@@ -300,6 +301,35 @@ private updateTeamButtons() {
       activeBtn.style.cursor = 'pointer';
     }
   }
+}
+
+private renderTeamButtonContent(btn: HTMLElement, team: Team, teamIndex: number) {
+  btn.textContent = '';
+
+  const keySpan = document.createElement('span');
+  keySpan.className = 'game-keyboard-hint-badge team-btn-key-badge';
+  keySpan.textContent = getTeamKeyboardKeys(this.teams.length || 1)[teamIndex]?.toUpperCase() ?? String(teamIndex + 1);
+  keySpan.hidden = !this.keyboardHintsVisible;
+  btn.appendChild(keySpan);
+
+  const scoreSpan = document.createElement('span');
+  scoreSpan.className = 'team-btn-score';
+  scoreSpan.style.fontSize = '1.7rem';
+  scoreSpan.style.fontWeight = '900';
+  scoreSpan.textContent = String(team.score);
+  btn.appendChild(scoreSpan);
+}
+
+setKeyboardHintsVisible(isVisible: boolean) {
+  this.keyboardHintsVisible = isVisible;
+  this.updateTeamButtonHintVisibility();
+}
+
+private updateTeamButtonHintVisibility() {
+  const badges = this.hostElement.nativeElement.querySelectorAll('.team-btn-key-badge');
+  badges.forEach((badge: Element) => {
+    (badge as HTMLElement).hidden = !this.keyboardHintsVisible;
+  });
 }
 
   private selectRandomNextTeam(excludeTeamId: number): number {
@@ -343,6 +373,7 @@ private updateTeamButtons() {
 
     this.simpleConfirmMode = this.forceSimpleMode || !hasText || options.length === 0;
     this.quizOptions = options;
+    this.keyboardSelectedOptionIndex = 0;
     this.showQuiz = true;
     this.updateTeamButtons();
     this.quizOverlayVisible = false;
@@ -390,6 +421,7 @@ private updateTeamButtons() {
   onQuizAnswer(selected: Item) {
     if (!this.showQuiz || this.quizAnswerLocked || !this.currentItem) return;
     this.quizAnswerLocked = true;
+    this.keyboardSelectedOptionIndex = this.quizOptions.findIndex(opt => opt.id === selected.id);
 
     const isCorrect = selected.text === this.currentItem.text;
 
@@ -464,11 +496,172 @@ private updateTeamButtons() {
     this.cdr.detectChanges();
   }
 
+  isKeyboardOptionSelected(index: number): boolean {
+    return !this.simpleConfirmMode && this.showQuiz && this.keyboardSelectedOptionIndex === index && !this.quizAnswerLocked;
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeyDown(event: KeyboardEvent) {
+    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+
+    if (this.showQuiz) {
+      this.handleQuizKey(event);
+      return;
+    }
+
+    const teamKeyIndex = getTeamIndexForKey(event.key, this.teams.length);
+    if (teamKeyIndex >= 0 && this.teamMode && this.gameActive && !this.gameFinished) {
+      const team = this.teams[teamKeyIndex];
+      if (team) {
+        event.preventDefault();
+        this.onTeamPress(team.id);
+      }
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null && this.teamMode && this.gameActive && !this.gameFinished) {
+      const teamIndex = Number(digit) - 1;
+      if (teamIndex >= 0 && teamIndex < this.teams.length) {
+        event.preventDefault();
+        this.onTeamPress(this.teams[teamIndex].id);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'Enter':
+        event.preventDefault();
+        if (this.gameFinished) {
+          this.resetGame();
+        } else if (!this.teamMode) {
+          this.openQuiz();
+        }
+        break;
+      default:
+        this.handleGameShortcut(event);
+        break;
+    }
+  }
+
+  private handleGameShortcut(event: KeyboardEvent) {
+    switch (event.key.toLowerCase()) {
+      case 'p':
+        event.preventDefault();
+        this.togglePauseFromKeyboard();
+        break;
+      case 'n':
+        if (this.gameActive && !this.gameFinished) {
+          event.preventDefault();
+          this.skipToNext();
+        }
+        break;
+      case 'r':
+        event.preventDefault();
+        this.resetGame();
+        break;
+    }
+  }
+
+  private handleQuizKey(event: KeyboardEvent) {
+    if (this.simpleConfirmMode) {
+      this.handleSimpleConfirmKey(event);
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < this.quizOptions.length) {
+        event.preventDefault();
+        this.keyboardSelectedOptionIndex = optionIndex;
+        this.onQuizAnswer(this.quizOptions[optionIndex]);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.onQuizAnswer(this.quizOptions[this.keyboardSelectedOptionIndex]);
+        break;
+    }
+  }
+
+  private buildKeyboardShortcuts(teamCount: number): GameKeyboardShortcut[] {
+    return [
+      { key: 'Enter', action: 'Open quiz or choose highlighted answer' },
+      { key: teamKeyboardShortcutLabel(teamCount), action: 'Buzz team' },
+      { key: '1-6', action: 'Choose quiz answer' },
+      { key: '← / →', action: 'Move quiz answer highlight' },
+      { key: 'P', action: 'Pause or resume reveal' },
+      { key: 'N', action: 'Skip to next item' },
+      { key: 'O', action: 'OK in confirm mode' },
+      { key: 'X / Esc', action: 'Oops in confirm mode' },
+      { key: 'R', action: 'Start over' }
+    ];
+  }
+
+  private syncKeyboardShortcuts() {
+    this.keyboardShortcuts = this.buildKeyboardShortcuts(this.teams.length || 6);
+  }
+
+  private handleSimpleConfirmKey(event: KeyboardEvent) {
+    const key = event.key.toLowerCase();
+    if (event.key === 'Enter' || key === 'o' || key === '1') {
+      event.preventDefault();
+      this.onConfirmOk();
+      return;
+    }
+
+    if (event.key === 'Escape' || key === 'x' || key === '2') {
+      event.preventDefault();
+      this.onConfirmOops();
+    }
+  }
+
+  private moveKeyboardOption(direction: number) {
+    if (this.quizOptions.length === 0) return;
+    const count = this.quizOptions.length;
+    this.keyboardSelectedOptionIndex = (this.keyboardSelectedOptionIndex + direction + count) % count;
+    this.cdr.detectChanges();
+  }
+
+  private togglePauseFromKeyboard() {
+    if (!this.gameActive || this.gameFinished || this.fastRevealMode) return;
+    if (this.isPaused) {
+      this.resumeGame();
+    } else {
+      this.pauseGame();
+    }
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^[1-9]$/.test(event.key) ? event.key : null;
+  }
+
+  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
+  }
+
   private closeQuizAndResetTurn() {
     this.showQuiz = false;
     this.quizOverlayVisible = false;
     this.quizOptions = [];
     this.quizAnswerLocked = false;
+    this.keyboardSelectedOptionIndex = 0;
     this.fadeOutOptionIds.clear();
     this.quizPending = false;
     this.simpleConfirmMode = false;
@@ -548,6 +741,7 @@ if (this.currentIndex >= this.items.length) {
     this.quizOverlayVisible = false;
     this.quizOptions = [];
     this.quizAnswerLocked = false;
+    this.keyboardSelectedOptionIndex = 0;
     this.fadeOutOptionIds.clear();
     this.quizPending = false;
     this.simpleConfirmMode = false;
@@ -672,6 +866,7 @@ if (this.currentIndex >= this.items.length) {
 
     this.simpleConfirmMode = this.forceSimpleMode || !hasText || options.length === 0;
     this.quizOptions = options;
+    this.keyboardSelectedOptionIndex = 0;
     this.showQuiz = true;
     this.updateTeamButtons();
     this.quizOverlayVisible = false;
