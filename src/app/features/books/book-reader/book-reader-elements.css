@@ -9,8 +9,18 @@
   pointer-events: auto;
   overflow: hidden;
   contain: layout paint;
-  z-index: 10;
+  z-index: 18;
   transition: transform 0.15s ease, filter 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.reader-element.media-element {
+  z-index: 12;
+}
+
+.reader-element.ink-element,
+.reader-element.highlighter-element,
+.reader-element.text-mark-element {
+  z-index: 14;
 }
 
 .reader-element:not(.hidden-focus):hover {
@@ -81,6 +91,7 @@
 
 .reader-element.text-task-element,
 .reader-element.choice-task-element {
+  z-index: 20;
   container-type: size;
   display: block;
   overflow: visible;
@@ -116,6 +127,7 @@
 }
 
 .reader-element.circle-task-element {
+  z-index: 20;
   display: block;
   overflow: visible;
   border: 2px dashed rgba(71, 85, 105, 0.24);
@@ -161,7 +173,7 @@
 .match-line-layer {
   position: absolute;
   inset: 0;
-  z-index: 9;
+  z-index: 32;
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -184,6 +196,7 @@
 }
 
 .reader-element.match-task-element {
+  z-index: 22;
   overflow: visible;
   border: 0;
   border-radius: 999px;
@@ -348,6 +361,7 @@
 }
 
 .reader-element.dot-element {
+  z-index: 22;
   border-radius: 0;
   background: transparent;
   border: 0;
@@ -370,6 +384,7 @@
 }
 
 .reader-element.note-element {
+  z-index: 22;
   background: transparent;
   border: 0;
   color: #78350f;
@@ -380,6 +395,7 @@
 }
 
 .reader-element.answer-key-element {
+  z-index: 22;
   display: grid;
   place-items: center;
   overflow: visible;
@@ -390,6 +406,7 @@
 }
 
 .reader-element.game-element {
+  z-index: 22;
   background: transparent;
   border: 0;
   color: #14532d;
@@ -397,6 +414,7 @@
 }
 
 .reader-element.speaking-ai-element {
+  z-index: 22;
   background: transparent;
   border: 0;
   overflow: visible;

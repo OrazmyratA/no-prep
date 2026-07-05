@@ -226,7 +226,7 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       : 'https://www.google.com/search?tbm=isch';
 
     if (this.platform.isElectron()) {
-      (window as any).electronAPI.openExternalUrl(url);
+      await (window as any).electronAPI.openExternalUrl(url);
     } else if (this.platform.isNative()) {
       await Browser.open({ url });
     } else {

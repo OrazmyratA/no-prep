@@ -129,6 +129,8 @@
       [class.speaking-ai-element]="element.type === 'speakingAi'"
       [class.speaking-ai-disabled]="element.type === 'speakingAi' && !reader.isSpeakingAiEnabled(element, page)"
       [class.speaking-ai-active]="element.type === 'speakingAi' && reader.activeSpeakingElement?.id === element.id"
+      [class.image-element]="element.type === 'image'"
+      [class.media-element]="element.type === 'image' || element.type === 'video' || element.type === 'answerKey'"
       [class.note-element]="element.type === 'note'"
       [class.answer-key-element]="element.type === 'answerKey'"
       [class.ink-element]="element.type === 'ink'"

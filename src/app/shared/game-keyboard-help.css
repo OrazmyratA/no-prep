@@ -78,6 +78,12 @@
   line-height: 1.25;
 }
 
+.keyboard-help-row-global + .keyboard-help-row:not(.keyboard-help-row-global) {
+  margin-top: 5px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
 .keyboard-help-row kbd {
   min-width: 42px;
   padding: 3px 7px;

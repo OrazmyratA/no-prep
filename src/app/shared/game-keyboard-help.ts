@@ -16,6 +16,13 @@ export class GameKeyboardHelpComponent {
   @Input() title = 'Keyboard';
   @Output() openChange = new EventEmitter<boolean>();
 
+  readonly globalShortcuts: GameKeyboardShortcut[] = [
+    { key: 'I', action: 'Show or hide keyboard labels' },
+    { key: 'H', action: 'Open or close menu' },
+    { key: 'T', action: 'Go to topics' },
+    { key: 'Y', action: 'Go to activities' }
+  ];
+
   isOpen = false;
   hintsVisible = false;
 

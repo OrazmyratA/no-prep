@@ -13,6 +13,10 @@
   <div *ngIf="isOpen" class="keyboard-help-panel" (click)="onPanelClick($event)">
     <div class="keyboard-help-title">{{ title }}</div>
     <div class="keyboard-help-list">
+      <div *ngFor="let shortcut of globalShortcuts" class="keyboard-help-row keyboard-help-row-global">
+        <kbd>{{ shortcut.key }}</kbd>
+        <span>{{ shortcut.action }}</span>
+      </div>
       <div *ngFor="let shortcut of shortcuts" class="keyboard-help-row">
         <kbd>{{ shortcut.key }}</kbd>
         <span>{{ shortcut.action }}</span>

@@ -72,7 +72,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     { key: 'Space', action: 'Play current card audio' },
     { key: 'F', action: 'Flip card' },
     { key: 'A / L', action: 'Add next word for left or right team' },
-    { key: 'B / N / K', action: 'Previous, next, or skip in one-by-one mode' },
+    { key: 'B / N', action: 'Previous or next in one-by-one mode' },
     { key: 'R', action: 'Start over' }
   ];
 
@@ -704,13 +704,6 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     if (nextIndex !== null) this.loadOneByOneItem(nextIndex);
   }
 
-  skipOneByOneItem() {
-    if (this.correctTeam !== null) return;
-    const nextIndex = this.findNextUncompletedIndex(this.currentItemIndex, 1)
-      ?? this.findNextUncompletedIndex(this.currentItemIndex, -1);
-    if (nextIndex !== null) this.loadOneByOneItem(nextIndex);
-  }
-
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -747,9 +740,6 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
         } else if (key === 'n') {
           event.preventDefault();
           this.nextOneByOneItem();
-        } else if (key === 'k') {
-          event.preventDefault();
-          this.skipOneByOneItem();
         } else if (key === 'r') {
           event.preventDefault();
           this.resetGame();

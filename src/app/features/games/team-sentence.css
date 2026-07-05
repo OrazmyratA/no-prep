@@ -400,17 +400,9 @@
   box-shadow: 0 8px 22px rgba(0,0,0,0.28);
   cursor: pointer;
 }
-.nav-btn.skip {
-  background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
-}
 .nav-btn:disabled {
   opacity: 0.42;
   cursor: not-allowed;
-}
-.skip-icon {
-  width: 1.55rem;
-  height: 1.55rem;
-  object-fit: contain;
 }
 .floating-word {
   position: absolute;
@@ -651,9 +643,5 @@
     width: 2.8rem;
     height: 2.2rem;
     font-size: 0.9rem;
-  }
-  .skip-icon {
-    width: 1.3rem;
-    height: 1.3rem;
   }
 }

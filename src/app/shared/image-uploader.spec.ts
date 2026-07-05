@@ -69,6 +69,7 @@ describe('ImageUploaderComponent', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    delete (window as any).electronAPI;
   });
 
   it('searches when the query meets the minimum length', async () => {
@@ -138,5 +139,16 @@ describe('ImageUploaderComponent', () => {
 
     expect(searchSpy).toHaveBeenCalledWith('cat', expect.objectContaining({ page: 2 }));
     expect(component.searchResults.length).toBe(2);
+  });
+
+  it('opens Google Images through the Electron external URL bridge', async () => {
+    const openExternalUrl = vi.fn(() => Promise.resolve(true));
+    (window as any).electronAPI = { openExternalUrl };
+    vi.spyOn((component as any).platform, 'isElectron').mockReturnValue(true);
+    component.googleSearchControl.setValue('classroom cat');
+
+    await component.openGoogleImages();
+
+    expect(openExternalUrl).toHaveBeenCalledWith('https://www.google.com/search?tbm=isch&q=classroom%20cat');
   });
 });

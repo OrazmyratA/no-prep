@@ -210,7 +210,7 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 8;
+  z-index: 30;
 }
 
 .drawing-layer.active {
@@ -231,14 +231,14 @@
 .text-placement-layer {
   position: absolute;
   inset: 0;
-  z-index: 16;
+  z-index: 40;
   cursor: text;
   background: transparent;
 }
 
 .reader-text-editor {
   position: absolute;
-  z-index: 18;
+  z-index: 42;
   transform: translate(-50%, -50%);
   min-width: 3.5rem;
   min-height: 2rem;
@@ -301,7 +301,7 @@
   font-weight: 800;
   font-size: clamp(0.75rem, calc(var(--text-scale, 0.055) * 22rem), 4rem);
   line-height: 1.08;
-  z-index: 9;
+  z-index: 34;
   min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -344,7 +344,7 @@
 .stroke-delete-target {
   position: absolute;
   inset: 0;
-  z-index: 17;
+  z-index: 38;
   width: 100%;
   height: 100%;
   border: 0;

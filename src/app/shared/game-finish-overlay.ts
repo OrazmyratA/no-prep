@@ -40,7 +40,7 @@ export class GameFinishOverlayComponent {
       return;
     }
 
-    if (this.showActivities && event.key.toLowerCase() === 'g') {
+    if (this.showActivities && event.key.toLowerCase() === 'y') {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();

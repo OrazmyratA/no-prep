@@ -90,9 +90,6 @@
       <button type="button" class="nav-btn" (click)="previousOneByOneItem()" [disabled]="correctTeam !== null || !hasPreviousOneByOneItem" aria-label="Previous" title="Previous">
         <span aria-hidden="true">&#9664;</span>
       </button>
-      <button type="button" class="nav-btn skip" (click)="skipOneByOneItem()" [disabled]="correctTeam !== null || (!hasPreviousOneByOneItem && !hasNextOneByOneItem)" aria-label="Skip" title="Skip">
-        <img src="assets/images/skip.png" alt="" class="skip-icon">
-      </button>
       <button type="button" class="nav-btn" (click)="nextOneByOneItem()" [disabled]="correctTeam !== null || !hasNextOneByOneItem" aria-label="Next" title="Next">
         <span aria-hidden="true">&#9654;</span>
       </button>
