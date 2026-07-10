@@ -16,6 +16,12 @@
   <router-outlet></router-outlet>
 </main>
 
+<div *ngIf="routeLoadingVisible" class="route-loading-overlay" aria-hidden="true">
+  <div class="route-loading-pill">
+    <div class="route-loading-zoomies"></div>
+  </div>
+</div>
+
 <!-- License overlay (full‑screen when needed) -->
 <div *ngIf="showLicenseOverlay" class="license-overlay">
   <app-license (dismissLicense)="hideLicenseOverlay()"></app-license>

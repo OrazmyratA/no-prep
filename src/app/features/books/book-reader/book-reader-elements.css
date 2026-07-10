@@ -360,6 +360,16 @@
   pointer-events: none;
 }
 
+.reader-element.dot-element,
+.reader-element.note-element,
+.reader-element.answer-key-element,
+.reader-element.game-element,
+.reader-element.speaking-ai-element,
+.reader-element.media-element:not(.image-element) {
+  aspect-ratio: 1 / 1;
+  height: auto !important;
+}
+
 .reader-element.dot-element {
   z-index: 22;
   border-radius: 0;

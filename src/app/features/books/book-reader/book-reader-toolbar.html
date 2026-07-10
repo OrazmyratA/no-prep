@@ -78,8 +78,7 @@
           [title]="'readerPenColor' | translate: {color: color}">
         </button>
         <label class="pen-size" [title]="'readerPenSize' | translate">
-          <span>{{ 'sizeLabel' | translate }}</span>
-          <input type="range" min="2" max="18" step="1" [(ngModel)]="reader.penWidth">
+          <input type="range" min="2" max="18" step="1" [(ngModel)]="reader.penWidth" [attr.aria-label]="'readerPenSize' | translate">
         </label>
       </div>
       <button
@@ -103,8 +102,7 @@
           [title]="color">
         </button>
         <label class="pen-size" title="Highlighter size">
-          <span>{{ 'sizeLabel' | translate }}</span>
-          <input type="range" min="16" max="48" step="2" [(ngModel)]="reader.highlighterWidth">
+          <input type="range" min="16" max="48" step="2" [(ngModel)]="reader.highlighterWidth" aria-label="Highlighter size">
         </label>
       </div>
       <button type="button" class="tool-btn icon-reader-btn" [class.active]="reader.textMode" [title]="'addTextLabel' | translate" (click)="reader.addTemporaryText()" [attr.aria-label]="'addTextLabel' | translate">

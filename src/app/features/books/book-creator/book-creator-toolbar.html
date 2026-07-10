@@ -27,9 +27,39 @@
       <button type="button" class="icon-tool-btn" [class.active]="creator.creatorDrawMode" (click)="creator.addInkMark()" [title]="'drawLabel' | translate" [attr.aria-label]="'drawLabel' | translate">
         <img src="assets/images/book/draw.png" alt="">
       </button>
+      <div class="pen-controls creator-pen-controls" *ngIf="creator.creatorDrawMode">
+        <button
+          *ngFor="let color of creator.creatorPenColors"
+          type="button"
+          class="color-dot"
+          [class.selected]="color === creator.creatorPenColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="creator.creatorPenColor = color"
+          [title]="color">
+        </button>
+        <label class="pen-size" title="Draw size">
+          <input type="range" min="2" max="18" step="1" [(ngModel)]="creator.creatorPenWidth" aria-label="Draw size">
+        </label>
+      </div>
       <button type="button" class="icon-tool-btn" [class.active]="creator.creatorHighlighterMode" (click)="creator.addHighlighterMark()" title="Highlighter" aria-label="Highlighter">
         <img src="assets/images/book/highlighter.png" alt="">
       </button>
+      <div class="pen-controls creator-pen-controls highlighter-controls" *ngIf="creator.creatorHighlighterMode">
+        <button
+          *ngFor="let color of creator.creatorHighlighterColors"
+          type="button"
+          class="color-dot highlighter-color-dot"
+          [class.selected]="color === creator.creatorHighlighterColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="creator.creatorHighlighterColor = color"
+          [title]="color">
+        </button>
+        <label class="pen-size" title="Highlighter size">
+          <input type="range" min="16" max="48" step="2" [(ngModel)]="creator.creatorHighlighterWidth" aria-label="Highlighter size">
+        </label>
+      </div>
       <button type="button" class="icon-tool-btn" [class.active]="creator.creatorTextMode" (click)="creator.addTextMark()" title="Text" aria-label="Text">
         <span aria-hidden="true">T</span>
       </button>

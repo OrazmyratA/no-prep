@@ -71,7 +71,9 @@ export class BookCreatorMarkController {
   }
 
   createCreatorStrokeElement(points: CreatorPoint[], kind: CreatorInkKind): BookElement {
-    const pad = kind === 'highlighter' ? 0.012 : 0.006;
+    const strokePx = this.getCreatorStrokeWidth(kind);
+    const color = this.getCreatorStrokeColor(kind);
+    const pad = Math.max(kind === 'highlighter' ? 0.012 : 0.006, strokePx / 1500);
     const minX = this.creator.clamp(Math.min(...points.map((point) => point.x)) - pad, 0, 1);
     const maxX = this.creator.clamp(Math.max(...points.map((point) => point.x)) + pad, 0, 1);
     const minY = this.creator.clamp(Math.min(...points.map((point) => point.y)) - pad, 0, 1);
@@ -86,9 +88,9 @@ export class BookCreatorMarkController {
       width,
       height,
       data: {
-        color: kind === 'highlighter' ? '#fde047' : '#2563eb',
+        color,
         label: kind === 'highlighter' ? 'Highlighter' : 'Draw',
-        strokePx: kind === 'highlighter' ? 18 : 6,
+        strokePx,
         points: points.map((point) => ({
           x: this.creator.clamp((point.x - minX) / width, 0, 1),
           y: this.creator.clamp((point.y - minY) / height, 0, 1)
@@ -117,8 +119,8 @@ export class BookCreatorMarkController {
     context.scale(ratio, ratio);
     context.globalCompositeOperation = state.kind === 'highlighter' ? 'multiply' : 'source-over';
     context.globalAlpha = state.kind === 'highlighter' ? 0.42 : 1;
-    context.strokeStyle = state.kind === 'highlighter' ? '#fde047' : '#2563eb';
-    context.lineWidth = state.kind === 'highlighter' ? 18 : 6;
+    context.strokeStyle = this.getCreatorStrokeColor(state.kind);
+    context.lineWidth = this.getCreatorStrokeWidth(state.kind);
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.beginPath();
@@ -135,6 +137,18 @@ export class BookCreatorMarkController {
     const context = canvas?.getContext('2d');
     if (!canvas || !context) return;
     context.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  private getCreatorStrokeColor(kind: CreatorInkKind): string {
+    return kind === 'highlighter'
+      ? String(this.creator.creatorHighlighterColor || '#fde047')
+      : String(this.creator.creatorPenColor || '#2563eb');
+  }
+
+  private getCreatorStrokeWidth(kind: CreatorInkKind): number {
+    const width = Number(kind === 'highlighter' ? this.creator.creatorHighlighterWidth : this.creator.creatorPenWidth);
+    if (!Number.isFinite(width)) return kind === 'highlighter' ? 18 : 6;
+    return this.creator.clamp(width, kind === 'highlighter' ? 16 : 2, kind === 'highlighter' ? 48 : 18);
   }
 
   placeCreatorTextInput(event: PointerEvent): void {

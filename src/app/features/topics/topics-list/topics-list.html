@@ -81,6 +81,16 @@
       {{ 'import' | translate }}
     </button>
 
+    <button *ngIf="isBooksCategory && bookLibrary.isDesktopAvailable"
+            type="button"
+            (click)="fullAccess ? openBookStorageDialog() : licenseService.requestReopen()"
+            class="book-storage-action"
+            [class.btn-disabled]="!fullAccess"
+            [attr.aria-label]="'bookStorageTitle' | translate"
+            [attr.title]="'bookStorageTitle' | translate">
+      <img src="assets/images/book/storage.png" alt="">
+    </button>
+
     <!-- New Topic -->
     <button *ngIf="isTopicsCategory"
             (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()"
@@ -132,6 +142,47 @@
       <div class="book-progress-track">
         <div class="book-progress-fill" [style.width.%]="progress.totalBytes ? (progress.transferredBytes / progress.totalBytes) * 100 : 0"></div>
       </div>
+    </div>
+
+    <div *ngIf="showBookStorageDialog" class="book-storage-backdrop">
+      <section class="book-storage-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="'bookStorageTitle' | translate">
+        <button type="button" class="book-storage-close" (click)="closeBookStorageDialog()" aria-label="Close">x</button>
+        <div class="book-storage-heading">
+          <span class="book-storage-icon">
+            <img src="assets/images/book/book.png" alt="">
+          </span>
+          <div>
+            <h2>{{ 'bookStorageTitle' | translate }}</h2>
+            <p>{{ 'bookStoragePrompt' | translate }}</p>
+          </div>
+        </div>
+
+        <div class="book-storage-path" *ngIf="bookStorageLocation">
+          <span class="book-storage-label">{{ 'bookStorageCurrentLocation' | translate }}</span>
+          <strong>{{ bookStorageLocation.isDefault ? ('bookStorageDefaultBadge' | translate) : ('bookStorageCustomBadge' | translate) }}</strong>
+          <code>{{ bookStorageLocation.booksRoot }}</code>
+        </div>
+
+        <div *ngIf="bookStorageLocation && !bookStorageLocation.available" class="book-storage-warning">
+          <img src="assets/images/book/warning.png" alt="">
+          <span>{{ 'bookStorageMissingWarning' | translate }}</span>
+        </div>
+
+        <div class="book-storage-actions">
+          <button type="button" class="book-storage-option default" (click)="useDefaultBookStorageFolder()" [disabled]="bookStorageBusy">
+            <img src="assets/images/book/default-location.png" alt="">
+            <span>{{ 'bookStorageUseDefault' | translate }}</span>
+          </button>
+          <button type="button" class="book-storage-option choose" (click)="chooseBookStorageFolder()" [disabled]="bookStorageBusy">
+            <img src="assets/images/book/save.png" alt="">
+            <span>{{ 'bookStorageChooseFolder' | translate }}</span>
+          </button>
+          <button type="button" class="book-storage-option open" (click)="openCurrentBookStorageFolder()" [disabled]="bookStorageBusy || !bookStorageLocation">
+            <img src="assets/images/book/folder.png" alt="">
+            <span>{{ 'bookStorageOpenFolder' | translate }}</span>
+          </button>
+        </div>
+      </section>
     </div>
 
     <!-- Books Section -->

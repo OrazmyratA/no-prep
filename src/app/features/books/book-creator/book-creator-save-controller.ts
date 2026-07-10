@@ -115,6 +115,9 @@ export class BookCreatorSaveController {
     while (this.creator.undoStack.length > this.maxHistoryEntries) {
       this.creator.undoStack.shift();
     }
+    while (this.getSnapshotBytes(this.creator.undoStack) > this.creator.maxUndoHistoryBytes && this.creator.undoStack.length > 1) {
+      this.creator.undoStack.shift();
+    }
     this.creator.redoStack = [];
   }
 
@@ -185,6 +188,10 @@ export class BookCreatorSaveController {
     if (!book) return '';
     const snapshot = JSON.stringify(book);
     return snapshot.length <= this.creator.maxUndoSnapshotBytes ? snapshot : '';
+  }
+
+  getSnapshotBytes(snapshots: string[]): number {
+    return snapshots.reduce((total, snapshot) => total + snapshot.length, 0);
   }
 
   markBookClean(): void {

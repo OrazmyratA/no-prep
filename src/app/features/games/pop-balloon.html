@@ -98,8 +98,6 @@
              [src]="team.giftOpened ? 'assets/gifs/gift-opened.gif' : 'assets/gifs/gift-closed.gif'"
              alt="Gift Box"
              class="gift-image">
-        <div *ngIf="teamMode && team.id === winnerTeamId && team.giftOpened && rewardNumber"
-             class="lane-reward-number">{{ rewardNumber }}</div>
       </div>
 
       <div *ngIf="!teamMode" class="game-info lane-info">
@@ -166,20 +164,34 @@
   <!-- Victory Pop-up -->
   <app-game-finish-overlay
     *ngIf="showVictoryPopup && !teamMode"
+    class="pop-balloon-finish pop-reward-finish"
     [title]="'popBalloonVictory' | translate"
-    [message]="('popBalloonSurprise' | translate) + ' ' + rewardNumber + '!'"
+    [message]="'popBalloonSurprise' | translate"
     (playAgain)="resetGame()"
     (activities)="goToActivities()">
-    <div class="gift-box-popup">
-      <img src="assets/gifs/gift-opened.gif"
-           alt="Opened Gift"
-           class="gift-image-popup">
-      <div class="reward-number">{{ rewardNumber }}</div>
+    <div *ngIf="singleReward() as reward" class="pop-reward-stage">
+      <div class="reward-sparkle reward-sparkle-left" aria-hidden="true">✦</div>
+      <div class="reward-sparkle reward-sparkle-right" aria-hidden="true">✦</div>
+      <div class="reward-confetti" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="reward-prize-card"
+           [class.reward-prize-image]="rewardHasImage(reward)"
+           [class.reward-prize-text]="!rewardHasImage(reward) && reward.item"
+           [class.reward-prize-number]="!rewardHasImage(reward) && !reward.item">
+        <img *ngIf="rewardHasImage(reward); else rewardTextBlock"
+             [src]="rewardImageUrl(reward)"
+             [alt]="rewardAltText(reward)">
+        <ng-template #rewardTextBlock>
+          <span>{{ rewardDisplayText(reward) }}</span>
+        </ng-template>
+      </div>
     </div>
   </app-game-finish-overlay>
 
   <app-game-finish-overlay
     *ngIf="showVictoryPopup && teamMode"
+    class="pop-balloon-finish pop-team-results-finish"
     [title]="'gameResults' | translate"
     (playAgain)="resetGame()"
     (activities)="goToActivities()">
@@ -195,9 +207,49 @@
           </div>
         </div>
         <div class="team-result-score">{{ entry.team.score }}</div>
+        <button *ngIf="rewardForTeam(entry.team.id) as teamReward"
+                type="button"
+                class="team-reward-button"
+                [attr.aria-label]="'Open mystery reward for ' + entry.team.name"
+                (click)="openTeamReward(entry)">
+          <span aria-hidden="true">&#127873;</span>
+        </button>
       </div>
     </div>
   </app-game-finish-overlay>
+
+  <div *ngIf="selectedTeamReward"
+       class="team-award-overlay"
+       role="dialog"
+       aria-modal="true"
+       [attr.aria-label]="selectedTeamRewardTitle + ' reward'"
+       (click)="closeTeamRewardOverlay()">
+    <div class="team-award-card" (click)="$event.stopPropagation()">
+      <button type="button"
+              class="team-award-close"
+              aria-label="Close reward"
+              (click)="closeTeamRewardOverlay()">×</button>
+      <div class="team-award-title">{{ selectedTeamRewardTitle }}</div>
+      <div class="pop-reward-stage compact">
+        <div class="reward-sparkle reward-sparkle-left" aria-hidden="true">✦</div>
+        <div class="reward-sparkle reward-sparkle-right" aria-hidden="true">✦</div>
+        <div class="reward-confetti" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="reward-prize-card"
+             [class.reward-prize-image]="rewardHasImage(selectedTeamReward)"
+             [class.reward-prize-text]="!rewardHasImage(selectedTeamReward) && selectedTeamReward.item"
+             [class.reward-prize-number]="!rewardHasImage(selectedTeamReward) && !selectedTeamReward.item">
+          <img *ngIf="rewardHasImage(selectedTeamReward); else selectedTeamRewardText"
+               [src]="rewardImageUrl(selectedTeamReward)"
+               [alt]="rewardAltText(selectedTeamReward)">
+          <ng-template #selectedTeamRewardText>
+            <span>{{ rewardDisplayText(selectedTeamReward) }}</span>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
 
 
 

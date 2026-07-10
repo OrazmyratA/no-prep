@@ -57,16 +57,31 @@ const { createArchiveUtils } = require('./main/archive-utils');
 const { createBookAssetProtocol } = require('./main/book-asset-protocol');
 const { createBookRegistryService } = require('./main/book-registry-service');
 const { createBookService } = require('./main/book-service');
+const { createBookStorageService } = require('./main/book-storage-service');
 const { createAiPackService } = require('./main/ai-pack-service');
 const { createWarmDialogueService } = require('./main/ai-warm-dialogue');
 const { registerAppIpc } = require('./main/app-ipc');
 const { registerAiIpc } = require('./main/ai-ipc');
 const { registerBookDataIpc } = require('./main/book-data-ipc');
 const { registerBookManagementIpc } = require('./main/book-management-ipc');
+const { registerBookStorageIpc } = require('./main/book-storage-ipc');
 const { registerLicenseIpc } = require('./main/license-ipc');
 const { registerSecureFeatureIpc } = require('./main/secure-feature-ipc');
 
 let mainWindow;
+const bookStorage = createBookStorageService({
+  app,
+  fs,
+  fsp,
+  path,
+  dialog,
+  shell,
+  pathExists,
+  getAvailableBytes,
+  operationResult,
+  operationError,
+  getMainWindow: () => mainWindow
+});
 const {
   getBooksRoot,
   getAiPacksRoot,
@@ -78,7 +93,7 @@ const {
   getFfmpegPath,
   getRegistryPath,
   getAiPackRegistryPath
-} = createPathHelpers(app);
+} = createPathHelpers(app, { getBooksRoot: bookStorage.getBooksRoot });
 const {
   copyFileWithProgress,
   copyFile,
@@ -503,6 +518,12 @@ registerBookDataIpc({
     MAX_AUDIO_RECORDING_BYTES,
     MAX_TOPIC_SNAPSHOT_BYTES
   }
+});
+registerBookStorageIpc({
+  ipcMain,
+  bookStorage,
+  operationResult,
+  operationError
 });
 registerBookManagementIpc({
   ipcMain,

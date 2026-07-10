@@ -223,10 +223,11 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     const query = this.googleSearchControl.value?.trim();
     const url = query
       ? `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`
-      : 'https://www.google.com/search?tbm=isch';
+      : 'https://www.google.com/imghp';
 
-    if (this.platform.isElectron()) {
-      await (window as any).electronAPI.openExternalUrl(url);
+    const api = (window as any)?.electronAPI;
+    if (typeof api?.openExternalUrl === 'function') {
+      await api.openExternalUrl(url);
     } else if (this.platform.isNative()) {
       await Browser.open({ url });
     } else {

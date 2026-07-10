@@ -174,7 +174,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   owlX = 0;
   owlY = 0;
   owlTeaching = false;
-  pageDrawerOpen = true;
+  pageDrawerOpen = false;
   screenshotting = false;
   readonly virtualThumbBuffer = 6;
   readerThumbScrollTop = 0;
@@ -328,7 +328,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.currentPageIndex = 0;
     this.pageJumpValue = '1';
     this.pageSource = 'main';
-    this.pageDrawerOpen = true;
+    this.pageDrawerOpen = false;
     this.activeWorkbookId = null;
     this.workbookSession = null;
     this.markVisiblePagesDirty();
@@ -1869,13 +1869,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private moveOwlToElement(element: BookElement, page = this.currentPage): void {
-    const elementWidth = element.width || 0.06;
-    const elementHeight = element.height || 0.06;
-    const target = this.getPageCoordinateScreenPoint(
-      page,
-      element.x + elementWidth / 2,
-      element.y + elementHeight / 2
-    );
+    const target = this.getRenderedElementScreenCenter(element, page)
+      ?? this.getPageCoordinateScreenPoint(
+        page,
+        element.x + (element.width || 0.06) / 2,
+        element.y + (element.height || 0.06) / 2
+      );
     if (!target) {
       this.moveOwlToCorner();
       return;
@@ -1897,6 +1896,19 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.owlY = clamp(target.y, bounds.minY, bounds.maxY);
   }
 
+  private getRenderedElementScreenCenter(element: BookElement, page: BookPage | null): { x: number; y: number } | null {
+    if (!element?.id || !page?.id) return null;
+    const frame = this.getPageFrameForPageId(page.id);
+    const renderedElement = frame?.querySelector<HTMLElement>(`.reader-element[data-element-id="${CSS.escape(element.id)}"]`);
+    if (!renderedElement) return null;
+    const rect = renderedElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
+    };
+  }
+
   private getPageCoordinateScreenPoint(page: BookPage | null, x: number, y: number): { x: number; y: number } | null {
     const frame = page ? this.getPageFrameForPageId(page.id) ?? this.getPrimaryPageFrameElement() : this.getPrimaryPageFrameElement();
     if (!frame) return null;
@@ -1909,6 +1921,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       visibleX = (visibleX - focus.x) / focus.width;
       visibleY = (visibleY - focus.y) / focus.height;
     }
+    visibleX = clamp(visibleX, 0, 1);
+    visibleY = clamp(visibleY, 0, 1);
     return {
       x: rect.left + visibleX * rect.width,
       y: rect.top + visibleY * rect.height

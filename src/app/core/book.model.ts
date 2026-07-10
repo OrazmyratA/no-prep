@@ -104,6 +104,17 @@ export interface BookOperationResult<T = unknown> {
   message?: string;
 }
 
+export interface BookStorageLocation {
+  configured: boolean;
+  useDefault: boolean;
+  isDefault: boolean;
+  booksRoot: string;
+  defaultBooksRoot: string;
+  settingsPath: string;
+  available: boolean;
+  availableBytes?: number | null;
+}
+
 export interface BookAssetResult {
   relativePath: string;
   fileName: string;

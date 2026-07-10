@@ -151,4 +151,15 @@ describe('ImageUploaderComponent', () => {
 
     expect(openExternalUrl).toHaveBeenCalledWith('https://www.google.com/search?tbm=isch&q=classroom%20cat');
   });
+
+  it('opens the Google Images home page through Electron when there is no query', async () => {
+    const openExternalUrl = vi.fn(() => Promise.resolve(true));
+    (window as any).electronAPI = { openExternalUrl };
+    vi.spyOn((component as any).platform, 'isElectron').mockReturnValue(true);
+    component.googleSearchControl.setValue('');
+
+    await component.openGoogleImages();
+
+    expect(openExternalUrl).toHaveBeenCalledWith('https://www.google.com/imghp');
+  });
 });

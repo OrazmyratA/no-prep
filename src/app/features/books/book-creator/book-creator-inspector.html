@@ -108,6 +108,69 @@
         <img src="assets/images/book/replace.png" alt="">
       </button>
     </div>
+    <div class="element-size-panel" *ngIf="!creator.isFixedCreatorMark(element)">
+      <ng-container *ngIf="creator.isUniformSizeElement(element); else freeSizeControls">
+        <label class="element-size-slider">
+          <span class="element-size-icon square-size-icon" aria-hidden="true">
+            <img src="assets/images/book/height.png" alt="">
+          </span>
+          <input
+            #sizeSlider
+            type="range"
+            [min]="creator.minimumElementSizePercent"
+            max="100"
+            step="0.1"
+            [value]="creator.getElementUniformSizePercent(element)"
+            (focus)="creator.beginHistoryCapture()"
+            (pointerdown)="creator.beginHistoryCapture()"
+            (input)="creator.updateElementUniformSizePercent(element, sizeSlider.value)"
+            (change)="creator.commitHistoryCapture()"
+            (blur)="creator.commitHistoryCapture()"
+            aria-label="Element size">
+          <small>{{ creator.getElementUniformSizePercent(element) }}%</small>
+        </label>
+      </ng-container>
+      <ng-template #freeSizeControls>
+        <label class="element-size-slider">
+          <span class="element-size-icon width-size-icon" aria-hidden="true">
+            <img src="assets/images/book/height.png" alt="">
+          </span>
+          <input
+            #widthSlider
+            type="range"
+            [min]="creator.minimumElementSizePercent"
+            max="100"
+            step="0.1"
+            [value]="creator.getElementWidthPercent(element)"
+            (focus)="creator.beginHistoryCapture()"
+            (pointerdown)="creator.beginHistoryCapture()"
+            (input)="creator.updateElementWidthPercent(element, widthSlider.value)"
+            (change)="creator.commitHistoryCapture()"
+            (blur)="creator.commitHistoryCapture()"
+            aria-label="Element width">
+          <small>{{ creator.getElementWidthPercent(element) }}%</small>
+        </label>
+        <label class="element-size-slider">
+          <span class="element-size-icon height-size-icon" aria-hidden="true">
+            <img src="assets/images/book/height.png" alt="">
+          </span>
+          <input
+            #heightSlider
+            type="range"
+            [min]="creator.minimumElementSizePercent"
+            max="100"
+            step="0.1"
+            [value]="creator.getElementHeightPercent(element)"
+            (focus)="creator.beginHistoryCapture()"
+            (pointerdown)="creator.beginHistoryCapture()"
+            (input)="creator.updateElementHeightPercent(element, heightSlider.value)"
+            (change)="creator.commitHistoryCapture()"
+            (blur)="creator.commitHistoryCapture()"
+            aria-label="Element height">
+          <small>{{ creator.getElementHeightPercent(element) }}%</small>
+        </label>
+      </ng-template>
+    </div>
     <label *ngIf="element.type === 'note'">
       {{ 'textOptional' | translate }}
       <textarea

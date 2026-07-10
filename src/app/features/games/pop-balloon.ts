@@ -63,6 +63,11 @@ interface PopTeam {
   keyboardSelectedOptionIndex: number;
 }
 
+interface PopReward {
+  item: Item | null;
+  number: number | null;
+}
+
 @Component({
   selector: 'app-pop-balloon',
   standalone: false,
@@ -86,6 +91,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   flightStarted = false;
   showVictoryPopup = false;
   rewardNumber: number | null = null;
+  rewardGiftItem: Item | null = null;
+  selectedTeamReward: PopReward | null = null;
+  selectedTeamRewardTitle = '';
   winnerTeamId: number | null = null;
   loading = true;
   menuOpen = false;
@@ -101,6 +109,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly giftHeight = 160;
   private readonly giftStringAnchorOffset = 74;
   private readonly stringBalloonOverlap = 8;
+  private giftTopicId: number | null = null;
+  private giftRewardItems: Item[] = [];
+  private teamRewards = new Map<number, PopReward>();
 
   private liftTimeout?: ReturnType<typeof setTimeout>;
   private dropTimeout?: ReturnType<typeof setTimeout>;
@@ -165,6 +176,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     this.syncKeyboardShortcuts();
     this.reverseMode = params['reverseMode'] === 'true';
     this.forceSimpleMode = params['simpleMode'] !== 'false';
+    const rawGiftTopicId = Number(params['giftTopicId']);
+    this.giftTopicId = Number.isFinite(rawGiftTopicId) && rawGiftTopicId > 0 ? rawGiftTopicId : null;
     this.initGame();
   }
 
@@ -178,6 +191,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
       this.items = allItems;
+      await this.loadGiftRewardItems();
 
       this.popSound = new Audio('assets/sound/pop.mp3');
       this.popSound.load();
@@ -219,6 +233,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     this.maxScore = 1;
     this.gameStartTime = performance.now();
     this.rewardNumber = null;
+    this.rewardGiftItem = null;
+    this.selectedTeamReward = null;
+    this.selectedTeamRewardTitle = '';
+    this.teamRewards.clear();
     this.flightStarted = false;
     this.stringsReady = false;
     for (const team of this.teams) {
@@ -729,6 +747,37 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.keyboardSelectedOptionIndex = 0;
   }
 
+  private async loadGiftRewardItems(): Promise<void> {
+    this.giftRewardItems = [];
+    if (!this.giftTopicId) return;
+
+    try {
+      const giftItems = this.giftTopicId === this.topicId
+        ? this.items
+        : await db.items.where('topicId').equals(this.giftTopicId).sortBy('order');
+      this.giftRewardItems = giftItems.filter(item => (
+        typeof item.id === 'number' &&
+        (Boolean(item.image) || Boolean((item.text || '').trim()))
+      ));
+    } catch (error) {
+      console.warn('Failed to load Pop Balloon gift topic items', error);
+      this.giftRewardItems = [];
+    }
+  }
+
+  private pickGiftRewardItem(): Item | null {
+    if (!this.giftRewardItems.length) return null;
+    return this.giftRewardItems[Math.floor(Math.random() * this.giftRewardItems.length)];
+  }
+
+  private buildRandomNumberReward(): PopReward {
+    return { item: null, number: Math.floor(Math.random() * 6) + 1 };
+  }
+
+  private buildItemReward(item: Item | null): PopReward {
+    return item ? { item, number: null } : this.buildRandomNumberReward();
+  }
+
   isKeyboardBalloonSelected(team: PopTeam, index: number): boolean {
     return (
       !this.hasActiveQuiz() &&
@@ -784,6 +833,13 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (this.selectedTeamReward) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.closeTeamRewardOverlay();
+      }
+      return;
+    }
     if (this.loading || this.menuOpen || this.isKeyboardEventFromInteractiveElement(event)) return;
 
     const activeQuizTeam = this.teams.find(team => team.showQuiz);
@@ -1288,20 +1344,24 @@ private dropGiftAndRevealReward(teamId = 0) {
 
   // Wait for the drop animation to finish (3 seconds), then open the gift
   this.dropTimeout = setTimeout(() => {
-    this.rewardNumber = Math.floor(Math.random() * 6) + 1;
+    if (this.teamMode) {
+      this.playSound(this.rewardSound);
+      this.finishTeamGame();
+      return;
+    }
+
+    const reward = this.buildItemReward(this.pickGiftRewardItem());
+    this.rewardGiftItem = reward.item;
+    this.rewardNumber = reward.number;
     this.giftOpened = true;
     if (team) team.giftOpened = true;
     this.playSound(this.rewardSound);
 
     // After the gift opens, wait a moment before showing the victory popup
     this.victoryTimeout = setTimeout(() => {
-      if (this.teamMode) {
-        this.finishTeamGame();
-        return;
-      }
       this.showVictoryPopup = true;
       this.cdr.detectChanges();
-    }, this.teamMode ? 1500 : 500);
+    }, 500);
   }, 1500);
 }
 
@@ -1309,8 +1369,35 @@ private dropGiftAndRevealReward(teamId = 0) {
     this.clearGiftTimers();
     this.cancelStringTracking();
     this.buildTeamRankings();
+    this.assignTeamRewards();
     this.showVictoryPopup = true;
     this.cdr.detectChanges();
+  }
+
+  private assignTeamRewards() {
+    this.teamRewards.clear();
+    const shuffledItems = this.shuffleItems(this.giftRewardItems);
+
+    this.rankedTeamsWithPosition.forEach((entry, index) => {
+      if (!this.giftRewardItems.length) {
+        this.teamRewards.set(entry.team.id, this.buildRandomNumberReward());
+        return;
+      }
+
+      const item = index < shuffledItems.length
+        ? shuffledItems[index]
+        : this.pickGiftRewardItem();
+      this.teamRewards.set(entry.team.id, this.buildItemReward(item));
+    });
+  }
+
+  private shuffleItems(items: Item[]): Item[] {
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   }
 
   private buildTeamRankings() {
@@ -1365,6 +1452,54 @@ private dropGiftAndRevealReward(teamId = 0) {
       this.objectUrls.push(url);
     }
     return this.imageUrls.get(itemId)!;
+  }
+
+  rewardGiftImageUrl(): string {
+    if (!this.rewardGiftItem?.image || typeof this.rewardGiftItem.id !== 'number') return '';
+    return this.imageUrl(this.rewardGiftItem.image, this.rewardGiftItem.id);
+  }
+
+  singleReward(): PopReward | null {
+    if (this.rewardGiftItem) return { item: this.rewardGiftItem, number: null };
+    if (this.rewardNumber !== null) return { item: null, number: this.rewardNumber };
+    return null;
+  }
+
+  rewardForTeam(teamId: number): PopReward | null {
+    return this.teamRewards.get(teamId) ?? null;
+  }
+
+  rewardHasImage(reward: PopReward | null): boolean {
+    return Boolean(reward?.item?.image && typeof reward.item.id === 'number');
+  }
+
+  rewardImageUrl(reward: PopReward | null): string {
+    if (!this.rewardHasImage(reward) || !reward?.item?.image || typeof reward.item.id !== 'number') return '';
+    return this.imageUrl(reward.item.image, reward.item.id);
+  }
+
+  rewardDisplayText(reward: PopReward | null): string {
+    if (!reward) return '';
+    if (this.rewardHasImage(reward)) return '';
+    if (reward.item) return (reward.item.text || '').trim();
+    return reward.number !== null ? String(reward.number) : '';
+  }
+
+  rewardAltText(reward: PopReward | null): string {
+    if (!reward) return 'Surprise reward';
+    return reward.item?.text || (reward.number !== null ? `Reward ${reward.number}` : 'Surprise reward');
+  }
+
+  openTeamReward(entry: { team: PopTeam; position: number; medal: string }) {
+    this.selectedTeamReward = this.rewardForTeam(entry.team.id);
+    this.selectedTeamRewardTitle = entry.team.name;
+    this.cdr.detectChanges();
+  }
+
+  closeTeamRewardOverlay() {
+    this.selectedTeamReward = null;
+    this.selectedTeamRewardTitle = '';
+    this.cdr.detectChanges();
   }
 
   private startRpsPhase() {

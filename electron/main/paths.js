@@ -9,8 +9,12 @@ const {
 
 function createPathHelpers(app, options = {}) {
   const electronRoot = options.electronRoot || path.join(__dirname, '..');
+  const resolveBooksRoot = typeof options.getBooksRoot === 'function' ? options.getBooksRoot : null;
 
   function getBooksRoot() {
+    if (resolveBooksRoot) {
+      return resolveBooksRoot();
+    }
     return path.join(app.getPath('userData'), BOOKS_DIR_NAME);
   }
 

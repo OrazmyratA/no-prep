@@ -631,6 +631,70 @@
   margin-bottom: 1rem;
 }
 
+.element-size-panel {
+  display: grid;
+  gap: 0.55rem;
+  margin: -0.25rem 0 0.95rem;
+  padding: 0.62rem;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 0.62rem;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.94), rgba(241, 245, 249, 0.74));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.element-inspector .element-size-slider {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) 3.2rem;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.element-size-slider small {
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.element-size-icon {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  transform-origin: center;
+}
+
+.element-size-icon img {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+  object-fit: contain;
+  opacity: 0.76;
+}
+
+.width-size-icon {
+  transform: rotate(90deg);
+}
+
+.square-size-icon {
+  transform: rotate(45deg);
+}
+
+.element-size-slider small {
+  text-align: right;
+  color: #2563eb;
+}
+
+.element-inspector .element-size-slider input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: #2563eb;
+}
+
 .element-inspector label {
   display: grid;
   gap: 0.35rem;

@@ -648,6 +648,51 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'settingsPopBalloonGiftTopic': {
+  en: 'Surprise gift',
+  tk: 'Surprise gift',
+  ru: 'Surprise gift',
+  cn: 'Surprise gift',
+  cde: 'Surprise gift',
+  es: 'Surprise gift',
+  fr: 'Surprise gift',
+  kr: 'Surprise gift',
+  sa: 'Surprise gift',
+},
+
+
+
+
+'settingsPopBalloonGiftDefault': {
+  en: 'Default numbers 1-6',
+  tk: 'Default numbers 1-6',
+  ru: 'Default numbers 1-6',
+  cn: 'Default numbers 1-6',
+  cde: 'Default numbers 1-6',
+  es: 'Default numbers 1-6',
+  fr: 'Default numbers 1-6',
+  kr: 'Default numbers 1-6',
+  sa: 'Default numbers 1-6',
+},
+
+
+
+
+'settingsPopBalloonGiftTopicHint': {
+  en: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  tk: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  ru: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  cn: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  cde: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  es: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  fr: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  kr: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+  sa: 'Uses a random image from the selected topic. Falls back to numbers if no images are found.',
+},
+
+
+
+
 'settingsRpsReverseModeHint': {
   en: 'Show the word — pick the matching image',
   tk: 'Sözi görkeziň — degişli suraty saýlaň',

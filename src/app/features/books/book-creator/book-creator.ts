@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import html2canvas from 'html2canvas';
 import { SwipeDirective } from '../../../shared/swipe.directive';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -83,6 +83,7 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   book: InteractiveBook | null = null;
   selectedPageIndex = 0;
   selectedElementId: string | null = null;
+  readonly minimumElementSizePercent = 0.2;
   pageStripOpen = false;
   pageStripCollapsed = false;
   inspectorOpen = false;
@@ -95,6 +96,13 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   creatorScreenshotting = false;
   creatorDrawMode = false;
   creatorHighlighterMode = false;
+  creatorPenColor = '#2563eb';
+  creatorPenWidth = 6;
+  creatorHighlighterColor = '#fde047';
+  creatorHighlighterWidth = 18;
+  readonly creatorMarkColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ffffff'];
+  get creatorPenColors() { return this.creatorMarkColors; }
+  get creatorHighlighterColors() { return this.creatorMarkColors; }
   creatorTextMode = false;
   activeCreatorTextInput: { x: number; y: number; width: number; height: number; value: string; color: string } | null = null;
   pageJumpValue = '1';
@@ -169,7 +177,8 @@ Tomorrow I will help my mom.`;
   activeMatchGroupId: string | null = null;
   pendingMatchEndpointId: string | null = null;
   readonly virtualThumbBuffer = 8;
-  private readonly maxUndoSnapshotBytes = 2_500_000;
+  private readonly maxUndoSnapshotBytes = 20_000_000;
+  private readonly maxUndoHistoryBytes = 120_000_000;
   creatorThumbScrollTop = 0;
   creatorThumbViewportHeight = 720;
   creatorThumbItemHeight = 170;
@@ -238,8 +247,9 @@ Tomorrow I will help my mom.`;
     private languageService: LanguageService,
     private platformFile: PlatformFileService,
     private guidePitch: GuidePitchService,
-  private aiSpeakingRuntime: AiSpeakingRuntimeService,
-  private cdr: ChangeDetectorRef
+    private aiSpeakingRuntime: AiSpeakingRuntimeService,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef
   ) {
     this.progress$ = this.bookLibrary.progress$;
     this.topics$ = this.db.topics$;
@@ -294,34 +304,41 @@ Tomorrow I will help my mom.`;
         this.loading = false;
         this.markBookClean();
         this.clearHistory();
+        this.refreshCreatorView();
         return;
       }
       this.loading = true;
+      this.refreshCreatorView();
       const created = await this.bookLibrary.createEmptyBook();
       if (created) {
         const createdBook = await this.bookLibrary.getBook(created.id);
         this.applyLoadedBook(createdBook);
         this.loading = false;
-        await this.router.navigate(['/books', created.id, 'edit'], {
+        this.refreshCreatorView();
+        await this.ngZone.run(() => this.router.navigate(['/books', created.id, 'edit'], {
           replaceUrl: true,
           state: { warmBook: createdBook }
-        });
+        }));
       } else {
         this.loading = false;
-        await this.router.navigate(['/topics']);
+        this.refreshCreatorView();
+        await this.ngZone.run(() => this.router.navigate(['/topics']));
       }
       return;
     }
 
     this.loading = true;
+    this.refreshCreatorView();
     const warmBook = this.getWarmNavigationBook(bookId);
     if (warmBook) {
       this.applyLoadedBook(warmBook);
       this.loading = false;
+      this.refreshCreatorView();
     }
     this.book = await this.bookLibrary.getBook(bookId);
     this.applyLoadedBook(this.book);
     this.loading = false;
+    this.refreshCreatorView();
     await this.attachReturnedTopic();
   }
 
@@ -332,11 +349,19 @@ Tomorrow I will help my mom.`;
     }
 
     this.loading = true;
+    this.refreshCreatorView();
     const created = await this.bookLibrary.createBookFromPdf('');
     this.loading = false;
+    this.refreshCreatorView();
     if (created) {
-      await this.router.navigate(['/books', created.id, 'edit']);
+      await this.ngZone.run(() => this.router.navigate(['/books', created.id, 'edit']));
     }
+  }
+
+  private refreshCreatorView(): void {
+    this.ngZone.run(() => {
+      this.cdr.detectChanges();
+    });
   }
 
   selectPage(index: number): void {
@@ -349,6 +374,11 @@ Tomorrow I will help my mom.`;
 
   markBookDirty(): void {
     this.saveController.markBookDirty();
+  }
+
+  refreshElementAssetChange(): void {
+    this.markBookDirty();
+    this.refreshCreatorView();
   }
 
   onCreatorThumbScroll(event: Event): void {
@@ -455,6 +485,11 @@ Tomorrow I will help my mom.`;
   addFocus(): void {
     this.captureHistory();
     this.addElement('focus', {}, 0.28, 0.16);
+    const page = this.selectedPage;
+    if (!page?.elements.length) return;
+    const focusElement = page.elements.pop();
+    if (!focusElement) return;
+    page.elements.unshift(focusElement);
   }
 
   addNote(): void {
@@ -1190,10 +1225,15 @@ Tomorrow I will help my mom.`;
     const dy = pointer.y - this.dragState.startPointerY;
 
     if (this.dragState.mode === 'resize') {
-      const width = this.clamp(this.dragState.startWidth + dx, 0.03, 1 - this.dragState.startX);
-      const height = this.clamp(this.dragState.startHeight + dy, 0.03, 1 - this.dragState.startY);
-      if (element.type === 'guideDot') {
-        const size = Math.max(width, height);
+      const minimumSize = this.getMinimumElementSize();
+      const width = this.clamp(this.dragState.startWidth + dx, minimumSize, 1 - this.dragState.startX);
+      const height = this.clamp(this.dragState.startHeight + dy, minimumSize, 1 - this.dragState.startY);
+      if (this.isSquareMarkerElement(element)) {
+        const size = this.clamp(
+          Math.max(width, height),
+          minimumSize,
+          Math.min(1 - this.dragState.startX, 1 - this.dragState.startY)
+        );
         element.width = size;
         element.height = size;
       } else {
@@ -1423,6 +1463,39 @@ Tomorrow I will help my mom.`;
 
   getElementText(element: BookElement): string {
     return String(element.data?.['content'] || element.data?.['text'] || element.data?.['label'] || element.type);
+  }
+
+  isUniformSizeElement(element: BookElement): boolean {
+    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi', 'matchTask'].includes(element.type);
+  }
+
+  isSquareMarkerElement(element: BookElement): boolean {
+    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi'].includes(element.type);
+  }
+
+  getElementWidthPercent(element: BookElement): number {
+    return this.roundElementPercent((element.width || 0.08) * 100);
+  }
+
+  getElementHeightPercent(element: BookElement): number {
+    return this.roundElementPercent((element.height || 0.08) * 100);
+  }
+
+  getElementUniformSizePercent(element: BookElement): number {
+    return this.roundElementPercent(Math.max(element.width || 0.08, element.height || 0.08) * 100);
+  }
+
+  updateElementUniformSizePercent(element: BookElement, value: string | number): void {
+    const size = this.normalizeElementPercent(value) / 100;
+    this.resizeElementFromCenter(element, size, size);
+  }
+
+  updateElementWidthPercent(element: BookElement, value: string | number): void {
+    this.resizeElementFromCenter(element, this.normalizeElementPercent(value) / 100, element.height || 0.08);
+  }
+
+  updateElementHeightPercent(element: BookElement, value: string | number): void {
+    this.resizeElementFromCenter(element, element.width || 0.08, this.normalizeElementPercent(value) / 100);
   }
 
   updateTextMarkText(element: BookElement, value: string): void {
@@ -1798,6 +1871,37 @@ Tomorrow I will help my mom.`;
 
   private captureHistory(): void {
     this.saveController.captureHistory();
+  }
+
+  private resizeElementFromCenter(element: BookElement, nextWidth: number, nextHeight: number): void {
+    if (this.isFixedCreatorMark(element)) return;
+    const currentWidth = element.width || 0.08;
+    const currentHeight = element.height || 0.08;
+    const centerX = element.x + currentWidth / 2;
+    const centerY = element.y + currentHeight / 2;
+    const minimumSize = this.getMinimumElementSize();
+    const width = this.clamp(nextWidth, minimumSize, 1);
+    const height = this.clamp(nextHeight, minimumSize, 1);
+    element.width = width;
+    element.height = height;
+    element.x = this.clamp(centerX - width / 2, 0, Math.max(0, 1 - width));
+    element.y = this.clamp(centerY - height / 2, 0, Math.max(0, 1 - height));
+    this.markBookDirty();
+    this.scheduleCreatorInteractionRefresh();
+  }
+
+  private normalizeElementPercent(value: string | number): number {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return this.minimumElementSizePercent;
+    return this.clamp(numericValue, this.minimumElementSizePercent, 100);
+  }
+
+  private getMinimumElementSize(): number {
+    return this.minimumElementSizePercent / 100;
+  }
+
+  private roundElementPercent(value: number): number {
+    return Math.round(value * 10) / 10;
   }
 
   private clearHistory(): void {

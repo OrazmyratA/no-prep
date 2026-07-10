@@ -152,6 +152,7 @@
       [class.task-correct]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) === 'correct'"
       [class.task-incorrect]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) === 'incorrect'"
       [class.hidden-focus]="element.type === 'focus' && !reader.focusMode"
+      [attr.data-element-id]="element.id"
       [style.left.%]="element.x * 100"
       [style.top.%]="element.y * 100"
       [style.width.%]="(element.width || 0.08) * 100"

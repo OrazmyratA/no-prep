@@ -157,6 +157,59 @@
   cursor: not-allowed;
 }
 
+.pen-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.15rem;
+  border: 1px solid rgba(120, 113, 108, 0.25);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 0 0.45rem;
+  box-shadow: 0 10px 22px rgba(120, 113, 108, 0.08);
+}
+
+.color-dot {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.74);
+  border-radius: 9999px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 3px 8px rgba(41, 37, 36, 0.18);
+}
+
+.color-dot.selected {
+  border-color: #ffffff;
+  box-shadow:
+    0 0 0 2px #2563eb,
+    0 7px 16px rgba(37, 99, 235, 0.25);
+}
+
+.color-dot.light-dot {
+  border-color: #cbd5e1;
+}
+
+.highlighter-color-dot {
+  opacity: 0.82;
+}
+
+.highlighter-color-dot.selected {
+  opacity: 1;
+}
+
+.pen-size {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pen-size input {
+  width: 4rem;
+  height: 0.42rem;
+  cursor: pointer;
+  accent-color: #2563eb;
+}
+
 .toolbar-page-stepper {
   display: inline-flex;
   align-items: center;

@@ -1,7 +1,9 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { DbService } from '../core/db';
 import { LanguageService, SupportedLanguage } from '../core/language';
+import { Topic } from '../core/db.model';
 
 interface SpellingRuleCategory {
   id: string;
@@ -18,9 +20,11 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
   @Input() gameId!: string;
   @Output() settingsChange = new EventEmitter<any>();
   settingsForm!: FormGroup;
+  giftTopics: Topic[] = [];
   expandedSpellingCategories: Record<string, boolean> = {};
   private currentLang: SupportedLanguage = 'en';
   private langSubscription?: Subscription;
+  private topicsSubscription?: Subscription;
 
   private readonly spellingCategoriesMap: Record<string, SpellingRuleCategory[]> = {
     en: [
@@ -304,7 +308,11 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   private formSubscription?: Subscription;
 
-  constructor(private fb: FormBuilder, private langService: LanguageService) {}
+  constructor(
+    private fb: FormBuilder,
+    private langService: LanguageService,
+    private dbService: DbService
+  ) {}
 
   ngOnInit() {
     // BehaviorSubject fires synchronously — sets currentLang before createForm() runs
@@ -329,6 +337,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
   ngOnDestroy() {
     this.formSubscription?.unsubscribe();
     this.langSubscription?.unsubscribe();
+    this.topicsSubscription?.unsubscribe();
   }
 
   private createForm() {
@@ -377,7 +386,8 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         this.settingsForm = this.fb.group({ textOnWheel: [false], simpleMode: [true] });
         break;
       case 'pop-balloon':
-        this.settingsForm = this.fb.group({ teamCount: [1], reverseMode: [false], simpleMode: [true] });
+        this.ensureGiftTopicSubscription();
+        this.settingsForm = this.fb.group({ teamCount: [1], reverseMode: [false], simpleMode: [true], giftTopicId: [null] });
         break;
       case 'squid-game':
         this.settingsForm = this.fb.group({
@@ -406,6 +416,13 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
     }
     this.emitCurrentSettings();
     this.formSubscription = this.settingsForm.valueChanges.subscribe(() => this.emitCurrentSettings());
+  }
+
+  private ensureGiftTopicSubscription() {
+    if (this.topicsSubscription) return;
+    this.topicsSubscription = this.dbService.topics$.subscribe(topics => {
+      this.giftTopics = topics.filter(topic => typeof topic.id === 'number');
+    });
   }
 
   get customRules(): FormArray {

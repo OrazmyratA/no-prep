@@ -1,7 +1,8 @@
 const ALLOWED_EXTERNAL_HOSTS = new Set([
   'www.youtube.com', 'youtube.com', 'youtu.be',
   'www.youtube-nocookie.com', 'youtube-nocookie.com',
-  'www.google.com', 'google.com', 'images.google.com'
+  'www.google.com', 'google.com', 'images.google.com',
+  'noprep.netlify.app'
 ]);
 
 function registerAppIpc({

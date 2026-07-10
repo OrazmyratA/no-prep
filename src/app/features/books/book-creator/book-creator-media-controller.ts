@@ -36,6 +36,7 @@ export class BookCreatorMediaController {
     if (!blob) {
       element.data['src'] = '';
       element.data['label'] = element.type === 'answerKey' ? 'Answer key' : 'Image';
+      this.creator.refreshElementAssetChange();
       return;
     }
 
@@ -45,6 +46,7 @@ export class BookCreatorMediaController {
     if (!saved) return;
     element.data['src'] = saved.relativePath;
     element.data['label'] = saved.fileName;
+    this.creator.refreshElementAssetChange();
   }
 
   async uploadVideoElement(element: BookElement): Promise<void> {
@@ -56,6 +58,7 @@ export class BookCreatorMediaController {
     this.creator.captureHistory();
     element.data['src'] = asset.relativePath;
     element.data['label'] = asset.fileName;
+    this.creator.refreshElementAssetChange();
   }
 
   updateVideoUrl(element: BookElement, value: string): void {

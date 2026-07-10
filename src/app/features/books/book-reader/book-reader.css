@@ -1,7 +1,7 @@
 .book-reader-page {
   --reader-side-left: 13rem;
   --reader-side-right: 5.2rem;
-  --reader-arrow-gutter: 3.25rem;
+  --reader-arrow-gutter: clamp(4.75rem, 8vw, 8.5rem);
   --reader-toolbar-surface: rgba(255, 253, 246, 0.88);
   --reader-control-surface: rgba(255, 255, 255, 0.9);
   --reader-border: rgba(120, 113, 108, 0.18);

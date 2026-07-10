@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { BehaviorSubject } from 'rxjs';
 import {
   BookAnnotations,
@@ -7,11 +9,12 @@ import {
   BookOperationResult,
   BookPage,
   BookRegistryItem,
+  BookStorageLocation,
   BookTopicSnapshotResult,
   BookWorkbook,
   InteractiveBook
 } from './book.model';
-import { db, StoredBook } from './db.model';
+import { db } from './db.model';
 import { PlatformService } from './platform';
 import { showAppNotification } from './notification';
 import { LanguageService } from './language';
@@ -24,7 +27,32 @@ type BookFilePick = {
   fileName: string;
   mimeType: string;
   size: number;
+  relativePath?: string;
+  assetUrl?: string;
 };
+
+type NativeBookFileResult = {
+  relativePath: string;
+  fileName: string;
+  mimeType?: string;
+  size?: number;
+  uri?: string;
+};
+
+interface NativeBookStoragePlugin {
+  importBook(): Promise<BookRegistryItem>;
+  importBookFolder(): Promise<BookRegistryItem>;
+  importBookPackage(): Promise<BookRegistryItem>;
+  pickAndSaveFile(options: {
+    bookId: string;
+    relativePath?: string;
+    targetDirectory?: string;
+    filePrefix?: string;
+    mimeTypes?: string[];
+  }): Promise<NativeBookFileResult>;
+}
+
+const NativeBookStorage = registerPlugin<NativeBookStoragePlugin>('NativeBookStorage');
 
 @Injectable({ providedIn: 'root' })
 export class BookLibraryService {
@@ -33,7 +61,8 @@ export class BookLibraryService {
 
   private progressSubject = new BehaviorSubject<BookOperationProgress | null>(null);
   readonly progress$ = this.progressSubject.asObservable();
-  private localAssetCache = new Map<string, string>();
+  private androidAssetUrlCache = new Map<string, string>();
+  private readonly androidBooksRoot = 'NoPrep/Books';
 
   constructor(
     private platform: PlatformService,
@@ -52,8 +81,50 @@ export class BookLibraryService {
     return this.platform.isElectron() && !!window?.electronAPI?.getBookRegistry;
   }
 
+  get isAndroidBookStorageAvailable(): boolean {
+    return this.platform.isAndroid();
+  }
+
   get isAvailable(): boolean {
-    return this.isDesktopAvailable || this.isLocalStorageAvailable();
+    return this.isDesktopAvailable || this.isAndroidBookStorageAvailable;
+  }
+
+  async getBookStorageLocation(): Promise<BookStorageLocation | null> {
+    if (!this.isDesktopAvailable) return null;
+    const response = await this.invoke<BookStorageLocation>('getBookStorageLocation');
+    return response.ok ? response.result ?? null : null;
+  }
+
+  async chooseBookStorageLocation(): Promise<BookStorageLocation | null> {
+    if (!this.isDesktopAvailable) return null;
+    const response = await this.invoke<BookStorageLocation>('chooseBookStorageLocation');
+    if (response.ok) {
+      return response.result ?? null;
+    }
+    if (response.error !== 'CANCELLED') {
+      this.showError(response, this.t('bookLibCouldNotSetStorageLocation'));
+    }
+    return null;
+  }
+
+  async useDefaultBookStorageLocation(): Promise<BookStorageLocation | null> {
+    if (!this.isDesktopAvailable) return null;
+    const response = await this.invoke<BookStorageLocation>('useDefaultBookStorageLocation');
+    if (response.ok) {
+      return response.result ?? null;
+    }
+    this.showError(response, this.t('bookLibCouldNotSetStorageLocation'));
+    return null;
+  }
+
+  async openBookStorageLocation(): Promise<boolean> {
+    if (!this.isDesktopAvailable) return false;
+    const response = await this.invoke<BookStorageLocation>('openBookStorageLocation');
+    if (response.ok) {
+      return true;
+    }
+    this.showError(response, this.t('bookLibCouldNotOpenStorageLocation'));
+    return false;
   }
 
   async refresh(): Promise<void> {
@@ -65,13 +136,15 @@ export class BookLibraryService {
       return;
     }
 
-    if (!this.isLocalStorageAvailable()) {
-      this.booksSubject.next([]);
+    if (this.isAndroidBookStorageAvailable) {
+      this.booksSubject.next(await this.readAndroidRegistry());
       return;
     }
 
-    const books = await db.books.orderBy('updatedAt').reverse().toArray();
-    this.booksSubject.next(books.map((entry) => this.toRegistryItem(entry)));
+    if (!this.isAvailable) {
+      this.booksSubject.next([]);
+      return;
+    }
   }
 
   async createBookFromPdf(title: string): Promise<BookRegistryItem | null> {
@@ -82,7 +155,17 @@ export class BookLibraryService {
       return this.handleBookMutation(response, this.t('bookLibBookCreated'));
     }
 
-    const picked = await this.pickFile([{ name: 'PDF', extensions: ['pdf'] }]);
+    if (!this.isAndroidBookStorageAvailable) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+      this.progressSubject.next(null);
+      return null;
+    }
+
+    const bookId = this.createId('book');
+    const picked = await this.pickAndroidBookFile(bookId, {
+      relativePath: 'student-book/source.pdf',
+      mimeTypes: ['application/pdf']
+    });
     if (!picked) {
       this.progressSubject.next(null);
       return null;
@@ -90,9 +173,8 @@ export class BookLibraryService {
 
     try {
       const now = new Date().toISOString();
-      const bookId = this.createId('book');
-      const sourcePdf = picked.dataUrl;
-      const pageCount = await this.getPdfPageCount(sourcePdf);
+      const sourcePdf = picked.relativePath || 'student-book/source.pdf';
+      const pageCount = await this.getPdfPageCount(picked.dataUrl);
       const book: InteractiveBook = {
         version: '1.0',
         id: bookId,
@@ -102,7 +184,7 @@ export class BookLibraryService {
         createdAt: now,
         updatedAt: now
       };
-      const registry = await this.saveLocalBook(book, false);
+      const registry = await this.saveAndroidBook(book, false);
       showAppNotification(this.t('bookLibBookCreated'), 'success');
       return registry;
     } finally {
@@ -116,7 +198,7 @@ export class BookLibraryService {
       return this.handleBookMutation(response, this.t('bookLibBookCreated'));
     }
 
-    if (!this.isLocalStorageAvailable()) {
+    if (!this.isAndroidBookStorageAvailable) {
       this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
       return null;
     }
@@ -130,7 +212,7 @@ export class BookLibraryService {
       createdAt: now,
       updatedAt: now
     };
-    const registry = await this.saveLocalBook(book, false);
+    const registry = await this.saveAndroidBook(book, false);
     showAppNotification(this.t('bookLibBookCreated'), 'success');
     return registry;
   }
@@ -153,18 +235,28 @@ export class BookLibraryService {
     }
 
     const book = await this.getBook(bookId);
-    const picked = await this.pickFile([{ name: 'PDF', extensions: ['pdf'] }]);
+    const picked = this.isAndroidBookStorageAvailable
+      ? await this.pickAndroidBookFile(bookId, {
+          relativePath: 'student-book/source.pdf',
+          mimeTypes: ['application/pdf']
+        })
+      : null;
     if (!book || !picked) {
       this.progressSubject.next(null);
       return null;
     }
 
     try {
+      if (!this.isAndroidBookStorageAvailable) {
+        this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+        return null;
+      }
       const pageCount = await this.getPdfPageCount(picked.dataUrl);
-      book.sourcePdf = picked.dataUrl;
-      book.pages = this.createPdfPages(picked.dataUrl, pageCount);
+      const sourcePdf = picked.relativePath || 'student-book/source.pdf';
+      book.sourcePdf = sourcePdf;
+      book.pages = this.createPdfPages(sourcePdf, pageCount);
       book.updatedAt = new Date().toISOString();
-      await this.saveLocalBook(book);
+      await this.saveAndroidBook(book);
       showAppNotification(this.t('bookLibStudentBookPdfAdded'), 'success');
       return book;
     } finally {
@@ -173,6 +265,26 @@ export class BookLibraryService {
   }
 
   async importBookFolder(): Promise<BookRegistryItem | null> {
+    if (this.isAndroidBookStorageAvailable && !this.isDesktopAvailable) {
+      this.showImmediateProgress('import', this.t('bookLibChooseBookFolder'));
+      try {
+        const result = await NativeBookStorage.importBook();
+        showAppNotification(this.t('bookLibBookImported'), 'success');
+        await this.refresh();
+        return result;
+      } catch (error) {
+        this.progressSubject.next(null);
+        if (String(error || '').includes('CANCELLED')) {
+          return null;
+        }
+        console.debug('Android book folder import failed', error);
+        showAppNotification(this.t('bookLibOperationFailed'), 'error');
+        return null;
+      } finally {
+        this.progressSubject.next(null);
+      }
+    }
+
     if (!this.isDesktopAvailable) {
       this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
       return null;
@@ -185,7 +297,11 @@ export class BookLibraryService {
 
   async exportBookToDesktop(bookId: string): Promise<void> {
     if (!this.isDesktopAvailable) {
-      await this.exportLocalBookToDownloads(bookId);
+      if (this.isAndroidBookStorageAvailable) {
+        await this.exportAndroidBookToDownloads(bookId);
+      } else {
+        this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotExportBook'));
+      }
       return;
     }
 
@@ -213,7 +329,13 @@ export class BookLibraryService {
     copy.title = `${book.title} (Copy)`;
     copy.createdAt = now;
     copy.updatedAt = now;
-    const registry = await this.saveLocalBook(copy, false);
+    const registry = this.isAndroidBookStorageAvailable
+      ? await this.copyAndroidBook(bookId, copy)
+      : null;
+    if (!registry) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+      return null;
+    }
     showAppNotification(this.t('bookLibBookCopied'), 'success');
     return registry;
   }
@@ -235,7 +357,13 @@ export class BookLibraryService {
       createdAt: now,
       updatedAt: now
     };
-    const registry = await this.saveLocalBook(combined, false);
+    const registry = this.isAndroidBookStorageAvailable
+      ? await this.saveAndroidCombinedBook(combined, books)
+      : null;
+    if (!registry) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+      return null;
+    }
     showAppNotification(this.t('bookLibBooksCombined'), 'success');
     return registry;
   }
@@ -253,27 +381,24 @@ export class BookLibraryService {
       return false;
     }
 
-    await db.books.delete(bookId);
-    await db.bookTaskResponses.where('bookId').equals(bookId).delete();
-    try {
-      await db.bookAnnotations.delete(bookId);
-    } catch (error) {
-      console.warn('Could not remove local book annotations.', error);
+    if (this.isAndroidBookStorageAvailable) {
+      await this.deleteAndroidBookFolder(bookId);
+      this.androidAssetUrlCache.forEach((_value, key) => {
+        if (key.startsWith(`${bookId}:`)) {
+          this.androidAssetUrlCache.delete(key);
+        }
+      });
+      this.booksSubject.next(this.booksSubject.value.filter((book) => book.id !== bookId));
+      await db.bookTaskResponses.where('bookId').equals(bookId).delete();
+      await db.bookAnnotations.delete(bookId).catch(() => undefined);
+      await db.bookAssets.where('bookId').equals(bookId).delete().catch(() => undefined);
+      showAppNotification(this.t('bookLibBookDeleted'), 'success');
+      await this.refresh();
+      return true;
     }
-    try {
-      await db.bookAssets.where('bookId').equals(bookId).delete();
-    } catch (error) {
-      console.warn('Could not remove local book assets.', error);
-    }
-    this.localAssetCache.forEach((_value, key) => {
-      if (key.startsWith(`local-book-asset://${bookId}/`)) {
-        this.localAssetCache.delete(key);
-      }
-    });
-    this.booksSubject.next(this.booksSubject.value.filter((book) => book.id !== bookId));
-    showAppNotification(this.t('bookLibBookDeleted'), 'success');
-    await this.refresh();
-    return true;
+
+    this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotDeleteBook'));
+    return false;
   }
 
   async cleanupBookStorage(bookId: string): Promise<BookRegistryItem | null> {
@@ -288,7 +413,7 @@ export class BookLibraryService {
     }
 
     const book = await this.getBook(bookId);
-    return book ? this.saveLocalBook(book) : null;
+    return book && this.isAndroidBookStorageAvailable ? this.saveAndroidBook(book) : null;
   }
 
   async getBook(bookId: string): Promise<InteractiveBook | null> {
@@ -301,9 +426,12 @@ export class BookLibraryService {
       return null;
     }
 
-    const entry = await db.books.get(bookId);
-    await this.warmLocalAssets(bookId);
-    return entry ? this.cloneBook(entry.book) : null;
+    if (this.isAndroidBookStorageAvailable) {
+      return this.readAndroidBook(bookId);
+    }
+
+    this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotLoadBook'));
+    return null;
   }
 
   async saveBook(book: InteractiveBook): Promise<BookRegistryItem | null> {
@@ -312,7 +440,12 @@ export class BookLibraryService {
       return this.handleBookMutation(response, this.t('bookLibBookSaved'));
     }
 
-    const registry = await this.saveLocalBook(book);
+    if (!this.isAndroidBookStorageAvailable) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+      return null;
+    }
+
+    const registry = await this.saveAndroidBook(book);
     showAppNotification(this.t('bookLibBookSaved'), 'success');
     return registry;
   }
@@ -335,17 +468,27 @@ export class BookLibraryService {
     }
 
     const book = await this.getBook(bookId);
-    const picked = await this.pickFile([{ name: 'PDF', extensions: ['pdf'] }]);
+    const workbookId = this.createId('workbook');
+    const picked = this.isAndroidBookStorageAvailable
+      ? await this.pickAndroidBookFile(bookId, {
+          relativePath: `workbooks/${workbookId}/source.pdf`,
+          mimeTypes: ['application/pdf']
+        })
+      : null;
     if (!book || !picked) {
       this.progressSubject.next(null);
       return null;
     }
 
     try {
-      const workbook = await this.createWorkbookFromPick(picked);
+      if (!this.isAndroidBookStorageAvailable) {
+        this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+        return null;
+      }
+      const workbook = await this.createAndroidWorkbookFromPick(book.id, picked, workbookId);
       book.workbooks = [...(book.workbooks ?? []), workbook];
       book.updatedAt = new Date().toISOString();
-      await this.saveLocalBook(book);
+      await this.saveAndroidBook(book);
       showAppNotification(this.t('bookLibWorkbookAdded'), 'success');
       return book;
     } finally {
@@ -371,14 +514,24 @@ export class BookLibraryService {
     }
 
     const book = await this.getBook(bookId);
-    const picked = await this.pickFile([{ name: 'PDF', extensions: ['pdf'] }]);
+    const nextWorkbookId = workbookId || this.createId('workbook');
+    const picked = this.isAndroidBookStorageAvailable
+      ? await this.pickAndroidBookFile(bookId, {
+          relativePath: `workbooks/${nextWorkbookId}/source.pdf`,
+          mimeTypes: ['application/pdf']
+        })
+      : null;
     if (!book || !picked) {
       this.progressSubject.next(null);
       return null;
     }
 
     try {
-      const replacement = await this.createWorkbookFromPick(picked, workbookId || undefined);
+      if (!this.isAndroidBookStorageAvailable) {
+        this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+        return null;
+      }
+      const replacement = await this.createAndroidWorkbookFromPick(book.id, picked, nextWorkbookId);
       const workbooks = [...(book.workbooks ?? [])];
       const index = workbookId ? workbooks.findIndex((item) => item.id === workbookId) : -1;
       if (index >= 0) {
@@ -388,7 +541,7 @@ export class BookLibraryService {
       }
       book.workbooks = workbooks;
       book.updatedAt = new Date().toISOString();
-      await this.saveLocalBook(book);
+      await this.saveAndroidBook(book);
       showAppNotification(this.t('bookLibWorkbookPdfAdded'), 'success');
       return book;
     } finally {
@@ -446,12 +599,21 @@ export class BookLibraryService {
       return null;
     }
 
-    const picked = await this.pickFile(filters);
-    if (!picked) return null;
+    if (!this.isAndroidBookStorageAvailable) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+      return null;
+    }
+    const picked = await this.pickAndroidBookFile(bookId, {
+      targetDirectory: `assets/${kind}`,
+      filePrefix: this.createId(kind),
+      mimeTypes: this.filtersToMimeTypes(filters)
+    });
+    if (!picked?.relativePath) return null;
+    const relativePath = picked.relativePath;
     return {
-      relativePath: picked.dataUrl,
+      relativePath,
       fileName: picked.fileName,
-      assetUrl: picked.dataUrl
+      assetUrl: picked.assetUrl || this.getAssetUrl(bookId, relativePath)
     };
   }
 
@@ -475,20 +637,18 @@ export class BookLibraryService {
       return null;
     }
 
+    if (!this.isAndroidBookStorageAvailable) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotSaveTopic'));
+      return null;
+    }
+
     const safeTopicName = this.sanitizeTopicSnapshotName(topicName || this.extractTopicSnapshotName(snapshot) || elementId || 'Game Topic');
-    const relativePath = `local-book-asset://${bookId}/assets/games/${safeTopicName}.json`;
+    const relativePath = `assets/games/${this.sanitizePathSegment(elementId || 'game')}/${safeTopicName}.json`;
     const json = JSON.stringify(snapshot);
-    const dataUrl = `data:application/json;base64,${this.base64EncodeUtf8(json)}`;
-    await db.bookAssets.put({
-      relativePath,
-      bookId,
-      dataUrl,
-      updatedAt: new Date().toISOString()
-    });
-    this.localAssetCache.set(relativePath, dataUrl);
+    await this.writeAndroidText(bookId, relativePath, json);
     return {
       relativePath,
-      assetUrl: dataUrl
+      assetUrl: this.getAssetUrl(bookId, relativePath)
     };
   }
 
@@ -517,10 +677,17 @@ export class BookLibraryService {
       return null;
     }
 
+    if (!this.isAndroidBookStorageAvailable) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotSaveRecording'));
+      return null;
+    }
+    const fileName = `recording-${Date.now()}${this.extensionFromDataUrl(dataUrl)}`;
+    const relativePath = `audio/${fileName}`;
+    await this.writeAndroidDataUrl(bookId, relativePath, dataUrl);
     return {
-      relativePath: dataUrl,
-      fileName: `recording-${Date.now()}.webm`,
-      assetUrl: dataUrl
+      relativePath,
+      fileName,
+      assetUrl: this.getAssetUrl(bookId, relativePath)
     };
   }
 
@@ -544,18 +711,26 @@ export class BookLibraryService {
       return null;
     }
 
+    if (!this.isAndroidBookStorageAvailable) {
+      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotSaveAsset'));
+      return null;
+    }
+    const safeFileName = this.sanitizePathSegment(fileName || `${kind}-${Date.now()}${this.extensionFromDataUrl(dataUrl)}`);
+    const relativePath = `${kind}/${this.createId(kind)}-${safeFileName}${safeFileName.includes('.') ? '' : this.extensionFromDataUrl(dataUrl)}`;
+    await this.writeAndroidDataUrl(bookId, relativePath, dataUrl);
     return {
-      relativePath: dataUrl,
-      fileName: fileName || kind,
-      assetUrl: dataUrl
+      relativePath,
+      fileName: safeFileName,
+      assetUrl: this.getAssetUrl(bookId, relativePath)
     };
   }
 
   getAssetUrl(bookId: string, relativePath: string): string {
     if (!relativePath) return '';
     if (this.isInlineOrRemoteAsset(relativePath)) return relativePath;
-    if (relativePath.startsWith('local-book-asset://')) {
-      return this.localAssetCache.get(relativePath) || '';
+    const androidUrl = this.androidAssetUrlCache.get(`${bookId}:${relativePath}`);
+    if (androidUrl) {
+      return androidUrl;
     }
 
     const api = window?.electronAPI;
@@ -568,8 +743,9 @@ export class BookLibraryService {
   getAssetFileUrl(bookId: string, relativePath: string): string {
     if (!relativePath) return '';
     if (this.isInlineOrRemoteAsset(relativePath)) return relativePath;
-    if (relativePath.startsWith('local-book-asset://')) {
-      return this.localAssetCache.get(relativePath) || '';
+    const androidUrl = this.androidAssetUrlCache.get(`${bookId}:${relativePath}`);
+    if (androidUrl) {
+      return androidUrl;
     }
 
     const api = window?.electronAPI;
@@ -596,59 +772,250 @@ export class BookLibraryService {
     return null;
   }
 
-  private async checkStorageQuota(requiredBytes: number): Promise<void> {
-    if (typeof navigator?.storage?.estimate !== 'function') return;
-    const { quota = 0, usage = 0 } = await navigator.storage.estimate();
-    const available = quota - usage;
-    const minRequired = Math.max(requiredBytes * 3, 20 * 1024 * 1024);
-    if (available < minRequired) {
-      const availableMb = (available / 1024 / 1024).toFixed(1);
-      throw new Error(
-        `${this.t('bookLibNotEnoughStorage') || 'Not enough browser storage'} (${availableMb} MB available). Delete old books or clear browser data to continue.`
-      );
+  private async readAndroidRegistry(): Promise<BookRegistryItem[]> {
+    if (!this.isAndroidBookStorageAvailable) return [];
+    await this.ensureAndroidDirectory(this.androidBooksRoot);
+    const listing = await Filesystem.readdir({
+      path: this.androidBooksRoot,
+      directory: Directory.Data
+    }).catch(() => ({ files: [] }));
+
+    const entries = await Promise.all(
+      listing.files
+        .filter((file) => file.type === 'directory')
+        .map(async (file) => {
+          const book = await this.readAndroidBook(file.name, false);
+          return book ? this.toAndroidRegistryItem(book) : null;
+        })
+    );
+
+    return entries
+      .filter((entry): entry is BookRegistryItem => !!entry)
+      .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  }
+
+  private async readAndroidBook(bookId: string, warmAssets = true): Promise<InteractiveBook | null> {
+    try {
+      const result = await Filesystem.readFile({
+        path: this.androidBookPath(bookId, 'book.json'),
+        directory: Directory.Data,
+        encoding: Encoding.UTF8
+      });
+      const book = JSON.parse(String(result.data || '')) as InteractiveBook;
+      if (!book?.id) return null;
+      if (warmAssets) {
+        await this.warmAndroidBookAssets(book);
+      }
+      return this.cloneBook(book);
+    } catch (error) {
+      console.debug('Could not read Android book.', error);
+      return null;
     }
   }
 
-  private async saveLocalBook(book: InteractiveBook, showRefresh = true): Promise<BookRegistryItem> {
-    const current = await db.books.get(book.id);
+  private async saveAndroidBook(book: InteractiveBook, showRefresh = true): Promise<BookRegistryItem> {
     const now = new Date().toISOString();
     const nextBook = this.cloneBook(book);
-    nextBook.createdAt = nextBook.createdAt || current?.createdAt || now;
+    nextBook.createdAt = nextBook.createdAt || now;
     nextBook.updatedAt = now;
-
-    const entry: StoredBook = {
-      id: nextBook.id,
-      title: nextBook.title || 'Untitled Book',
-      book: nextBook,
-      pageCount: nextBook.pages.length,
-      sizeBytes: this.getJsonSize(nextBook),
-      createdAt: nextBook.createdAt,
-      updatedAt: nextBook.updatedAt
-    };
-
-    await this.checkStorageQuota(entry.sizeBytes);
-    await db.books.put(entry);
+    await this.ensureAndroidDirectory(this.androidBookPath(nextBook.id));
+    await Filesystem.writeFile({
+      path: this.androidBookPath(nextBook.id, 'book.json'),
+      directory: Directory.Data,
+      data: JSON.stringify(nextBook, null, 2),
+      encoding: Encoding.UTF8
+    });
+    await this.warmAndroidBookAssets(nextBook);
+    const registry = this.toAndroidRegistryItem(nextBook);
     if (showRefresh) {
       await this.refresh();
     } else {
       await this.refresh();
     }
-    return this.toRegistryItem(entry);
+    return registry;
   }
 
-  private async warmLocalAssets(bookId: string): Promise<void> {
-    const assets = await db.bookAssets.where('bookId').equals(bookId).toArray();
-    for (const asset of assets) {
-      this.localAssetCache.set(asset.relativePath, asset.dataUrl);
+  private async copyAndroidBook(sourceBookId: string, copy: InteractiveBook): Promise<BookRegistryItem | null> {
+    try {
+      await this.deleteAndroidBookFolder(copy.id).catch(() => undefined);
+      await Filesystem.copy({
+        from: this.androidBookPath(sourceBookId),
+        to: this.androidBookPath(copy.id),
+        directory: Directory.Data,
+        toDirectory: Directory.Data
+      });
+      return this.saveAndroidBook(copy, false);
+    } catch (error) {
+      console.debug('Could not copy Android book.', error);
+      return null;
     }
   }
 
-  private async exportLocalBookToDownloads(bookId: string): Promise<void> {
-    if (!this.isLocalStorageAvailable()) {
-      this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibCouldNotExportBook'));
-      return;
+  private async saveAndroidCombinedBook(
+    combined: InteractiveBook,
+    sourceBooks: InteractiveBook[]
+  ): Promise<BookRegistryItem | null> {
+    try {
+      await this.deleteAndroidBookFolder(combined.id).catch(() => undefined);
+      combined.pages = [];
+      for (const [index, sourceBook] of sourceBooks.entries()) {
+        const sourceCopy = this.cloneBook(sourceBook);
+        await this.rewriteAndroidBookReferences(
+          sourceCopy,
+          sourceBook.id,
+          combined.id,
+          `combined/book-${index + 1}`
+        );
+        combined.pages.push(
+          ...sourceCopy.pages.map((page) => ({
+            ...this.clonePage(page),
+            id: this.createId('page')
+          }))
+        );
+      }
+      combined.updatedAt = new Date().toISOString();
+      return this.saveAndroidBook(combined, false);
+    } catch (error) {
+      console.debug('Could not combine Android books.', error);
+      return null;
+    }
+  }
+
+  private async rewriteAndroidBookReferences(
+    book: InteractiveBook,
+    sourceBookId: string,
+    targetBookId: string,
+    prefix: string
+  ): Promise<void> {
+    if (book.sourcePdf) {
+      book.sourcePdf = await this.copyAndroidAssetReference(sourceBookId, targetBookId, book.sourcePdf, prefix);
+    }
+    if (book.cover) {
+      book.cover = await this.copyAndroidAssetReference(sourceBookId, targetBookId, book.cover, prefix);
     }
 
+    for (const page of book.pages) {
+      await this.rewriteAndroidPageReferences(page, sourceBookId, targetBookId, prefix);
+    }
+    for (const workbook of book.workbooks ?? []) {
+      if (workbook.sourcePdf) {
+        workbook.sourcePdf = await this.copyAndroidAssetReference(sourceBookId, targetBookId, workbook.sourcePdf, prefix);
+      }
+      for (const page of workbook.pages) {
+        await this.rewriteAndroidPageReferences(page, sourceBookId, targetBookId, prefix);
+      }
+    }
+  }
+
+  private async rewriteAndroidPageReferences(
+    page: BookPage,
+    sourceBookId: string,
+    targetBookId: string,
+    prefix: string
+  ): Promise<void> {
+    if (page.sourcePdf) {
+      page.sourcePdf = await this.copyAndroidAssetReference(sourceBookId, targetBookId, page.sourcePdf, prefix);
+    }
+    for (const element of page.elements) {
+      const src = String(element.data?.['src'] || '');
+      if (src) {
+        element.data['src'] = await this.copyAndroidAssetReference(sourceBookId, targetBookId, src, prefix);
+      }
+      const bookTopicPath = String(element.data?.['bookTopicPath'] || '');
+      if (bookTopicPath) {
+        element.data['bookTopicPath'] = await this.copyAndroidAssetReference(sourceBookId, targetBookId, bookTopicPath, prefix);
+      }
+      if (Array.isArray(element.data?.['audioFiles'])) {
+        element.data['audioFiles'] = await Promise.all(
+          element.data['audioFiles'].map((audioFile: string) =>
+            this.copyAndroidAssetReference(sourceBookId, targetBookId, String(audioFile), prefix)
+          )
+        );
+      }
+      if (Array.isArray(element.data?.['guideTracks'])) {
+        for (const track of element.data['guideTracks'] as Array<{ src?: string; pins?: Array<{ imageSrc?: string }> }>) {
+          if (track.src) {
+            track.src = await this.copyAndroidAssetReference(sourceBookId, targetBookId, track.src, prefix);
+          }
+          for (const pin of track.pins ?? []) {
+            if (pin.imageSrc) {
+              pin.imageSrc = await this.copyAndroidAssetReference(sourceBookId, targetBookId, pin.imageSrc, prefix);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private async copyAndroidAssetReference(
+    sourceBookId: string,
+    targetBookId: string,
+    value: string,
+    prefix: string
+  ): Promise<string> {
+    if (!value || this.isInlineOrRemoteAsset(value) || value.startsWith('local-book-asset://')) {
+      return value;
+    }
+    const targetPath = `${prefix}/${value}`.replace(/\/+/g, '/');
+    await this.ensureAndroidDirectory(this.dirname(this.androidBookPath(targetBookId, targetPath)));
+    await Filesystem.copy({
+      from: this.androidBookPath(sourceBookId, value),
+      to: this.androidBookPath(targetBookId, targetPath),
+      directory: Directory.Data,
+      toDirectory: Directory.Data
+    }).catch((error) => console.debug('Could not copy Android asset reference.', value, error));
+    await this.cacheAndroidAssetUrl(targetBookId, targetPath);
+    return targetPath;
+  }
+
+  private async createAndroidWorkbookFromPick(
+    bookId: string,
+    picked: BookFilePick,
+    workbookId?: string
+  ): Promise<BookWorkbook> {
+    const now = new Date().toISOString();
+    const id = workbookId || this.createId('workbook');
+    const sourcePdf = picked.relativePath || `workbooks/${id}/source.pdf`;
+    const pageCount = await this.getPdfPageCount(picked.dataUrl);
+    if (!picked.relativePath) {
+      await this.writeAndroidDataUrl(bookId, sourcePdf, picked.dataUrl);
+    }
+    return {
+      id,
+      title: this.titleFromFileName(picked.fileName) || 'Workbook',
+      sourcePdf,
+      pages: this.createPdfPages(sourcePdf, pageCount),
+      createdAt: now,
+      updatedAt: now
+    };
+  }
+
+  private async writeAndroidDataUrl(bookId: string, relativePath: string, dataUrl: string): Promise<void> {
+    const parsed = this.parseDataUrl(dataUrl);
+    if (!parsed) {
+      throw new Error('Invalid data URL.');
+    }
+    await this.ensureAndroidDirectory(this.dirname(this.androidBookPath(bookId, relativePath)));
+    await Filesystem.writeFile({
+      path: this.androidBookPath(bookId, relativePath),
+      directory: Directory.Data,
+      data: parsed.base64
+    });
+    await this.cacheAndroidAssetUrl(bookId, relativePath);
+  }
+
+  private async writeAndroidText(bookId: string, relativePath: string, content: string): Promise<void> {
+    await this.ensureAndroidDirectory(this.dirname(this.androidBookPath(bookId, relativePath)));
+    await Filesystem.writeFile({
+      path: this.androidBookPath(bookId, relativePath),
+      directory: Directory.Data,
+      data: content,
+      encoding: Encoding.UTF8
+    });
+    await this.cacheAndroidAssetUrl(bookId, relativePath);
+  }
+
+  private async exportAndroidBookToDownloads(bookId: string): Promise<void> {
     const book = await this.getBook(bookId);
     if (!book) {
       showAppNotification(this.t('bookLibCouldNotLoadBook'), 'error');
@@ -659,193 +1026,196 @@ export class BookLibraryService {
     try {
       const exportFolder = `No-Prep Books/${this.sanitizePathSegment(book.title || 'Book')}`;
       const exportedBook = this.cloneBook(book);
-
-      // Promise-based dedup: stores in-flight writes so concurrent callers await
-      // the same write instead of writing the same blob twice.
       const exportedAssets = new Map<string, Promise<string>>();
-      const writeDataUrl = (dataUrl: string, relativePath: string): Promise<string> => {
-        if (!this.isInlineDataUrl(dataUrl)) {
-          return Promise.resolve(dataUrl);
+      const writeFile = async (relativePath: string): Promise<string> => {
+        if (!relativePath || this.isInlineOrRemoteAsset(relativePath)) {
+          return relativePath;
         }
-        const pending = exportedAssets.get(dataUrl);
+        const pending = exportedAssets.get(relativePath);
         if (pending) return pending;
-        const promise = this.platformFile
-          .saveDataUrlToDownloads(dataUrl, this.fileNameFromRelativePath(relativePath), `${exportFolder}/${this.dirname(relativePath)}`)
-          .then(() => relativePath);
-        exportedAssets.set(dataUrl, promise);
+        const promise = this.readAndroidAssetDataUrl(bookId, relativePath).then(async (dataUrl) => {
+          if (!dataUrl) return relativePath;
+          await this.platformFile.saveDataUrlToDownloads(
+            dataUrl,
+            this.fileNameFromRelativePath(relativePath),
+            `${exportFolder}/${this.dirname(relativePath)}`
+          );
+          return relativePath;
+        });
+        exportedAssets.set(relativePath, promise);
         return promise;
       };
 
-      const totalPages =
-        exportedBook.pages.length +
-        (exportedBook.workbooks ?? []).reduce((sum, wb) => sum + wb.pages.length, 0);
-      let exportedPageCount = 0;
-
-      const exportOnePage = async (page: BookPage, sourcePdfPath: string): Promise<void> => {
-        if (page.sourcePdf) {
-          page.sourcePdf = await writeDataUrl(page.sourcePdf, sourcePdfPath);
-        }
-        await this.exportPageElementAssets(bookId, page, writeDataUrl);
-        exportedPageCount++;
-        this.progressSubject.next({
-          operationId: 'export',
-          type: 'export',
-          phase: `${this.t('bookLibPreparingExport')} (${exportedPageCount}/${totalPages})`,
-          transferredBytes: exportedPageCount,
-          totalBytes: totalPages
-        });
-      };
-
-      if (exportedBook.sourcePdf) {
-        exportedBook.sourcePdf = await writeDataUrl(exportedBook.sourcePdf, 'student-book/source.pdf');
-      }
-
-      await Promise.all(
-        exportedBook.pages.map((page, i) =>
-          exportOnePage(page, `student-book/page-${page.pdfPage || i + 1}.pdf`)
-        )
-      );
-
-      await Promise.all(
-        (exportedBook.workbooks ?? []).map(async (workbook, workbookIndex) => {
-          const workbookFolder = `workbook-${workbookIndex + 1}`;
-          if (workbook.sourcePdf) {
-            workbook.sourcePdf = await writeDataUrl(workbook.sourcePdf, `${workbookFolder}/source.pdf`);
-          }
-          await Promise.all(
-            workbook.pages.map((page, i) =>
-              exportOnePage(page, `${workbookFolder}/page-${page.pdfPage || i + 1}.pdf`)
-            )
-          );
-        })
-      );
-
-      const annotations = await db.bookAnnotations.get(bookId);
-      if (annotations?.annotations) {
-        await this.platformFile.saveTextToDownloads(
-          JSON.stringify(annotations.annotations, null, 2),
-          'book-annotations.json',
-          'application/json',
-          `${exportFolder}/annotations`
-        );
-      }
-
+      await this.rewriteExportReferences(exportedBook, writeFile);
       await this.platformFile.saveTextToDownloads(
         JSON.stringify(exportedBook, null, 2),
         'book.json',
         'application/json',
         exportFolder
       );
-
       showAppNotification('Book folder exported to Downloads/No-Prep Books.', 'success');
     } catch (error) {
-      console.debug('Local book export failed', error);
+      console.debug('Android book export failed', error);
       showAppNotification(this.t('bookLibCouldNotExportBook'), 'error');
     } finally {
       this.progressSubject.next(null);
     }
   }
 
-  private async exportPageElementAssets(
-    bookId: string,
-    page: BookPage,
-    writeDataUrl: (dataUrl: string, relativePath: string) => Promise<string>
+  private async rewriteExportReferences(
+    book: InteractiveBook,
+    writeFile: (relativePath: string) => Promise<string>
   ): Promise<void> {
-    await Promise.all(page.elements.map(async (element, index) => {
-      const prefix = `${page.id || 'page'}/${index + 1}-${element.id || element.type}`;
-      const src = String(element.data?.['src'] || '');
-      if (src) {
-        const dataUrl = await this.resolveLocalAssetDataUrl(bookId, src);
-        if (dataUrl) {
-          const folder = this.assetFolderForElementType(element.type);
-          element.data['src'] = await writeDataUrl(dataUrl, `${folder}/${prefix}${this.extensionFromDataUrl(dataUrl)}`);
-        }
+    if (book.sourcePdf) book.sourcePdf = await writeFile(book.sourcePdf);
+    if (book.cover) book.cover = await writeFile(book.cover);
+    for (const page of book.pages) {
+      await this.rewriteExportPageReferences(page, writeFile);
+    }
+    for (const workbook of book.workbooks ?? []) {
+      if (workbook.sourcePdf) workbook.sourcePdf = await writeFile(workbook.sourcePdf);
+      for (const page of workbook.pages) {
+        await this.rewriteExportPageReferences(page, writeFile);
       }
-
-      const topicPath = String(element.data?.['bookTopicPath'] || '');
-      if (topicPath) {
-        const dataUrl = await this.resolveLocalAssetDataUrl(bookId, topicPath);
-        if (dataUrl) {
-          element.data['bookTopicPath'] = await writeDataUrl(dataUrl, `assets/games/${this.fileNameFromRelativePath(topicPath)}`);
-        }
-      }
-
-      if (Array.isArray(element.data?.['guideTracks'])) {
-        const tracks = element.data['guideTracks'] as Array<{
-          src?: string;
-          pins?: Array<{ imageSrc?: string }>;
-        }>;
-        await Promise.all(tracks.map(async (track, trackIndex) => {
-          const audioSource = String(track.src || '');
-          if (audioSource) {
-            const dataUrl = await this.resolveLocalAssetDataUrl(bookId, audioSource);
-            if (dataUrl) {
-              track.src = await writeDataUrl(
-                dataUrl,
-                `audio/${prefix}-${trackIndex + 1}${this.extensionFromDataUrl(dataUrl)}`
-              );
-            }
-          }
-          await Promise.all((track.pins || []).map(async (pin, pinIndex) => {
-            const imageSource = String(pin.imageSrc || '');
-            if (!imageSource) return;
-            const dataUrl = await this.resolveLocalAssetDataUrl(bookId, imageSource);
-            if (dataUrl) {
-              pin.imageSrc = await writeDataUrl(
-                dataUrl,
-                `images/${prefix}-track-${trackIndex + 1}-pin-${pinIndex + 1}${this.extensionFromDataUrl(dataUrl)}`
-              );
-            }
-          }));
-        }));
-        element.data['audioFiles'] = tracks.map((track) => String(track.src || '')).filter(Boolean);
-      } else if (Array.isArray(element.data?.['audioFiles'])) {
-        const audioFiles = element.data['audioFiles'] as string[];
-        const exportedAudio: string[] = await Promise.all(
-          audioFiles.map(async (audioFile, audioIndex) => {
-            const dataUrl = await this.resolveLocalAssetDataUrl(bookId, String(audioFile));
-            if (dataUrl) {
-              return writeDataUrl(dataUrl, `audio/${prefix}-${audioIndex + 1}${this.extensionFromDataUrl(dataUrl)}`);
-            }
-            return String(audioFile);
-          })
-        );
-        element.data['audioFiles'] = exportedAudio;
-      }
-    }));
+    }
   }
 
-  private async resolveLocalAssetDataUrl(bookId: string, value: string): Promise<string | null> {
-    if (this.isInlineDataUrl(value)) {
-      return value;
+  private async rewriteExportPageReferences(
+    page: BookPage,
+    writeFile: (relativePath: string) => Promise<string>
+  ): Promise<void> {
+    if (page.sourcePdf) page.sourcePdf = await writeFile(page.sourcePdf);
+    for (const element of page.elements) {
+      const src = String(element.data?.['src'] || '');
+      if (src) element.data['src'] = await writeFile(src);
+      const topicPath = String(element.data?.['bookTopicPath'] || '');
+      if (topicPath) element.data['bookTopicPath'] = await writeFile(topicPath);
+      if (Array.isArray(element.data?.['audioFiles'])) {
+        element.data['audioFiles'] = await Promise.all(
+          element.data['audioFiles'].map((audioFile: string) => writeFile(String(audioFile)))
+        );
+      }
+      if (Array.isArray(element.data?.['guideTracks'])) {
+        for (const track of element.data['guideTracks'] as Array<{ src?: string; pins?: Array<{ imageSrc?: string }> }>) {
+          if (track.src) track.src = await writeFile(track.src);
+          for (const pin of track.pins ?? []) {
+            if (pin.imageSrc) pin.imageSrc = await writeFile(pin.imageSrc);
+          }
+        }
+      }
     }
-    if (!value.startsWith('local-book-asset://')) {
+  }
+
+  private async readAndroidAssetDataUrl(bookId: string, relativePath: string): Promise<string | null> {
+    if (!relativePath || this.isInlineOrRemoteAsset(relativePath)) {
+      return relativePath || null;
+    }
+    try {
+      const result = await Filesystem.readFile({
+        path: this.androidBookPath(bookId, relativePath),
+        directory: Directory.Data
+      });
+      return `data:${this.mimeTypeFromPath(relativePath)};base64,${String(result.data || '')}`;
+    } catch (error) {
+      console.debug('Could not read Android asset.', relativePath, error);
       return null;
     }
-    const cached = this.localAssetCache.get(value);
-    if (cached) {
-      return cached;
-    }
-    const asset = await db.bookAssets.get(value);
-    if (asset?.bookId === bookId && asset.dataUrl) {
-      this.localAssetCache.set(value, asset.dataUrl);
-      return asset.dataUrl;
-    }
-    return null;
   }
 
-  private toRegistryItem(entry: StoredBook): BookRegistryItem {
+  private async warmAndroidBookAssets(book: InteractiveBook): Promise<void> {
+    const paths = new Set<string>();
+    this.collectBookAssetPaths(book, paths);
+    await Promise.all(Array.from(paths).map((path) => this.cacheAndroidAssetUrl(book.id, path)));
+  }
+
+  private collectBookAssetPaths(book: InteractiveBook, paths: Set<string>): void {
+    this.addBookAssetPath(paths, book.sourcePdf);
+    this.addBookAssetPath(paths, book.cover);
+    book.pages.forEach((page) => this.collectPageAssetPaths(page, paths));
+    (book.workbooks ?? []).forEach((workbook) => {
+      this.addBookAssetPath(paths, workbook.sourcePdf);
+      workbook.pages.forEach((page) => this.collectPageAssetPaths(page, paths));
+    });
+  }
+
+  private collectPageAssetPaths(page: BookPage, paths: Set<string>): void {
+    this.addBookAssetPath(paths, page.sourcePdf);
+    page.elements.forEach((element) => {
+      this.addBookAssetPath(paths, String(element.data?.['src'] || ''));
+      this.addBookAssetPath(paths, String(element.data?.['bookTopicPath'] || ''));
+      if (Array.isArray(element.data?.['audioFiles'])) {
+        element.data['audioFiles'].forEach((audioFile: string) => this.addBookAssetPath(paths, String(audioFile || '')));
+      }
+      if (Array.isArray(element.data?.['guideTracks'])) {
+        (element.data['guideTracks'] as Array<{ src?: string; pins?: Array<{ imageSrc?: string }> }>).forEach((track) => {
+          this.addBookAssetPath(paths, track.src);
+          (track.pins ?? []).forEach((pin) => this.addBookAssetPath(paths, pin.imageSrc));
+        });
+      }
+    });
+  }
+
+  private addBookAssetPath(paths: Set<string>, value?: string): void {
+    const path = String(value || '');
+    if (!path || this.isInlineOrRemoteAsset(path) || path.startsWith('local-book-asset://')) return;
+    paths.add(path);
+  }
+
+  private async cacheAndroidAssetUrl(bookId: string, relativePath: string): Promise<string> {
+    const key = `${bookId}:${relativePath}`;
+    const cached = this.androidAssetUrlCache.get(key);
+    if (cached) return cached;
+    const result = await Filesystem.getUri({
+      path: this.androidBookPath(bookId, relativePath),
+      directory: Directory.Data
+    });
+    const url = Capacitor.convertFileSrc(result.uri);
+    this.androidAssetUrlCache.set(key, url);
+    return url;
+  }
+
+  private cacheNativeAndroidAssetUrl(bookId: string, relativePath: string, uri: string): string {
+    const key = `${bookId}:${relativePath}`;
+    const url = Capacitor.convertFileSrc(uri);
+    this.androidAssetUrlCache.set(key, url);
+    return url;
+  }
+
+  private async deleteAndroidBookFolder(bookId: string): Promise<void> {
+    await Filesystem.rmdir({
+      path: this.androidBookPath(bookId),
+      directory: Directory.Data,
+      recursive: true
+    }).catch(() => undefined);
+  }
+
+  private async ensureAndroidDirectory(path: string): Promise<void> {
+    if (!path) return;
+    await Filesystem.mkdir({
+      path,
+      directory: Directory.Data,
+      recursive: true
+    }).catch(() => undefined);
+  }
+
+  private toAndroidRegistryItem(book: InteractiveBook): BookRegistryItem {
     return {
-      id: entry.id,
-      title: entry.title || entry.book.title || 'Untitled Book',
-      folderPath: `indexeddb://${entry.id}`,
-      coverPath: entry.book.cover,
-      pageCount: entry.pageCount,
-      sizeBytes: entry.sizeBytes,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt
+      id: book.id,
+      title: book.title || 'Untitled Book',
+      folderPath: `android-data://${this.androidBookPath(book.id)}`,
+      coverPath: book.cover,
+      pageCount: book.pages.length,
+      createdAt: book.createdAt,
+      updatedAt: book.updatedAt
     };
   }
+
+  private androidBookPath(bookId: string, relativePath = ''): string {
+    return [this.androidBooksRoot, this.sanitizePathSegment(bookId), relativePath]
+      .filter(Boolean)
+      .join('/')
+      .replace(/\/+/g, '/');
+  }
+
 
   private createBlankPage(): BookPage {
     return {
@@ -892,6 +1262,43 @@ export class BookLibraryService {
       return Math.max(1, Number(document.numPages) || 1);
     } finally {
       await Promise.resolve(document.destroy?.()).catch(() => {});
+    }
+  }
+
+  private async pickAndroidBookFile(
+    bookId: string,
+    options: {
+      relativePath?: string;
+      targetDirectory?: string;
+      filePrefix?: string;
+      mimeTypes?: string[];
+    }
+  ): Promise<BookFilePick | null> {
+    if (!this.isAndroidBookStorageAvailable) return null;
+    try {
+      const result = await NativeBookStorage.pickAndSaveFile({
+        bookId,
+        ...options
+      });
+      const relativePath = result.relativePath;
+      if (!relativePath) return null;
+      const assetUrl = result.uri
+        ? this.cacheNativeAndroidAssetUrl(bookId, relativePath, result.uri)
+        : await this.cacheAndroidAssetUrl(bookId, relativePath);
+      return {
+        dataUrl: assetUrl,
+        fileName: result.fileName || this.fileNameFromRelativePath(relativePath),
+        mimeType: result.mimeType || this.mimeTypeFromPath(relativePath),
+        size: result.size || 0,
+        relativePath,
+        assetUrl
+      };
+    } catch (error) {
+      if (!String(error || '').includes('CANCELLED')) {
+        console.debug('Android file pick failed', error);
+        showAppNotification(this.t('bookLibOperationFailed'), 'error');
+      }
+      return null;
     }
   }
 
@@ -967,6 +1374,14 @@ export class BookLibraryService {
     return extensions.map((extension) => `.${String(extension).replace(/^\./, '')}`).join(',');
   }
 
+  private filtersToMimeTypes(filters: { name: string; extensions: string[] }[]): string[] {
+    const mimeTypes = filters
+      .flatMap((filter) => filter.extensions || [])
+      .map((extension) => this.mimeTypeFromPath(`file.${String(extension).replace(/^\./, '')}`))
+      .filter(Boolean);
+    return Array.from(new Set(mimeTypes.length ? mimeTypes : ['*/*']));
+  }
+
   private fileToDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1023,16 +1438,20 @@ export class BookLibraryService {
     showAppNotification(response.message || fallback, 'error');
   }
 
-  private isLocalStorageAvailable(): boolean {
-    return typeof indexedDB !== 'undefined' && !!db.books;
-  }
-
   private isInlineOrRemoteAsset(value: string): boolean {
     return /^(data:|blob:|https?:)/i.test(value);
   }
 
-  private isInlineDataUrl(value: string): boolean {
-    return /^data:/i.test(value);
+  private parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
+    const match = /^data:([^;,]+)?(;base64)?,(.*)$/i.exec(dataUrl);
+    if (!match) return null;
+    const mimeType = match[1] || 'application/octet-stream';
+    const isBase64 = !!match[2];
+    const payload = match[3] || '';
+    return {
+      mimeType,
+      base64: isBase64 ? payload : btoa(decodeURIComponent(payload))
+    };
   }
 
   private extensionFromDataUrl(dataUrl: string): string {
@@ -1050,10 +1469,21 @@ export class BookLibraryService {
     return '.bin';
   }
 
-  private assetFolderForElementType(type: string): string {
-    if (type === 'video') return 'videos';
-    if (type === 'image') return 'images';
-    return 'assets';
+  private mimeTypeFromPath(path: string): string {
+    const extension = this.fileNameFromRelativePath(path).split('.').pop()?.toLowerCase() || '';
+    if (extension === 'pdf') return 'application/pdf';
+    if (extension === 'png') return 'image/png';
+    if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+    if (extension === 'webp') return 'image/webp';
+    if (extension === 'gif') return 'image/gif';
+    if (extension === 'mp4') return 'video/mp4';
+    if (extension === 'webm') return 'video/webm';
+    if (extension === 'mov') return 'video/quicktime';
+    if (extension === 'mp3') return 'audio/mpeg';
+    if (extension === 'wav') return 'audio/wav';
+    if (extension === 'ogg') return 'audio/ogg';
+    if (extension === 'json') return 'application/json';
+    return 'application/octet-stream';
   }
 
   private sanitizePathSegment(value: string): string {
@@ -1086,17 +1516,4 @@ export class BookLibraryService {
     return JSON.parse(JSON.stringify(page));
   }
 
-  private getJsonSize(value: unknown): number {
-    return new Blob([JSON.stringify(value)]).size;
-  }
-
-  private base64EncodeUtf8(value: string): string {
-    const bytes = new TextEncoder().encode(value);
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let index = 0; index < bytes.length; index += chunkSize) {
-      binary += String.fromCharCode(...bytes.slice(index, index + chunkSize));
-    }
-    return btoa(binary);
-  }
 }

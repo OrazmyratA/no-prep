@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, Subscription, combineLatest } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -14,9 +14,10 @@ import { LanguageService, SupportedLanguage } from '../../../core/language';
 import { PlatformService } from '../../../core/platform';
 import { ResizeService } from '../../../core/resize';
 import { BookLibraryService } from '../../../core/book-library';
-import { BookOperationProgress, BookRegistryItem } from '../../../core/book.model';
+import { BookOperationProgress, BookRegistryItem, BookStorageLocation } from '../../../core/book.model';
 
 type LibraryCategory = 'topics' | 'books';
+type PendingBookStorageAction = 'create' | 'import' | null;
 
 @Component({
   selector: 'app-topics-list',
@@ -38,6 +39,10 @@ export class TopicsListComponent implements OnInit, AfterViewInit, OnDestroy {
   activeBookId: string | null = null;
   activeLibraryCategory: LibraryCategory = 'topics';
   topicCoverUrls: Record<number, string> = {};
+  showBookStorageDialog = false;
+  bookStorageLocation: BookStorageLocation | null = null;
+  bookStorageBusy = false;
+  private pendingBookStorageAction: PendingBookStorageAction = null;
   fullAccess$: Observable<boolean>;
   private layoutSubscription?: Subscription;
   private topicCoverSubscription?: Subscription;
@@ -90,6 +95,7 @@ onClickOutside(event: MouseEvent) {
     private langService: LanguageService,
     private resizeService: ResizeService,
     private elementRef: ElementRef<HTMLElement>,
+    private ngZone: NgZone,
     public platform: PlatformService,
     public bookLibrary: BookLibraryService
   ) {
@@ -98,6 +104,11 @@ onClickOutside(event: MouseEvent) {
   }
 
   async openUrl(url: string): Promise<void> {
+    const api = (window as any)?.electronAPI;
+    if (typeof api?.openExternalUrl === 'function') {
+      const opened = await api.openExternalUrl(url);
+      if (opened) return;
+    }
     if (this.platform.isNative()) {
       await Browser.open({ url });
     } else {
@@ -208,9 +219,16 @@ onClickOutside(event: MouseEvent) {
       showAppNotification(this.langService.translate('bookLibDesktopOnly'), 'error');
       return;
     }
+    if (!(await this.ensureBookStorageReady('create'))) {
+      return;
+    }
+    await this.runCreateBook();
+  }
+
+  private async runCreateBook(): Promise<void> {
     const created = await this.bookLibrary.createEmptyBook();
     if (created) {
-      await this.router.navigate(['/books', created.id, 'edit']);
+      await this.ngZone.run(() => this.router.navigate(['/books', created.id, 'edit']));
     }
   }
 
@@ -303,6 +321,9 @@ async deleteTopic(id: number) {
   }
 
   async importBook() {
+    if (!(await this.ensureBookStorageReady('import'))) {
+      return;
+    }
     await this.bookLibrary.importBookFolder();
   }
 
@@ -315,7 +336,117 @@ async deleteTopic(id: number) {
       showAppNotification(this.langService.translate('bookLibDesktopOnly'), 'error');
       return;
     }
+    if (!(await this.ensureBookStorageReady('import'))) {
+      return;
+    }
     await this.bookLibrary.importBookFolder();
+  }
+
+  async openBookStorageDialog(action: PendingBookStorageAction = null): Promise<void> {
+    this.ngZone.run(() => {
+      this.pendingBookStorageAction = action;
+      this.showBookStorageDialog = true;
+      this.bookStorageBusy = true;
+      this.cdr.detectChanges();
+    });
+
+    const location = await this.bookLibrary.getBookStorageLocation();
+    this.ngZone.run(() => {
+      this.bookStorageLocation = location;
+      this.bookStorageBusy = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  async closeBookStorageDialog(): Promise<void> {
+    const action = this.pendingBookStorageAction;
+    const canContinue = !!action && !!this.bookStorageLocation?.configured && !!this.bookStorageLocation?.available;
+    this.ngZone.run(() => {
+      this.showBookStorageDialog = false;
+      this.pendingBookStorageAction = null;
+      this.cdr.detectChanges();
+    });
+
+    if (!canContinue) {
+      return;
+    }
+
+    if (action === 'create') {
+      await this.runCreateBook();
+      return;
+    }
+    if (action === 'import') {
+      await this.bookLibrary.importBookFolder();
+    }
+  }
+
+  async chooseBookStorageFolder(): Promise<void> {
+    this.bookStorageBusy = true;
+    this.cdr.detectChanges();
+    try {
+      const location = await this.bookLibrary.chooseBookStorageLocation();
+      if (location) {
+        this.ngZone.run(() => {
+          this.bookStorageLocation = location;
+          this.cdr.detectChanges();
+        });
+      }
+    } finally {
+      this.ngZone.run(() => {
+        this.bookStorageBusy = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  async useDefaultBookStorageFolder(): Promise<void> {
+    this.bookStorageBusy = true;
+    this.cdr.detectChanges();
+    try {
+      const location = await this.bookLibrary.useDefaultBookStorageLocation();
+      if (location) {
+        this.ngZone.run(() => {
+          this.bookStorageLocation = location;
+          this.cdr.detectChanges();
+        });
+      }
+    } finally {
+      this.ngZone.run(() => {
+        this.bookStorageBusy = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  async openCurrentBookStorageFolder(): Promise<void> {
+    this.bookStorageBusy = true;
+    this.cdr.detectChanges();
+    try {
+      await this.bookLibrary.openBookStorageLocation();
+    } finally {
+      this.ngZone.run(() => {
+        this.bookStorageBusy = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  private async ensureBookStorageReady(action: Exclude<PendingBookStorageAction, null>): Promise<boolean> {
+    if (!this.bookLibrary.isDesktopAvailable) {
+      return true;
+    }
+
+    const location = await this.bookLibrary.getBookStorageLocation();
+    this.ngZone.run(() => {
+      this.bookStorageLocation = location;
+      this.cdr.detectChanges();
+    });
+    if (location?.configured && location.available) {
+      return true;
+    }
+
+    await this.openBookStorageDialog(action);
+    return false;
   }
 
   get canCombineTopics() {

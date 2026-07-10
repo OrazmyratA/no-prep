@@ -354,9 +354,17 @@
   pointer-events: none;
 }
 
-.creator-element.dot-element {
+.creator-element.dot-element,
+.creator-element.video-element,
+.creator-element.note-element,
+.creator-element.answer-key-element,
+.creator-element.speaking-ai-element,
+.creator-element.game-element {
   aspect-ratio: 1 / 1;
   height: auto !important;
+}
+
+.creator-element.dot-element {
   border-color: transparent;
   background: transparent;
   color: #ffffff;

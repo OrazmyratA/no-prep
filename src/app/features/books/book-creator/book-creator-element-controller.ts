@@ -97,6 +97,7 @@ export class BookCreatorElementController {
     this.creator.captureHistory();
     element.data['src'] = asset.relativePath;
     element.data['label'] = asset.fileName;
+    this.creator.refreshElementAssetChange();
   }
 
   insertElementCopy(source: BookElement, offset: number): void {

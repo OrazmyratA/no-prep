@@ -1,7 +1,7 @@
-import { Component, HostListener } from '@angular/core';
-import { NavigationEnd, Router } from '@angular/router';
+import { Component, HostListener, OnDestroy } from '@angular/core';
+import { NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 import { LicenseService } from './core/license';
-import { Observable, filter } from 'rxjs';
+import { Observable, Subscription, filter } from 'rxjs';
 import { ResizeService } from './core/resize';
 import { ThemeService } from './core/theme';
 
@@ -11,13 +11,21 @@ import { ThemeService } from './core/theme';
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   licenseFull$: Observable<boolean>;
   themeRender$;
   fullscreenButtonActive = false;
   themeExcluded = false;
+  routeLoadingVisible = false;
   private overlayHidden = false;
   private currentThemeActive = false;
+  private routeLoadingDelayHandle?: ReturnType<typeof setTimeout>;
+  private routeLoadingHideHandle?: ReturnType<typeof setTimeout>;
+  private routeLoadingShownAt = 0;
+  private routeLoadingNavigationId = 0;
+  private readonly routeLoadingDelayMs = 180;
+  private readonly routeLoadingMinimumMs = 350;
+  private readonly subscriptions = new Subscription();
 
   constructor(
     private licenseService: LicenseService,
@@ -28,27 +36,41 @@ export class AppComponent {
     this.licenseFull$ = this.licenseService.fullAccess$;
     this.themeRender$ = this.themeService.render$;
 
-    this.themeService.render$.subscribe(theme => {
+    this.subscriptions.add(this.themeService.render$.subscribe(theme => {
       this.currentThemeActive = theme.active;
       this.updateThemeBodyClasses();
-    });
+    }));
 
     // Listen for reopen requests from any component
-    this.licenseService.reopen$.subscribe(() => {
+    this.subscriptions.add(this.licenseService.reopen$.subscribe(() => {
       this.overlayHidden = false;
       this.resizeService.requestLayoutRefresh();
-    });
+    }));
 
-    this.router.events
+    this.subscriptions.add(this.router.events
+      .pipe(filter((event): event is NavigationStart => event instanceof NavigationStart))
+      .subscribe(() => this.startRouteLoading()));
+
+    this.subscriptions.add(this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(event => {
         this.themeExcluded = this.isThemeExcludedRoute(event.urlAfterRedirects);
         this.updateThemeBodyClasses();
         this.resizeService.requestLayoutRefresh();
-      });
+        this.finishRouteLoading();
+      }));
+
+    this.subscriptions.add(this.router.events
+      .pipe(filter((event): event is NavigationCancel | NavigationError => event instanceof NavigationCancel || event instanceof NavigationError))
+      .subscribe(() => this.finishRouteLoading()));
 
     this.themeExcluded = this.isThemeExcludedRoute(this.router.url);
     this.updateThemeBodyClasses();
+  }
+
+  ngOnDestroy(): void {
+    this.clearRouteLoadingTimers();
+    this.subscriptions.unsubscribe();
   }
 
   get showLicenseOverlay(): boolean {
@@ -97,5 +119,46 @@ hideLicenseOverlay() {
   private updateThemeBodyClasses() {
     document.body.classList.toggle('app-theme-active', this.currentThemeActive);
     document.body.classList.toggle('app-theme-excluded', this.themeExcluded);
+  }
+
+  private startRouteLoading(): void {
+    this.routeLoadingNavigationId++;
+    const navigationId = this.routeLoadingNavigationId;
+    this.clearRouteLoadingTimers();
+    this.routeLoadingDelayHandle = setTimeout(() => {
+      if (navigationId !== this.routeLoadingNavigationId) return;
+      this.routeLoadingVisible = true;
+      this.routeLoadingShownAt = Date.now();
+    }, this.routeLoadingDelayMs);
+  }
+
+  private finishRouteLoading(): void {
+    this.routeLoadingNavigationId++;
+    if (this.routeLoadingDelayHandle) {
+      clearTimeout(this.routeLoadingDelayHandle);
+      this.routeLoadingDelayHandle = undefined;
+    }
+
+    if (!this.routeLoadingVisible) {
+      return;
+    }
+
+    const elapsed = Date.now() - this.routeLoadingShownAt;
+    const remaining = Math.max(0, this.routeLoadingMinimumMs - elapsed);
+    this.routeLoadingHideHandle = setTimeout(() => {
+      this.routeLoadingVisible = false;
+      this.routeLoadingHideHandle = undefined;
+    }, remaining);
+  }
+
+  private clearRouteLoadingTimers(): void {
+    if (this.routeLoadingDelayHandle) {
+      clearTimeout(this.routeLoadingDelayHandle);
+      this.routeLoadingDelayHandle = undefined;
+    }
+    if (this.routeLoadingHideHandle) {
+      clearTimeout(this.routeLoadingHideHandle);
+      this.routeLoadingHideHandle = undefined;
+    }
   }
 }
