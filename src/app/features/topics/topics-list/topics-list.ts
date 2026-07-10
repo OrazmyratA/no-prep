@@ -1,5 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription, combineLatest } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { FormControl } from '@angular/forms';
@@ -88,6 +88,7 @@ onClickOutside(event: MouseEvent) {
   constructor(
     private db: DbService,
     public router: Router,
+    private route: ActivatedRoute,
     private importExport: ImportExportService,
     public licenseService: LicenseService,
     private cdr: ChangeDetectorRef,
@@ -140,6 +141,9 @@ onClickOutside(event: MouseEvent) {
   }
 
   ngOnInit() {
+    if (this.route.snapshot.queryParamMap.get('category') === 'books') {
+      this.activeLibraryCategory = 'books';
+    }
     const topics$ = this.db.topics$ as unknown as Observable<Topic[]>;
     this.topics$ = topics$;
     this.books$ = this.bookLibrary.books$;

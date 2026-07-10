@@ -166,6 +166,25 @@ export class BookCreatorGuidePreviewController {
     this.seekGuideTrackTo(element, track, Number(input.value));
   }
 
+  startGuideTrackSeekDrag(event: PointerEvent, element: BookElement, track: GuideAudioTrack): void {
+    if ((event.target as HTMLElement).closest('.guide-timeline-pin')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const timeline = event.currentTarget as HTMLElement;
+    const rect = timeline.getBoundingClientRect();
+    if (!rect.width) return;
+    this.selectGuideTrack(element, track);
+    void this.ensureGuideTrackDuration(track);
+    this.creator.guideTrackSeekDragState = {
+      elementId: element.id,
+      trackId: track.id,
+      left: rect.left,
+      width: rect.width,
+      duration: this.creator.getGuideTrackDuration(track)
+    };
+    this.updateGuideTrackSeekFromPointer(event.clientX);
+  }
+
   startGuideTimelinePinDrag(
     event: PointerEvent,
     element: BookElement,
@@ -230,7 +249,7 @@ export class BookCreatorGuidePreviewController {
 
     audio.onloadedmetadata = () => {
       if (token !== this.creator.previewToken) return;
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const duration = this.getUsableAudioDuration(audio);
       if (duration > 0) {
         track.duration = duration;
         this.creator.previewGuideDuration = duration;
@@ -241,7 +260,11 @@ export class BookCreatorGuidePreviewController {
       if (token !== this.creator.previewToken) return;
       this.creator.previewGuideCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
       this.creator.guideTrackSeekTimes[track.id] = this.creator.previewGuideCurrentTime;
-      this.creator.previewGuideDuration = Number.isFinite(audio.duration) ? audio.duration : this.creator.previewGuideDuration;
+      const duration = this.getUsableAudioDuration(audio);
+      if (duration > 0) {
+        track.duration = duration;
+        this.creator.previewGuideDuration = duration;
+      }
       this.applyCreatorGuideState(element, track, this.creator.previewGuideCurrentTime);
     };
     audio.onplay = () => {
@@ -293,19 +316,40 @@ export class BookCreatorGuidePreviewController {
   async ensureGuideTrackDuration(track: GuideAudioTrack): Promise<void> {
     if (!this.creator.book || (track.duration || 0) > 0) return;
     const audio = new Audio(this.creator.bookLibrary.getAssetUrl(this.creator.book.id, track.src));
-    await new Promise<void>((resolve) => {
+    const duration = await new Promise<number>((resolve) => {
+      let resolved = false;
+      const finish = (value = 0) => {
+        if (resolved) return;
+        resolved = true;
+        audio.onloadedmetadata = null;
+        audio.ondurationchange = null;
+        audio.onerror = null;
+        resolve(value);
+      };
       audio.preload = 'metadata';
       audio.onloadedmetadata = () => {
-        if (Number.isFinite(audio.duration) && audio.duration > 0) {
-          track.duration = audio.duration;
-          if (this.creator.selectedGuideTrackId === track.id) {
-            this.creator.previewGuideDuration = audio.duration;
-          }
+        const duration = this.getUsableAudioDuration(audio);
+        if (duration > 0) {
+          finish(duration);
+          return;
         }
-        resolve();
+        this.seekToDiscoverDuration(audio);
       };
-      audio.onerror = () => resolve();
+      audio.ondurationchange = () => {
+        const duration = this.getUsableAudioDuration(audio);
+        if (duration > 0) finish(duration);
+      };
+      audio.onerror = () => finish(0);
+      window.setTimeout(() => finish(this.getUsableAudioDuration(audio)), 1500);
+      audio.load();
     });
+    if (duration > 0) {
+      track.duration = duration;
+      if (this.creator.selectedGuideTrackId === track.id) {
+        this.creator.previewGuideDuration = duration;
+      }
+      this.creator.markBookDirty?.();
+    }
   }
 
   updateTimelinePinFromPointer(clientX: number): void {
@@ -322,6 +366,18 @@ export class BookCreatorGuidePreviewController {
       this.creator.activePreviewAudio.currentTime = pin.time;
     }
     this.applyCreatorGuideState(element, track, pin.time);
+  }
+
+  updateGuideTrackSeekFromPointer(clientX: number): void {
+    const drag = this.creator.guideTrackSeekDragState;
+    const element = this.creator.selectedElement;
+    if (!drag || !element || element.id !== drag.elementId) return;
+    const track = this.creator.getGuideDotTracks(element).find((item: GuideAudioTrack) => item.id === drag.trackId);
+    if (!track) return;
+    const duration = this.creator.getGuideTrackDuration(track);
+    const safeDuration = duration > 0 ? duration : drag.duration;
+    const ratio = this.creator.clamp((clientX - drag.left) / drag.width, 0, 1);
+    this.seekGuideTrackTo(element, track, ratio * safeDuration);
   }
 
   updatePagePinFromPointer(clientX: number, clientY: number): void {
@@ -357,7 +413,9 @@ export class BookCreatorGuidePreviewController {
     const point = this.creator.pendingGuidePinPointer;
     if (!point) return;
     this.creator.pendingGuidePinPointer = null;
-    if (this.creator.timelinePinDragState) {
+    if (this.creator.guideTrackSeekDragState) {
+      this.updateGuideTrackSeekFromPointer(point.x);
+    } else if (this.creator.timelinePinDragState) {
       this.updateTimelinePinFromPointer(point.x);
     } else if (this.creator.pagePinDragState) {
       this.updatePagePinFromPointer(point.x, point.y);
@@ -370,5 +428,18 @@ export class BookCreatorGuidePreviewController {
 
   sortGuidePins(track: GuideAudioTrack): void {
     track.pins.sort((a, b) => a.time - b.time);
+  }
+
+  private getUsableAudioDuration(audio: HTMLAudioElement): number {
+    const duration = Number(audio.duration);
+    return Number.isFinite(duration) && duration > 0 ? duration : 0;
+  }
+
+  private seekToDiscoverDuration(audio: HTMLAudioElement): void {
+    try {
+      audio.currentTime = Number.MAX_SAFE_INTEGER;
+    } catch {
+      // Some formats simply do not expose duration metadata until playback.
+    }
   }
 }

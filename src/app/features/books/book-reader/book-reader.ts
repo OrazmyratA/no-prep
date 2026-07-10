@@ -310,7 +310,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private async loadBook(bookId: string | null): Promise<void> {
     if (!bookId) {
-      await this.router.navigate(['/topics']);
+      await this.router.navigate(['/topics'], { queryParams: { category: 'books' } });
       return;
     }
 
@@ -1435,7 +1435,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.activeSpeakingPage = null;
     this.speakingPanelExpanded = false;
     this.resetSpeakingSessionState();
-    await this.router.navigate(['/topics']);
+    await this.router.navigate(['/topics'], { queryParams: { category: 'books' } });
   }
 
   async edit(): Promise<void> {

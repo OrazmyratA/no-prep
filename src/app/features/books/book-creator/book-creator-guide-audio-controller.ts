@@ -12,6 +12,7 @@ export class BookCreatorGuideAudioController {
   private recordedChunks: Blob[] = [];
   private recordingTimeoutId: number | null = null;
   private draggedAudioIndex: number | null = null;
+  private recordingStartedAt = 0;
 
   constructor(private readonly creator: any) {}
 
@@ -108,6 +109,7 @@ export class BookCreatorGuideAudioController {
 
       this.recordedChunks = [];
       this.creator.recordingGuideElementId = element.id;
+      this.recordingStartedAt = performance.now();
       const recorder = this.createMediaRecorder(stream);
       this.mediaRecorder = recorder;
       const chunks: Blob[] = this.recordedChunks;
@@ -133,9 +135,11 @@ export class BookCreatorGuideAudioController {
           const saved = await this.creator.bookLibrary.saveAudioRecording(this.creator.book.id, dataUrl);
           if (!saved) return;
           this.creator.captureHistory();
+          const duration = this.getRecordedDurationSeconds();
           const track: GuideAudioTrack = {
             id: this.creator.createId('guide-track'),
             src: saved.relativePath,
+            ...(duration > 0 ? { duration } : {}),
             pins: []
           };
           const elementId = element.id;
@@ -150,6 +154,7 @@ export class BookCreatorGuideAudioController {
           void this.creator.ensureGuideTrackDuration(track);
         } finally {
           this.creator.savingRecording = false;
+          this.recordingStartedAt = 0;
         }
       };
       recorder.start(GUIDE_RECORDING_TIMESLICE_MS);
@@ -192,5 +197,11 @@ export class BookCreatorGuideAudioController {
     ];
     const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
     return mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  }
+
+  private getRecordedDurationSeconds(): number {
+    if (!this.recordingStartedAt) return 0;
+    const seconds = (performance.now() - this.recordingStartedAt) / 1000;
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
   }
 }

@@ -475,17 +475,17 @@
           (dragover)="creator.onGuideAudioDragOver($event)"
           (drop)="creator.onGuideAudioDrop(element, i, $event)"
           (click)="creator.selectGuideTrack(element, track)">
-          <div class="guide-track-timeline">
+          <div
+            class="guide-track-timeline"
+            (pointerdown)="creator.startGuideTrackSeekDrag($event, element, track)"
+            (dragstart)="$event.preventDefault()">
             <input
               type="range"
               min="0"
               [max]="creator.getGuideTrackDuration(track)"
               step="0.01"
               [value]="creator.getGuideTrackCurrentTime(track)"
-              (pointerdown)="creator.prepareGuideTrackSeek($event, element, track)"
               (click)="$event.stopPropagation()"
-              (input)="creator.seekGuideTrack($event, element, track)"
-              (change)="creator.seekGuideTrack($event, element, track)"
               aria-label="Audio track progress">
             <button
               *ngFor="let pin of track.pins"

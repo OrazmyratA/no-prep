@@ -204,6 +204,13 @@ Tomorrow I will help my mom.`;
     width: number;
     duration: number;
   } | null = null;
+  private guideTrackSeekDragState: {
+    elementId: string;
+    trackId: string;
+    left: number;
+    width: number;
+    duration: number;
+  } | null = null;
   private pagePinDragState: {
     elementId: string;
     pinId: string;
@@ -322,7 +329,7 @@ Tomorrow I will help my mom.`;
       } else {
         this.loading = false;
         this.refreshCreatorView();
-        await this.ngZone.run(() => this.router.navigate(['/topics']));
+        await this.ngZone.run(() => this.router.navigate(['/topics'], { queryParams: { category: 'books' } }));
       }
       return;
     }
@@ -1202,7 +1209,7 @@ Tomorrow I will help my mom.`;
       this.scheduleCreatorInteractionRefresh();
       return;
     }
-    if (this.timelinePinDragState || this.pagePinDragState) {
+    if (this.guideTrackSeekDragState || this.timelinePinDragState || this.pagePinDragState) {
       event.preventDefault();
       const pointerEvent = this.getLatestPointerEvent(event);
       this.pendingGuidePinPointer = { x: pointerEvent.clientX, y: pointerEvent.clientY };
@@ -1315,6 +1322,7 @@ Tomorrow I will help my mom.`;
       this.commitHistoryCapture();
     }
     this.dragState = null;
+    this.guideTrackSeekDragState = null;
     this.timelinePinDragState = null;
     this.pagePinDragState = null;
     this.pendingGuidePinPointer = null;
@@ -1334,6 +1342,7 @@ Tomorrow I will help my mom.`;
       this.commitHistoryCapture();
     }
     this.dragState = null;
+    this.guideTrackSeekDragState = null;
     this.timelinePinDragState = null;
     this.pagePinDragState = null;
     this.pendingGuidePinPointer = null;
@@ -1716,8 +1725,7 @@ Tomorrow I will help my mom.`;
   getGuideTrackDuration(track: GuideAudioTrack): number {
     const duration = Number(track.duration || (this.previewGuideTrackId === track.id ? this.previewGuideDuration : 0));
     const lastPinTime = Math.max(0, ...(track.pins || []).map((pin) => Number(pin.time) || 0));
-    const rememberedTime = Number(this.guideTrackSeekTimes[track.id] || 0);
-    return Math.max(1, Number.isFinite(duration) ? duration : 0, lastPinTime, Number.isFinite(rememberedTime) ? rememberedTime : 0);
+    return Math.max(1, Number.isFinite(duration) ? duration : 0, lastPinTime);
   }
 
   formatGuideTime(value: number): string {
@@ -1748,6 +1756,10 @@ Tomorrow I will help my mom.`;
 
   seekGuideTrack(event: Event, element: BookElement, track: GuideAudioTrack): void {
     this.guidePreviewController.seekGuideTrack(event, element, track);
+  }
+
+  startGuideTrackSeekDrag(event: PointerEvent, element: BookElement, track: GuideAudioTrack): void {
+    this.guidePreviewController.startGuideTrackSeekDrag(event, element, track);
   }
 
   startGuideTimelinePinDrag(

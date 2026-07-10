@@ -947,6 +947,8 @@
   display: flex;
   align-items: center;
   padding-block: 0.22rem;
+  cursor: ew-resize;
+  touch-action: none;
 }
 
 .guide-track-timeline input[type='range'] {
@@ -955,8 +957,9 @@
   width: 100%;
   margin: 0;
   accent-color: #2563eb;
-  cursor: pointer;
-  touch-action: pan-y;
+  cursor: ew-resize;
+  pointer-events: none;
+  touch-action: none;
 }
 
 .guide-pitch-row {

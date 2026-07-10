@@ -42,7 +42,7 @@ export class BookCreatorSaveController {
   async goBack(): Promise<void> {
     if (!(await this.confirmSaveBeforeLeaving())) return;
     this.creator.bypassUnsavedGuard = true;
-    const navigated = await this.creator.router.navigate(['/topics']);
+    const navigated = await this.creator.router.navigate(['/topics'], { queryParams: { category: 'books' } });
     this.creator.bypassUnsavedGuard = !navigated;
   }
 
