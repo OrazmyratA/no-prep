@@ -136,5 +136,12 @@ export const GAMES: GameConfig[] = [
     descKey: 'gameRockPaperScissorsDesc',
     icon: '\u{270A}',
     requiresSettings: true,
+  },
+  {
+    id: 'ball-sort',
+    nameKey: 'gameBallSortName',
+    descKey: 'gameBallSortDesc',
+    icon: '\u{1F534}\u{1F535}',
+    requiresSettings: true,
   }
 ];

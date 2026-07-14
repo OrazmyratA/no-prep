@@ -2,6 +2,78 @@ import type { TranslationDictionary } from './language-types';
 
 export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 
+'settingsBallSortTeamCount': {
+  en: 'Number of teams',
+  tk: 'Number of teams',
+  ru: 'Number of teams',
+  cn: 'Number of teams',
+  cde: 'Number of teams',
+  es: 'Number of teams',
+  fr: 'Number of teams',
+  kr: 'Number of teams',
+  sa: 'Number of teams',
+},
+
+'settingsBallSortTeamCountHint': {
+  en: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  tk: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  ru: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  cn: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  cde: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  es: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  fr: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  kr: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+  sa: '1 team is solo classroom mode. Up to 6 teams can race on the same puzzle.',
+},
+
+'settingsBallSortBallsPerColor': {
+  en: 'Balls per color',
+  tk: 'Balls per color',
+  ru: 'Balls per color',
+  cn: 'Balls per color',
+  cde: 'Balls per color',
+  es: 'Balls per color',
+  fr: 'Balls per color',
+  kr: 'Balls per color',
+  sa: 'Balls per color',
+},
+
+'settingsBallSortBallsPerColorHint': {
+  en: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  tk: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  ru: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  cn: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  cde: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  es: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  fr: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  kr: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+  sa: 'Tube capacity and group size. Higher numbers make longer, harder puzzles.',
+},
+
+'settingsBallSortReverseMode': {
+  en: 'Reverse mode',
+  tk: 'Reverse mode',
+  ru: 'Reverse mode',
+  cn: 'Reverse mode',
+  cde: 'Reverse mode',
+  es: 'Reverse mode',
+  fr: 'Reverse mode',
+  kr: 'Reverse mode',
+  sa: 'Reverse mode',
+},
+
+'settingsBallSortReverseModeHint': {
+  en: 'Show text stickers on the colored balls instead of image stickers.',
+  tk: 'Show text stickers on the colored balls instead of image stickers.',
+  ru: 'Show text stickers on the colored balls instead of image stickers.',
+  cn: 'Show text stickers on the colored balls instead of image stickers.',
+  cde: 'Show text stickers on the colored balls instead of image stickers.',
+  es: 'Show text stickers on the colored balls instead of image stickers.',
+  fr: 'Show text stickers on the colored balls instead of image stickers.',
+  kr: 'Show text stickers on the colored balls instead of image stickers.',
+  sa: 'Show text stickers on the colored balls instead of image stickers.',
+},
+
 
 
 'settingsRevealTimer': {

@@ -606,43 +606,6 @@
   transform: translateY(-1px);
 }
 
-/* Winner overlay */
-.winner-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.winner-card {
-  background: white;
-  padding: 2rem;
-  border-radius: 20px;
-  text-align: center;
-  max-width: 400px;
-  animation: pop-in 0.5s;
-  color: #333;
-}
-@keyframes pop-in {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.winner-card button {
-  margin: 10px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 10px;
-  background: #4CAF50;
-  color: white;
-  cursor: pointer;
-  font-size: 1rem;
-}
-.winner-card button:hover {
-  background: #45a049;
-}
-
 /* ===== RPS MODAL ===== */
 .rps-overlay {
   position: fixed;

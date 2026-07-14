@@ -1,0 +1,127 @@
+<div class="ball-sort-shell"
+     [class.solo-mode]="teamCount === 1"
+     [class.team-count-1]="teamCount === 1"
+     [class.team-count-2]="teamCount === 2"
+     [class.team-count-3]="teamCount === 3"
+     [class.team-count-4]="teamCount === 4"
+     [class.team-count-5]="teamCount === 5"
+     [class.team-count-6]="teamCount === 6"
+     [class.reverse-mode]="reverseMode"
+     [style.--team-count]="teamCount"
+     [style.--capacity]="ballsPerColor">
+  <app-game-keyboard-help
+    class="ball-sort-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <div *ngIf="loading" class="ball-sort-loading">
+    <div class="ball-sort-spinner"></div>
+    <p>{{ 'ballSortLoading' | translate }}</p>
+  </div>
+
+  <div *ngIf="!loading && loadError" class="ball-sort-empty">
+    <strong>{{ loadError | translate }}</strong>
+    <button type="button" (click)="goToActivities()">{{ 'activitiesLabel' | translate }}</button>
+  </div>
+
+  <div *ngIf="!loading && !loadError" class="teams-grid">
+    <section *ngFor="let team of teams; trackBy: trackByTeamId"
+             class="team-board"
+             [class.team-finished]="team.finished"
+             [style.--team-color]="teamColor(team)">
+      <div class="team-header">
+        <div>
+          <h3 *ngIf="teamCount > 1">{{ team.name }}</h3>
+          <span class="ball-sort-progress">{{ team.completedGroupIds.size }} / {{ colorGroups.length }}</span>
+        </div>
+        <button type="button"
+                class="add-tube-button"
+                [class.add-disabled]="!canAddTube(team)"
+                [disabled]="!canAddTube(team)"
+                [attr.aria-label]="'ballSortAddTube' | translate"
+                [attr.title]="'ballSortAddTube' | translate"
+                (click)="addTube(team)">
+          +
+        </button>
+      </div>
+
+      <div class="tubes-wrap">
+        <button *ngFor="let tube of team.tubes; let tubeIndex = index; trackBy: trackByTubeId"
+                #tubeButton
+                type="button"
+                class="tube"
+                [class.complete]="isTubeComplete(tube)"
+                [class.bounce-drop]="isTubeBouncing(team, tube)"
+                [class.selected-source]="team.selected?.tubeIndex === tubeIndex"
+                [attr.data-team-id]="team.id"
+                [attr.data-tube-index]="tubeIndex"
+                [attr.aria-label]="'Tube ' + (tubeIndex + 1)"
+                (click)="onTubeClick(team, tubeIndex)">
+          <span class="tube-glass"></span>
+          <span class="tube-stack">
+            <span *ngFor="let ball of tube.balls; let ballIndex = index; trackBy: trackByBallId"
+                  class="sort-ball"
+                  [class.selected]="isSelected(team, tubeIndex, ballIndex)"
+                  [class.hidden-for-flight]="isHiddenForFlight(team, ball)"
+                  [style.--ball-color]="ball.color"
+                  [style.--lift-slots]="selectedLiftSlots(team, tubeIndex, ballIndex)">
+              <span class="ball-shine"></span>
+              <span class="ball-sticker">
+                <img *ngIf="!reverseMode && ball.imageSrc; else ballText"
+                     [src]="ball.imageSrc"
+                     [alt]="ball.text">
+                <ng-template #ballText>
+                  <span [style.--text-scale]="ball.textScale">{{ ball.text }}</span>
+                </ng-template>
+              </span>
+            </span>
+          </span>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <div *ngIf="flyingBall"
+       class="ball-flight-layer"
+       aria-hidden="true">
+    <span class="sort-ball flying-ball"
+          [ngStyle]="flyingBall.styles"
+          [style.--ball-color]="flyingBall.ball.color"
+          (animationend)="onFlightAnimationEnd($event)">
+      <span class="ball-shine"></span>
+      <span class="ball-sticker">
+        <img *ngIf="!reverseMode && flyingBall.ball.imageSrc; else flyingBallText"
+             [src]="flyingBall.ball.imageSrc"
+             [alt]="flyingBall.ball.text">
+        <ng-template #flyingBallText>
+          <span [style.--text-scale]="flyingBall.ball.textScale">{{ flyingBall.ball.text }}</span>
+        </ng-template>
+      </span>
+    </span>
+  </div>
+
+  <app-game-finish-overlay
+    *ngIf="finishOverlayVisible"
+    [title]="teamCount > 1 ? ('gameResults' | translate) : finishTitle"
+    (playAgain)="resetGame()"
+    (activities)="goToActivities()">
+    <div *ngIf="teamCount > 1" class="ball-sort-results">
+      <div *ngFor="let entry of finishResultTeams; trackBy: trackByResultTeam"
+           class="ball-sort-result-row">
+        <div class="ball-sort-result-medal">{{ entry.medal }}</div>
+        <div class="ball-sort-result-name" [style.color]="teamColor(entry.team)">{{ entry.team.name }}</div>
+        <div class="ball-sort-result-track">
+          <div class="ball-sort-result-bar"
+               [style.width.%]="entry.percent"
+               [style.backgroundColor]="teamColor(entry.team)">
+            <span *ngIf="entry.score > 0">{{ entry.score }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </app-game-finish-overlay>
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

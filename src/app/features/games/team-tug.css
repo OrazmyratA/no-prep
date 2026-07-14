@@ -297,24 +297,6 @@
   color: #facc15;
 }
 
-.winner-announcement {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
-}
-.winner-card {
-  background: #0f172a;
-  color: #fff;
-  border-radius: 28px;
-  padding: 2rem;
-  text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 25px 60px rgba(15, 23, 42, 0.8);
-}
 .winner-scoreboard {
   display: flex;
   gap: 1rem;
@@ -354,20 +336,6 @@
   margin-bottom: 0.75rem;
   letter-spacing: 0.05rem;
 }
-.reset-btn {
-  border-radius: 999px;
-  border: none;
-  padding: 0.8rem 2.5rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #22d3ee, #2563eb);
-  color: #fff;
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-.reset-btn:hover {
-  transform: translateY(-3px);
-}
-
 @media (max-width: 768px) {
   .status-bar {
     flex-direction: column;

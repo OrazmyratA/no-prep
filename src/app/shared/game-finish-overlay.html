@@ -1,6 +1,8 @@
 <div class="game-finish-overlay" role="dialog" aria-modal="true" [attr.aria-label]="title">
   <div class="game-finish-card">
-    <div *ngIf="icon" class="game-finish-icon" aria-hidden="true">{{ icon }}</div>
+    <div class="game-finish-crown" aria-hidden="true">
+      <span>{{ icon || '★' }}</span>
+    </div>
 
     <h2 *ngIf="title" class="game-finish-title">{{ title }}</h2>
     <p *ngIf="message" class="game-finish-message">{{ message }}</p>
@@ -23,7 +25,7 @@
         type="button"
         class="game-finish-btn game-finish-primary"
         aria-keyshortcuts="Enter Space"
-        (click)="playAgain.emit()"
+        (click)="onPlayAgain()"
       >
         {{ playAgainLabel | translate }}
       </button>
@@ -32,7 +34,7 @@
         type="button"
         class="game-finish-btn game-finish-secondary"
         aria-keyshortcuts="G"
-        (click)="activities.emit()"
+        (click)="onActivities()"
       >
         {{ activitiesLabel | translate }}
       </button>

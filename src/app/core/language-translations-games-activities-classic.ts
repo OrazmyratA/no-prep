@@ -1,6 +1,102 @@
 import type { TranslationDictionary } from './language-types';
 
 export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
+
+'gameBallSortName': {
+  en: 'Ball Sort',
+  tk: 'Ball Sort',
+  ru: 'Ball Sort',
+  cn: 'Ball Sort',
+  cde: 'Ball Sort',
+  es: 'Ball Sort',
+  fr: 'Ball Sort',
+  kr: 'Ball Sort',
+  sa: 'Ball Sort',
+},
+
+'gameBallSortDesc': {
+  en: 'Sort topic images by colored balls before the other teams finish.',
+  tk: 'Sort topic images by colored balls before the other teams finish.',
+  ru: 'Sort topic images by colored balls before the other teams finish.',
+  cn: 'Sort topic images by colored balls before the other teams finish.',
+  cde: 'Sort topic images by colored balls before the other teams finish.',
+  es: 'Sort topic images by colored balls before the other teams finish.',
+  fr: 'Sort topic images by colored balls before the other teams finish.',
+  kr: 'Sort topic images by colored balls before the other teams finish.',
+  sa: 'Sort topic images by colored balls before the other teams finish.',
+},
+
+'ballSortLoading': {
+  en: 'Loading Ball Sort...',
+  tk: 'Loading Ball Sort...',
+  ru: 'Loading Ball Sort...',
+  cn: 'Loading Ball Sort...',
+  cde: 'Loading Ball Sort...',
+  es: 'Loading Ball Sort...',
+  fr: 'Loading Ball Sort...',
+  kr: 'Loading Ball Sort...',
+  sa: 'Loading Ball Sort...',
+},
+
+'ballSortNoItems': {
+  en: 'Add images or text to this topic before playing Ball Sort.',
+  tk: 'Add images or text to this topic before playing Ball Sort.',
+  ru: 'Add images or text to this topic before playing Ball Sort.',
+  cn: 'Add images or text to this topic before playing Ball Sort.',
+  cde: 'Add images or text to this topic before playing Ball Sort.',
+  es: 'Add images or text to this topic before playing Ball Sort.',
+  fr: 'Add images or text to this topic before playing Ball Sort.',
+  kr: 'Add images or text to this topic before playing Ball Sort.',
+  sa: 'Add images or text to this topic before playing Ball Sort.',
+},
+
+'ballSortLoadError': {
+  en: 'Ball Sort could not load this topic.',
+  tk: 'Ball Sort could not load this topic.',
+  ru: 'Ball Sort could not load this topic.',
+  cn: 'Ball Sort could not load this topic.',
+  cde: 'Ball Sort could not load this topic.',
+  es: 'Ball Sort could not load this topic.',
+  fr: 'Ball Sort could not load this topic.',
+  kr: 'Ball Sort could not load this topic.',
+  sa: 'Ball Sort could not load this topic.',
+},
+
+'ballSortAddTube': {
+  en: 'Add empty tube',
+  tk: 'Add empty tube',
+  ru: 'Add empty tube',
+  cn: 'Add empty tube',
+  cde: 'Add empty tube',
+  es: 'Add empty tube',
+  fr: 'Add empty tube',
+  kr: 'Add empty tube',
+  sa: 'Add empty tube',
+},
+
+'ballSortSorted': {
+  en: 'sorted',
+  tk: 'sorted',
+  ru: 'sorted',
+  cn: 'sorted',
+  cde: 'sorted',
+  es: 'sorted',
+  fr: 'sorted',
+  kr: 'sorted',
+  sa: 'sorted',
+},
+
+'ballSortVictoryLine': {
+  en: 'Beautiful sorting!',
+  tk: 'Beautiful sorting!',
+  ru: 'Beautiful sorting!',
+  cn: 'Beautiful sorting!',
+  cde: 'Beautiful sorting!',
+  es: 'Beautiful sorting!',
+  fr: 'Beautiful sorting!',
+  kr: 'Beautiful sorting!',
+  sa: 'Beautiful sorting!',
+},
 'gameResults': {
   en: 'Game Results',
   tk: 'Oýunyň Netijeleri',

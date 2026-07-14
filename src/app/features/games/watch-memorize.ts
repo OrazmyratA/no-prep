@@ -1,4 +1,15 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, ViewChild, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  ChangeDetectorRef,
+  ElementRef,
+  HostListener,
+  QueryList,
+  ViewChild,
+  ViewChildren,
+  AfterViewInit
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
@@ -44,6 +55,7 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   private animationFrame: any;
   private layoutTimer: ReturnType<typeof setTimeout> | null = null;
   private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+  private textFitFrame: number | null = null;
   private destroyed = false;
   private activeAnimation:
     | { element: HTMLElement; startLeft: number; endLeft: number; duration: number; startedAt: number; elapsed: number }
@@ -53,13 +65,13 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
 
   @ViewChild('gameShell', { static: true }) gameShellRef!: ElementRef<HTMLElement>;
   @ViewChild('gridContainer') gridContainerRef!: ElementRef<HTMLElement>;
+  @ViewChildren('recallText') recallTextRefs!: QueryList<ElementRef<HTMLElement>>;
   cardSize: number = 100;
   gridGap: number = 16;
   gridColumns = 1;
   gridRows = 1;
   recallRows: Item[][] = [];
   recallBoardHeight = 0;
-  gridTextSize = 14;
   private resizeObserver: ResizeObserver | null = null;
   private layoutSubscription?: Subscription;
   private keyboardNumberBuffer = '';
@@ -223,10 +235,10 @@ private calculateGridLayout() {
     this.gridColumns = best.columns;
     this.gridRows = best.rows;
     this.cardSize = best.size;
-    this.gridTextSize = Math.max(9, Math.min(16, Math.floor(this.cardSize / 8)));
     this.recallBoardHeight = best.rows * this.cardSize + (best.rows - 1) * this.gridGap;
     this.rebuildRecallRows();
     this.cdr.detectChanges();
+    this.scheduleRecallTextFit();
   }, 0);
 }
 
@@ -287,6 +299,7 @@ private nextScrollItem() {
       this.keyboardSelectedIndex = this.findNextKeyboardGridIndex(0, 1) ?? 0;
       this.calculateGridLayout();
       this.cdr.detectChanges();
+      this.scheduleRecallTextFit();
     }, 500);
     return;
   }
@@ -340,6 +353,10 @@ const endLeft = container.offsetWidth;    // fully off‑screen right         //
     if (this.feedbackTimer) {
       clearTimeout(this.feedbackTimer);
       this.feedbackTimer = null;
+    }
+    if (this.textFitFrame !== null) {
+      cancelAnimationFrame(this.textFitFrame);
+      this.textFitFrame = null;
     }
   }
 
@@ -471,6 +488,73 @@ private runActiveAnimation() {
       this.playSound(this.buzzSound, 0.4);
     }
     this.cdr.detectChanges();
+    this.scheduleRecallTextFit();
+  }
+
+  private scheduleRecallTextFit() {
+    if (this.scrollPhase || this.destroyed) return;
+
+    if (this.textFitFrame !== null) {
+      cancelAnimationFrame(this.textFitFrame);
+    }
+
+    this.textFitFrame = requestAnimationFrame(() => {
+      this.textFitFrame = null;
+      if (!this.destroyed) {
+        this.fitRecallTexts();
+      }
+    });
+  }
+
+  private fitRecallTexts() {
+    if (this.scrollPhase || !this.recallTextRefs) return;
+
+    this.recallTextRefs.forEach(ref => this.fitRecallText(ref.nativeElement));
+  }
+
+  private fitRecallText(textElement: HTMLElement) {
+    const surfaceElement = textElement.parentElement;
+    if (!surfaceElement) return;
+
+    const styles = window.getComputedStyle(surfaceElement);
+    const availableWidth =
+      surfaceElement.clientWidth - this.readCssPixels(styles.paddingLeft) - this.readCssPixels(styles.paddingRight);
+    const availableHeight =
+      surfaceElement.clientHeight - this.readCssPixels(styles.paddingTop) - this.readCssPixels(styles.paddingBottom);
+    if (availableWidth <= 0 || availableHeight <= 0) return;
+
+    const isFullCardText = textElement.classList.contains('recall-card-text--full');
+    const minSize = 8;
+    const maxSize = Math.max(
+      minSize,
+      Math.min(isFullCardText ? 160 : 56, Math.floor(Math.min(availableWidth, availableHeight) * 0.9))
+    );
+    let low = minSize;
+    let high = maxSize;
+    let best = minSize;
+
+    while (low <= high) {
+      const size = Math.floor((low + high) / 2);
+      textElement.style.fontSize = `${size}px`;
+
+      if (this.recallTextFits(textElement, availableWidth, availableHeight)) {
+        best = size;
+        low = size + 1;
+      } else {
+        high = size - 1;
+      }
+    }
+
+    textElement.style.fontSize = `${best}px`;
+  }
+
+  private recallTextFits(textElement: HTMLElement, availableWidth: number, availableHeight: number): boolean {
+    return textElement.scrollWidth <= availableWidth + 1 && textElement.scrollHeight <= availableHeight + 1;
+  }
+
+  private readCssPixels(value: string): number {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   isKeyboardSelected(index: number): boolean {

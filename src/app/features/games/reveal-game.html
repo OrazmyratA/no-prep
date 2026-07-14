@@ -24,6 +24,7 @@
 <div class="reveal-container" (click)="openQuiz()" [attr.title]="'revealGameTapForQuestion' | translate">     
    <img [src]="imageUrl(currentItem.image!, currentItem.id!)" class="reveal-image">
       <div class="grid-overlay"
+          [class.cover-resetting]="isCoverResetting"
           [style.gridTemplateColumns]="'repeat(' + gridSize + ', 1fr)'"
           [style.gridTemplateRows]="'repeat(' + gridSize + ', 1fr)'">
         <ng-container *ngFor="let row of gridRevealed; let r = index; trackBy: trackByIndex">

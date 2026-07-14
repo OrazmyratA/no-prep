@@ -103,7 +103,11 @@
 
     <!-- Enlarged card -->
     <ng-container *ngIf="fullscreenItem as fItem">
-      <div class="fullscreen-card" (click)="$event.stopPropagation()">
+      <div
+        class="fullscreen-card"
+        [class.fullscreen-card--text-only]="!fItem.imageSrc"
+        [class.fullscreen-card--has-audio]="fItem.item.audio"
+        (click)="$event.stopPropagation()">
         <!-- Speaker button inside the card (top‑right) -->
         <button *ngIf="fItem.item.audio" 
                 class="fullscreen-speaker" 
@@ -111,13 +115,23 @@
           🔊
         </button>
 
-        <div *ngIf="fItem.imageSrc" class="fullscreen-image-area">
-          <img [src]="fItem.imageSrc" alt="Enlarged item">
-        </div>
-        <p *ngIf="fItem.item.text" class="fullscreen-text">{{ fItem.item.text }}</p>
-        <p *ngIf="!fItem.item.text && !fItem.item.image" class="fullscreen-text">
-          {{ 'flipTilesNoContent' | translate }}
-        </p>
+        <ng-container *ngIf="fItem.imageSrc; else fullscreenTextSurface">
+          <div class="fullscreen-image-area">
+            <img [src]="fItem.imageSrc" alt="Enlarged item">
+          </div>
+          <p *ngIf="fItem.item.text" class="fullscreen-text">{{ fItem.item.text }}</p>
+        </ng-container>
+
+        <ng-template #fullscreenTextSurface>
+          <div class="fullscreen-text-surface">
+            <p
+              #fullscreenText
+              class="fullscreen-text-fit"
+              [style.fontSize.px]="fullscreenTextSize">
+              {{ fItem.item.text || ('flipTilesNoContent' | translate) }}
+            </p>
+          </div>
+        </ng-template>
       </div>
     </ng-container>
 

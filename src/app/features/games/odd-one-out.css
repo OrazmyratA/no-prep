@@ -299,58 +299,6 @@
   font-size: 1.4rem;
 }
 
-.winner-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(2, 8, 20, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 10;
-}
-.winner-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 214, 164, 0.9));
-  border-radius: 28px;
-  padding: 30px 36px;
-  text-align: center;
-  box-shadow: 0 25px 40px rgba(6, 12, 24, 0.4);
-  color: #1b1b1b;
-}
-.winner-score {
-  font-size: 1.25rem;
-  margin: 10px 0 20px;
-}
-.winner-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.winner-actions button {
-  border: none;
-  padding: 12px 28px;
-  border-radius: 18px;
-  font-size: 1rem;
-  font-weight: 600;
-  background: #2d8cf0;
-  color: white;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-.winner-actions button:hover {
-  transform: translateY(-2px);
-  background: #1c6ed6;
-}
-.winner-actions .ghost {
-  background: transparent;
-  border: 2px solid rgba(27, 27, 27, 0.4);
-  color: #1b1b1b;
-}
-.winner-actions .ghost:hover {
-  background: rgba(27, 27, 27, 0.08);
-}
-
 @media (max-width: 768px) {
   .game-board {
     padding: 22px;

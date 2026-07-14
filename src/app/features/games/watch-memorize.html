@@ -64,11 +64,13 @@
           <div class="grid-item-media w-full flex-1 flex items-center justify-center min-h-0">
             <img [src]="imageUrl(item.image!, item.id!)" class="w-full h-full object-contain">
           </div>
-          <p class="text-center font-medium mt-1" [style.fontSize.px]="gridTextSize">{{ item.text }}</p>
+          <div class="recall-card-text-area recall-card-text-area--caption">
+            <p #recallText class="recall-card-text recall-card-text--caption">{{ item.text }}</p>
+          </div>
         </ng-container>
         <ng-template #recallTextOnly>
-          <div class="w-full h-full flex items-center justify-center px-2">
-            <p class="text-center font-semibold leading-tight" [style.fontSize.px]="gridTextSize + 4">{{ item.text }}</p>
+          <div class="recall-card-text-area recall-card-text-area--full">
+            <p #recallText class="recall-card-text recall-card-text--full">{{ item.text }}</p>
           </div>
         </ng-template>
       </div>

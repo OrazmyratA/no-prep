@@ -374,6 +374,57 @@
       <p class="text-xs text-gray-500 mt-1">{{ 'settingsTestAbcReverseModeHint' | translate }}</p>
     </div>
 
+    <!-- Ball Sort Settings -->
+    <div *ngSwitchCase="'ball-sort'" class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsBallSortTeamCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('teamCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="teamCount"
+          min="1" max="6" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>6</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsBallSortTeamCountHint' | translate }}</p>
+      </div>
+
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsBallSortBallsPerColor' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('ballsPerColor')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="ballsPerColor"
+          min="2" max="7" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>2</span>
+          <span>7</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsBallSortBallsPerColorHint' | translate }}</p>
+      </div>
+
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="reverseMode" class="mr-2">
+          {{ 'settingsBallSortReverseMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsBallSortReverseModeHint' | translate }}</p>
+      </div>
+    </div>
+
     <!-- Team Sentence Settings -->
     <div *ngSwitchCase="'team-sentence'">
       <div class="flex items-center justify-between mb-2">

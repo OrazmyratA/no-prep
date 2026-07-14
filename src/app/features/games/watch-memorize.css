@@ -219,13 +219,48 @@
 .grid-item p {
   width: 100%;
   text-align: center;
-  margin-top: 0.25rem;
-  margin-bottom: 0;
+  margin: 0;
   line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: #1f2937;
+}
+
+.recall-card-text-area {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.recall-card-text-area--caption {
+  flex: 0 0 34%;
+  max-height: 42%;
+  padding: 0.15rem 0.2rem 0.2rem;
+}
+
+.recall-card-text-area--full {
+  height: 100%;
+  flex: 1;
+  padding: clamp(0.25rem, 6%, 0.9rem);
+}
+
+.recall-card-text {
+  max-height: 100%;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  hyphens: auto;
+  overflow: hidden;
+}
+
+.recall-card-text--caption {
+  font-weight: 700;
+  line-height: 1.12;
 }
 
 /* Responsive */

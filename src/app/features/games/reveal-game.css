@@ -260,6 +260,10 @@
   transition: background-color 0.2s;
 }
 
+.grid-overlay.cover-resetting .grid-cell {
+  transition: none;
+}
+
 .grid-cell.revealed {
   background-color: transparent;
 }

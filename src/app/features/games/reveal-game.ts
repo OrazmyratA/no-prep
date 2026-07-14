@@ -72,6 +72,8 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   private transitionLock = false;
   private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   private destroyed = false;
+  isCoverResetting = false;
+  private coverResetFrame: number | null = null;
 
   fastRevealMode = false;
   private fastRevealInterval: any;
@@ -675,9 +677,12 @@ private updateTeamButtonHintVisibility() {
     if (this.revealInterval) clearInterval(this.revealInterval);
     if (this.timer) clearTimeout(this.timer);
     if (this.fastRevealInterval) clearInterval(this.fastRevealInterval);
+    if (this.coverResetFrame !== null) cancelAnimationFrame(this.coverResetFrame);
     this.revealInterval = null;
     this.timer = null;
     this.fastRevealInterval = null;
+    this.coverResetFrame = null;
+    this.isCoverResetting = false;
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
@@ -713,6 +718,7 @@ private updateTeamButtonHintVisibility() {
     this.transitionLock = false;
 
 if (this.currentIndex >= this.items.length) {
+  this.isCoverResetting = false;
   this.gameFinished = true;
   this.gameActive = false;
   this.isPaused = false;
@@ -729,6 +735,7 @@ if (this.currentIndex >= this.items.length) {
 
     if (playCorrectAudio) this.playCorrectSound();
 
+    this.isCoverResetting = true;
     this.currentItem = this.items[this.currentIndex];
     this.resetGrid();
     this.timeLeft = this.totalTime;
@@ -757,7 +764,24 @@ if (this.currentIndex >= this.items.length) {
 
     this.cdr.detectChanges();
     this.fastRevealMode = false;
-    this.startRevealLoop();
+    this.finishCoverResetThenReveal();
+  }
+
+  private finishCoverResetThenReveal() {
+    if (this.coverResetFrame !== null) {
+      cancelAnimationFrame(this.coverResetFrame);
+    }
+
+    this.coverResetFrame = requestAnimationFrame(() => {
+      this.coverResetFrame = requestAnimationFrame(() => {
+        this.coverResetFrame = null;
+        if (this.destroyed || !this.gameActive || this.gameFinished) return;
+
+        this.isCoverResetting = false;
+        this.cdr.detectChanges();
+        this.startRevealLoop();
+      });
+    });
   }
 
   private resetGrid() {

@@ -110,6 +110,7 @@ body.app-theme-active:not(.app-theme-excluded) .min-h-screen.bg-gradient-to-br,
 body.app-theme-active:not(.app-theme-excluded) .h-screen.bg-gradient-to-br,
 body.app-theme-active:not(.app-theme-excluded) .game-container,
 body.app-theme-active:not(.app-theme-excluded) .cup-clash-board,
+body.app-theme-active:not(.app-theme-excluded) .ball-sort-shell,
 body.app-theme-active:not(.app-theme-excluded) app-reveal-game {
   background: transparent !important;
 }

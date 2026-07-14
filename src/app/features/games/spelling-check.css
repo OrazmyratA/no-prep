@@ -442,37 +442,6 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-.victory-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(7, 15, 27, 0.82);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.victory-card {
-  background: #fffaf0;
-  color: #17324d;
-  padding: 2rem;
-  border-radius: 22px;
-  text-align: center;
-  max-width: 400px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
-}
-
-.victory-card button {
-  margin: 0.5rem;
-  padding: 0.65rem 1.15rem;
-  border: none;
-  border-radius: 999px;
-  background: #2f6f73;
-  color: white;
-  font-weight: 800;
-  cursor: pointer;
-}
-
 @media (max-width: 640px) {
   .game-container {
     padding: 0.65rem;

@@ -4,6 +4,7 @@ import { SpinWheelComponent } from './spin-wheel';
 import { FlipTilesComponent } from './flip-tiles';
 import { RevealGameComponent } from './reveal-game';
 import { MatchPairsComponent } from './match-pairs';
+import { BallSortComponent } from './ball-sort';
 import { WatchMemorizeComponent } from './watch-memorize';
 import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
@@ -24,6 +25,7 @@ const routes: Routes = [
   { path: 'flip-tiles', component: FlipTilesComponent },
   { path: 'reveal-game', component: RevealGameComponent },
   { path: 'match-pairs', component: MatchPairsComponent },
+  { path: 'ball-sort', component: BallSortComponent },
   { path: 'watch-memorize', component: WatchMemorizeComponent },
   { path: 'anagram', component: AnagramComponent },
   { path: 'unjumble', component: UnjumbleComponent },

@@ -8,6 +8,7 @@ import { FlipTilesComponent } from './flip-tiles';
 import { RevealGameComponent } from './reveal-game';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatchPairsComponent } from './match-pairs';
+import { BallSortComponent } from './ball-sort';
 import { WatchMemorizeComponent } from './watch-memorize';
 import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
@@ -30,6 +31,7 @@ import { RockPaperScissorsComponent } from './rock-paper-scissors';
     FlipTilesComponent,
     RevealGameComponent,
     MatchPairsComponent,
+    BallSortComponent,
     WatchMemorizeComponent,
     AnagramComponent,
     UnjumbleComponent,

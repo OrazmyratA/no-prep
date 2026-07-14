@@ -75,10 +75,12 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
 
   @ViewChild('gameShell', { static: true }) gameShellRef!: ElementRef<HTMLElement>;
   @ViewChild('gridContainer') gridContainerRef!: ElementRef<HTMLElement>;
+  @ViewChild('fullscreenText') fullscreenTextRef?: ElementRef<HTMLElement>;
   private resizeObserver: ResizeObserver | null = null;
   private layoutSubscription?: Subscription;
   private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   private destroyed = false;
+  fullscreenTextSize = 48;
 
   constructor(
     private route: ActivatedRoute,
@@ -460,7 +462,7 @@ private rebuildCards(items: Item[]) {
     }
   }
 
-  // ... fullscreen methods (unchanged) ...
+  // ... fullscreen methods ...
   openFullscreen(event: Event, index: number) {
     event.preventDefault();
     event.stopPropagation();
@@ -469,7 +471,7 @@ private rebuildCards(items: Item[]) {
     this.fullscreenItem = this.cards[index];
     this.fullscreenVisible = true;
     this.cdr.detectChanges();
-    requestAnimationFrame(() => this.cdr.detectChanges());
+    this.scheduleFullscreenTextFit();
   }
 
   closeFullscreen() {
@@ -485,6 +487,7 @@ private rebuildCards(items: Item[]) {
       this.fullscreenIndex = newIndex;
       this.fullscreenItem = this.cards[newIndex];
       this.cdr.detectChanges();
+      this.scheduleFullscreenTextFit();
     }
   }
 
@@ -502,6 +505,7 @@ private rebuildCards(items: Item[]) {
     this.fullscreenItem = this.cards[index];
     this.fullscreenVisible = true;
     this.cdr.detectChanges();
+    this.scheduleFullscreenTextFit();
   }
 
   playFullscreenAudio() {
@@ -609,6 +613,67 @@ private rebuildCards(items: Item[]) {
         this.clearKeyboardNumberBuffer();
         break;
     }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.scheduleFullscreenTextFit();
+  }
+
+  private scheduleFullscreenTextFit() {
+    if (!this.fullscreenVisible) return;
+
+    requestAnimationFrame(() => {
+      if (this.destroyed) return;
+      this.fitFullscreenText();
+    });
+  }
+
+  private fitFullscreenText() {
+    if (!this.fullscreenVisible || this.fullscreenItem?.imageSrc) return;
+
+    const textElement = this.fullscreenTextRef?.nativeElement;
+    const surfaceElement = textElement?.parentElement;
+    if (!textElement || !surfaceElement) return;
+
+    const styles = window.getComputedStyle(surfaceElement);
+    const availableWidth =
+      surfaceElement.clientWidth - this.readCssPixels(styles.paddingLeft) - this.readCssPixels(styles.paddingRight);
+    const availableHeight =
+      surfaceElement.clientHeight - this.readCssPixels(styles.paddingTop) - this.readCssPixels(styles.paddingBottom);
+    if (availableWidth <= 0 || availableHeight <= 0) return;
+
+    const minSize = 8;
+    const maxSize = Math.max(minSize, Math.min(180, Math.floor(Math.min(availableWidth, availableHeight) * 0.72)));
+    let low = minSize;
+    let high = maxSize;
+    let best = minSize;
+
+    textElement.style.transition = 'none';
+
+    while (low <= high) {
+      const size = Math.floor((low + high) / 2);
+      textElement.style.fontSize = `${size}px`;
+
+      if (this.fullscreenTextFits(textElement, availableWidth, availableHeight)) {
+        best = size;
+        low = size + 1;
+      } else {
+        high = size - 1;
+      }
+    }
+
+    this.fullscreenTextSize = best;
+    textElement.style.fontSize = `${best}px`;
+  }
+
+  private fullscreenTextFits(textElement: HTMLElement, availableWidth: number, availableHeight: number): boolean {
+    return textElement.scrollWidth <= availableWidth + 1 && textElement.scrollHeight <= availableHeight + 1;
+  }
+
+  private readCssPixels(value: string): number {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   private handleFullscreenKey(event: KeyboardEvent) {
