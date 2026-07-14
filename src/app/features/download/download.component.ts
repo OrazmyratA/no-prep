@@ -13,6 +13,7 @@ interface VersionEntry {
 interface GithubReleaseAsset {
   name: string;
   size: number;
+  updated_at: string;
   browser_download_url: string;
 }
 
@@ -78,7 +79,7 @@ export class DownloadComponent implements OnInit {
       const release = await firstValueFrom(this.http.get<GithubRelease>(this.latestReleaseApiUrl));
       const installer = this.findInstallerAsset(release.assets);
 
-      this.versions = [this.toVersionEntry(release)];
+      this.versions = [this.toVersionEntry(release, installer)];
       this.downloadUrl = installer?.browser_download_url || release.html_url || this.releasesUrl;
       this.installerName = installer?.name || '.exe installer';
       this.installerSize = installer ? this.formatBytes(installer.size) : '';
@@ -93,11 +94,11 @@ export class DownloadComponent implements OnInit {
     }
   }
 
-  private toVersionEntry(release: GithubRelease): VersionEntry {
+  private toVersionEntry(release: GithubRelease, installer: GithubReleaseAsset | undefined): VersionEntry {
     return {
       version: this.cleanVersion(release.tag_name || release.name || 'Latest'),
-      date: this.formatReleaseDate(release.published_at || release.created_at),
-      notes: this.extractReleaseNotes(release.body),
+      date: this.formatReleaseDate(installer?.updated_at || release.published_at || release.created_at),
+      notes: this.buildReleaseNotes(installer),
     };
   }
 
@@ -119,40 +120,18 @@ export class DownloadComponent implements OnInit {
     }).format(date);
   }
 
-  private extractReleaseNotes(body: string | null): string[] {
-    if (!body) {
-      return ['Latest Windows installer and release notes are available on GitHub Releases.'];
+  private buildReleaseNotes(installer: GithubReleaseAsset | undefined): string[] {
+    const notes = [
+      `${this.gameCount} classroom games included`,
+      'Works fully offline after install',
+      'Windows 10 or later, 64-bit',
+    ];
+
+    if (installer) {
+      notes.unshift(`Installer file: ${installer.name}`);
     }
 
-    const notes: string[] = [];
-    const lines = body.split(/\r?\n/);
-    let readingNotes = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      const heading = /^#{1,6}\s+(.+)$/.exec(trimmed);
-
-      if (heading) {
-        const title = heading[1].toLowerCase();
-        readingNotes = title.includes('new') || title.includes('changed') || title.includes('release');
-
-        if (notes.length > 0 && !readingNotes) {
-          break;
-        }
-
-        continue;
-      }
-
-      const bullet = /^[-*]\s+(.+)$/.exec(trimmed);
-
-      if (bullet && (readingNotes || notes.length === 0)) {
-        notes.push(bullet[1]);
-      }
-    }
-
-    return notes.length > 0
-      ? notes
-      : ['Latest Windows installer and release notes are available on GitHub Releases.'];
+    return notes;
   }
 
   private findInstallerAsset(assets: GithubReleaseAsset[]): GithubReleaseAsset | undefined {
