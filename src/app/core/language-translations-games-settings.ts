@@ -63,15 +63,39 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 },
 
 'settingsBallSortReverseModeHint': {
-  en: 'Show text stickers on the colored balls instead of image stickers.',
-  tk: 'Show text stickers on the colored balls instead of image stickers.',
-  ru: 'Show text stickers on the colored balls instead of image stickers.',
-  cn: 'Show text stickers on the colored balls instead of image stickers.',
-  cde: 'Show text stickers on the colored balls instead of image stickers.',
-  es: 'Show text stickers on the colored balls instead of image stickers.',
-  fr: 'Show text stickers on the colored balls instead of image stickers.',
-  kr: 'Show text stickers on the colored balls instead of image stickers.',
-  sa: 'Show text stickers on the colored balls instead of image stickers.',
+  en: 'Ask with text first, then let students choose the matching image answer.',
+  tk: 'Ask with text first, then let students choose the matching image answer.',
+  ru: 'Ask with text first, then let students choose the matching image answer.',
+  cn: 'Ask with text first, then let students choose the matching image answer.',
+  cde: 'Ask with text first, then let students choose the matching image answer.',
+  es: 'Ask with text first, then let students choose the matching image answer.',
+  fr: 'Ask with text first, then let students choose the matching image answer.',
+  kr: 'Ask with text first, then let students choose the matching image answer.',
+  sa: 'Ask with text first, then let students choose the matching image answer.',
+},
+
+'settingsBallSortSimpleMode': {
+  en: 'OK / Oops mode',
+  tk: 'OK / Oops mode',
+  ru: 'OK / Oops mode',
+  cn: 'OK / Oops mode',
+  cde: 'OK / Oops mode',
+  es: 'OK / Oops mode',
+  fr: 'OK / Oops mode',
+  kr: 'OK / Oops mode',
+  sa: 'OK / Oops mode',
+},
+
+'settingsBallSortSimpleModeHint': {
+  en: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  tk: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  ru: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  cn: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  cde: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  es: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  fr: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  kr: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
+  sa: 'Teacher checks the answer with OK or Oops. Turn off for multiple-choice answers.',
 },
 
 

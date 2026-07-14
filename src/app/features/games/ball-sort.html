@@ -30,9 +30,12 @@
     <section *ngFor="let team of teams; trackBy: trackByTeamId"
              class="team-board"
              [class.team-finished]="team.finished"
-             [style.--team-color]="teamColor(team)">
+             [style.--team-color]="teamColor(team)"
+             [style.--ball-size]="team.layout.ballSize + 'px'"
+             [style.--tube-columns]="team.layout.columns"
+             [style.--tube-gap]="team.layout.gap + 'px'">
       <div class="team-header">
-        <div>
+        <div class="team-meta">
           <h3 *ngIf="teamCount > 1">{{ team.name }}</h3>
           <span class="ball-sort-progress">{{ team.completedGroupIds.size }} / {{ colorGroups.length }}</span>
         </div>
@@ -47,7 +50,9 @@
         </button>
       </div>
 
-      <div class="tubes-wrap">
+      <div class="tubes-wrap"
+           #tubesWrap
+           [attr.data-team-id]="team.id">
         <button *ngFor="let tube of team.tubes; let tubeIndex = index; trackBy: trackByTubeId"
                 #tubeButton
                 type="button"
@@ -68,38 +73,61 @@
                   [style.--ball-color]="ball.color"
                   [style.--lift-slots]="selectedLiftSlots(team, tubeIndex, ballIndex)">
               <span class="ball-shine"></span>
-              <span class="ball-sticker">
-                <img *ngIf="!reverseMode && ball.imageSrc; else ballText"
-                     [src]="ball.imageSrc"
-                     [alt]="ball.text">
-                <ng-template #ballText>
-                  <span [style.--text-scale]="ball.textScale">{{ ball.text }}</span>
-                </ng-template>
-              </span>
             </span>
           </span>
         </button>
       </div>
-    </section>
-  </div>
 
-  <div *ngIf="flyingBall"
-       class="ball-flight-layer"
-       aria-hidden="true">
-    <span class="sort-ball flying-ball"
-          [ngStyle]="flyingBall.styles"
-          [style.--ball-color]="flyingBall.ball.color"
-          (animationend)="onFlightAnimationEnd($event)">
-      <span class="ball-shine"></span>
-      <span class="ball-sticker">
-        <img *ngIf="!reverseMode && flyingBall.ball.imageSrc; else flyingBallText"
-             [src]="flyingBall.ball.imageSrc"
-             [alt]="flyingBall.ball.text">
-        <ng-template #flyingBallText>
-          <span [style.--text-scale]="flyingBall.ball.textScale">{{ flyingBall.ball.text }}</span>
-        </ng-template>
-      </span>
-    </span>
+      <div *ngIf="team.flyingBall"
+           class="ball-flight-layer"
+           aria-hidden="true">
+        <span class="sort-ball flying-ball"
+              [ngStyle]="team.flyingBall.styles"
+              [style.--ball-color]="team.flyingBall.ball.color"
+              (animationend)="onFlightAnimationEnd($event, team)">
+          <span class="ball-shine"></span>
+        </span>
+      </div>
+
+      <div *ngIf="team.showQuiz && team.selected"
+           class="ball-sort-quiz-overlay"
+           [class.visible]="team.quizOverlayVisible"
+           [class.closing]="team.quizClosing">
+        <div class="ball-sort-question-card" [style.--team-color]="teamColor(team)">
+          <div *ngIf="reverseMode" class="ball-sort-question-text">{{ team.selected.ball.text || '?' }}</div>
+          <ng-container *ngIf="!reverseMode">
+            <img *ngIf="team.selected.ball.imageSrc; else ballSortQuestionText"
+                 [src]="team.selected.ball.imageSrc"
+                 class="ball-sort-question-image"
+                 [alt]="team.selected.ball.text || 'question'">
+            <ng-template #ballSortQuestionText>
+              <div class="ball-sort-question-text">{{ team.selected.ball.text || '?' }}</div>
+            </ng-template>
+          </ng-container>
+        </div>
+
+        <div *ngIf="team.simpleConfirmMode" class="ball-sort-options ball-sort-simple-confirm">
+          <button type="button" class="ball-sort-option confirm-ok" (click)="onConfirmOk(team)">OK</button>
+          <button type="button" class="ball-sort-option confirm-oops" (click)="onConfirmOops(team)">Oops!</button>
+        </div>
+
+        <div *ngIf="!team.simpleConfirmMode" class="ball-sort-options" [class.ball-sort-image-options]="reverseMode">
+          <button *ngFor="let option of team.quizOptions; let optionIndex = index; trackBy: trackByQuizOptionId"
+                  type="button"
+                  class="ball-sort-option"
+                  [class.quiz-image-option]="reverseMode"
+                  [id]="quizOptionDomId(team.id, option.id)"
+                  [class.fade-out]="team.fadeOutOptionIds.has(option.id)"
+                  (click)="onQuizAnswer(team, option)">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optionIndex + 1 }}</span>
+            <ng-container *ngIf="reverseMode && option.imageSrc; else ballSortOptionText">
+              <img [src]="option.imageSrc" class="ball-sort-option-img" [alt]="option.text || ''">
+            </ng-container>
+            <ng-template #ballSortOptionText>{{ option.text || '?' }}</ng-template>
+          </button>
+        </div>
+      </div>
+    </section>
   </div>
 
   <app-game-finish-overlay

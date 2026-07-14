@@ -1,5 +1,6 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, QueryList, ViewChildren, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, QueryList, ViewChildren, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
@@ -7,8 +8,8 @@ interface Ball {
   id: number;
   groupId: number;
   itemId: number;
+  item: Item;
   text: string;
-  textScale: number;
   imageSrc: string | null;
   color: string;
 }
@@ -17,6 +18,13 @@ interface Tube {
   id: number;
   balls: Ball[];
   wasComplete: boolean;
+}
+
+interface TubeLayout {
+  columns: number;
+  rows: number;
+  ballSize: number;
+  gap: number;
 }
 
 interface ColorGroup {
@@ -28,14 +36,28 @@ interface ColorGroup {
 interface SelectedBall {
   ball: Ball;
   tubeIndex: number;
+  moveUnlocked: boolean;
 }
 
 interface BallSortTeam {
   id: number;
   name: string;
   tubes: Tube[];
+  layout: TubeLayout;
   addedTubeCount: number;
   selected: SelectedBall | null;
+  flyingBall: FlyingBall | null;
+  pendingMove: PendingMove | null;
+  hiddenBallKey: string;
+  bouncingTubeKey: string;
+  motionLocked: boolean;
+  showQuiz: boolean;
+  quizOverlayVisible: boolean;
+  quizClosing: boolean;
+  simpleConfirmMode: boolean;
+  quizOptions: Ball[];
+  quizAnswerLocked: boolean;
+  fadeOutOptionIds: Set<number>;
   completedGroupIds: Set<number>;
   finished: boolean;
 }
@@ -66,8 +88,9 @@ interface PendingMove {
   templateUrl: './ball-sort.html',
   styleUrls: ['./ball-sort.css']
 })
-export class BallSortComponent implements OnInit, OnDestroy {
+export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChildren('tubeButton') private tubeButtons!: QueryList<ElementRef<HTMLButtonElement>>;
+  @ViewChildren('tubesWrap') private tubesWraps!: QueryList<ElementRef<HTMLElement>>;
 
   topicId!: number;
   teams: BallSortTeam[] = [];
@@ -81,9 +104,9 @@ export class BallSortComponent implements OnInit, OnDestroy {
   teamCount = 1;
   ballsPerColor = 3;
   reverseMode = false;
+  forceSimpleMode = true;
   sourceItemCount = 0;
   maxAddedTubes = 0;
-  flyingBall: FlyingBall | null = null;
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
     { key: 'Tap tube', action: 'Lift or move the top ball' },
@@ -113,12 +136,12 @@ export class BallSortComponent implements OnInit, OnDestroy {
   private downSound: HTMLAudioElement | null = null;
   private achieveSound: HTMLAudioElement | null = null;
   private winSound: HTMLAudioElement | null = null;
+  private correctSound: HTMLAudioElement | null = null;
+  private errorSound: HTMLAudioElement | null = null;
   private miscTimers: ReturnType<typeof setTimeout>[] = [];
   private isDestroyed = false;
-  private hiddenBallKey = '';
-  private bouncingTubeKey = '';
-  private motionLocked = false;
-  private pendingMove: PendingMove | null = null;
+  private quizBank: Ball[] = [];
+  private tubesWrapChangesSub?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -143,8 +166,14 @@ export class BallSortComponent implements OnInit, OnDestroy {
     }
   }
 
+  ngAfterViewInit() {
+    this.tubesWrapChangesSub = this.tubesWraps.changes.subscribe(() => this.scheduleTubeLayout());
+    this.scheduleTubeLayout();
+  }
+
   ngOnDestroy() {
     this.isDestroyed = true;
+    this.tubesWrapChangesSub?.unsubscribe();
     this.clearAllTimers();
     this.stopAllAudio();
     this.cleanupGameUrls();
@@ -159,6 +188,7 @@ export class BallSortComponent implements OnInit, OnDestroy {
     if (Number.isFinite(ballsPerColor)) this.ballsPerColor = Math.max(2, Math.min(7, Math.round(ballsPerColor)));
 
     this.reverseMode = params['reverseMode'] === 'true';
+    this.forceSimpleMode = params['simpleMode'] !== 'false';
   }
 
   private prepareSounds() {
@@ -166,7 +196,9 @@ export class BallSortComponent implements OnInit, OnDestroy {
     this.downSound = new Audio('assets/sound/down.mp3');
     this.achieveSound = new Audio('assets/sound/achieve.mp3');
     this.winSound = new Audio('assets/sound/reward-reveal.mp3');
-    [this.upSound, this.downSound, this.achieveSound, this.winSound].forEach(sound => sound?.load());
+    this.correctSound = new Audio('assets/sound/collect.mp3');
+    this.errorSound = new Audio('assets/sound/error.mp3');
+    [this.upSound, this.downSound, this.achieveSound, this.winSound, this.correctSound, this.errorSound].forEach(sound => sound?.load());
   }
 
   private setupGame(items: Item[]) {
@@ -178,11 +210,7 @@ export class BallSortComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.finishOverlayVisible = false;
     this.winnerTeam = null;
-    this.flyingBall = null;
-    this.hiddenBallKey = '';
-    this.bouncingTubeKey = '';
-    this.motionLocked = false;
-    this.pendingMove = null;
+    this.quizBank = [];
     this.loadError = '';
 
     const playableItems = items.filter(item => !!item.image || !!item.text?.trim());
@@ -196,8 +224,10 @@ export class BallSortComponent implements OnInit, OnDestroy {
     }
 
     const sourceBalls = this.createBalls(playableItems);
+    this.quizBank = sourceBalls.map(ball => ({ ...ball }));
     const baseTubes = this.createInitialTubes(sourceBalls);
     this.teams = Array.from({ length: this.teamCount }, (_, index) => this.createTeam(index + 1, baseTubes));
+    this.scheduleTubeLayout();
   }
 
   private createBalls(items: Item[]): Ball[] {
@@ -217,8 +247,8 @@ export class BallSortComponent implements OnInit, OnDestroy {
           id: this.ballIdSeed++,
           groupId,
           itemId: item.id ?? start + index,
+          item,
           text,
-          textScale: this.textScaleFor(text),
           imageSrc: this.createImageUrl(item.image),
           color
         });
@@ -274,8 +304,21 @@ export class BallSortComponent implements OnInit, OnDestroy {
       id: teamId,
       name: `Team ${teamId}`,
       tubes,
+      layout: this.createDefaultTubeLayout(tubes.length),
       addedTubeCount: 0,
       selected: null,
+      flyingBall: null,
+      pendingMove: null,
+      hiddenBallKey: '',
+      bouncingTubeKey: '',
+      motionLocked: false,
+      showQuiz: false,
+      quizOverlayVisible: false,
+      quizClosing: false,
+      simpleConfirmMode: this.forceSimpleMode,
+      quizOptions: [],
+      quizAnswerLocked: false,
+      fadeOutOptionIds: new Set<number>(),
       completedGroupIds: new Set<number>(),
       finished: false
     };
@@ -284,7 +327,7 @@ export class BallSortComponent implements OnInit, OnDestroy {
   }
 
   onTubeClick(team: BallSortTeam, tubeIndex: number) {
-    if (this.gameFinished || team.finished || this.motionLocked) return;
+    if (this.gameFinished || team.finished || team.motionLocked || team.showQuiz) return;
     const tube = team.tubes[tubeIndex];
     if (!tube) return;
 
@@ -298,13 +341,15 @@ export class BallSortComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (!team.selected.moveUnlocked) return;
+
     if (this.canMoveTo(team.selected.ball, tube)) {
       this.animateSelectedMove(team, tubeIndex);
       return;
     }
 
-    if (tube.balls.length > 0) {
-      this.dropSelectedAndLiftTarget(team, tubeIndex);
+    if (tube.balls.length >= this.ballsPerColor) {
+      this.rejectMoveToFullTube(team);
     }
   }
 
@@ -312,6 +357,7 @@ export class BallSortComponent implements OnInit, OnDestroy {
     if (!this.canAddTube(team)) return;
     team.tubes.push(this.createTube([]));
     team.addedTubeCount++;
+    this.scheduleTubeLayout();
   }
 
   resetGame() {
@@ -352,36 +398,185 @@ export class BallSortComponent implements OnInit, OnDestroy {
     this.resetGame();
   }
 
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.scheduleTubeLayout();
+  }
+
   private selectTopBall(team: BallSortTeam, tubeIndex: number) {
     const tube = team.tubes[tubeIndex];
     const ball = tube?.balls[tube.balls.length - 1];
     if (!ball) return;
-    team.selected = { ball, tubeIndex };
+    team.selected = { ball, tubeIndex, moveUnlocked: false };
     this.playSound(this.upSound);
+    this.openBallQuiz(team);
   }
 
-  private dropSelectedBall(team: BallSortTeam, tubeIndex: number) {
+  private dropSelectedBall(team: BallSortTeam, tubeIndex: number, sound: HTMLAudioElement | null = this.downSound) {
     const tube = team.tubes[tubeIndex];
+    this.closeBallQuiz(team);
     team.selected = null;
-    this.playSound(this.downSound);
+    this.playSound(sound);
     if (tube) this.markTubeBounce(team, tube);
   }
 
-  private dropSelectedAndLiftTarget(team: BallSortTeam, targetIndex: number) {
+  private rejectMoveToFullTube(team: BallSortTeam) {
     const sourceIndex = team.selected?.tubeIndex;
     if (sourceIndex === undefined) return;
-    const sourceTube = team.tubes[sourceIndex];
-    team.selected = null;
-    this.motionLocked = true;
-    this.playSound(this.downSound);
-    if (sourceTube) this.markTubeBounce(team, sourceTube);
+    this.dropSelectedBall(team, sourceIndex, this.errorSound);
+  }
+
+  private openBallQuiz(team: BallSortTeam) {
+    const selected = team.selected;
+    if (!selected) return;
+
+    const ball = selected.ball;
+    const hasText = !!ball.text.trim();
+    let options: Ball[] = [];
+    let simpleMode = this.forceSimpleMode;
+
+    if (!this.forceSimpleMode) {
+      if (this.reverseMode) {
+        if (!hasText || !ball.imageSrc) {
+          simpleMode = true;
+        } else {
+          options = this.buildReverseQuizOptions(ball);
+          if (!options.length) simpleMode = true;
+        }
+      } else if (!hasText) {
+        simpleMode = true;
+      } else {
+        options = this.buildQuizOptions(ball);
+        if (!options.length) simpleMode = true;
+      }
+    }
+
+    team.simpleConfirmMode = simpleMode;
+    team.quizOptions = options;
+    team.quizClosing = false;
+    team.quizAnswerLocked = false;
+    team.fadeOutOptionIds.clear();
+    team.showQuiz = true;
+    team.quizOverlayVisible = false;
     this.cdr.detectChanges();
 
     this.setTrackedTimeout(() => {
-      this.motionLocked = false;
-      this.selectTopBall(team, targetIndex);
+      if (!team.selected || team.selected.ball.id !== ball.id) return;
+      team.quizOverlayVisible = true;
       this.cdr.detectChanges();
-    }, 240);
+    }, 50);
+  }
+
+  onConfirmOk(team: BallSortTeam) {
+    if (!team.showQuiz || !team.selected || team.quizClosing) return;
+    this.acceptQuizAnswer(team);
+  }
+
+  onConfirmOops(team: BallSortTeam) {
+    if (!team.showQuiz || !team.selected || team.quizClosing) return;
+    this.rejectQuizAnswer(team);
+  }
+
+  onQuizAnswer(team: BallSortTeam, selected: Ball) {
+    if (!team.showQuiz || !team.selected || team.quizAnswerLocked) return;
+
+    if (selected.id !== team.selected.ball.id) {
+      this.playSound(this.errorSound);
+      const option = document.getElementById(this.quizOptionDomId(team.id, selected.id));
+      option?.classList.add('shake');
+      this.setTrackedTimeout(() => option?.classList.remove('shake'), 500);
+      this.setTrackedTimeout(() => this.rejectQuizAnswer(team, false), 520);
+      return;
+    }
+
+    team.quizAnswerLocked = true;
+    team.fadeOutOptionIds.clear();
+    team.quizOptions.forEach(option => {
+      if (option.id !== selected.id) team.fadeOutOptionIds.add(option.id);
+    });
+    document.getElementById(this.quizOptionDomId(team.id, selected.id))?.classList.add('correct-flash');
+    this.acceptQuizAnswer(team);
+  }
+
+  private acceptQuizAnswer(team: BallSortTeam) {
+    if (!team.selected || team.quizClosing) return;
+    team.quizAnswerLocked = true;
+    team.selected.moveUnlocked = true;
+    this.playSound(this.correctSound);
+    team.quizClosing = true;
+    team.quizOverlayVisible = false;
+    this.cdr.detectChanges();
+
+    this.setTrackedTimeout(() => {
+      this.closeBallQuiz(team);
+      this.cdr.detectChanges();
+    }, 520);
+  }
+
+  private rejectQuizAnswer(team: BallSortTeam, playError = true) {
+    if (!team.selected || team.quizClosing) return;
+    const sourceIndex = team.selected.tubeIndex;
+    if (playError) this.playSound(this.errorSound);
+    team.quizClosing = true;
+    team.quizOverlayVisible = false;
+    this.cdr.detectChanges();
+
+    this.setTrackedTimeout(() => {
+      this.dropSelectedBall(team, sourceIndex, null);
+      this.cdr.detectChanges();
+    }, 420);
+  }
+
+  private closeBallQuiz(team: BallSortTeam) {
+    team.showQuiz = false;
+    team.quizOverlayVisible = false;
+    team.quizClosing = false;
+    team.simpleConfirmMode = this.forceSimpleMode;
+    team.quizOptions = [];
+    team.quizAnswerLocked = false;
+    team.fadeOutOptionIds.clear();
+  }
+
+  private buildReverseQuizOptions(selectedBall: Ball): Ball[] {
+    if (!selectedBall.imageSrc) return [];
+
+    const candidates: Ball[] = [];
+    const seenItems = new Set<number | string>([selectedBall.itemId]);
+    for (const ball of this.quizBank) {
+      if (!ball.imageSrc || ball.id === selectedBall.id) continue;
+      const key = ball.itemId ?? ball.text.toLowerCase();
+      if (seenItems.has(key)) continue;
+      seenItems.add(key);
+      candidates.push(ball);
+    }
+
+    return this.buildShuffledOptions(selectedBall, candidates);
+  }
+
+  private buildQuizOptions(selectedBall: Ball): Ball[] {
+    const selectedText = selectedBall.text.trim().toLowerCase();
+    if (!selectedText) return [];
+
+    const candidates: Ball[] = [];
+    const seenText = new Set<string>([selectedText]);
+    for (const ball of this.quizBank) {
+      const text = ball.text.trim();
+      if (!text || ball.id === selectedBall.id) continue;
+      const key = text.toLowerCase();
+      if (seenText.has(key)) continue;
+      seenText.add(key);
+      candidates.push(ball);
+    }
+
+    return this.buildShuffledOptions(selectedBall, candidates);
+  }
+
+  private buildShuffledOptions(selectedBall: Ball, candidates: Ball[]): Ball[] {
+    const shuffledCandidates = this.shuffleBalls(candidates);
+    const distractors = shuffledCandidates.slice(0, Math.min(2, shuffledCandidates.length));
+    if (!distractors.length) return [];
+
+    return this.shuffleBalls([selectedBall, ...distractors]);
   }
 
   private animateSelectedMove(team: BallSortTeam, targetIndex: number) {
@@ -392,14 +587,14 @@ export class BallSortComponent implements OnInit, OnDestroy {
     const targetTube = team.tubes[targetIndex];
     const sourceEl = this.getTubeElement(team.id, selection.tubeIndex);
     const targetEl = this.getTubeElement(team.id, targetIndex);
-    const shellEl = sourceEl?.closest('.ball-sort-shell') as HTMLElement | null;
+    const boardEl = sourceEl?.closest('.team-board') as HTMLElement | null;
 
-    if (!sourceTube || !targetTube || !sourceEl || !targetEl || !shellEl) {
+    if (!sourceTube || !targetTube || !sourceEl || !targetEl || !boardEl) {
       this.moveSelectedBall(team, targetIndex);
       return;
     }
 
-    const shellRect = shellEl.getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
     const sourceRect = sourceEl.getBoundingClientRect();
     const targetRect = targetEl.getBoundingClientRect();
     const sourceBallEl = sourceEl.querySelector('.tube-stack .sort-ball:last-child') as HTMLElement | null;
@@ -407,25 +602,25 @@ export class BallSortComponent implements OnInit, OnDestroy {
     const sourceStyle = getComputedStyle(sourceEl);
     const targetStyle = getComputedStyle(targetEl);
     const ballSize = sourceBallRect?.width ?? Math.max(1, sourceRect.width - this.pixelValue(sourceStyle.paddingLeft) - this.pixelValue(sourceStyle.paddingRight));
-    const targetCenterX = targetRect.left - shellRect.left + (targetRect.width / 2) - (ballSize / 2);
-    const targetNeckY = targetRect.top - shellRect.top - (ballSize * 1.02);
+    const targetCenterX = targetRect.left - boardRect.left + (targetRect.width / 2) - (ballSize / 2);
+    const targetNeckY = targetRect.top - boardRect.top - (ballSize * 1.02);
     const paddingBottom = this.pixelValue(targetStyle.paddingBottom);
     const ballGap = Math.max(1, ballSize * 0.02);
-    const targetDropY = targetRect.bottom - shellRect.top - paddingBottom - (ballSize * (targetTube.balls.length + 1)) - (ballGap * targetTube.balls.length);
-    const sourceX = sourceRect.left - shellRect.left + (sourceRect.width / 2) - (ballSize / 2);
-    const sourceNaturalY = sourceRect.bottom - shellRect.top - this.pixelValue(sourceStyle.paddingBottom) - (ballSize * sourceTube.balls.length) - (ballGap * Math.max(0, sourceTube.balls.length - 1));
-    const sourceY = sourceBallRect ? sourceBallRect.top - shellRect.top : sourceNaturalY - (ballSize * this.liftSlotsForTube(sourceTube));
+    const targetDropY = targetRect.bottom - boardRect.top - paddingBottom - (ballSize * (targetTube.balls.length + 1)) - (ballGap * targetTube.balls.length);
+    const sourceX = sourceRect.left - boardRect.left + (sourceRect.width / 2) - (ballSize / 2);
+    const sourceNaturalY = sourceRect.bottom - boardRect.top - this.pixelValue(sourceStyle.paddingBottom) - (ballSize * sourceTube.balls.length) - (ballGap * Math.max(0, sourceTube.balls.length - 1));
+    const sourceY = sourceBallRect ? sourceBallRect.top - boardRect.top : sourceNaturalY - (ballSize * this.liftSlotsForTube(sourceTube));
     const laneY = sourceY;
 
-    this.motionLocked = true;
-    this.pendingMove = {
+    team.motionLocked = true;
+    team.pendingMove = {
       teamId: team.id,
       sourceIndex: selection.tubeIndex,
       targetIndex,
       ball: selection.ball
     };
-    this.hiddenBallKey = this.ballKey(team, selection.ball);
-    this.flyingBall = {
+    team.hiddenBallKey = this.ballKey(team, selection.ball);
+    team.flyingBall = {
       ball: { ...selection.ball },
       styles: {
         '--flight-size': `${ballSize}px`,
@@ -439,30 +634,29 @@ export class BallSortComponent implements OnInit, OnDestroy {
       }
     };
     this.cdr.detectChanges();
-    this.setTrackedTimeout(() => this.completePendingFlight(), 840);
+    this.setTrackedTimeout(() => this.completePendingFlight(team), 840);
   }
 
-  onFlightAnimationEnd(event: AnimationEvent) {
+  onFlightAnimationEnd(event: AnimationEvent, team: BallSortTeam) {
     if (event.animationName !== 'ballSortFlight') return;
-    this.completePendingFlight();
+    this.completePendingFlight(team);
   }
 
-  private completePendingFlight() {
-    const pendingMove = this.pendingMove;
+  private completePendingFlight(team: BallSortTeam) {
+    const pendingMove = team.pendingMove;
     if (!pendingMove) return;
 
-    const team = this.teams.find(candidate => candidate.id === pendingMove.teamId);
     const sourceTube = team?.tubes[pendingMove.sourceIndex];
     const targetTube = team?.tubes[pendingMove.targetIndex];
     if (!team || !sourceTube || !targetTube) {
-      this.clearFlightState();
+      this.clearFlightState(team);
       return;
     }
 
     const movedBall = sourceTube.balls.pop() ?? pendingMove.ball;
     targetTube.balls.push(movedBall);
     team.selected = null;
-    this.clearFlightState();
+    this.clearFlightState(team);
     this.playSound(this.downSound);
     this.markTubeBounce(team, targetTube);
     this.afterMove(team, [sourceTube, targetTube]);
@@ -566,11 +760,11 @@ export class BallSortComponent implements OnInit, OnDestroy {
   }
 
   isHiddenForFlight(team: BallSortTeam, ball: Ball): boolean {
-    return this.hiddenBallKey === this.ballKey(team, ball);
+    return team.hiddenBallKey === this.ballKey(team, ball);
   }
 
   isTubeBouncing(team: BallSortTeam, tube: Tube): boolean {
-    return this.bouncingTubeKey === this.tubeKey(team, tube);
+    return team.bouncingTubeKey === this.tubeKey(team, tube);
   }
 
   selectedLiftSlots(team: BallSortTeam, tubeIndex: number, ballIndex: number): number | null {
@@ -579,20 +773,12 @@ export class BallSortComponent implements OnInit, OnDestroy {
     return this.liftSlotsForCount(ballCount);
   }
 
-  textScaleFor(text: string): number {
-    const cleanText = text.trim();
-    const totalLength = cleanText.length || 1;
-    const longestWord = Math.max(...cleanText.split(/\s+/).map(word => word.length), 1);
-    const pressure = Math.max(totalLength / 2.15, longestWord * 1.35);
-    return Math.max(0.15, Math.min(0.62, 1.65 / pressure));
-  }
-
   teamColor(team: BallSortTeam): string {
     return this.teamColors[(team.id - 1) % this.teamColors.length];
   }
 
   canAddTube(team: BallSortTeam): boolean {
-    return !this.gameFinished && !team.finished && !this.motionLocked && team.addedTubeCount < this.maxAddedTubes;
+    return !this.gameFinished && !team.finished && !team.motionLocked && !team.showQuiz && team.addedTubeCount < this.maxAddedTubes;
   }
 
   get finishTitle(): string {
@@ -634,8 +820,92 @@ export class BallSortComponent implements OnInit, OnDestroy {
     return ball.id;
   }
 
+  trackByQuizOptionId(_: number, ball: Ball): number {
+    return ball.id;
+  }
+
   trackByResultTeam(_: number, entry: BallSortResultEntry): number {
     return entry.team.id;
+  }
+
+  quizOptionDomId(teamId: number, ballId: number): string {
+    return `ball-sort-team-${teamId}-quiz-option-${ballId}`;
+  }
+
+  private createDefaultTubeLayout(tubeCount: number): TubeLayout {
+    return {
+      columns: Math.max(1, tubeCount),
+      rows: 1,
+      ballSize: this.teamCount === 1 ? 72 : 42,
+      gap: this.teamCount === 1 ? 18 : 10
+    };
+  }
+
+  private scheduleTubeLayout() {
+    this.setTrackedTimeout(() => this.calculateTubeLayouts(), 0);
+  }
+
+  private calculateTubeLayouts() {
+    if (!this.teams.length || !this.tubesWraps?.length) return;
+
+    let changed = false;
+    this.teams.forEach(team => {
+      const wrap = this.getTubesWrapElement(team.id);
+      if (!wrap) return;
+
+      const nextLayout = this.computeTubeLayout(team, wrap);
+      if (this.hasTubeLayoutChanged(team.layout, nextLayout)) {
+        team.layout = nextLayout;
+        changed = true;
+      }
+    });
+
+    if (changed) this.cdr.detectChanges();
+  }
+
+  private computeTubeLayout(team: BallSortTeam, wrap: HTMLElement): TubeLayout {
+    const tubeCount = Math.max(1, team.tubes.length);
+    const availableWidth = Math.max(1, wrap.clientWidth);
+    const availableHeight = Math.max(1, wrap.clientHeight);
+    const tubeWidthFactor = 1.28;
+    const tubeHeightFactor = this.ballsPerColor + 0.34 + 0.42;
+    const liftedBallSpaceFactor = 0.58;
+    const bottomSpaceFactor = 0.14;
+    const gapFactor = tubeCount > 12 ? 0.16 : tubeCount > 8 ? 0.19 : 0.23;
+    const maxBallSize = this.teamCount === 1 ? 142 : this.teamCount <= 3 ? 94 : this.teamCount === 4 ? 66 : 54;
+    let bestLayout: TubeLayout = this.createDefaultTubeLayout(tubeCount);
+    let bestScore = -1;
+
+    for (let columns = 1; columns <= tubeCount; columns++) {
+      const rows = Math.ceil(tubeCount / columns);
+      const widthUnits = (columns * tubeWidthFactor) + ((columns - 1) * gapFactor);
+      const heightUnits = liftedBallSpaceFactor + bottomSpaceFactor + (rows * tubeHeightFactor) + ((rows - 1) * gapFactor);
+      const ballSize = Math.floor(Math.min(availableWidth / widthUnits, availableHeight / heightUnits, maxBallSize));
+      const gap = Math.max(3, Math.round(ballSize * gapFactor));
+      const usedWidth = (columns * ballSize * tubeWidthFactor) + ((columns - 1) * gap);
+      const usedHeight = ((liftedBallSpaceFactor + bottomSpaceFactor + (rows * tubeHeightFactor)) * ballSize) + ((rows - 1) * gap);
+      const fitPenalty = usedWidth > availableWidth || usedHeight > availableHeight ? -100000 : 0;
+      const score = fitPenalty + (ballSize * 10000) + (Math.min(usedWidth / availableWidth, usedHeight / availableHeight) * 100) - (rows * 0.1);
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestLayout = {
+          columns,
+          rows,
+          ballSize: Math.max(1, ballSize),
+          gap
+        };
+      }
+    }
+
+    return bestLayout;
+  }
+
+  private hasTubeLayoutChanged(current: TubeLayout, next: TubeLayout): boolean {
+    return current.columns !== next.columns ||
+      current.rows !== next.rows ||
+      current.ballSize !== next.ballSize ||
+      current.gap !== next.gap;
   }
 
   private medalForPosition(position: number): string {
@@ -651,6 +921,11 @@ export class BallSortComponent implements OnInit, OnDestroy {
       return Number(element.dataset['teamId']) === teamId && Number(element.dataset['tubeIndex']) === tubeIndex;
     });
     return tubeRef?.nativeElement ?? null;
+  }
+
+  private getTubesWrapElement(teamId: number): HTMLElement | null {
+    const wrapRef = this.tubesWraps?.find(ref => Number(ref.nativeElement.dataset['teamId']) === teamId);
+    return wrapRef?.nativeElement ?? null;
   }
 
   private liftSlotsForTube(tube: Tube): number {
@@ -673,18 +948,18 @@ export class BallSortComponent implements OnInit, OnDestroy {
 
   private markTubeBounce(team: BallSortTeam, tube: Tube) {
     const key = this.tubeKey(team, tube);
-    this.bouncingTubeKey = key;
+    team.bouncingTubeKey = key;
     this.setTrackedTimeout(() => {
-      if (this.bouncingTubeKey === key) this.bouncingTubeKey = '';
+      if (team.bouncingTubeKey === key) team.bouncingTubeKey = '';
       this.cdr.detectChanges();
     }, 340);
   }
 
-  private clearFlightState() {
-    this.flyingBall = null;
-    this.hiddenBallKey = '';
-    this.pendingMove = null;
-    this.motionLocked = false;
+  private clearFlightState(team: BallSortTeam) {
+    team.flyingBall = null;
+    team.hiddenBallKey = '';
+    team.pendingMove = null;
+    team.motionLocked = false;
   }
 
   private ballKey(team: BallSortTeam, ball: Ball): string {
@@ -731,7 +1006,7 @@ export class BallSortComponent implements OnInit, OnDestroy {
   }
 
   private stopAllAudio() {
-    [this.upSound, this.downSound, this.achieveSound, this.winSound].forEach(sound => this.stopSound(sound));
+    [this.upSound, this.downSound, this.achieveSound, this.winSound, this.correctSound, this.errorSound].forEach(sound => this.stopSound(sound));
   }
 
   private stopSound(sound: HTMLAudioElement | null) {
