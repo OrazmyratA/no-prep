@@ -1,6 +1,5 @@
 <div class="download-page">
 
-  <!-- Nav Bar -->
   <nav class="download-nav">
     <div class="download-nav-inner">
       <div class="nav-brand">
@@ -17,23 +16,20 @@
     </div>
   </nav>
 
-  <!-- Hero -->
   <header class="download-hero">
     <div class="hero-inner">
       <img src="assets/icons/icon.png" alt="No-Prep" class="hero-icon">
       <h1 class="hero-title">No-Prep for Windows</h1>
       <p class="hero-subtitle">
-        All 16 classroom games — running natively on your PC.<br>
+        {{ gameCount }} classroom games and teacher tools running natively on your PC.<br>
         No browser needed, works fully offline.
       </p>
     </div>
   </header>
 
-  <!-- Download Card -->
   <main class="download-main">
     <div class="download-card">
 
-      <!-- Windows badge + version -->
       <div class="card-header">
         <div class="windows-badge">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -41,28 +37,29 @@
           </svg>
           Windows
         </div>
-        <span class="version-badge">v{{ versions[0].version }}</span>
-        <span class="platform-badge">Windows 10 · 64-bit · Free</span>
+        <span class="version-badge">{{ versions[0].version === 'Latest' ? 'Latest' : 'v' + versions[0].version }}</span>
+        <span class="platform-badge">Windows 10 - 64-bit - Free</span>
       </div>
 
-      <!-- Download button -->
-      <button class="download-btn" (click)="openUrl(releasesUrl)">
+      <button class="download-btn" (click)="openUrl(downloadUrl)">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Download .exe Installer
+        Download {{ installerName }}
       </button>
 
-      <p class="download-hint">Opens GitHub Releases · Always the latest version</p>
+      <p class="download-hint" [class.download-hint-warning]="releaseLoadFailed">
+        <span>{{ releaseStatus }}</span>
+        <span *ngIf="installerSize"> - {{ installerSize }}</span>
+      </p>
 
-      <!-- Feature bullets -->
       <ul class="feature-list">
         <li>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          No browser required
+          {{ gameCount }} classroom games
         </li>
         <li>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -70,7 +67,7 @@
         </li>
         <li>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Faster & smoother performance
+          Faster and smoother performance
         </li>
         <li>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -79,16 +76,15 @@
       </ul>
     </div>
 
-    <!-- Version History -->
     <section class="changelog-section">
-      <h2 class="changelog-title">Version History</h2>
+      <h2 class="changelog-title">Latest Release</h2>
 
       <div class="changelog-list">
         <div *ngFor="let v of versions" class="changelog-entry">
           <div class="changelog-entry-header">
-            <span class="changelog-version">v{{ v.version }}</span>
+            <span class="changelog-version">{{ v.version === 'Latest' ? 'Latest' : 'v' + v.version }}</span>
             <span class="changelog-date">{{ v.date }}</span>
-            <span *ngIf="v === versions[0]" class="latest-badge">Latest</span>
+            <span *ngIf="v === versions[0] && releaseLoaded" class="latest-badge">Live</span>
           </div>
           <ul class="changelog-notes">
             <li *ngFor="let note of v.notes">{{ note }}</li>
@@ -97,7 +93,6 @@
       </div>
     </section>
 
-    <!-- Also Available On -->
     <section class="also-section">
       <h2 class="also-title">Also Available On</h2>
       <div class="also-links">
@@ -130,9 +125,8 @@
 
   </main>
 
-  <!-- Footer -->
   <footer class="download-footer">
-    <p>© 2026 No-Prep · Made for teachers, by teachers</p>
+    <p>Copyright 2026 No-Prep - Made for teachers, by teachers</p>
   </footer>
 
 </div>

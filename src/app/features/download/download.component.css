@@ -181,6 +181,7 @@
 .download-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   padding: 0.9rem 2.5rem;
   border-radius: 9999px;
@@ -193,6 +194,9 @@
   box-shadow: 0 6px 24px rgba(79, 70, 229, 0.35);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
   text-decoration: none;
+  max-width: min(100%, 32rem);
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .download-btn svg {
@@ -214,6 +218,12 @@
   font-size: 0.78rem;
   color: #9ca3af;
   margin: -0.5rem 0 0;
+  line-height: 1.4;
+  max-width: 32rem;
+}
+
+.download-hint-warning {
+  color: #b45309;
 }
 
 .feature-list {
