@@ -1,0 +1,119 @@
+<div class="relative h-screen overflow-hidden bg-gradient-to-br from-indigo-900 to-purple-900 p-3 flex flex-col">
+  <app-game-keyboard-help
+    class="tracing-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <div class="w-full flex-1 min-h-0 flex flex-col">
+    <h2 class="text-2xl font-bold text-white mb-1 text-center">{{ 'gameTracingName' | translate }}</h2>
+    <div *ngIf="!loading && !gameFinished && currentItem"
+         class="absolute top-3 left-3 text-white text-sm font-bold bg-black bg-opacity-35 rounded-full px-3 py-1 shadow-lg flex items-center gap-2">
+      <span>{{ currentIndex + 1 }} / {{ items.length }}</span>
+      <span class="progress-check-chip">✓ {{ checkedCount }}</span>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="flex justify-center items-center h-64">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+    </div>
+
+    <div *ngIf="!loading && !gameFinished && currentItem"
+         class="flex-1 min-h-0 flex flex-col justify-evenly pt-2">
+
+      <div class="media-stage">
+        <div class="media-card" [class.flipped]="isMediaFlipped" (click)="toggleMediaFlip()">
+          <span class="media-face media-front">
+            <span class="card-back-pattern"></span>
+            <button
+              *ngIf="hasCurrentAudio"
+              type="button"
+              class="speaker-btn"
+              (click)="$event.stopPropagation(); playCurrentItemAudio()"
+              aria-label="Play item audio"
+            >
+              🔊
+            </button>
+          </span>
+          <span class="media-face media-back">
+            <img *ngIf="currentImageUrl; else noTracingImage" [src]="currentImageUrl" alt="">
+            <ng-template #noTracingImage>
+              <span class="image-empty"></span>
+            </ng-template>
+          </span>
+        </div>
+      </div>
+
+      <!-- Whiteboard -->
+      <div class="whiteboard-wrapper">
+        <div class="whiteboard relative w-full h-full bg-white rounded-2xl shadow-2xl overflow-hidden" #whiteboard>
+          <!-- Word container (centered) -->
+          <div class="word-container w-full h-full flex items-center justify-center">
+            <div class="word-row flex flex-wrap justify-center gap-1 md:gap-2" [class.guides-fading]="guidesHidden">
+              <span *ngFor="let slot of slots; trackBy: trackBySlot"
+                    class="letter-slot"
+                    [class.traceable]="slot.isTraceable"
+                    [class.revealed]="slot.isRevealed"
+                    [class.static]="!slot.isTraceable">
+                <span *ngIf="!slot.isTraceable" class="letter-text">{{ slot.char }}</span>
+                <ng-container *ngIf="slot.isTraceable">
+                  <span class="letter-placeholder"></span>
+                  <span class="underline"></span>
+                  <span class="letter-text traced-answer">{{ slot.char }}</span>
+                </ng-container>
+              </span>
+            </div>
+          </div>
+          <!-- Canvas overlay (covers entire whiteboard) -->
+          <canvas #traceCanvas
+                  class="trace-canvas"
+                  [class.fading]="canvasFading"
+                  (pointerdown)="onPointerDown($event)"
+                  (pointermove)="onPointerMove($event)"
+                  (pointerup)="onPointerUp($event)"
+                  (pointercancel)="onPointerUp($event)"
+                  (pointerleave)="onPointerUp($event)">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls flex justify-center items-center gap-3">
+        <button (click)="previousItem()" [disabled]="currentIndex === 0 || revealing"
+                aria-label="Previous"
+                title="Previous"
+                class="circle-btn bg-slate-500 hover:bg-slate-700">
+          ◀
+        </button>
+        <button (click)="resetCurrentItem()" [disabled]="revealing"
+                aria-label="Reset current word"
+                title="Reset current word"
+                class="circle-btn bg-yellow-500 hover:bg-yellow-600">
+          ↺
+        </button>
+        <button (click)="checkAnswer()" [disabled]="revealing || isCurrentChecked"
+                [attr.aria-label]="(isCurrentChecked ? 'tracingChecked' : 'tracingCheck') | translate"
+                [attr.title]="(isCurrentChecked ? 'tracingChecked' : 'tracingCheck') | translate"
+                class="check-btn" [class.checked]="isCurrentChecked">
+          <img src="assets/images/check-mark.png" alt="" class="check-icon">
+        </button>
+        <button (click)="nextItem()" [disabled]="currentIndex === items.length - 1 || revealing"
+                aria-label="Next"
+                title="Next"
+                class="circle-btn bg-blue-500 hover:bg-blue-700">
+          ▶
+        </button>
+      </div>
+    </div>
+
+    <app-game-finish-overlay
+      *ngIf="gameFinished"
+      [title]="'tracingAllWordsPracticed' | translate"
+      (playAgain)="resetGame()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
+
+    <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+  </div>
+</div>

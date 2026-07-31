@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 
 interface Ball {
   id: number;
@@ -58,6 +59,8 @@ interface BallSortTeam {
   quizOptions: Ball[];
   quizAnswerLocked: boolean;
   fadeOutOptionIds: Set<number>;
+  keyboardSelectedTubeIndex: number;
+  keyboardSelectedOptionIndex: number;
   completedGroupIds: Set<number>;
   finished: boolean;
 }
@@ -107,12 +110,9 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   forceSimpleMode = true;
   sourceItemCount = 0;
   maxAddedTubes = 0;
+  keyboardSelectedTeamIndex = 0;
   keyboardHintsVisible = false;
-  keyboardShortcuts: GameKeyboardShortcut[] = [
-    { key: 'Tap tube', action: 'Lift or move the top ball' },
-    { key: '+', action: 'Add one empty tube for this team' },
-    { key: 'R', action: 'Start over' }
-  ];
+  keyboardShortcuts: GameKeyboardShortcut[] = [];
 
   private readonly groupPalette = [
     '#ef4444',
@@ -153,6 +153,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     const idParam = this.route.snapshot.paramMap.get('id') ?? this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
     this.readSettings();
+    this.syncKeyboardShortcuts();
     this.prepareSounds();
 
     try {
@@ -210,6 +211,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     this.gameFinished = false;
     this.finishOverlayVisible = false;
     this.winnerTeam = null;
+    this.keyboardSelectedTeamIndex = 0;
     this.quizBank = [];
     this.loadError = '';
 
@@ -319,6 +321,8 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
       quizOptions: [],
       quizAnswerLocked: false,
       fadeOutOptionIds: new Set<number>(),
+      keyboardSelectedTubeIndex: 0,
+      keyboardSelectedOptionIndex: 0,
       completedGroupIds: new Set<number>(),
       finished: false
     };
@@ -330,6 +334,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.gameFinished || team.finished || team.motionLocked || team.showQuiz) return;
     const tube = team.tubes[tubeIndex];
     if (!tube) return;
+    this.focusKeyboardTube(team, tubeIndex);
 
     if (!team.selected) {
       this.selectTopBall(team, tubeIndex);
@@ -390,12 +395,64 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   onWindowKeydown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
     if (this.isKeyboardEventFromInteractiveElement(event)) return;
-    if (event.key.toLowerCase() !== 'r') return;
 
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-    this.resetGame();
+    const activeQuizTeam = this.teams.find(team => team.showQuiz);
+    if (activeQuizTeam) {
+      this.handleQuizKey(event, activeQuizTeam);
+      return;
+    }
+
+    const teamKeyIndex = getTeamIndexForKey(event.key, this.teamCount);
+    if (this.teamCount > 1 && teamKeyIndex >= 0 && teamKeyIndex < this.teams.length) {
+      event.preventDefault();
+      this.keyboardSelectedTeamIndex = teamKeyIndex;
+      this.normalizeKeyboardTubeSelection(this.teams[teamKeyIndex]);
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      event.preventDefault();
+      this.handleTubeDigit(digit);
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardTube(-1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardTube(1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        this.activateKeyboardTube();
+        break;
+      case 'Escape':
+        if (this.dropKeyboardSelectedBall()) {
+          event.preventDefault();
+        }
+        break;
+      default: {
+        const key = event.key.toLowerCase();
+        if (key === 'r') {
+          event.preventDefault();
+          this.resetGame();
+        } else if (event.key === '+' || event.key === '=') {
+          const team = this.activeKeyboardTeam();
+          if (team && this.canAddTube(team)) {
+            event.preventDefault();
+            this.addTube(team);
+          }
+        }
+        break;
+      }
+    }
   }
 
   @HostListener('window:resize')
@@ -407,6 +464,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     const tube = team.tubes[tubeIndex];
     const ball = tube?.balls[tube.balls.length - 1];
     if (!ball) return;
+    this.focusKeyboardTube(team, tubeIndex);
     team.selected = { ball, tubeIndex, moveUnlocked: false };
     this.playSound(this.upSound);
     this.openBallQuiz(team);
@@ -416,6 +474,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     const tube = team.tubes[tubeIndex];
     this.closeBallQuiz(team);
     team.selected = null;
+    this.focusKeyboardTube(team, tubeIndex);
     this.playSound(sound);
     if (tube) this.markTubeBounce(team, tube);
   }
@@ -453,6 +512,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
 
     team.simpleConfirmMode = simpleMode;
     team.quizOptions = options;
+    team.keyboardSelectedOptionIndex = 0;
     team.quizClosing = false;
     team.quizAnswerLocked = false;
     team.fadeOutOptionIds.clear();
@@ -502,6 +562,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!team.selected || team.quizClosing) return;
     team.quizAnswerLocked = true;
     team.selected.moveUnlocked = true;
+    this.normalizeKeyboardTubeSelection(team);
     this.playSound(this.correctSound);
     team.quizClosing = true;
     team.quizOverlayVisible = false;
@@ -656,6 +717,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     const movedBall = sourceTube.balls.pop() ?? pendingMove.ball;
     targetTube.balls.push(movedBall);
     team.selected = null;
+    this.focusKeyboardTube(team, pendingMove.targetIndex);
     this.clearFlightState(team);
     this.playSound(this.downSound);
     this.markTubeBounce(team, targetTube);
@@ -674,6 +736,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!movedBall) return;
     targetTube.balls.push(movedBall);
     team.selected = null;
+    this.focusKeyboardTube(team, targetIndex);
     this.playSound(this.downSound);
     this.afterMove(team, [sourceTube, targetTube]);
   }
@@ -781,6 +844,40 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     return !this.gameFinished && !team.finished && !team.motionLocked && !team.showQuiz && team.addedTubeCount < this.maxAddedTubes;
   }
 
+  sourceBallKeyboardLabel(team: BallSortTeam, tubeIndex: number, ballIndex: number): string | null {
+    if (!this.keyboardHintsVisible) return null;
+    const tube = team.tubes[tubeIndex];
+    if (!tube || ballIndex !== tube.balls.length - 1) return null;
+    const displayNumber = this.keyboardTubeDisplayNumber(team, tubeIndex, 'source');
+    return this.keyboardDisplayLabel(displayNumber);
+  }
+
+  targetTubeKeyboardLabel(team: BallSortTeam, tubeIndex: number): string | null {
+    if (!this.keyboardHintsVisible) return null;
+    const displayNumber = this.keyboardTubeDisplayNumber(team, tubeIndex, 'target');
+    return this.keyboardDisplayLabel(displayNumber);
+  }
+
+  isKeyboardSourceTubeSelected(team: BallSortTeam, tubeIndex: number): boolean {
+    return !this.activeQuizTeam() &&
+      this.activeKeyboardTeam()?.id === team.id &&
+      this.keyboardTubeMode(team) === 'source' &&
+      team.keyboardSelectedTubeIndex === tubeIndex &&
+      this.isKeyboardTubeEligible(team, tubeIndex, 'source');
+  }
+
+  isKeyboardTargetTubeSelected(team: BallSortTeam, tubeIndex: number): boolean {
+    return !this.activeQuizTeam() &&
+      this.activeKeyboardTeam()?.id === team.id &&
+      this.keyboardTubeMode(team) === 'target' &&
+      team.keyboardSelectedTubeIndex === tubeIndex &&
+      this.isKeyboardTubeEligible(team, tubeIndex, 'target');
+  }
+
+  isKeyboardOptionSelected(team: BallSortTeam, index: number): boolean {
+    return team.showQuiz && !team.simpleConfirmMode && !team.quizAnswerLocked && team.keyboardSelectedOptionIndex === index;
+  }
+
   get finishTitle(): string {
     if (this.teamCount === 1) return 'You did it!';
     return this.winnerTeam ? `${this.winnerTeam.name} wins!` : 'Game Results';
@@ -830,6 +927,217 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
 
   quizOptionDomId(teamId: number, ballId: number): string {
     return `ball-sort-team-${teamId}-quiz-option-${ballId}`;
+  }
+
+  private buildKeyboardShortcuts(): GameKeyboardShortcut[] {
+    const shortcuts: GameKeyboardShortcut[] = [];
+    if (this.teamCount > 1) {
+      shortcuts.push({
+        key: teamKeyboardShortcutLabel(this.teamCount),
+        action: 'Select team'
+      });
+    }
+
+    shortcuts.push(
+      { key: '1-9 / 0', action: 'Lift numbered top ball or choose target tube' },
+      { key: '1-3', action: 'Choose quiz answer' },
+      { key: '← ↑ ↓ →', action: 'Move source or target highlight' },
+      { key: 'Enter', action: 'Use highlighted source or target' },
+      { key: 'O / 1', action: 'OK in confirm mode' },
+      { key: 'X / 2 / Esc', action: 'Oops or drop lifted ball' },
+      { key: '+', action: 'Add empty tube for selected team' },
+      { key: 'R', action: 'Start over' }
+    );
+
+    return shortcuts;
+  }
+
+  private syncKeyboardShortcuts() {
+    this.keyboardShortcuts = this.buildKeyboardShortcuts();
+  }
+
+  private activeQuizTeam(): BallSortTeam | null {
+    return this.teams.find(team => team.showQuiz) ?? null;
+  }
+
+  private activeKeyboardTeam(): BallSortTeam | null {
+    return this.teams[this.keyboardSelectedTeamIndex] ?? this.teams[0] ?? null;
+  }
+
+  private focusKeyboardTube(team: BallSortTeam, tubeIndex: number) {
+    const teamIndex = this.teams.findIndex(candidate => candidate.id === team.id);
+    if (teamIndex >= 0) this.keyboardSelectedTeamIndex = teamIndex;
+    team.keyboardSelectedTubeIndex = Math.max(0, Math.min(team.tubes.length - 1, tubeIndex));
+  }
+
+  private keyboardTubeMode(team: BallSortTeam): 'source' | 'target' {
+    return team.selected?.moveUnlocked && !team.showQuiz ? 'target' : 'source';
+  }
+
+  private keyboardTubeDisplayNumber(team: BallSortTeam, tubeIndex: number, mode: 'source' | 'target'): number | null {
+    if (!this.isKeyboardTubeEligible(team, tubeIndex, mode)) return null;
+
+    let displayNumber = 0;
+    for (let index = 0; index <= tubeIndex; index++) {
+      if (this.isKeyboardTubeEligible(team, index, mode)) displayNumber++;
+    }
+    return displayNumber <= 10 ? displayNumber : null;
+  }
+
+  private keyboardDisplayLabel(displayNumber: number | null): string | null {
+    if (displayNumber === null) return null;
+    return displayNumber === 10 ? '0' : String(displayNumber);
+  }
+
+  private isKeyboardTubeEligible(team: BallSortTeam, tubeIndex: number, mode: 'source' | 'target'): boolean {
+    if (this.gameFinished || team.finished || team.motionLocked || team.showQuiz) return false;
+    const tube = team.tubes[tubeIndex];
+    if (!tube) return false;
+
+    if (mode === 'source') {
+      return !team.selected && tube.balls.length > 0;
+    }
+
+    return !!team.selected?.moveUnlocked &&
+      tubeIndex !== team.selected.tubeIndex &&
+      this.canMoveTo(team.selected.ball, tube);
+  }
+
+  private handleTubeDigit(digit: string) {
+    const team = this.activeKeyboardTeam();
+    if (!team) return;
+
+    const displayNumber = digit === '0' ? 10 : Number(digit);
+    const mode = this.keyboardTubeMode(team);
+    const tubeIndex = this.findTubeIndexByDisplayNumber(team, displayNumber, mode);
+    if (tubeIndex === null) return;
+
+    this.focusKeyboardTube(team, tubeIndex);
+    this.onTubeClick(team, tubeIndex);
+  }
+
+  private findTubeIndexByDisplayNumber(team: BallSortTeam, displayNumber: number, mode: 'source' | 'target'): number | null {
+    if (displayNumber < 1 || displayNumber > 10) return null;
+
+    let currentNumber = 0;
+    for (let index = 0; index < team.tubes.length; index++) {
+      if (!this.isKeyboardTubeEligible(team, index, mode)) continue;
+      currentNumber++;
+      if (currentNumber === displayNumber) return index;
+    }
+    return null;
+  }
+
+  private normalizeKeyboardTubeSelection(team: BallSortTeam) {
+    const mode = this.keyboardTubeMode(team);
+    if (this.isKeyboardTubeEligible(team, team.keyboardSelectedTubeIndex, mode)) return;
+    team.keyboardSelectedTubeIndex = this.findNextKeyboardTubeIndex(team, team.keyboardSelectedTubeIndex, 1, mode) ?? 0;
+  }
+
+  private moveKeyboardTube(direction: number) {
+    const team = this.activeKeyboardTeam();
+    if (!team) return;
+
+    const mode = this.keyboardTubeMode(team);
+    const nextIndex = this.findNextKeyboardTubeIndex(team, team.keyboardSelectedTubeIndex + direction, direction, mode);
+    if (nextIndex === null) return;
+
+    team.keyboardSelectedTubeIndex = nextIndex;
+    this.cdr.detectChanges();
+  }
+
+  private findNextKeyboardTubeIndex(team: BallSortTeam, startIndex: number, step: number, mode: 'source' | 'target'): number | null {
+    if (!team.tubes.length) return null;
+    const normalizedStep = step < 0 ? -1 : 1;
+    let index = Math.max(0, Math.min(team.tubes.length - 1, startIndex));
+
+    for (let checked = 0; checked < team.tubes.length; checked++) {
+      if (this.isKeyboardTubeEligible(team, index, mode)) return index;
+      index += normalizedStep;
+      if (index < 0) index = team.tubes.length - 1;
+      if (index >= team.tubes.length) index = 0;
+    }
+
+    return null;
+  }
+
+  private activateKeyboardTube() {
+    const team = this.activeKeyboardTeam();
+    if (!team) return;
+
+    this.normalizeKeyboardTubeSelection(team);
+    if (!this.isKeyboardTubeEligible(team, team.keyboardSelectedTubeIndex, this.keyboardTubeMode(team))) return;
+    this.onTubeClick(team, team.keyboardSelectedTubeIndex);
+  }
+
+  private dropKeyboardSelectedBall(): boolean {
+    const team = this.activeKeyboardTeam();
+    if (!team?.selected || team.showQuiz || team.motionLocked) return false;
+
+    this.dropSelectedBall(team, team.selected.tubeIndex);
+    return true;
+  }
+
+  private handleQuizKey(event: KeyboardEvent, team: BallSortTeam) {
+    if (team.simpleConfirmMode) {
+      this.handleSimpleConfirmKey(event, team);
+      return;
+    }
+
+    const digit = this.getKeyboardDigit(event);
+    if (digit !== null) {
+      const optionIndex = Number(digit) - 1;
+      if (optionIndex >= 0 && optionIndex < team.quizOptions.length) {
+        event.preventDefault();
+        team.keyboardSelectedOptionIndex = optionIndex;
+        this.onQuizAnswer(team, team.quizOptions[optionIndex]);
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        event.preventDefault();
+        this.moveKeyboardOption(team, -1);
+        break;
+      case 'ArrowRight':
+      case 'ArrowDown':
+        event.preventDefault();
+        this.moveKeyboardOption(team, 1);
+        break;
+      case 'Enter':
+        if (team.quizOptions[team.keyboardSelectedOptionIndex]) {
+          event.preventDefault();
+          this.onQuizAnswer(team, team.quizOptions[team.keyboardSelectedOptionIndex]);
+        }
+        break;
+    }
+  }
+
+  private handleSimpleConfirmKey(event: KeyboardEvent, team: BallSortTeam) {
+    const key = event.key.toLowerCase();
+    if (event.key === 'Enter' || key === 'o' || key === '1') {
+      event.preventDefault();
+      this.onConfirmOk(team);
+      return;
+    }
+
+    if (event.key === 'Escape' || key === 'x' || key === '2') {
+      event.preventDefault();
+      this.onConfirmOops(team);
+    }
+  }
+
+  private moveKeyboardOption(team: BallSortTeam, direction: number) {
+    if (!team.quizOptions.length) return;
+    const count = team.quizOptions.length;
+    team.keyboardSelectedOptionIndex = (team.keyboardSelectedOptionIndex + direction + count) % count;
+    this.cdr.detectChanges();
+  }
+
+  private getKeyboardDigit(event: KeyboardEvent): string | null {
+    return /^\d$/.test(event.key) ? event.key : null;
   }
 
   private createDefaultTubeLayout(tubeCount: number): TubeLayout {

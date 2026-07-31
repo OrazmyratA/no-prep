@@ -23,6 +23,7 @@ const games = [
   'pop-balloon',
   'test-abc',
   'anagram',
+  'tracing',
   'word-search',
   'unjumble',
   'team-tug',
@@ -178,7 +179,12 @@ async function auditRoute(client, game, viewport) {
   });
   const topicId = game === 'unjumble' || game === 'spelling-check' ? 2 : 1;
   const spellingParams = encodeURIComponent(JSON.stringify(['-a-', '-e-', '-o-']));
-  const query = game === 'spelling-check' ? `?omissionRules=${spellingParams}` : '';
+  const query =
+    game === 'spelling-check'
+      ? `?omissionRules=${spellingParams}`
+      : game === 'tracing'
+        ? '?traceCount=2'
+        : '';
   const url = `${baseUrl}#/topics/${topicId}/play/${game}${query}`;
   await navigate(client, url);
   await waitFor(client, '!document.querySelector(".animate-spin, .loading-overlay, .squid-loading")', 12000).catch(() => {});

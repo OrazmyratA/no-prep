@@ -12,6 +12,7 @@ import { ThemePickerComponent } from './theme-picker';
 import { SwipeDirective } from './swipe.directive';
 import { GameKeyboardHelpComponent } from './game-keyboard-help';
 import { GameFinishOverlayComponent } from './game-finish-overlay';
+import { RandomPickerComponent } from './random-picker';
 
 @NgModule({
   declarations: [
@@ -24,6 +25,7 @@ import { GameFinishOverlayComponent } from './game-finish-overlay';
     SwipeDirective,
     GameKeyboardHelpComponent,
     GameFinishOverlayComponent,
+    RandomPickerComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -39,7 +41,8 @@ import { GameFinishOverlayComponent } from './game-finish-overlay';
     ThemePickerComponent,
     SwipeDirective,
     GameKeyboardHelpComponent,
-    GameFinishOverlayComponent
+    GameFinishOverlayComponent,
+    RandomPickerComponent
   ]
 })
 export class SharedModule { }

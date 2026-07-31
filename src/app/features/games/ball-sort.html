@@ -60,6 +60,8 @@
                 [class.complete]="isTubeComplete(tube)"
                 [class.bounce-drop]="isTubeBouncing(team, tube)"
                 [class.selected-source]="team.selected?.tubeIndex === tubeIndex"
+                [class.keyboard-source-selected]="isKeyboardSourceTubeSelected(team, tubeIndex)"
+                [class.keyboard-target-selected]="isKeyboardTargetTubeSelected(team, tubeIndex)"
                 [attr.data-team-id]="team.id"
                 [attr.data-tube-index]="tubeIndex"
                 [attr.aria-label]="'Tube ' + (tubeIndex + 1)"
@@ -73,7 +75,15 @@
                   [style.--ball-color]="ball.color"
                   [style.--lift-slots]="selectedLiftSlots(team, tubeIndex, ballIndex)">
               <span class="ball-shine"></span>
+              <span *ngIf="sourceBallKeyboardLabel(team, tubeIndex, ballIndex) as sourceKey"
+                    class="sort-ball-keyboard-badge">
+                {{ sourceKey }}
+              </span>
             </span>
+          </span>
+          <span *ngIf="targetTubeKeyboardLabel(team, tubeIndex) as targetKey"
+                class="tube-keyboard-target-badge">
+            {{ targetKey }}
           </span>
         </button>
       </div>
@@ -107,8 +117,14 @@
         </div>
 
         <div *ngIf="team.simpleConfirmMode" class="ball-sort-options ball-sort-simple-confirm">
-          <button type="button" class="ball-sort-option confirm-ok" (click)="onConfirmOk(team)">OK</button>
-          <button type="button" class="ball-sort-option confirm-oops" (click)="onConfirmOops(team)">Oops!</button>
+          <button type="button" class="ball-sort-option confirm-ok" (click)="onConfirmOk(team)">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">O</span>
+            OK
+          </button>
+          <button type="button" class="ball-sort-option confirm-oops" (click)="onConfirmOops(team)">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">X</span>
+            Oops!
+          </button>
         </div>
 
         <div *ngIf="!team.simpleConfirmMode" class="ball-sort-options" [class.ball-sort-image-options]="reverseMode">
@@ -116,6 +132,7 @@
                   type="button"
                   class="ball-sort-option"
                   [class.quiz-image-option]="reverseMode"
+                  [class.keyboard-selected]="isKeyboardOptionSelected(team, optionIndex)"
                   [id]="quizOptionDomId(team.id, option.id)"
                   [class.fade-out]="team.fadeOutOptionIds.has(option.id)"
                   (click)="onQuizAnswer(team, option)">

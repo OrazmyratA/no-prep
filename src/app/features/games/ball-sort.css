@@ -340,6 +340,20 @@
     inset 0 -0.8rem 1.1rem rgba(15, 23, 42, 0.08);
 }
 
+.tube.keyboard-source-selected .sort-ball:last-child {
+  outline: max(0.12rem, calc(var(--ball-size) * 0.045)) solid #facc15;
+  outline-offset: max(0.12rem, calc(var(--ball-size) * 0.055));
+  filter: drop-shadow(0 0 calc(var(--ball-size) * 0.18) rgba(250, 204, 21, 0.9));
+}
+
+.tube.keyboard-target-selected .tube-glass {
+  border-color: #facc15;
+  box-shadow:
+    0 0 0 max(0.1rem, calc(var(--ball-size) * 0.035)) rgba(250, 204, 21, 0.58),
+    0 0 calc(var(--ball-size) * 0.22) rgba(250, 204, 21, 0.64),
+    inset 0 -0.8rem 1.1rem rgba(15, 23, 42, 0.08);
+}
+
 .tube-stack {
   position: relative;
   z-index: 1;
@@ -380,6 +394,50 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.66);
   filter: blur(0.02rem);
+}
+
+.sort-ball-keyboard-badge,
+.tube-keyboard-target-badge {
+  position: absolute;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: max(1.05rem, calc(var(--ball-size) * 0.46));
+  height: max(1.05rem, calc(var(--ball-size) * 0.46));
+  padding: 0 calc(var(--ball-size) * 0.08);
+  border-radius: 999px;
+  font-size: clamp(0.62rem, calc(var(--ball-size) * 0.26), 1.55rem);
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: 0;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.sort-ball-keyboard-badge {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff7ed;
+  background: rgba(15, 23, 42, 0.66);
+  border: max(0.08rem, calc(var(--ball-size) * 0.025)) solid rgba(255, 255, 255, 0.86);
+  text-shadow: 0 0.08rem 0.16rem rgba(15, 23, 42, 0.55);
+  box-shadow: 0 calc(var(--ball-size) * 0.08) calc(var(--ball-size) * 0.15) rgba(15, 23, 42, 0.28);
+}
+
+.tube-keyboard-target-badge {
+  top: calc(var(--ball-size) * -0.06);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #713f12;
+  background:
+    radial-gradient(circle at 28% 18%, #ffffff 0%, #fef3c7 34%, #facc15 100%);
+  border: max(0.08rem, calc(var(--ball-size) * 0.025)) solid rgba(255, 255, 255, 0.92);
+  text-shadow: 0 0.06rem 0 rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 calc(var(--ball-size) * 0.12) calc(var(--ball-size) * 0.24) rgba(180, 83, 9, 0.28),
+    0 0 0 max(0.12rem, calc(var(--ball-size) * 0.035)) rgba(250, 204, 21, 0.22);
 }
 
 .sort-ball.selected {
@@ -522,6 +580,15 @@
 .ball-sort-option:hover {
   transform: translateY(-0.12rem) scale(1.02);
   box-shadow: 0 0.95rem 1.8rem rgba(15, 23, 42, 0.28);
+}
+
+.ball-sort-option.keyboard-selected:not(.fade-out) {
+  outline: 0.22rem solid #facc15;
+  outline-offset: 0.22rem;
+  box-shadow:
+    0 0.95rem 1.8rem rgba(15, 23, 42, 0.28),
+    0 0 0 0.45rem rgba(250, 204, 21, 0.22);
+  transform: translateY(-0.12rem) scale(1.02);
 }
 
 .ball-sort-simple-confirm {

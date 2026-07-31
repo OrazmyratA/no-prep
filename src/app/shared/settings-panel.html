@@ -657,6 +657,37 @@
       </div>
     </div>
 
+    <!-- Trace & Learn Settings -->
+    <div *ngSwitchCase="'tracing'" class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsTracingTraceCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('traceCount')?.value === 20 ? ('settingsTracingTraceCountAll' | translate) : settingsForm.get('traceCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="traceCount"
+          min="1" max="20" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>1</span>
+          <span>{{ 'settingsTracingTraceCountAll' | translate }}</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsTracingTraceCountHint' | translate }}</p>
+      </div>
+
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="randomOmit" class="mr-2">
+          {{ 'settingsTracingRandomOmit' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsTracingRandomOmitHint' | translate }}</p>
+      </div>
+    </div>
+
     <!-- Castle Clash: Rock Paper Scissors Settings -->
     <div *ngSwitchCase="'rock-paper-scissors'" class="space-y-6">
 

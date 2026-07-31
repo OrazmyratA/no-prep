@@ -625,6 +625,81 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'settingsTracingTraceCount': {
+  en: 'Letters to trace',
+  tk: 'Letters to trace',
+  ru: 'Letters to trace',
+  cn: 'Letters to trace',
+  cde: 'Letters to trace',
+  es: 'Letters to trace',
+  fr: 'Letters to trace',
+  kr: 'Letters to trace',
+  sa: 'Letters to trace',
+},
+
+
+
+
+'settingsTracingTraceCountHint': {
+  en: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  tk: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  ru: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  cn: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  cde: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  es: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  fr: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  kr: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+  sa: 'Uses the first letters or numbers of each item. Shorter words use all available characters.',
+},
+
+
+
+
+'settingsTracingTraceCountAll': {
+  en: 'All',
+  tk: 'All',
+  ru: 'All',
+  cn: 'All',
+  cde: 'All',
+  es: 'All',
+  fr: 'All',
+  kr: 'All',
+  sa: 'All',
+},
+
+
+
+
+'settingsTracingRandomOmit': {
+  en: 'Randomly omit letters',
+  tk: 'Randomly omit letters',
+  ru: 'Randomly omit letters',
+  cn: 'Randomly omit letters',
+  cde: 'Randomly omit letters',
+  es: 'Randomly omit letters',
+  fr: 'Randomly omit letters',
+  kr: 'Randomly omit letters',
+  sa: 'Randomly omit letters',
+},
+
+
+
+
+'settingsTracingRandomOmitHint': {
+  en: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  tk: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  ru: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  cn: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  cde: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  es: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  fr: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  kr: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+  sa: 'Instead of always tracing the first letters, pick random letters from anywhere in the word each game.',
+},
+
+
+
+
 'settingsSquidGameTeamCount': {
   en: 'Number of Teams',
   tk: 'Toparlaryň sany',

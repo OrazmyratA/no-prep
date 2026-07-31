@@ -816,6 +816,96 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'tracingNoItems': {
+  en: 'Add some text items to this topic before playing Trace & Learn.',
+  tk: 'Add some text items to this topic before playing Trace & Learn.',
+  ru: 'Add some text items to this topic before playing Trace & Learn.',
+  cn: 'Add some text items to this topic before playing Trace & Learn.',
+  cde: 'Add some text items to this topic before playing Trace & Learn.',
+  es: 'Add some text items to this topic before playing Trace & Learn.',
+  fr: 'Add some text items to this topic before playing Trace & Learn.',
+  kr: 'Add some text items to this topic before playing Trace & Learn.',
+  sa: 'Add some text items to this topic before playing Trace & Learn.',
+},
+
+
+
+
+'gameTracingName': {
+  en: 'Trace & Learn',
+  tk: 'Trace & Learn',
+  ru: 'Trace & Learn',
+  cn: 'Trace & Learn',
+  cde: 'Trace & Learn',
+  es: 'Trace & Learn',
+  fr: 'Trace & Learn',
+  kr: 'Trace & Learn',
+  sa: 'Trace & Learn',
+},
+
+
+
+
+'gameTracingDesc': {
+  en: 'Trace the missing letters, then reveal each word one letter at a time.',
+  tk: 'Trace the missing letters, then reveal each word one letter at a time.',
+  ru: 'Trace the missing letters, then reveal each word one letter at a time.',
+  cn: 'Trace the missing letters, then reveal each word one letter at a time.',
+  cde: 'Trace the missing letters, then reveal each word one letter at a time.',
+  es: 'Trace the missing letters, then reveal each word one letter at a time.',
+  fr: 'Trace the missing letters, then reveal each word one letter at a time.',
+  kr: 'Trace the missing letters, then reveal each word one letter at a time.',
+  sa: 'Trace the missing letters, then reveal each word one letter at a time.',
+},
+
+
+
+
+'tracingAllWordsPracticed': {
+  en: 'All words practiced!',
+  tk: 'All words practiced!',
+  ru: 'All words practiced!',
+  cn: 'All words practiced!',
+  cde: 'All words practiced!',
+  es: 'All words practiced!',
+  fr: 'All words practiced!',
+  kr: 'All words practiced!',
+  sa: 'All words practiced!',
+},
+
+
+
+
+'tracingCheck': {
+  en: 'Check',
+  tk: 'Check',
+  ru: 'Check',
+  cn: 'Check',
+  cde: 'Check',
+  es: 'Check',
+  fr: 'Check',
+  kr: 'Check',
+  sa: 'Check',
+},
+
+
+
+
+'tracingChecked': {
+  en: 'Checked',
+  tk: 'Checked',
+  ru: 'Checked',
+  cn: 'Checked',
+  cde: 'Checked',
+  es: 'Checked',
+  fr: 'Checked',
+  kr: 'Checked',
+  sa: 'Checked',
+},
+
+
+
+
 'unjumbleTitle': {
   en: 'Unjumble',
   tk: 'Sözleri tertiple',

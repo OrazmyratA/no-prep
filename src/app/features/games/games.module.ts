@@ -24,6 +24,7 @@ import { TranslatePipe } from "../../shared/translate-pipe";
 import { SpellingCheckComponent } from './spelling-check';
 import { SquidGameComponent } from './squid-game';
 import { RockPaperScissorsComponent } from './rock-paper-scissors';
+import { TracingComponent } from './tracing';
 
 @NgModule({
   declarations: [
@@ -45,7 +46,8 @@ import { RockPaperScissorsComponent } from './rock-paper-scissors';
     TeamSentenceComponent,
     SpellingCheckComponent,
     SquidGameComponent,
-    RockPaperScissorsComponent
+    RockPaperScissorsComponent,
+    TracingComponent
   ],
   imports: [
     CommonModule,

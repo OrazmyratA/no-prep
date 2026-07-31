@@ -75,6 +75,13 @@ export const GAMES: GameConfig[] = [
     requiresSettings: false,
   },
   {
+    id: 'tracing',
+    nameKey: 'gameTracingName',
+    descKey: 'gameTracingDesc',
+    icon: '\u{270D}',
+    requiresSettings: true,
+  },
+  {
     id: 'word-search',
     nameKey: 'gameWordSearchName',
     descKey: 'gameWordSearchDesc',

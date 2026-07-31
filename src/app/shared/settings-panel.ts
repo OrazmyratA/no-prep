@@ -419,6 +419,9 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       case 'spelling-check':
         this.createSpellingCheckForm();
         break;
+      case 'tracing':
+        this.settingsForm = this.fb.group({ traceCount: [1], randomOmit: [false] });
+        break;
       default:
         this.settingsForm = this.fb.group({});
     }

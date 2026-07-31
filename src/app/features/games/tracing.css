@@ -1,0 +1,323 @@
+:host > div {
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+
+.tracing-keyboard-help {
+  position: absolute;
+  top: 3.25rem;
+  left: 0.75rem;
+  z-index: 30;
+}
+
+.media-stage {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  perspective: 900px;
+}
+
+.media-card {
+  width: min(420px, 76vw);
+  height: clamp(140px, 24vh, 220px);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s ease;
+  cursor: pointer;
+}
+
+.media-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.media-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  overflow: hidden;
+  backface-visibility: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 18px 36px rgba(5, 12, 24, 0.22);
+}
+
+.media-front {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
+    #312e81;
+}
+
+.card-back-pattern {
+  position: absolute;
+  inset: 12px;
+  border-radius: 12px;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.11) 25%, transparent 25% 50%, rgba(255, 255, 255, 0.11) 50% 75%, transparent 75%),
+    linear-gradient(135deg, #4338ca, #7e22ce);
+  background-size: 24px 24px, auto;
+  opacity: 0.95;
+}
+
+.media-back {
+  background: rgba(255, 255, 255, 0.94);
+  transform: rotateY(180deg);
+}
+
+.media-back img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.65rem;
+}
+
+.image-empty {
+  width: 64%;
+  height: 52%;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(67, 56, 202, 0.12), rgba(126, 34, 206, 0.14)),
+    rgba(49, 46, 129, 0.08);
+}
+
+.speaker-btn {
+  position: relative;
+  z-index: 1;
+  width: 4.25rem;
+  height: 4.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.95);
+  color: #312e81;
+  display: grid;
+  place-items: center;
+  font-size: 2.25rem;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(5, 12, 24, 0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.speaker-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 16px 28px rgba(5, 12, 24, 0.34);
+}
+
+.whiteboard-wrapper {
+  width: 100%;
+  height: clamp(160px, 40dvh, 440px);
+  padding: 0.5rem;
+}
+
+.whiteboard {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.word-container {
+  padding: 1rem;
+}
+
+.word-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+  font-size: clamp(2.4rem, 10.5vmin, 7rem);
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.letter-slot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.4em;
+}
+
+.letter-slot.static {
+  min-width: 0;
+  padding: 0;
+}
+
+.letter-slot.traceable {
+  min-width: 1.05em;
+  padding: 0 0.05em;
+}
+.letter-slot.traceable .underline {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 3%;
+  width: 94%;
+  height: 4px;
+  background: #3b82f6;
+  border-radius: 2px;
+  transition: opacity 0.4s ease;
+}
+.letter-text {
+  color: #1e293b;
+}
+.letter-placeholder {
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.4s ease;
+}
+
+.letter-slot.traceable .traced-answer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  color: #dc2626;
+  transition: opacity 0.6s ease 0.15s;
+}
+
+/* Underline/placeholder fade out together with the canvas strokes the instant Check is clicked. */
+.word-row.guides-fading .letter-slot.traceable .underline,
+.word-row.guides-fading .letter-slot.traceable .letter-placeholder,
+.letter-slot.traceable.revealed .underline,
+.letter-slot.traceable.revealed .letter-placeholder {
+  opacity: 0;
+}
+
+.letter-slot.traceable.revealed .traced-answer {
+  opacity: 1;
+}
+
+.trace-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  z-index: 5;
+  transition: opacity 0.4s ease;
+}
+
+.trace-canvas.fading {
+  opacity: 0;
+}
+
+.controls {
+  gap: 0.75rem;
+}
+.circle-btn {
+  width: 2.8rem;
+  height: 2.8rem;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  background: #4b5563;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.circle-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.circle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.check-btn {
+  width: 3.1rem;
+  height: 3.1rem;
+  border: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #10b981, #0ea5e9);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(5, 12, 24, 0.28);
+  transition: transform 0.15s, opacity 0.15s, background 0.15s;
+}
+.check-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.check-btn:disabled {
+  cursor: not-allowed;
+}
+.check-btn:disabled:not(.checked) {
+  opacity: 0.55;
+}
+.check-btn.checked {
+  background: #16a34a;
+  opacity: 0.85;
+}
+.check-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.progress-check-chip {
+  color: #6ee7b7;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  padding-left: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .word-row {
+    font-size: clamp(1.9rem, 8.5vmin, 4rem);
+  }
+  .media-card {
+    width: min(300px, 70vw);
+    height: clamp(110px, 20vh, 170px);
+  }
+  .speaker-btn {
+    width: 3.25rem;
+    height: 3.25rem;
+    font-size: 1.6rem;
+  }
+  .circle-btn {
+    width: 2.4rem;
+    height: 2.4rem;
+    font-size: 1rem;
+  }
+  .check-btn {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+  .check-icon {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .tracing-keyboard-help {
+    top: 2.15rem;
+    left: 0.45rem;
+  }
+
+  :host h2 {
+    font-size: clamp(1rem, 5.5dvh, 1.5rem) !important;
+    line-height: 1;
+    margin-bottom: 0.2rem !important;
+  }
+
+  .media-stage {
+    margin-bottom: 0.35rem;
+  }
+
+  .media-card {
+    width: min(260px, 42vw);
+    height: clamp(70px, 22dvh, 96px);
+  }
+
+  .whiteboard-wrapper {
+    height: clamp(120px, 34dvh, 260px);
+    padding: 0.35rem;
+  }
+}

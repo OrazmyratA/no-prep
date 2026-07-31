@@ -1,0 +1,101 @@
+<button
+  type="button"
+  class="rp-fab"
+  (click)="openPicker()"
+  [attr.title]="'randomPickerTrigger' | translate"
+  [attr.aria-label]="'randomPickerTrigger' | translate">
+  <img src="assets/images/randomize.png" alt="" aria-hidden="true">
+</button>
+
+<div class="rp-backdrop" *ngIf="overlayOpen" (click)="closeOverlay($event)">
+  <div class="rp-panel" role="dialog" aria-modal="true" (click)="stopPropagation($event)">
+    <button
+      type="button"
+      class="rp-close"
+      (click)="closeOverlay()"
+      [attr.aria-label]="'randomPickerClose' | translate">
+      ✕
+    </button>
+
+    <ng-container *ngIf="step === 'topic'">
+      <h2 class="rp-title">{{ 'randomPickerChooseListTitle' | translate }}</h2>
+
+      <div class="rp-topic-grid" *ngIf="topics.length; else rpNoTopics">
+        <button
+          type="button"
+          *ngFor="let topic of topics; trackBy: trackByTopicId"
+          class="rp-topic-card"
+          [disabled]="loadingTopicId === topic.id"
+          [class.rp-topic-active]="topic.id === selectedTopicId"
+          (click)="selectTopic(topic)">
+          <span class="rp-topic-avatar">{{ topicInitial(topic) }}</span>
+          <span class="rp-topic-name">{{ topic.name }}</span>
+          <span class="rp-topic-count">{{ topic.itemCount || 0 }} {{ 'items' | translate }}</span>
+        </button>
+      </div>
+
+      <ng-template #rpNoTopics>
+        <p class="rp-empty">{{ 'randomPickerNoTopics' | translate }}</p>
+      </ng-template>
+    </ng-container>
+
+    <ng-container *ngIf="step === 'wheel'">
+      <div class="rp-wheel-header">
+        <h2 class="rp-title">{{ selectedTopicName }}</h2>
+        <button
+          type="button"
+          class="rp-switch-btn"
+          (click)="switchList()"
+          [attr.title]="'randomPickerSwitchList' | translate"
+          [attr.aria-label]="'randomPickerSwitchList' | translate">
+          <img src="assets/images/exchange.png" alt="">
+        </button>
+      </div>
+
+      <ng-container *ngIf="!isFinished; else rpFinished">
+        <ng-container *ngIf="remainingItems.length; else rpEmptyTopic">
+          <div class="rp-wheel-wrapper">
+            <canvas #pickerCanvas [width]="canvasSize" [height]="canvasSize" class="rp-canvas"></canvas>
+            <button
+              type="button"
+              class="rp-spin-btn"
+              (click)="spin()"
+              [disabled]="spinning || remainingItems.length === 0">
+              {{ spinning ? ('spinWheelSpinning' | translate) : ('spinWheelSpin' | translate) }}
+            </button>
+          </div>
+          <p class="rp-remaining-count">{{ remainingItems.length }} / {{ currentProgress?.all?.length || 0 }}</p>
+        </ng-container>
+        <ng-template #rpEmptyTopic>
+          <p class="rp-empty">{{ 'randomPickerNoItemsInTopic' | translate }}</p>
+        </ng-template>
+      </ng-container>
+
+      <ng-template #rpFinished>
+        <app-game-finish-overlay
+          class="rp-finish"
+          [title]="'randomPickerAllPickedTitle' | translate"
+          [message]="'randomPickerAllPickedMessage' | translate"
+          [playAgainLabel]="'randomPickerResetList'"
+          [activitiesLabel]="'randomPickerSwitchList'"
+          (playAgain)="resetList()"
+          (activities)="switchList()">
+        </app-game-finish-overlay>
+      </ng-template>
+    </ng-container>
+
+    <div class="rp-reveal-overlay" *ngIf="showReveal && selectedItem" [class.visible]="revealVisible">
+      <div class="rp-reveal-card">
+        <img
+          *ngIf="selectedItem.image"
+          [src]="imageUrl(selectedItem.image, selectedItem.id!)"
+          class="rp-reveal-image">
+        <div class="rp-reveal-text" [class.rp-reveal-text-only]="!selectedItem.image">{{ selectedItem.text }}</div>
+      </div>
+      <div class="rp-reveal-actions">
+        <button type="button" class="rp-ok-btn" (click)="confirmOk()">✓ {{ 'randomPickerOk' | translate }}</button>
+        <button type="button" class="rp-oops-btn" (click)="confirmOops()">✗ {{ 'randomPickerOops' | translate }}</button>
+      </div>
+    </div>
+  </div>
+</div>
