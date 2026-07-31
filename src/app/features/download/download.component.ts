@@ -35,8 +35,8 @@ interface GithubRelease {
 })
 export class DownloadComponent implements OnInit {
 
-  readonly releasesUrl = 'https://github.com/OrazmyratA/noprep-releases/releases/latest';
-  private readonly latestReleaseApiUrl = 'https://api.github.com/repos/OrazmyratA/noprep-releases/releases/latest';
+  readonly releasesUrl = 'https://github.com/OrazmyratA/no-prep/releases/latest';
+  private readonly latestReleaseApiUrl = 'https://api.github.com/repos/OrazmyratA/no-prep/releases/latest';
   readonly playStoreUrl = 'https://play.google.com/store/apps/details?id=com.orazmyrat.noprep';
   readonly gameCount = GAMES.length;
 
