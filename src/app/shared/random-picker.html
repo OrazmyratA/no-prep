@@ -1,10 +1,19 @@
 <button
+  #fabButton
   type="button"
   class="rp-fab"
-  (click)="openPicker()"
+  [class.rp-fab-positioned]="fabPosition"
+  [class.rp-fab-dragging]="dragging"
+  [style.left.px]="fabPosition?.left"
+  [style.top.px]="fabPosition?.top"
+  (pointerdown)="onFabPointerDown($event)"
+  (pointermove)="onFabPointerMove($event)"
+  (pointerup)="onFabPointerUp($event)"
+  (pointercancel)="onFabPointerCancel($event)"
+  (click)="onFabClick()"
   [attr.title]="'randomPickerTrigger' | translate"
   [attr.aria-label]="'randomPickerTrigger' | translate">
-  <img src="assets/images/randomize.png" alt="" aria-hidden="true">
+  <img src="assets/images/randomize.png" alt="" aria-hidden="true" draggable="false">
 </button>
 
 <div class="rp-backdrop" *ngIf="overlayOpen" (click)="closeOverlay($event)">

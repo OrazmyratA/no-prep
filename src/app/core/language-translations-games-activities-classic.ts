@@ -904,6 +904,67 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
 },
 
 
+'gameLineTraceMatchName': {
+  en: 'Trace & Match',
+  tk: 'Trace & Match',
+  ru: 'Trace & Match',
+  cn: 'Trace & Match',
+  cde: 'Trace & Match',
+  es: 'Trace & Match',
+  fr: 'Trace & Match',
+  kr: 'Trace & Match',
+  sa: 'Trace & Match',
+},
+
+'gameLineTraceMatchDesc': {
+  en: 'Drag a line from each word to its matching picture.',
+  tk: 'Drag a line from each word to its matching picture.',
+  ru: 'Drag a line from each word to its matching picture.',
+  cn: 'Drag a line from each word to its matching picture.',
+  cde: 'Drag a line from each word to its matching picture.',
+  es: 'Drag a line from each word to its matching picture.',
+  fr: 'Drag a line from each word to its matching picture.',
+  kr: 'Drag a line from each word to its matching picture.',
+  sa: 'Drag a line from each word to its matching picture.',
+},
+
+'lineTraceMatchNoItems': {
+  en: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  tk: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  ru: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  cn: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  cde: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  es: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  fr: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  kr: 'Add at least two items with both text and a picture before playing Trace & Match.',
+  sa: 'Add at least two items with both text and a picture before playing Trace & Match.',
+},
+
+'lineTraceMatchFinishTitle': {
+  en: 'All matched!',
+  tk: 'All matched!',
+  ru: 'All matched!',
+  cn: 'All matched!',
+  cde: 'All matched!',
+  es: 'All matched!',
+  fr: 'All matched!',
+  kr: 'All matched!',
+  sa: 'All matched!',
+},
+
+'lineTraceMatchAllAudioCleared': {
+  en: 'All sound clues matched!',
+  tk: 'All sound clues matched!',
+  ru: 'All sound clues matched!',
+  cn: 'All sound clues matched!',
+  cde: 'All sound clues matched!',
+  es: 'All sound clues matched!',
+  fr: 'All sound clues matched!',
+  kr: 'All sound clues matched!',
+  sa: 'All sound clues matched!',
+},
+
+
 
 
 'unjumbleTitle': {

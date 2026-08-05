@@ -48,7 +48,9 @@
             <span *ngIf="keyboardHintsVisible && !card.matched" class="game-keyboard-hint-badge">{{ rowIndex * gridColumns + colIndex + 1 }}</span>
             <div class="card-inner" [class.flipped]="card.flipped">
               <!-- Front (hidden) -->
-              <div class="card-front">
+              <div class="card-front"
+                   [class.card-front-image]="matchWithTextActive && card.kind === 'image'"
+                   [class.card-front-text]="matchWithTextActive && card.kind === 'text'">
                 {{ rowIndex * gridColumns + colIndex + 1 }}
               </div>
               <!-- Back (revealed) -->
@@ -57,7 +59,7 @@
                   <div class="flex items-center justify-center h-3/5">
                     <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
                   </div>
-                  <p *ngIf="card.item.text" class="text-center mt-2 px-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
+                  <p *ngIf="card.item.text && card.kind !== 'image'" class="text-center mt-2 px-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
                 </ng-container>
                 <ng-template #textOnlyBack>
                   <div class="flex items-center justify-center h-full px-2">
@@ -73,7 +75,7 @@
 
     <!-- Game Info -->
     <div class="match-info mt-4 text-white text-center">
-      <p>{{ 'matchPairsRemaining' | translate }}: {{ remainingPairs }} / {{ items.length }} {{ 'matchPairsPairs' | translate }}</p>
+      <p>{{ 'matchPairsRemaining' | translate }}: {{ remainingPairs }} / {{ totalPairs }} {{ 'matchPairsPairs' | translate }}</p>
     </div>
 
     <!-- Reset Button -->

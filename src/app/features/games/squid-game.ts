@@ -395,24 +395,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
         this.currentQuiz = null;
         this.cdr.detectChanges();
 
-        // Step down 3 steps one-by-one for a staircase "regret" effect
-        const stepsDown = Math.min(3, team.step);
-        let remaining = stepsDown;
-        const stepDown = () => {
-          if (remaining > 0) {
-            team.step--;
-            remaining--;
-            this.cdr.detectChanges();
-            if (remaining > 0) {
-              this.setTrackedTimeout(stepDown, 380);
-            } else {
-              this.setTrackedTimeout(() => this.processNextQuiz(), 380);
-            }
-          } else {
-            this.setTrackedTimeout(() => this.processNextQuiz(), 380);
-          }
-        };
-        stepDown();
+        // Send the team all the way back to the start line
+        this.stepToStart(team, () => this.processNextQuiz());
       }, 900);
     }
     this.cdr.detectChanges();
@@ -566,17 +550,21 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.simpleConfirmMode = false;
     this.currentQuiz = null;
     this.cdr.detectChanges();
-    const stepsDown = Math.min(3, team.step);
-    let remaining = stepsDown;
+    this.stepToStart(team, () => this.processNextQuiz());
+  }
+
+  // Steps a team back to the start line one step at a time for a staircase "regret" effect.
+  // Delay per step shrinks for long walks back so the animation never drags on too long.
+  private stepToStart(team: Team, onDone: () => void) {
+    const maxTotalMs = 1800;
+    const delay = team.step > 0 ? Math.min(380, maxTotalMs / team.step) : 380;
     const stepDown = () => {
-      if (remaining > 0) {
+      if (team.step > 0) {
         team.step--;
-        remaining--;
         this.cdr.detectChanges();
-        if (remaining > 0) this.setTrackedTimeout(stepDown, 380);
-        else this.setTrackedTimeout(() => this.processNextQuiz(), 380);
+        this.setTrackedTimeout(stepDown, delay);
       } else {
-        this.setTrackedTimeout(() => this.processNextQuiz(), 380);
+        this.setTrackedTimeout(onDone, 380);
       }
     };
     stepDown();

@@ -14,7 +14,10 @@
   border: 3px solid rgba(255, 255, 255, 0.85);
   border-radius: 9999px;
   padding: 0.6rem;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   background: linear-gradient(135deg, #6366f1, #a855f7);
   box-shadow: 0 12px 28px rgba(79, 70, 229, 0.45);
   transition: transform 160ms ease, box-shadow 160ms ease;
@@ -30,6 +33,30 @@
   transform: translateY(-50%) scale(0.96);
 }
 
+.rp-fab.rp-fab-positioned {
+  right: auto;
+  top: auto;
+  transform: none;
+}
+
+.rp-fab-positioned:hover,
+.rp-fab-positioned:focus-visible {
+  transform: scale(1.08);
+}
+
+.rp-fab-positioned:active {
+  transform: scale(0.96);
+}
+
+.rp-fab-dragging,
+.rp-fab-dragging:hover,
+.rp-fab-dragging:active {
+  cursor: grabbing;
+  transition: none;
+  transform: scale(1.1);
+  box-shadow: 0 18px 38px rgba(79, 70, 229, 0.7);
+}
+
 .rp-fab img {
   display: block;
   width: 100%;
@@ -37,6 +64,7 @@
   object-fit: contain;
   filter: brightness(0) invert(1);
   pointer-events: none;
+  -webkit-user-drag: none;
 }
 
 /* ===== Overlay ===== */

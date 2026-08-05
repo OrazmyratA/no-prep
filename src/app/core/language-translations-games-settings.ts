@@ -698,6 +698,79 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 },
 
 
+'settingsLineTraceMatchPairCount': {
+  en: 'Pairs to match',
+  tk: 'Pairs to match',
+  ru: 'Pairs to match',
+  cn: 'Pairs to match',
+  cde: 'Pairs to match',
+  es: 'Pairs to match',
+  fr: 'Pairs to match',
+  kr: 'Pairs to match',
+  sa: 'Pairs to match',
+},
+
+'settingsLineTraceMatchPairCountHint': {
+  en: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  tk: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  ru: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  cn: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  cde: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  es: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  fr: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  kr: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+  sa: 'Number of word-picture pairs on the board. Uses fewer if the topic has fewer eligible items.',
+},
+
+'settingsLineTraceMatchNoCrossing': {
+  en: 'No crossing lines',
+  tk: 'No crossing lines',
+  ru: 'No crossing lines',
+  cn: 'No crossing lines',
+  cde: 'No crossing lines',
+  es: 'No crossing lines',
+  fr: 'No crossing lines',
+  kr: 'No crossing lines',
+  sa: 'No crossing lines',
+},
+
+'settingsLineTraceMatchNoCrossingHint': {
+  en: 'If a new line crosses an existing one, the board resets and students try again.',
+  tk: 'If a new line crosses an existing one, the board resets and students try again.',
+  ru: 'If a new line crosses an existing one, the board resets and students try again.',
+  cn: 'If a new line crosses an existing one, the board resets and students try again.',
+  cde: 'If a new line crosses an existing one, the board resets and students try again.',
+  es: 'If a new line crosses an existing one, the board resets and students try again.',
+  fr: 'If a new line crosses an existing one, the board resets and students try again.',
+  kr: 'If a new line crosses an existing one, the board resets and students try again.',
+  sa: 'If a new line crosses an existing one, the board resets and students try again.',
+},
+
+'settingsMatchPairsMatchWithText': {
+  en: 'Match picture with its text',
+  tk: 'Match picture with its text',
+  ru: 'Match picture with its text',
+  cn: 'Match picture with its text',
+  cde: 'Match picture with its text',
+  es: 'Match picture with its text',
+  fr: 'Match picture with its text',
+  kr: 'Match picture with its text',
+  sa: 'Match picture with its text',
+},
+
+'settingsMatchPairsMatchWithTextHint': {
+  en: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  tk: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  ru: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  cn: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  cde: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  es: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  fr: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  kr: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+  sa: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
+},
+
+
 
 
 'settingsSquidGameTeamCount': {

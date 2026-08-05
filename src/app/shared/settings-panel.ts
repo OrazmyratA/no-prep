@@ -422,6 +422,12 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       case 'tracing':
         this.settingsForm = this.fb.group({ traceCount: [1], randomOmit: [false] });
         break;
+      case 'line-trace-match':
+        this.settingsForm = this.fb.group({ pairCount: [6], noCrossing: [false] });
+        break;
+      case 'match-pairs':
+        this.settingsForm = this.fb.group({ matchWithText: [false] });
+        break;
       default:
         this.settingsForm = this.fb.group({});
     }

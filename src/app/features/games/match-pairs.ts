@@ -14,6 +14,7 @@ interface Card {
   flipped: boolean;
   matched: boolean;
   shake?: boolean;
+  kind: 'image' | 'text' | 'both';
 }
 
 @Component({
@@ -29,6 +30,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   flippedCards: Card[] = [];
   gameFinished = false;
   isPeeking = false;
+  matchWithText = false;
+  matchWithTextActive = false;
   keyboardSelectedIndex = 0;
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
@@ -76,6 +79,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.route.snapshot.paramMap.get('id') ??
       this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
+    this.matchWithText = this.route.snapshot.queryParamMap.get('matchWithText') === 'true';
     this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
     this.setupGame();
 
@@ -192,6 +196,10 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.cards.filter(card => !card.matched).length / 2;
   }
 
+  get totalPairs(): number {
+    return this.cards.length / 2;
+  }
+
   trackByRowIndex(index: number): number {
     return index;
   }
@@ -219,24 +227,52 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private setupGame() {
     this.clearPendingTimers();
     this.cleanupCardImageUrls();
+
+    const textEligibleItems = this.items.filter(item => item.image && item.text);
+    this.matchWithTextActive = this.matchWithText && textEligibleItems.length > 0;
+    const gameItems = this.matchWithTextActive ? textEligibleItems : this.items;
+
     const pairs: Card[] = [];
-    this.items.forEach((item, idx) => {
-      pairs.push({
-        id: pairs.length,
-        pairId: idx,
-        item,
-        imageSrc: this.createCardImageUrl(item.image),
-        flipped: false,
-        matched: false
-      });
-      pairs.push({
-        id: pairs.length,
-        pairId: idx,
-        item,
-        imageSrc: this.createCardImageUrl(item.image),
-        flipped: false,
-        matched: false
-      });
+    gameItems.forEach((item, idx) => {
+      if (this.matchWithTextActive) {
+        pairs.push({
+          id: pairs.length,
+          pairId: idx,
+          item,
+          imageSrc: this.createCardImageUrl(item.image),
+          flipped: false,
+          matched: false,
+          kind: 'image'
+        });
+        pairs.push({
+          id: pairs.length,
+          pairId: idx,
+          item,
+          imageSrc: null,
+          flipped: false,
+          matched: false,
+          kind: 'text'
+        });
+      } else {
+        pairs.push({
+          id: pairs.length,
+          pairId: idx,
+          item,
+          imageSrc: this.createCardImageUrl(item.image),
+          flipped: false,
+          matched: false,
+          kind: 'both'
+        });
+        pairs.push({
+          id: pairs.length,
+          pairId: idx,
+          item,
+          imageSrc: this.createCardImageUrl(item.image),
+          flipped: false,
+          matched: false,
+          kind: 'both'
+        });
+      }
     });
 
     // Shuffle
@@ -297,11 +333,9 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (isMatch) {
       this.playSound(this.collectSound);
       this.setGameTimeout(() => {
-        // Mark both as matched (they will become invisible)
+        // Matched cards stay flipped face-up on the board
         cardA.matched = true;
         cardB.matched = true;
-        cardA.flipped = false;
-        cardB.flipped = false;
         this.flippedCards = [];
         this.normalizeKeyboardSelection();
 

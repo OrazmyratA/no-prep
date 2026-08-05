@@ -688,6 +688,48 @@
       </div>
     </div>
 
+    <!-- Line Trace Match Settings -->
+    <div *ngSwitchCase="'line-trace-match'" class="space-y-6">
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-sm font-medium">{{ 'settingsLineTraceMatchPairCount' | translate }}</label>
+          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+            {{ settingsForm.get('pairCount')?.value }}
+          </span>
+        </div>
+        <input
+          type="range"
+          formControlName="pairCount"
+          min="2" max="10" step="1"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+        >
+        <div class="flex justify-between text-xs text-gray-400 mt-1">
+          <span>2</span>
+          <span>10</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsLineTraceMatchPairCountHint' | translate }}</p>
+      </div>
+
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="noCrossing" class="mr-2">
+          {{ 'settingsLineTraceMatchNoCrossing' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsLineTraceMatchNoCrossingHint' | translate }}</p>
+      </div>
+    </div>
+
+    <!-- Match Pairs Settings -->
+    <div *ngSwitchCase="'match-pairs'" class="space-y-6">
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="matchWithText" class="mr-2">
+          {{ 'settingsMatchPairsMatchWithText' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsMatchPairsMatchWithTextHint' | translate }}</p>
+      </div>
+    </div>
+
     <!-- Castle Clash: Rock Paper Scissors Settings -->
     <div *ngSwitchCase="'rock-paper-scissors'" class="space-y-6">
 

@@ -50,6 +50,10 @@
                         [attr.title]="'fullscreen' | translate">
                   <img src="assets/images/fullscreen.png" alt="fullscreen" class="w-5 h-5">
                 </button>
+                <button *ngIf="card.item.audio" type="button" class="card-speaker-btn"
+                        (click)="playCardAudio($event, card)">
+                  🔊
+                </button>
                 <div *ngIf="card.imageSrc" class="w-full h-3/4 flex items-center justify-center">
                   <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
                 </div>

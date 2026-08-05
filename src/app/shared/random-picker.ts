@@ -16,6 +16,7 @@ interface TopicProgress {
 })
 export class RandomPickerComponent implements OnInit, AfterViewChecked, OnDestroy {
   @ViewChild('pickerCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('fabButton') fabButtonRef?: ElementRef<HTMLButtonElement>;
 
   topics: Topic[] = [];
   overlayOpen = false;
@@ -27,6 +28,19 @@ export class RandomPickerComponent implements OnInit, AfterViewChecked, OnDestro
   revealVisible = false;
   selectedItem: Item | null = null;
   readonly canvasSize = 460;
+
+  fabPosition: { left: number; top: number } | null = null;
+  dragging = false;
+
+  private readonly fabPositionStorageKey = 'randomPickerFabPosition';
+  private readonly fabFallbackSize = 54;
+  private readonly fabDragThreshold = 4;
+  private dragPointerId: number | null = null;
+  private dragStartClientX = 0;
+  private dragStartClientY = 0;
+  private dragOriginLeft = 0;
+  private dragOriginTop = 0;
+  private dragMoved = false;
 
   private rotation = 0;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -63,6 +77,15 @@ export class RandomPickerComponent implements OnInit, AfterViewChecked, OnDestro
     this.buzzSound.load();
     this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');
     this.rewardSound.load();
+
+    this.loadFabPosition();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    if (this.fabPosition) {
+      this.fabPosition = this.clampPosition(this.fabPosition.left, this.fabPosition.top);
+    }
   }
 
   ngAfterViewChecked() {
@@ -130,6 +153,91 @@ export class RandomPickerComponent implements OnInit, AfterViewChecked, OnDestro
 
   stopPropagation(event: MouseEvent) {
     event.stopPropagation();
+  }
+
+  onFabPointerDown(event: PointerEvent) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const fab = event.currentTarget as HTMLElement;
+    const rect = fab.getBoundingClientRect();
+    this.dragPointerId = event.pointerId;
+    this.dragStartClientX = event.clientX;
+    this.dragStartClientY = event.clientY;
+    this.dragOriginLeft = rect.left;
+    this.dragOriginTop = rect.top;
+    this.dragMoved = false;
+    fab.setPointerCapture(event.pointerId);
+  }
+
+  onFabPointerMove(event: PointerEvent) {
+    if (this.dragPointerId !== event.pointerId) return;
+    const dx = event.clientX - this.dragStartClientX;
+    const dy = event.clientY - this.dragStartClientY;
+    if (!this.dragMoved && Math.hypot(dx, dy) < this.fabDragThreshold) return;
+    this.dragMoved = true;
+    this.dragging = true;
+    this.fabPosition = this.clampPosition(this.dragOriginLeft + dx, this.dragOriginTop + dy);
+    this.cdr.detectChanges();
+  }
+
+  onFabPointerUp(event: PointerEvent) {
+    if (this.dragPointerId !== event.pointerId) return;
+    const fab = event.currentTarget as HTMLElement;
+    if (fab.hasPointerCapture(event.pointerId)) fab.releasePointerCapture(event.pointerId);
+    this.dragPointerId = null;
+    this.dragging = false;
+    if (this.dragMoved && this.fabPosition) {
+      this.saveFabPosition(this.fabPosition);
+    }
+    this.cdr.detectChanges();
+  }
+
+  onFabPointerCancel(event: PointerEvent) {
+    if (this.dragPointerId !== event.pointerId) return;
+    this.dragPointerId = null;
+    this.dragging = false;
+    this.cdr.detectChanges();
+  }
+
+  onFabClick() {
+    if (this.dragMoved) {
+      this.dragMoved = false;
+      return;
+    }
+    this.openPicker();
+  }
+
+  private loadFabPosition() {
+    try {
+      const raw = localStorage.getItem(this.fabPositionStorageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.left === 'number' && typeof parsed?.top === 'number') {
+        this.fabPosition = this.clampPosition(parsed.left, parsed.top);
+      }
+    } catch {
+      // Ignore corrupt or unavailable storage; fall back to the default edge position.
+    }
+  }
+
+  private saveFabPosition(position: { left: number; top: number }) {
+    try {
+      localStorage.setItem(this.fabPositionStorageKey, JSON.stringify(position));
+    } catch {
+      // Storage may be unavailable (e.g. private browsing); dragging still works for this session.
+    }
+  }
+
+  private clampPosition(left: number, top: number): { left: number; top: number } {
+    const fab = this.fabButtonRef?.nativeElement;
+    const width = fab?.offsetWidth || this.fabFallbackSize;
+    const height = fab?.offsetHeight || this.fabFallbackSize;
+    const margin = 8;
+    const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - height - margin);
+    return {
+      left: Math.min(Math.max(left, margin), maxLeft),
+      top: Math.min(Math.max(top, margin), maxTop)
+    };
   }
 
   async selectTopic(topic: Topic) {

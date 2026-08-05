@@ -1,0 +1,207 @@
+:host > div {
+  height: 100dvh;
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+
+.ltm-theme-dim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000;
+  pointer-events: none;
+}
+
+.ltm-keyboard-help {
+  position: absolute;
+  top: 3.25rem;
+  left: 0.75rem;
+  z-index: 40;
+}
+
+.ltm-speaker-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 40;
+  width: clamp(44px, 8vmin, 60px);
+  height: clamp(44px, 8vmin, 60px);
+  border: none;
+  border-radius: 50%;
+  background: #3b82f6;
+  font-size: clamp(1.35rem, 4vmin, 2rem);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.ltm-speaker-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  background: #2563eb;
+}
+.ltm-speaker-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ltm-speaker-btn.active {
+  background: #22c55e;
+  animation: ltm-speaker-pulse 1s infinite;
+}
+@keyframes ltm-speaker-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.board {
+  touch-action: none;
+  overflow: hidden;
+}
+
+.line-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.reset-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(239, 68, 68, 0.22);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.reset-flash.active {
+  opacity: 1;
+}
+
+.tile {
+  position: absolute;
+  z-index: 20;
+  transform: translate(-50%, -50%);
+  border: 2px solid transparent;
+  cursor: grab;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.35s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tile:active {
+  cursor: grabbing;
+}
+.tile:focus-visible {
+  outline: none;
+  border-color: #facc15;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.35);
+}
+
+.tile.selected {
+  border-color: #facc15;
+  transform: translate(-50%, -50%) scale(1.06);
+  box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.28), 0 14px 28px rgba(15, 23, 42, 0.3);
+}
+
+.tile.matched {
+  opacity: 0.4;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.tile.shake {
+  animation: ltm-tile-shake 0.5s ease-in-out;
+  border-color: #ef4444;
+}
+@keyframes ltm-tile-shake {
+  0%, 100% { transform: translate(-50%, -50%) translateX(0); }
+  20%, 60% { transform: translate(-50%, -50%) translateX(-6px); }
+  40%, 80% { transform: translate(-50%, -50%) translateX(6px); }
+}
+
+.tile.text-tile {
+  background: #ffffff;
+  color: #1e293b;
+  font-weight: 700;
+  font-size: clamp(1.14rem, 2.88vmin, 1.56rem);
+  padding: 0.48rem 0.84rem;
+  border-radius: 999px;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.25);
+  max-width: clamp(115px, 24vmin, 216px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile.text-tile.text-wrap-md {
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  line-height: 1.15;
+  border-radius: 20px;
+  font-size: clamp(0.85rem, 2.1vmin, 1.15rem);
+  max-width: clamp(130px, 27vmin, 240px);
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile.text-tile.text-wrap-lg {
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  line-height: 1.12;
+  border-radius: 20px;
+  font-size: clamp(0.68rem, 1.7vmin, 0.95rem);
+  padding: 0.42rem 0.7rem;
+  max-width: clamp(145px, 30vmin, 260px);
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile.image-tile {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 0.15rem;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.25);
+  width: clamp(77px, 12vmin, 115px);
+  height: clamp(77px, 12vmin, 115px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tile.image-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 15px;
+  pointer-events: none;
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .ltm-keyboard-help {
+    top: 2.15rem;
+    left: 0.45rem;
+  }
+
+  .ltm-speaker-btn {
+    top: 0.45rem;
+    right: 0.45rem;
+    width: clamp(38px, 8vmin, 48px);
+    height: clamp(38px, 8vmin, 48px);
+    font-size: clamp(1.1rem, 4vmin, 1.5rem);
+  }
+
+  :host h2 {
+    font-size: clamp(1rem, 5.5dvh, 1.5rem) !important;
+    line-height: 1;
+    margin-bottom: 0.2rem !important;
+  }
+}

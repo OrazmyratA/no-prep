@@ -515,6 +515,14 @@ private rebuildCards(items: Item[]) {
     }
   }
 
+  playCardAudio(event: Event, card: FlipTileCard) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (card.item.audio) {
+      this.playTrackedAudio(card.item.audio);
+    }
+  }
+
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;

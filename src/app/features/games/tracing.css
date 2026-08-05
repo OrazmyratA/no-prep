@@ -160,6 +160,7 @@
 }
 .letter-text {
   color: #1e293b;
+  white-space: pre;
 }
 .letter-placeholder {
   width: 100%;

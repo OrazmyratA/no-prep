@@ -23,7 +23,7 @@ export const GAMES: GameConfig[] = [
     nameKey: 'gameMatchPairsName',
     descKey: 'gameMatchPairsDesc',
     icon: '\u{1F0CF}',
-    requiresSettings: false,
+    requiresSettings: true,
   },
   {
     id: 'watch-memorize',
@@ -88,6 +88,13 @@ export const GAMES: GameConfig[] = [
     icon: '\u{1F50E}',
     requiresSettings: false,
   },
+    {
+    id: 'line-trace-match',
+    nameKey: 'gameLineTraceMatchName',
+    descKey: 'gameLineTraceMatchDesc',
+    icon: '\u{303D}',
+    requiresSettings: true,
+  },
   {
     id: 'unjumble',
     nameKey: 'gameUnjumbleName',
@@ -150,5 +157,5 @@ export const GAMES: GameConfig[] = [
     descKey: 'gameBallSortDesc',
     icon: '\u{1F534}\u{1F535}',
     requiresSettings: true,
-  }
+  },
 ];

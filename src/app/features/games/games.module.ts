@@ -25,6 +25,7 @@ import { SpellingCheckComponent } from './spelling-check';
 import { SquidGameComponent } from './squid-game';
 import { RockPaperScissorsComponent } from './rock-paper-scissors';
 import { TracingComponent } from './tracing';
+import { LineTraceMatchComponent } from './line-trace-match';
 
 @NgModule({
   declarations: [
@@ -47,7 +48,8 @@ import { TracingComponent } from './tracing';
     SpellingCheckComponent,
     SquidGameComponent,
     RockPaperScissorsComponent,
-    TracingComponent
+    TracingComponent,
+    LineTraceMatchComponent
   ],
   imports: [
     CommonModule,
