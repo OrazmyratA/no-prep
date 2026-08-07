@@ -1,0 +1,95 @@
+<div class="team-setup-panel">
+  <h2 class="team-setup-title">{{ 'leaderboardTeamSetupTitle' | translate }}</h2>
+
+  <div class="team-setup-body">
+    <div
+      cdkDropList
+      [id]="unassignedListId"
+      [cdkDropListData]="unassigned"
+      [cdkDropListConnectedTo]="connectedListsFor(unassignedListId)"
+      (cdkDropListDropped)="drop($event)"
+      class="team-unassigned-list">
+      <h3 class="team-column-title">{{ 'leaderboardTeamSetupUnassigned' | translate }}</h3>
+      <div class="team-chip-list">
+        <div *ngFor="let student of unassigned; trackBy: trackByItemId" cdkDrag class="team-chip">
+          <span class="team-chip-avatar">
+            <img *ngIf="avatarUrl(student)" [src]="avatarUrl(student)" [alt]="student.text">
+            <span *ngIf="!avatarUrl(student)" class="team-chip-avatar-initial">{{ initial(student) }}</span>
+          </span>
+          <span class="team-chip-name">{{ student.text }}</span>
+        </div>
+        <p *ngIf="!unassigned.length" class="team-empty-hint">{{ 'leaderboardTeamAllAssigned' | translate }}</p>
+      </div>
+    </div>
+
+    <div class="team-columns">
+      <div *ngFor="let team of workingTeams; trackBy: trackByTeamId" class="team-column" [style.--team-color]="team.color">
+        <header class="team-column-header">
+          <input
+            type="text"
+            #nameInput
+            class="team-name-input"
+            [value]="team.name"
+            (change)="renameTeam(team, nameInput.value)"
+            [placeholder]="'leaderboardTeamNamePlaceholder' | translate">
+          <button
+            type="button"
+            class="team-delete-btn"
+            (click)="deleteTeam(team)"
+            [attr.aria-label]="'leaderboardTeamDelete' | translate"
+            [attr.title]="'leaderboardTeamDelete' | translate">
+            🗑
+          </button>
+        </header>
+
+        <div class="team-swatch-row">
+          <button
+            *ngFor="let c of themeService.colorThemes"
+            type="button"
+            class="team-swatch"
+            [style.background]="c.swatch"
+            [class.selected]="team.color === c.swatch"
+            (click)="setTeamColor(team, c.swatch)"
+            [attr.aria-label]="c.name">
+          </button>
+        </div>
+
+        <div
+          cdkDropList
+          [id]="teamListId(team)"
+          [cdkDropListData]="membersOf(team)"
+          [cdkDropListConnectedTo]="connectedListsFor(teamListId(team))"
+          (cdkDropListDropped)="drop($event)"
+          class="team-member-list">
+          <div
+            *ngFor="let student of membersOf(team); trackBy: trackByItemId"
+            cdkDrag
+            class="team-chip"
+            [style.borderColor]="team.color">
+            <span class="team-chip-avatar">
+              <img *ngIf="avatarUrl(student)" [src]="avatarUrl(student)" [alt]="student.text">
+              <span *ngIf="!avatarUrl(student)" class="team-chip-avatar-initial" [style.background]="team.color">{{ initial(student) }}</span>
+            </span>
+            <span class="team-chip-name">{{ student.text }}</span>
+          </div>
+          <p *ngIf="!membersOf(team).length" class="team-empty-hint">{{ 'leaderboardTeamDropHint' | translate }}</p>
+        </div>
+      </div>
+
+      <button type="button" class="team-add-btn" (click)="addTeam()">
+        <span aria-hidden="true">+</span> {{ 'leaderboardTeamAddTeam' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <p *ngIf="!canStart" class="team-setup-hint">{{ 'leaderboardTeamMinRequired' | translate }}</p>
+
+  <footer class="team-setup-actions">
+    <button type="button" class="team-setup-btn team-setup-btn-cancel" (click)="cancel()">
+      <span aria-hidden="true">✕</span> {{ 'leaderboardPickerBannerCancel' | translate }}
+    </button>
+    <button type="button" class="team-setup-btn team-setup-btn-save" [disabled]="!canStart" (click)="start()">
+      <span aria-hidden="true">💾</span> {{ 'leaderboardTeamStart' | translate }}
+    </button>
+  </footer>
+</div>

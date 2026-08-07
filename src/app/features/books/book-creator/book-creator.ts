@@ -1,6 +1,7 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import html2canvas from 'html2canvas';
 import { SwipeDirective } from '../../../shared/swipe.directive';
+import { ConfirmationService } from '../../../shared/confirmation';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
@@ -137,6 +138,7 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   speakingPreviewElementId: string | null = null;
   speakingPreviewStatus: AiSpeakingRuntimeStatus | null = null;
   checkingSpeakingPreview = false;
+  private speakingPreviewToken = 0;
   readonly speakingPromptExample = `Title:
 Daily routines speaking practice
 
@@ -187,6 +189,7 @@ Tomorrow I will help my mom.`;
   private redoStack: string[] = [];
   private pendingHistorySnapshot = '';
   private historyCaptureActive = false;
+  private historyLimitWarningShown = false;
   private assetUrlCache = new Map<string, string>();
   private bypassUnsavedGuard = false;
   private copiedElement: BookElement | null = null;
@@ -252,6 +255,7 @@ Tomorrow I will help my mom.`;
     public bookLibrary: BookLibraryService,
     private db: DbService,
     private languageService: LanguageService,
+    private confirmationService: ConfirmationService,
     private platformFile: PlatformFileService,
     private guidePitch: GuidePitchService,
     private aiSpeakingRuntime: AiSpeakingRuntimeService,
@@ -299,6 +303,8 @@ Tomorrow I will help my mom.`;
       cancelAnimationFrame(this.guidePinDragFrame);
     }
     this.layoutController.destroy();
+    this.markController.destroy();
+    this.virtualPageController.destroy();
     if (this.creatorInteractionFrame) {
       cancelAnimationFrame(this.creatorInteractionFrame);
     }
@@ -351,7 +357,7 @@ Tomorrow I will help my mom.`;
 
   async createFromPdf(): Promise<void> {
     if (!this.bookLibrary.isAvailable) {
-      window.alert(this.languageService.translate('creatorPdfDesktopOnly'));
+      showAppNotification(this.languageService.translate('creatorPdfDesktopOnly'), 'error');
       return;
     }
 
@@ -724,11 +730,21 @@ Tomorrow I will help my mom.`;
     const nextY = this.clamp(element.y + dy, 0, Math.max(0, 1 - height));
     if (nextX === element.x && nextY === element.y) return true;
 
-    this.captureHistory();
+    if (!this.historyCaptureActive) {
+      this.beginHistoryCapture();
+    }
     element.x = nextX;
     element.y = nextY;
     this.scheduleCreatorInteractionRefresh();
     return true;
+  }
+
+  @HostListener('document:keyup', ['$event'])
+  onDocumentKeyup(event: KeyboardEvent): void {
+    if (!this.historyCaptureActive) return;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      this.commitHistoryCapture();
+    }
   }
 
   private isKeyboardEditingTarget(target: EventTarget | null): boolean {
@@ -760,7 +776,7 @@ Tomorrow I will help my mom.`;
   }
 
   deleteSelectedGuideTrack(element: BookElement): void {
-    this.guideAudioController.deleteSelectedGuideTrack(element);
+    void this.guideAudioController.deleteSelectedGuideTrack(element);
   }
 
   moveGuideDotAudio(element: BookElement, index: number, direction: -1 | 1): void {
@@ -913,23 +929,23 @@ Tomorrow I will help my mom.`;
   }
 
   deleteSelectedPage(): void {
-    this.pageSurfaceController.deleteSelectedPage();
+    void this.pageSurfaceController.deleteSelectedPage();
   }
 
   clearSelectedPageElements(): void {
-    this.pageSurfaceController.clearSelectedPageElements();
+    void this.pageSurfaceController.clearSelectedPageElements();
   }
 
   deleteActiveBookSurface(): void {
-    this.pageSurfaceController.deleteActiveBookSurface();
+    void this.pageSurfaceController.deleteActiveBookSurface();
   }
 
   deletePageAt(index: number, event?: Event): void {
-    this.pageSurfaceController.deletePageAt(index, event);
+    void this.pageSurfaceController.deletePageAt(index, event);
   }
 
   deleteWorkbookPageAt(workbook: BookWorkbook, index: number, event?: Event): void {
-    this.pageSurfaceController.deleteWorkbookPageAt(workbook, index, event);
+    void this.pageSurfaceController.deleteWorkbookPageAt(workbook, index, event);
   }
 
   deleteSelectedElement(): void {

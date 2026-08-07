@@ -1,0 +1,23 @@
+<svg
+  viewBox="0 0 200 200"
+  class="lb-star"
+  (click)="onClick()"
+  role="button"
+  tabindex="0"
+  [attr.aria-label]="points">
+  <polygon
+    *ngFor="let tri of triangles; let i = index"
+    [attr.points]="tri"
+    class="lb-star-shape"
+    [class.lit]="litCount > i"></polygon>
+  <polygon
+    [attr.points]="pentagon"
+    class="lb-star-shape lb-star-pentagon"
+    [class.lit]="litCount >= 6"></polygon>
+  <text
+    x="100" y="102"
+    text-anchor="middle"
+    dominant-baseline="central"
+    class="lb-star-number"
+    [class.lb-star-number-fading]="numberFading">{{ displayPoints }}</text>
+</svg>

@@ -901,6 +901,18 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     sa: 'هل تريد حذف صفحة كتاب التمارين هذه من الكتاب؟ لن يتغير ملف PDF الأصلي.',
   },
 
+  'creatorConfirmDeleteAudioTrack': {
+    en: 'Delete this audio track and all of its pins?',
+    tk: 'Bu ses ýazgysy we onuň ähli çyzgylary öçürilsinmi?',
+    ru: 'Удалить эту аудиодорожку и все её метки?',
+    cn: '要删除此音轨及其所有标记点吗？',
+    cde: 'Diese Audiospur und alle ihre Markierungen löschen?',
+    es: '¿Eliminar esta pista de audio y todos sus marcadores?',
+    fr: "Supprimer cette piste audio et tous ses repères ?",
+    kr: '이 오디오 트랙과 모든 핀을 삭제하시겠습니까?',
+    sa: 'هل تريد حذف هذا المسار الصوتي وجميع علاماته؟',
+  },
+
 
 
 
@@ -944,6 +956,18 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ce livre comporte des modifications non enregistrées. Appuyez sur OK pour enregistrer, ou sur Annuler pour choisir de quitter sans enregistrer.',
     kr: '이 책에는 저장되지 않은 변경 사항이 있습니다. 저장하려면 OK를 누르고, 저장하지 않고 나갈지 선택하려면 취소를 누르세요.',
     sa: 'يحتوي هذا الكتاب على تغييرات غير محفوظة. اضغط على موافق للحفظ، أو إلغاء لاختيار المغادرة دون الحفظ.',
+  },
+
+  'creatorHistoryLimitWarning': {
+    en: 'This book is too large for full undo history — some changes may not be undoable.',
+    tk: 'Bu kitap doly yza gaýtarma taryhy üçin gaty uly — käbir üýtgeşmeler yza gaýtarylmazlyk mümkin.',
+    ru: 'Эта книга слишком велика для полной истории отмены — некоторые изменения могут быть невозможны для отмены.',
+    cn: '此图书过大，无法保留完整的撤销历史记录——部分更改可能无法撤销。',
+    cde: 'Dieses Buch ist zu groß für den vollständigen Verlaufsspeicher — einige Änderungen lassen sich möglicherweise nicht rückgängig machen.',
+    es: 'Este libro es demasiado grande para el historial completo de deshacer; es posible que algunos cambios no se puedan deshacer.',
+    fr: "Ce livre est trop volumineux pour l'historique complet d'annulation ; certaines modifications peuvent ne pas être annulables.",
+    kr: '이 책은 전체 실행 취소 기록을 저장하기에는 너무 큽니다. 일부 변경 사항은 취소할 수 없을 수 있습니다.',
+    sa: 'هذا الكتاب كبير جدًا للاحتفاظ بسجل تراجع كامل — قد لا يمكن التراجع عن بعض التغييرات.',
   },
 
 

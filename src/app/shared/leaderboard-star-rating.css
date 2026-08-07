@@ -1,0 +1,52 @@
+:host {
+  display: inline-block;
+}
+
+.lb-star {
+  width: 55px;
+  height: 55px;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.lb-star-shape {
+  fill: #cbd5e1;
+  stroke: white;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  transition: fill 180ms ease, filter 180ms ease;
+}
+
+.lb-star-shape.lit {
+  fill: #facc15;
+  filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.85));
+}
+
+.lb-star-pentagon.lit {
+  fill: #f59e0b;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.9));
+}
+
+.lb-star-number {
+  font-size: 42px;
+  font-weight: 800;
+  fill: #1f2937;
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 5px;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 480ms ease;
+}
+
+.lb-star-number-fading {
+  opacity: 0;
+}
+
+.lb-star:hover .lb-star-shape {
+  transform-origin: 100px 100px;
+}
+
+.lb-star:active {
+  transform: scale(0.94);
+}

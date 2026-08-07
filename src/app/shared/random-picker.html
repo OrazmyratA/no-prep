@@ -26,85 +26,132 @@
       ✕
     </button>
 
-    <ng-container *ngIf="step === 'topic'">
-      <h2 class="rp-title">{{ 'randomPickerChooseListTitle' | translate }}</h2>
-
-      <div class="rp-topic-grid" *ngIf="topics.length; else rpNoTopics">
-        <button
-          type="button"
-          *ngFor="let topic of topics; trackBy: trackByTopicId"
-          class="rp-topic-card"
-          [disabled]="loadingTopicId === topic.id"
-          [class.rp-topic-active]="topic.id === selectedTopicId"
-          (click)="selectTopic(topic)">
-          <span class="rp-topic-avatar">{{ topicInitial(topic) }}</span>
-          <span class="rp-topic-name">{{ topic.name }}</span>
-          <span class="rp-topic-count">{{ topic.itemCount || 0 }} {{ 'items' | translate }}</span>
+    <ng-container *ngIf="selectedTopicId == null; else lbBoard">
+      <div class="lb-empty-state">
+        <h2 class="rp-title">{{ 'leaderboardChooseListTitle' | translate }}</h2>
+        <p class="lb-empty-message">{{ 'leaderboardChooseListMessage' | translate }}</p>
+        <button type="button" class="lb-choose-list-btn" (click)="chooseList()">
+          {{ 'leaderboardChooseListButton' | translate }}
         </button>
       </div>
-
-      <ng-template #rpNoTopics>
-        <p class="rp-empty">{{ 'randomPickerNoTopics' | translate }}</p>
-      </ng-template>
     </ng-container>
 
-    <ng-container *ngIf="step === 'wheel'">
-      <div class="rp-wheel-header">
-        <h2 class="rp-title">{{ selectedTopicName }}</h2>
-        <button
-          type="button"
-          class="rp-switch-btn"
-          (click)="switchList()"
-          [attr.title]="'randomPickerSwitchList' | translate"
-          [attr.aria-label]="'randomPickerSwitchList' | translate">
-          <img src="assets/images/exchange.png" alt="">
-        </button>
+    <ng-template #lbBoard>
+      <div class="lb-header">
+        <div class="lb-header-title-group">
+          <img
+            src="assets/images/ranking.png"
+            class="lb-list-title-icon"
+            [attr.alt]="'leaderboardRankingTitle' | translate">
+          <h2 class="rp-title lb-header-title">{{ selectedTopicName }}</h2>
+        </div>
+        <div class="lb-header-actions">
+          <app-leaderboard-hammer (hit)="onHammerHit($event)"></app-leaderboard-hammer>
+
+          <button
+            type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img"
+            [class.active]="mode === 'individual'"
+            [attr.aria-pressed]="mode === 'individual'"
+            (click)="setMode('individual')"
+            [attr.title]="'leaderboardModeIndividual' | translate"
+            [attr.aria-label]="'leaderboardModeIndividual' | translate">
+            <img src="assets/images/individual.png" alt="" aria-hidden="true">
+          </button>
+          <button
+            type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img"
+            [class.active]="mode === 'team'"
+            [attr.aria-pressed]="mode === 'team'"
+            (click)="setMode('team')"
+            [attr.title]="'leaderboardModeTeam' | translate"
+            [attr.aria-label]="'leaderboardModeTeam' | translate">
+            <img src="assets/images/teamwork.png" alt="" aria-hidden="true">
+          </button>
+
+          <button
+            type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img"
+            [class.active]="showWheel"
+            [attr.aria-pressed]="showWheel"
+            (click)="toggleWheel()"
+            [attr.title]="'leaderboardWheelToggle' | translate"
+            [attr.aria-label]="'leaderboardWheelToggle' | translate">
+            <img src="assets/images/fortune-wheel.png" alt="" aria-hidden="true">
+          </button>
+
+          <button
+            *ngIf="mode === 'team'"
+            type="button"
+            class="lb-header-btn lb-icon-btn"
+            (click)="openTeamSetup()"
+            [attr.title]="'leaderboardTeamManage' | translate"
+            [attr.aria-label]="'leaderboardTeamManage' | translate">
+            <span aria-hidden="true">✏️</span>
+          </button>
+          <button
+            type="button"
+            class="lb-header-btn lb-icon-btn"
+            (click)="resetScores()"
+            [attr.title]="'leaderboardResetScores' | translate"
+            [attr.aria-label]="'leaderboardResetScores' | translate">
+            <span aria-hidden="true">🔄</span>
+          </button>
+          <button
+            type="button"
+            class="lb-header-btn lb-header-btn-primary lb-icon-btn"
+            (click)="chooseList()"
+            [attr.title]="'leaderboardChangeList' | translate"
+            [attr.aria-label]="'leaderboardChangeList' | translate">
+            <span aria-hidden="true">📋</span>
+          </button>
+        </div>
       </div>
 
-      <ng-container *ngIf="!isFinished; else rpFinished">
-        <ng-container *ngIf="remainingItems.length; else rpEmptyTopic">
-          <div class="rp-wheel-wrapper">
-            <canvas #pickerCanvas [width]="canvasSize" [height]="canvasSize" class="rp-canvas"></canvas>
-            <button
-              type="button"
-              class="rp-spin-btn"
-              (click)="spin()"
-              [disabled]="spinning || remainingItems.length === 0">
-              {{ spinning ? ('spinWheelSpinning' | translate) : ('spinWheelSpin' | translate) }}
-            </button>
-          </div>
-          <p class="rp-remaining-count">{{ remainingItems.length }} / {{ currentProgress?.all?.length || 0 }}</p>
-        </ng-container>
-        <ng-template #rpEmptyTopic>
-          <p class="rp-empty">{{ 'randomPickerNoItemsInTopic' | translate }}</p>
-        </ng-template>
+      <ng-container *ngIf="showTeamSetup; else lbSplit">
+        <app-leaderboard-team-setup
+          [roster]="roster"
+          [teams]="teams"
+          (done)="onTeamsSetupDone($event)"
+          (cancelled)="onTeamsSetupCancelled()">
+        </app-leaderboard-team-setup>
       </ng-container>
 
-      <ng-template #rpFinished>
-        <app-game-finish-overlay
-          class="rp-finish"
-          [title]="'randomPickerAllPickedTitle' | translate"
-          [message]="'randomPickerAllPickedMessage' | translate"
-          [playAgainLabel]="'randomPickerResetList'"
-          [activitiesLabel]="'randomPickerSwitchList'"
-          (playAgain)="resetList()"
-          (activities)="switchList()">
-        </app-game-finish-overlay>
-      </ng-template>
-    </ng-container>
+      <ng-template #lbSplit>
+        <div class="lb-split" [class.lb-split-wheel-open]="showWheel">
+          <app-leaderboard-ranking-list
+            class="lb-split-list"
+            [entries]="activeEntries"
+            [rowKind]="mode === 'team' ? 'team' : 'student'"
+            [twoColumn]="!showWheel"
+            [rankedUpItemIds]="rankedUpItemIds"
+            [hammerHitItemId]="hammerHitItemId"
+            (starClick)="onStarClick($event)">
+          </app-leaderboard-ranking-list>
 
-    <div class="rp-reveal-overlay" *ngIf="showReveal && selectedItem" [class.visible]="revealVisible">
-      <div class="rp-reveal-card">
-        <img
-          *ngIf="selectedItem.image"
-          [src]="imageUrl(selectedItem.image, selectedItem.id!)"
-          class="rp-reveal-image">
-        <div class="rp-reveal-text" [class.rp-reveal-text-only]="!selectedItem.image">{{ selectedItem.text }}</div>
-      </div>
-      <div class="rp-reveal-actions">
-        <button type="button" class="rp-ok-btn" (click)="confirmOk()">✓ {{ 'randomPickerOk' | translate }}</button>
-        <button type="button" class="rp-oops-btn" (click)="confirmOops()">✗ {{ 'randomPickerOops' | translate }}</button>
-      </div>
-    </div>
+          <div class="lb-split-wheel-wrap" [class.open]="showWheel">
+            <app-leaderboard-wheel
+              class="lb-split-wheel"
+              [entries]="wheelEntries"
+              (landed)="onWheelLanded($event)">
+            </app-leaderboard-wheel>
+
+            <div class="rp-reveal-overlay" *ngIf="showReveal && selectedEntry" [class.visible]="revealVisible">
+              <div class="rp-reveal-card">
+                <img
+                  *ngIf="selectedEntry.image"
+                  [src]="imageUrl(selectedEntry.image, selectedEntry.itemId)"
+                  class="rp-reveal-image">
+                <div class="rp-reveal-text" [class.rp-reveal-text-only]="!selectedEntry.image">{{ selectedEntry.text }}</div>
+              </div>
+              <div class="rp-reveal-actions">
+                <button type="button" class="rp-ok-btn" (click)="confirmCorrect()">✓ {{ 'leaderboardCorrect' | translate }}</button>
+                <button type="button" class="rp-oops-btn" (click)="confirmOops()">✗ {{ 'leaderboardOops' | translate }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-template>
+    </ng-template>
   </div>
 </div>

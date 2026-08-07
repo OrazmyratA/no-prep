@@ -196,5 +196,6 @@ export interface BookSpeakingAttempt {
   audioMimeType?: string;
   responseAudio?: Blob;
   responseAudioMimeType?: string;
+  sessionFeedback?: string;
   updatedAt: string;
 }

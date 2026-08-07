@@ -170,10 +170,10 @@
       <article class="ai-pack-card" *ngFor="let pack of reader.getInstalledAiPacks(); trackBy: reader.trackByAiPackId">
         <div class="ai-pack-card-main">
           <strong>{{ pack.label }}</strong>
-          <span>{{ pack.language | uppercase }} Â· {{ reader.getAiPackQualityLabel(pack) }} Speaking Pack</span>
+          <span>{{ pack.language | uppercase }} · {{ reader.getAiPackQualityLabel(pack) }} Speaking Pack</span>
           <em *ngIf="reader.getAiPackSelectedRole(pack)">{{ reader.getAiPackSelectedRole(pack) }}</em>
           <div class="ai-pack-advanced" *ngIf="reader.aiPackAdvancedOpen">
-            <small>{{ reader.getAiPackRuntimeSummary(pack) }}<ng-container *ngIf="reader.getAiPackSizeText(pack)"> Â· {{ reader.getAiPackSizeText(pack) }}</ng-container></small>
+            <small>{{ reader.getAiPackRuntimeSummary(pack) }}<ng-container *ngIf="reader.getAiPackSizeText(pack)"> · {{ reader.getAiPackSizeText(pack) }}</ng-container></small>
             <small *ngIf="pack.modelSizeLabel">{{ pack.modelSizeLabel }}</small>
             <small *ngIf="reader.getAiPackRequirementText(pack)">{{ reader.getAiPackRequirementText(pack) }}</small>
           </div>

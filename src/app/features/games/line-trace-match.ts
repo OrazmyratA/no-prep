@@ -151,8 +151,11 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     const idParam = this.route.snapshot.paramMap.get('id') ?? this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
 
+    // The settings slider's max value (31) means "All" — leave pairCount
+    // uncapped here so the qualifyingItems.length clamp below can use every
+    // qualifying item, not just the first 30.
     const pairCountParam = Number(this.route.snapshot.queryParamMap.get('pairCount'));
-    this.pairCount = Math.min(10, Math.max(2, pairCountParam || 6));
+    this.pairCount = pairCountParam >= 31 ? Number.MAX_SAFE_INTEGER : Math.min(30, Math.max(2, pairCountParam || 6));
     this.noCrossing = this.route.snapshot.queryParamMap.get('noCrossing') === 'true';
 
     try {
@@ -301,8 +304,46 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     const moved = !last || Math.hypot(point.x - last.x, point.y - last.y) >= this.minTracePointDistance;
     if (moved && this.dragPoints.length < this.maxTracePoints) {
       this.dragPoints.push(point);
+
+      // Bail out the instant the live trace crosses an existing line, rather
+      // than waiting for commit — otherwise a wandering/looping path can end
+      // up encircling a still-unmatched tile, permanently trapping it (any
+      // future path to it would also have to cross this one).
+      if (this.noCrossing && this.newSegmentCrossesExistingLine()) {
+        this.cancelDragOnCrossing(event);
+        return;
+      }
+
       this.renderCanvas();
     }
+  }
+
+  // Only tests the freshly-added segment against committed lines — earlier
+  // segments were already found crossing-free when they were added, and
+  // committed lines don't change mid-drag.
+  private newSegmentCrossesExistingLine(): boolean {
+    if (this.dragPoints.length < 2) return false;
+    const p1 = this.dragPoints[this.dragPoints.length - 2];
+    const p2 = this.dragPoints[this.dragPoints.length - 1];
+    for (const line of this.matchedLines) {
+      const linePoints = line.points.map(p => this.fromPct(p));
+      for (let j = 0; j < linePoints.length - 1; j++) {
+        if (this.segmentsIntersect(p1, p2, linePoints[j], linePoints[j + 1])) return true;
+      }
+    }
+    return false;
+  }
+
+  private cancelDragOnCrossing(event: PointerEvent) {
+    const target = event.currentTarget as HTMLElement;
+    target.releasePointerCapture(event.pointerId);
+    this.activePointerId = null;
+    this.dragSourceId = null;
+    this.selectedElementId = null;
+    this.playSound(this.buzzSound, 0.6);
+    const points = this.dragPoints;
+    this.dragPoints = [];
+    this.flashWrongPath(points);
   }
 
   onTilePointerUp(event: PointerEvent) {
@@ -480,8 +521,17 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
       this.cdr.detectChanges();
       return;
     }
+    this.flashWrongPath(path);
+  }
 
-    this.wrongFlashLine = { points: path };
+  // Briefly draws `points` in red, then clears it — shared by the
+  // wrong-match flash and the live crossing-cancel flash.
+  private flashWrongPath(points: Point[]) {
+    if (points.length < 2) {
+      this.cdr.detectChanges();
+      return;
+    }
+    this.wrongFlashLine = { points };
     this.renderCanvas();
     this.clearWrongFlashTimer();
     this.wrongFlashTimer = window.setTimeout(() => {

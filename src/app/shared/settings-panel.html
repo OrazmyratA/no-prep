@@ -694,18 +694,18 @@
         <div class="flex items-center justify-between mb-2">
           <label class="text-sm font-medium">{{ 'settingsLineTraceMatchPairCount' | translate }}</label>
           <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
-            {{ settingsForm.get('pairCount')?.value }}
+            {{ settingsForm.get('pairCount')?.value === 31 ? ('settingsTracingTraceCountAll' | translate) : settingsForm.get('pairCount')?.value }}
           </span>
         </div>
         <input
           type="range"
           formControlName="pairCount"
-          min="2" max="10" step="1"
+          min="2" max="31" step="1"
           class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
         >
         <div class="flex justify-between text-xs text-gray-400 mt-1">
           <span>2</span>
-          <span>10</span>
+          <span>{{ 'settingsTracingTraceCountAll' | translate }}</span>
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsLineTraceMatchPairCountHint' | translate }}</p>
       </div>

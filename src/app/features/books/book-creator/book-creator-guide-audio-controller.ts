@@ -3,6 +3,7 @@ import {
   GuideAudioTrack
 } from '../../../core/book.model';
 import { syncLegacyGuideAudioFiles } from '../../../core/guide-timeline';
+import { showAppNotification } from '../../../core/notification';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -34,11 +35,14 @@ export class BookCreatorGuideAudioController {
     void this.creator.ensureGuideTrackDuration(track);
   }
 
-  deleteSelectedGuideTrack(element: BookElement): void {
+  async deleteSelectedGuideTrack(element: BookElement): Promise<void> {
     const tracks = this.creator.getGuideDotTracks(element);
     const index = tracks.findIndex((track: GuideAudioTrack) => track.id === this.creator.selectedGuideTrackId);
     if (index < 0) return;
-    if (!window.confirm('Delete this audio track and all of its pins?')) return;
+    const confirmed = await this.creator.confirmationService.confirm(
+      this.creator.languageService.translate('creatorConfirmDeleteAudioTrack')
+    );
+    if (!confirmed) return;
     this.creator.captureHistory();
     const [removed] = tracks.splice(index, 1);
     delete this.creator.guideTrackSeekTimes[removed.id];
@@ -122,7 +126,7 @@ export class BookCreatorGuideAudioController {
         stream?.getTracks().forEach((track) => track.stop());
         this.mediaRecorder = null;
         this.creator.recordingGuideElementId = null;
-        window.alert(this.creator.languageService.translate('creatorMicRecordingFailed'));
+        showAppNotification(this.creator.languageService.translate('creatorMicRecordingFailed'), 'error');
       };
       recorder.onstop = async () => {
         this.clearRecordingTimeout();
@@ -165,7 +169,7 @@ export class BookCreatorGuideAudioController {
       this.clearRecordingTimeout();
       this.creator.recordingGuideElementId = null;
       try { stream?.getTracks().forEach((track) => track.stop()); } catch { /* already stopped */ }
-      window.alert(this.creator.languageService.translate('creatorMicRecordingUnavailable'));
+      showAppNotification(this.creator.languageService.translate('creatorMicRecordingUnavailable'), 'error');
     }
   }
 

@@ -142,24 +142,6 @@
       </div>
     </div>
   </div>
-
-  <div class="reader-popover-backdrop legacy-focus-popover" *ngIf="false">
-    <div class="focus-zoom-modal" (click)="$event.stopPropagation()">
-      <button type="button" class="popover-close" (click)="closeExpandedFocus()" [attr.aria-label]="'close' | translate">X</button>
-      <div class="focus-zoom-frame" [style.aspect-ratio]="pageAspectRatio">
-        <div class="focus-zoom-content" [style.transform]="getFocusZoomTransform(expandedFocusElement)">
-          <app-pdf-page-canvas
-            *ngIf="expandedFocusPage?.type === 'pdf' && getPagePdfUrl(expandedFocusPage!)"
-            [sourceUrl]="getPagePdfUrl(expandedFocusPage!)"
-            [pageNumber]="expandedFocusPage?.pdfPage || 1"
-            [rotation]="getPageRotation(expandedFocusPage)"
-            [renderScale]="2">
-          </app-pdf-page-canvas>
-          <div *ngIf="expandedFocusPage?.type === 'blank'" class="blank-page"></div>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <app-book-reader-guide-audio-controls [reader]="readerContext"></app-book-reader-guide-audio-controls>

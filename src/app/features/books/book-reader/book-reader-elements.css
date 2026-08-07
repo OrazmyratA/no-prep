@@ -159,6 +159,35 @@
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.17);
 }
 
+.task-result-badge {
+  /* .text-task-element/.choice-task-element/.circle-task-element use contain:paint,
+     which clips to the box bounds regardless of overflow:visible — keep this inside the box. */
+  position: absolute;
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+  pointer-events: none;
+  z-index: 21;
+}
+
+.task-result-badge.task-result-correct {
+  background: #16a34a;
+}
+
+.task-result-badge.task-result-incorrect {
+  background: #dc2626;
+}
+
 .circle-task-tap {
   position: absolute;
   inset: 0;

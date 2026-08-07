@@ -213,6 +213,12 @@
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
 }
 
+.page-thumb:focus-visible,
+.page-corner-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 2px;
+}
+
 .page-thumb.a4-thumb {
   display: block;
 }

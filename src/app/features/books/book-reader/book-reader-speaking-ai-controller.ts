@@ -1,4 +1,5 @@
 import {
+  AiSpeakingFeedbackTurn,
   AiSpeakingTaskConfig,
   AiSpeakingTurn
 } from '../../../core/ai-speaking-runtime';
@@ -125,6 +126,48 @@ export class BookReaderSpeakingAiController {
         ? `Recording captured. Offline AI processing failed: ${error.message}`
         : 'Recording captured. Offline AI processing failed.';
       showAppNotification(attempt.transcript, 'error');
+    }
+  }
+
+  async generateSpeakingSessionFeedback(element: BookElement, sessionId: string): Promise<void> {
+    const attempts = (this.reader.speakingAttempts.get(element.id) ?? [])
+      .filter((attempt: BookSpeakingAttempt) => attempt.sessionId === sessionId)
+      .sort((a: BookSpeakingAttempt, b: BookSpeakingAttempt) => this.compareSpeakingAttemptsByTurn(a, b));
+    if (!attempts.length) return;
+
+    const transcript: AiSpeakingFeedbackTurn[] = [];
+    for (const attempt of attempts) {
+      const studentText = this.getSpeakingAttemptStudentText(attempt);
+      const aiText = this.getSpeakingAttemptAiText(attempt);
+      if (studentText) {
+        const wordCount = studentText.trim().split(/\s+/).filter(Boolean).length;
+        const minutes = Math.max(attempt.durationSeconds || 0, 1) / 60;
+        transcript.push({ speaker: 'student', text: studentText, wordsPerMinute: wordCount / minutes });
+      }
+      if (aiText) {
+        transcript.push({ speaker: 'ai', text: aiText });
+      }
+    }
+    if (!transcript.some((turn) => turn.speaker === 'student')) return;
+
+    const dialoguePack = this.reader.speakingRuntimeStatus?.featurePacks?.dialogue ?? this.reader.speakingRuntimeStatus?.pack;
+    if (!dialoguePack) return;
+
+    try {
+      const config = this.buildSpeakingTaskConfig(element);
+      const feedback = await this.reader.aiSpeakingRuntime.generateSessionFeedback({
+        config,
+        transcript,
+        language: dialoguePack.language,
+        packId: dialoguePack.id
+      });
+      const lastAttempt = attempts[attempts.length - 1];
+      lastAttempt.sessionFeedback = JSON.stringify(feedback);
+      await this.reader.speakingAttemptService.save(lastAttempt);
+      this.reader.forceUiRefresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not generate speaking feedback.';
+      showAppNotification(message, 'info');
     }
   }
 

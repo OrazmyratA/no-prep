@@ -15,6 +15,7 @@ import { PlatformService } from '../../../core/platform';
 import { ResizeService } from '../../../core/resize';
 import { BookLibraryService } from '../../../core/book-library';
 import { BookOperationProgress, BookRegistryItem, BookStorageLocation } from '../../../core/book.model';
+import { LeaderboardStateService } from '../../../core/leaderboard-state';
 
 type LibraryCategory = 'topics' | 'books';
 type PendingBookStorageAction = 'create' | 'import' | null;
@@ -98,7 +99,8 @@ onClickOutside(event: MouseEvent) {
     private elementRef: ElementRef<HTMLElement>,
     private ngZone: NgZone,
     public platform: PlatformService,
-    public bookLibrary: BookLibraryService
+    public bookLibrary: BookLibraryService,
+    public leaderboardState: LeaderboardStateService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
     this.bookProgress$ = this.bookLibrary.progress$;
@@ -261,6 +263,10 @@ onClickOutside(event: MouseEvent) {
 
   onTopicClick(topicId: number) {
     if (this.activeTopicId === topicId) {
+      if (this.leaderboardState.isSelecting) {
+        this.leaderboardState.completeTopicSelection(topicId);
+        return;
+      }
       this.router.navigate(['/topics', topicId, 'activities']);
       return;
     }

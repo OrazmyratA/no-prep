@@ -13,6 +13,7 @@ canvas {
   object-fit: contain;
   pointer-events: none;
   opacity: 0;
+  transition: opacity 0.18s ease;
 }
 
 canvas.ready {

@@ -40,6 +40,8 @@
 }
 
 .inspector-toggle-btn {
+  width: 2.15rem;
+  height: 2.4rem;
   border: 1px solid rgba(120, 113, 108, 0.2);
   border-radius: 0.72rem;
   background:
@@ -81,11 +83,6 @@
   outline-offset: 2px;
 }
 
-.inspector-toggle-btn {
-  width: 2.15rem;
-  height: 2.4rem;
-}
-
 .inspector-collapsed-rail .inspector-toggle-btn {
   margin-left: -0.22rem;
   border-radius: 0 0.72rem 0.72rem 0;
@@ -99,9 +96,6 @@
   width: 2.15rem;
   height: 2.4rem;
   align-self: start;
-}
-
-.inspector-edge-toggle {
   grid-column: 3;
   grid-row: 1;
   justify-self: start;
@@ -131,20 +125,12 @@
   opacity: 1;
 }
 
-.drawer-toggle-hide {
-  transform: rotate(90deg);
-}
-
 .inspector-show-icon {
   transform: rotate(180deg);
 }
 
 .inspector-hide-icon {
   transform: rotate(0deg);
-}
-
-.drawer-toggle-show {
-  transform: rotate(-90deg);
 }
 
 @media (hover: none) {
@@ -177,6 +163,15 @@
 .mini-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.mini-btn:focus-visible,
+.mini-icon-btn:focus-visible,
+.tiny-btn:focus-visible,
+.audio-row:focus-visible,
+.game-activity-option:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 2px;
 }
 
 .mini-icon-btn {
@@ -596,6 +591,27 @@
   display: grid;
   gap: 0.35rem;
   margin: -0.25rem 0 0.75rem;
+}
+
+.book-title-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.42rem;
+  background: #ffffff;
+  color: #111827;
+  font: inherit;
+  font-weight: 900;
+  padding: 0.5rem 0.6rem;
+}
+
+.book-title-input:hover {
+  border-color: #93c5fd;
+}
+
+.book-title-input:focus-visible {
+  border-color: #2563eb;
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 1px;
 }
 
 .page-title-editor .book-title-input {

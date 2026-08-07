@@ -25,6 +25,7 @@ function registerAiIpc({
   getLlamaCliPath,
   runSttTranscription,
   runDialogueGeneration,
+  runDialogueFeedback,
   closeWarmDialogueSessions,
   runTtsSynthesis
 }) {
@@ -205,6 +206,24 @@ function registerAiIpc({
     } catch (error) {
       console.error('ai-speaking:generate-response error:', error);
       return operationError('AI_DIALOGUE_FAILED', error?.message || 'Offline dialogue generation failed.');
+    }
+  });
+
+  ipcMain.handle('ai-speaking:generate-session-feedback', async (_event, input) => {
+    try {
+      const config = input?.config && typeof input.config === 'object' ? input.config : {};
+      const packId = String(input?.packId || config.packId || '');
+      const language = String(input?.language || config.language || '').trim().toLowerCase();
+      const registry = await readAiPackRegistry();
+      const pack = findAiPack(registry, packId, language);
+      if (!pack) {
+        return operationError('AI_PACK_NOT_FOUND', 'AI language pack not found.');
+      }
+      const result = await runDialogueFeedback(pack, input);
+      return operationResult(result);
+    } catch (error) {
+      console.error('ai-speaking:generate-session-feedback error:', error);
+      return operationError('AI_DIALOGUE_FEEDBACK_FAILED', error?.message || 'Offline speaking feedback failed.');
     }
   });
 

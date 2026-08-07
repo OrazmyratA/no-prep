@@ -6,6 +6,7 @@ import {
   BookTaskResponse,
   BookSpeakingAttempt
 } from '../../../core/book.model';
+import { AiSpeakingSessionFeedbackResult } from '../../../core/ai-speaking-runtime';
 
 export type ReaderAnnotationAction =
   | { kind: 'add-text'; pageId: string; item: BookAnnotationText }
@@ -34,6 +35,7 @@ export type SpeakingSessionSummary = {
   startedAt: string;
   updatedAt: string;
   durationSeconds: number;
+  feedback?: AiSpeakingSessionFeedbackResult;
 };
 
 export type SpeakingChatTurn = {

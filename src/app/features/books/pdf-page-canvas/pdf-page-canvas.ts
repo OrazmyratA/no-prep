@@ -46,6 +46,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
   private shouldRender = false;
   private renderToken = 0;
   private observer: IntersectionObserver | null = null;
+  private renderTask: { promise: Promise<void>; cancel: () => void } | null = null;
 
   constructor(private cdr: ChangeDetectorRef) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/pdfjs/pdf.worker.mjs';
@@ -79,6 +80,8 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
   ngOnDestroy(): void {
     this.renderToken++;
     this.observer?.disconnect();
+    try { this.renderTask?.cancel(); } catch { /* already finished */ }
+    this.renderTask = null;
   }
 
   private async renderPage(): Promise<void> {
@@ -166,10 +169,24 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
       throw new Error('Canvas rendering is unavailable.');
     }
 
+    if (this.renderTask) {
+      try { this.renderTask.cancel(); } catch { /* already finished */ }
+      this.renderTask = null;
+    }
+
     canvas.width = Math.floor(viewport.width);
     canvas.height = Math.floor(viewport.height);
     context.clearRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvas, canvasContext: context, viewport }).promise;
+    const task = page.render({ canvas, canvasContext: context, viewport });
+    this.renderTask = task;
+    try {
+      await task.promise;
+    } catch (renderError) {
+      if (token !== this.renderToken) return;
+      throw renderError;
+    } finally {
+      if (this.renderTask === task) this.renderTask = null;
+    }
     if (token !== this.renderToken) return;
 
     this.canvasReady = true;
@@ -186,7 +203,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
   private getDocument(source: Record<string, unknown>): Promise<PdfDocumentProxy> {
     const key = typeof source['url'] === 'string'
       ? String(source['url'])
-      : `data:${this.sourceUrl}:${this.renderToken}`;
+      : `data:${this.sourceUrl}`;
     const cached = PdfPageCanvasComponent.documentCache.get(key);
     if (cached) {
       PdfPageCanvasComponent.documentCache.delete(key);

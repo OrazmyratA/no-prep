@@ -196,7 +196,9 @@ function normalizeAiPackDialogueConfig(value) {
     temperature: Number.isFinite(Number(source.temperature)) ? Number(source.temperature) : undefined,
     contextSize: Number.isFinite(Number(source.contextSize)) ? Number(source.contextSize) : undefined,
     threads: Number.isFinite(Number(source.threads)) ? Number(source.threads) : undefined,
-    timeoutSeconds: Number.isFinite(Number(source.timeoutSeconds)) ? Number(source.timeoutSeconds) : undefined
+    timeoutSeconds: Number.isFinite(Number(source.timeoutSeconds)) ? Number(source.timeoutSeconds) : undefined,
+    repeatPenalty: Number.isFinite(Number(source.repeatPenalty)) ? Number(source.repeatPenalty) : undefined,
+    repeatLastN: Number.isFinite(Number(source.repeatLastN)) ? Number(source.repeatLastN) : undefined
   };
 }
 
@@ -402,7 +404,8 @@ async function getAiRuntimeAvailability(pack) {
 const {
   runSttTranscription,
   runTtsSynthesis,
-  runDialogueGeneration
+  runDialogueGeneration,
+  runDialogueFeedback
 } = createAiRuntimeRunners({
   app,
   fsp,
@@ -467,6 +470,7 @@ async function installAiPackManifestFile(sourcePath) {
     getAiRuntimeAvailability,
     runSttTranscription,
     runDialogueGeneration,
+    runDialogueFeedback,
     runTtsSynthesis,
     normalizeAiLanguage,
     normalizeAiPackDialogueConfig

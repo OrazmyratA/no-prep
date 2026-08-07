@@ -1,6 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms'; 
+import { ReactiveFormsModule } from '@angular/forms';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ImageUploaderComponent } from './image-uploader';
 import { SandwichMenuComponent } from './sandwich-menu';
 import { SettingsPanelComponent } from './settings-panel';
@@ -13,6 +14,13 @@ import { SwipeDirective } from './swipe.directive';
 import { GameKeyboardHelpComponent } from './game-keyboard-help';
 import { GameFinishOverlayComponent } from './game-finish-overlay';
 import { RandomPickerComponent } from './random-picker';
+import { LeaderboardStarRatingComponent } from './leaderboard-star-rating';
+import { LeaderboardStudentRowComponent } from './leaderboard-student-row';
+import { LeaderboardHammerComponent } from './leaderboard-hammer';
+import { LeaderboardRankingListComponent } from './leaderboard-ranking-list';
+import { LeaderboardWheelComponent } from './leaderboard-wheel';
+import { LeaderboardTeamRowComponent } from './leaderboard-team-row';
+import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
 
 @NgModule({
   declarations: [
@@ -26,11 +34,19 @@ import { RandomPickerComponent } from './random-picker';
     GameKeyboardHelpComponent,
     GameFinishOverlayComponent,
     RandomPickerComponent,
+    LeaderboardStarRatingComponent,
+    LeaderboardStudentRowComponent,
+    LeaderboardHammerComponent,
+    LeaderboardRankingListComponent,
+    LeaderboardWheelComponent,
+    LeaderboardTeamRowComponent,
+    LeaderboardTeamSetupComponent,
   ],
   providers: [ConfirmationService],
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    DragDropModule,
     TranslatePipe
   ],
   exports: [
@@ -42,7 +58,14 @@ import { RandomPickerComponent } from './random-picker';
     SwipeDirective,
     GameKeyboardHelpComponent,
     GameFinishOverlayComponent,
-    RandomPickerComponent
+    RandomPickerComponent,
+    LeaderboardStarRatingComponent,
+    LeaderboardStudentRowComponent,
+    LeaderboardHammerComponent,
+    LeaderboardRankingListComponent,
+    LeaderboardWheelComponent,
+    LeaderboardTeamRowComponent,
+    LeaderboardTeamSetupComponent
   ]
 })
 export class SharedModule { }

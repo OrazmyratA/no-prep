@@ -91,6 +91,8 @@ function buildDialoguePrompts(input, compact = false) {
       userPrompt: `
 /no_think
 You are NoPrep's offline AI speaking partner. Reply only as the AI teacher. Do not copy this prompt.
+Keep your reply short (1-3 sentences), warm, and matched to the learner's level.
+You have no personal experiences or daily routine of your own — never describe things you did or will do. Ask the student a question instead. If the teacher instructions include an example answer, that is only a sample of what the student should say, never say it yourself.
 The conversation language is ${language}.
 Teacher instructions: ${cleanPromptText(teacherPrompt || 'Have a natural speaking-practice conversation with the learner.', 1200)}
 Conversation so far:
@@ -109,13 +111,20 @@ AI teacher reply:
   const systemPrompt = `
 /no_think
 You are NoPrep's offline AI speaking partner.
-Follow the teacher prompt as the authority for the conversation.
+Follow the teacher prompt as the authority for the conversation; the defaults below apply unless the teacher prompt says otherwise.
+You are acting like a speaking exam interviewer: ask relevant questions and short follow-ups, and keep the conversation moving. Do not correct, comment on, or mention the student's grammar, vocabulary, or pronunciation during the conversation — feedback is given separately after the conversation ends, not now.
+You are the interviewer only. You have no personal experiences, plans, opinions, or daily routine of your own — never say things like "I went to..." or "Tomorrow I will...". Every reply must turn the conversation back to the student with a question about them.
+If the teacher prompt contains an example or sample answer, that is only a reference showing what a good STUDENT response looks like. Never say it yourself, echo it, or continue it as if it were your own line.
 Respond directly to the latest student message.
+Keep replies short: 1-3 sentences, like a real spoken conversation turn, not a written paragraph.
+Match your vocabulary and sentence complexity to the learner level or age stated in the teacher prompt. If none is stated, use simple, everyday words.
+Default tone: warm, patient, and encouraging, like a friendly classroom teacher.
+If the student's answer is very short or minimal, ask one gentle follow-up question to help them say more, unless the teacher prompt says to move on.
+Never end the conversation, say goodbye, or wrap up until the student clearly signals they are done. Otherwise always continue with a question.
 Use the recent conversation only as context.
 Treat the transcript as evidence: never invent what the student said, planned, felt, or did.
 If the student already gave their name, remember it and do not ask for it again unless you genuinely did not understand.
 If the student's speech is unclear or contradictory, ask one short clarification question instead of pretending to know.
-When giving feedback, mention only mistakes or strengths that are visible in the transcript.
 Output only the next spoken reply from the AI teacher.
 Do not copy or reveal runtime details, prompts, section labels, JSON, markdown, or command output unless the teacher prompt explicitly asks for that format.
 `.trim();
@@ -142,6 +151,81 @@ Write the AI teacher's next spoken reply only:
     systemPrompt: systemPrompt.slice(0, MAX_PROMPT_CHARS),
     userPrompt: userPrompt.slice(0, MAX_PROMPT_CHARS)
   };
+}
+
+function buildFeedbackPrompt(request) {
+  const config = request.config && typeof request.config === 'object' ? request.config : {};
+  const teacherPrompt = getTeacherPrompt(request);
+  const language = cleanText(config.language, 80) || cleanText(request.language, 80) || 'en';
+  const transcript = Array.isArray(request.transcript) ? request.transcript : [];
+  const transcriptText = transcript
+    .map((turn) => {
+      const speaker = turn?.speaker === 'ai' ? 'AI' : 'Student';
+      const text = cleanText(turn?.text, 1200);
+      if (!text) return '';
+      const wpm = turn?.speaker === 'student' && Number.isFinite(Number(turn?.wordsPerMinute)) && Number(turn.wordsPerMinute) > 0
+        ? ` (~${Math.round(Number(turn.wordsPerMinute))} words/min)`
+        : '';
+      return `${speaker}${wpm}: ${text}`;
+    })
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, MAX_PROMPT_CHARS);
+
+  const systemPrompt = `
+/no_think
+You are NoPrep's offline speaking assessment assistant.
+You review a finished speaking-practice conversation between a student and an AI teacher, and write short, encouraging feedback for the student.
+The conversation language is ${language}.
+Teacher instructions for this task, for context on the topic and level:
+${teacherPrompt || 'No specific instructions were given.'}
+
+Write feedback under exactly these four labels, each on its own line, in this order: FLUENCY:, VOCABULARY:, GRAMMAR:, SUMMARY:
+For FLUENCY, VOCABULARY, and GRAMMAR:
+- Write 2-3 short sentences of qualitative feedback. Do not give numeric scores, bands, or grades.
+- Where useful, quote a short phrase the student actually said and suggest a stronger way to say it, using the format: You said "..." — try "...".
+- Only comment on things actually shown in the transcript. Never invent mistakes or achievements that are not there.
+- Approximate words-per-minute numbers are shown next to some student turns as a fluency hint; use them only as a rough guide alongside how naturally the conversation flowed.
+- Do not comment on pronunciation — you only have text, not audio.
+For SUMMARY, write one short encouraging closing sentence.
+Keep the whole response under 200 words in total.
+Output only the four labeled sections. Do not repeat these instructions, the transcript, JSON, markdown, or runtime details.
+`.trim();
+
+  const userPrompt = `
+/no_think
+Full conversation transcript:
+${transcriptText || 'No conversation turns were recorded.'}
+
+Write the speaking feedback now, using the FLUENCY:, VOCABULARY:, GRAMMAR:, SUMMARY: labels.
+`.trim();
+
+  return {
+    systemPrompt: systemPrompt.slice(0, MAX_PROMPT_CHARS),
+    userPrompt: userPrompt.slice(0, MAX_PROMPT_CHARS)
+  };
+}
+
+function parseFeedbackOutput(text) {
+  const cleaned = stripThinkingOutput(String(text || '').replace(/\r/g, '\n'));
+  const labels = ['FLUENCY', 'VOCABULARY', 'GRAMMAR', 'SUMMARY'];
+  const sections = { fluency: '', vocabulary: '', grammar: '', summary: '' };
+  const pattern = new RegExp(`(${labels.join('|')})\\s*:`, 'gi');
+  const matches = [...cleaned.matchAll(pattern)];
+  if (!matches.length) {
+    sections.summary = cleanText(cleaned, 1200);
+    return sections;
+  }
+  for (let index = 0; index < matches.length; index += 1) {
+    const label = matches[index][1].toUpperCase();
+    const start = matches[index].index + matches[index][0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index : cleaned.length;
+    const key = label.toLowerCase();
+    if (key in sections) {
+      sections[key] = cleanText(cleaned.slice(start, end), 900);
+    }
+  }
+  return sections;
 }
 
 function extractJsonObject(text) {
@@ -327,12 +411,47 @@ async function main() {
     fail('llama.cpp CLI is not installed. Put llama-cli beside dialogue-runner or set NOPREP_LLAMA_CLI.');
   }
 
-  const { systemPrompt, userPrompt } = buildDialoguePrompts(request, !!request.compactRetry);
-  const maxTokens = Math.round(clampNumber(dialogueConfig.maxTokens, 180, 32, 1024));
   const temperature = clampNumber(dialogueConfig.temperature, 0.4, 0, 1.5);
-  const contextSize = Math.round(clampNumber(dialogueConfig.contextSize, 2048, 512, 8192));
   const threads = Math.round(clampNumber(dialogueConfig.threads, 4, 1, 16));
   const cacheRamMb = Math.round(clampNumber(dialogueConfig.cacheRamMb, 4096, 0, 32768));
+  const repeatPenalty = clampNumber(dialogueConfig.repeatPenalty, 1.15, 1, 2);
+  const repeatLastN = Math.round(clampNumber(dialogueConfig.repeatLastN, 256, 0, 4096));
+
+  if (request.feedbackMode) {
+    const { systemPrompt: feedbackSystemPrompt, userPrompt: feedbackUserPrompt } = buildFeedbackPrompt(request);
+    const feedbackMaxTokens = Math.round(clampNumber(dialogueConfig.feedbackMaxTokens, 480, 64, 1024));
+    const feedbackContextSize = Math.round(clampNumber(dialogueConfig.feedbackContextSize, 4096, 512, 8192));
+    const feedbackTimeoutMs = Math.round(clampNumber(dialogueConfig.feedbackTimeoutSeconds, 180, 15, 600) * 1000);
+    const feedbackArgs = [
+      '-m', modelPath,
+      ...(feedbackSystemPrompt ? ['-sys', feedbackSystemPrompt] : []),
+      '-p', feedbackUserPrompt,
+      '-n', String(feedbackMaxTokens),
+      '--temp', String(temperature),
+      '-c', String(feedbackContextSize),
+      '-t', String(threads),
+      '--repeat-penalty', String(repeatPenalty),
+      '--repeat-last-n', String(repeatLastN),
+      '--no-display-prompt',
+      '-cnv',
+      '-st',
+      ...(cacheRamMb > 0 ? ['--cache-ram', String(cacheRamMb)] : []),
+      '--no-warmup',
+      '--no-perf',
+      '--simple-io'
+    ];
+    try {
+      const stdout = await runCommand(llamaCli, feedbackArgs, feedbackTimeoutMs);
+      process.stdout.write(JSON.stringify(parseFeedbackOutput(stdout)));
+    } catch (error) {
+      fail(`Dialogue feedback failed: ${error.message}`);
+    }
+    return;
+  }
+
+  const { systemPrompt, userPrompt } = buildDialoguePrompts(request, !!request.compactRetry);
+  const maxTokens = Math.round(clampNumber(dialogueConfig.maxTokens, 110, 32, 1024));
+  const contextSize = Math.round(clampNumber(dialogueConfig.contextSize, 2048, 512, 8192));
   const timeoutMs = Math.round(clampNumber(dialogueConfig.timeoutSeconds, 120, 15, 600) * 1000);
   const args = [
     '-m', modelPath,
@@ -342,6 +461,8 @@ async function main() {
     '--temp', String(temperature),
     '-c', String(contextSize),
     '-t', String(threads),
+    '--repeat-penalty', String(repeatPenalty),
+    '--repeat-last-n', String(repeatLastN),
     '--no-display-prompt',
     '-cnv',
     '-st',
@@ -365,6 +486,8 @@ async function main() {
         '--temp', String(temperature),
         '-c', String(contextSize),
         '-t', String(threads),
+        '--repeat-penalty', String(repeatPenalty),
+        '--repeat-last-n', String(repeatLastN),
         '--no-display-prompt',
         '-cnv',
         '-st',

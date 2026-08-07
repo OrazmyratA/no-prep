@@ -60,6 +60,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAiSpeakingRuntimeStatus: (input) => ipcRenderer.invoke('ai-speaking:get-runtime-status', input ?? {}),
   aiSpeakingTranscribeAudio: (input) => ipcRenderer.invoke('ai-speaking:transcribe-audio', input ?? {}),
   aiSpeakingGenerateResponse: (input) => ipcRenderer.invoke('ai-speaking:generate-response', input ?? {}),
+  aiSpeakingGenerateSessionFeedback: (input) => ipcRenderer.invoke('ai-speaking:generate-session-feedback', input ?? {}),
   aiSpeakingCloseDialogueSession: (input) => ipcRenderer.invoke('ai-speaking:close-dialogue-session', input ?? {}),
   aiSpeakingSynthesizeSpeech: (input) => ipcRenderer.invoke('ai-speaking:synthesize-speech', input ?? {}),
   getBookAssetUrl: (bookId, relativePath) => ipcRenderer.sendSync('books:get-asset-url', String(bookId ?? ''), String(relativePath ?? '')),

@@ -1,4 +1,5 @@
 import { InteractiveBook } from '../../../core/book.model';
+import { showAppNotification } from '../../../core/notification';
 
 type UnsavedChoice = 'save' | 'discard' | 'cancel';
 
@@ -70,6 +71,8 @@ export class BookCreatorSaveController {
     if (!previous) return;
     if (current) {
       this.creator.redoStack.push(current);
+    } else {
+      this.warnHistoryLimited();
     }
     this.restoreBookSnapshot(previous);
   }
@@ -81,6 +84,8 @@ export class BookCreatorSaveController {
     if (!next) return;
     if (current) {
       this.creator.undoStack.push(current);
+    } else {
+      this.warnHistoryLimited();
     }
     this.restoreBookSnapshot(next);
   }
@@ -109,7 +114,10 @@ export class BookCreatorSaveController {
   }
 
   pushUndoSnapshot(snapshot: string): void {
-    if (!snapshot) return;
+    if (!snapshot) {
+      this.warnHistoryLimited();
+      return;
+    }
     if (this.creator.undoStack[this.creator.undoStack.length - 1] === snapshot) return;
     this.creator.undoStack.push(snapshot);
     while (this.creator.undoStack.length > this.maxHistoryEntries) {
@@ -160,6 +168,13 @@ export class BookCreatorSaveController {
     this.creator.redoStack = [];
     this.creator.pendingHistorySnapshot = '';
     this.creator.historyCaptureActive = false;
+    this.creator.historyLimitWarningShown = false;
+  }
+
+  private warnHistoryLimited(): void {
+    if (this.creator.historyLimitWarningShown) return;
+    this.creator.historyLimitWarningShown = true;
+    showAppNotification(this.creator.languageService.translate('creatorHistoryLimitWarning'), 'info');
   }
 
   async confirmSaveBeforeLeaving(): Promise<boolean> {
@@ -179,7 +194,7 @@ export class BookCreatorSaveController {
   }
 
   async saveBeforeBookFileUpload(): Promise<boolean> {
-    const confirmed = window.confirm(this.creator.languageService.translate('creatorSaveBeforeUpload'));
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorSaveBeforeUpload'));
     if (!confirmed) return false;
     return this.save();
   }
@@ -229,9 +244,9 @@ export class BookCreatorSaveController {
       }
     }
 
-    const save = window.confirm(this.creator.languageService.translate('creatorUnsavedChangesPrompt'));
+    const save = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorUnsavedChangesPrompt'));
     if (save) return 'save';
-    const discard = window.confirm(this.creator.languageService.translate('creatorLeaveWithoutSaving'));
+    const discard = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorLeaveWithoutSaving'));
     return discard ? 'discard' : 'cancel';
   }
 }

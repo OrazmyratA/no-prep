@@ -229,6 +229,12 @@
         aria-label="Select matching endpoint">
         <span></span>
       </button>
+      <span
+        *ngIf="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) !== 'unchecked'"
+        class="task-result-badge"
+        [class.task-result-correct]="reader.getTaskResult(element) === 'correct'"
+        [class.task-result-incorrect]="reader.getTaskResult(element) === 'incorrect'"
+        aria-hidden="true">{{ reader.getTaskResult(element) === 'correct' ? '✓' : '✗' }}</span>
     </div>
 
     <button

@@ -76,6 +76,26 @@ export interface AiSpeakingDialogueResult {
   shouldEnd?: boolean;
 }
 
+export interface AiSpeakingFeedbackTurn {
+  speaker: 'student' | 'ai';
+  text: string;
+  wordsPerMinute?: number;
+}
+
+export interface AiSpeakingSessionFeedbackInput {
+  config: AiSpeakingTaskConfig;
+  transcript: AiSpeakingFeedbackTurn[];
+  language?: string;
+  packId?: string;
+}
+
+export interface AiSpeakingSessionFeedbackResult {
+  fluency: string;
+  vocabulary: string;
+  grammar: string;
+  summary: string;
+}
+
 export interface AiSpeakingSynthesisInput {
   text: string;
   language: string;
@@ -224,6 +244,23 @@ export class AiSpeakingRuntimeService {
       responseText: String(response.result?.responseText || ''),
       feedback: response.result?.feedback ? String(response.result.feedback) : undefined,
       shouldEnd: !!response.result?.shouldEnd
+    };
+  }
+
+  async generateSessionFeedback(input: AiSpeakingSessionFeedbackInput): Promise<AiSpeakingSessionFeedbackResult> {
+    const api = window?.electronAPI;
+    if (typeof api?.aiSpeakingGenerateSessionFeedback !== 'function') {
+      throw new Error('Offline speaking feedback engine is not connected yet.');
+    }
+    const response = await api.aiSpeakingGenerateSessionFeedback(input);
+    if (!response?.ok) {
+      throw new Error(response?.message || 'Offline speaking feedback failed.');
+    }
+    return {
+      fluency: String(response.result?.fluency || ''),
+      vocabulary: String(response.result?.vocabulary || ''),
+      grammar: String(response.result?.grammar || ''),
+      summary: String(response.result?.summary || '')
     };
   }
 

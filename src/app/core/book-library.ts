@@ -62,6 +62,8 @@ export class BookLibraryService {
   private progressSubject = new BehaviorSubject<BookOperationProgress | null>(null);
   readonly progress$ = this.progressSubject.asObservable();
   private androidAssetUrlCache = new Map<string, string>();
+  private pendingRefresh: Promise<void> | null = null;
+  private pendingBookSaves = new Map<string, Promise<BookRegistryItem | null>>();
   private readonly androidBooksRoot = 'NoPrep/Books';
 
   constructor(
@@ -128,6 +130,15 @@ export class BookLibraryService {
   }
 
   async refresh(): Promise<void> {
+    if (this.pendingRefresh) return this.pendingRefresh;
+    const run = this.performRefresh().finally(() => {
+      if (this.pendingRefresh === run) this.pendingRefresh = null;
+    });
+    this.pendingRefresh = run;
+    return run;
+  }
+
+  private async performRefresh(): Promise<void> {
     if (this.isDesktopAvailable) {
       const response = await this.invoke<BookRegistryItem[]>('getBookRegistry');
       if (response.ok) {
@@ -373,6 +384,8 @@ export class BookLibraryService {
       const response = await this.invoke<void>('deleteBook', { bookId });
       if (response.ok) {
         await db.bookTaskResponses.where('bookId').equals(bookId).delete();
+        await db.bookAnnotations.delete(bookId).catch(() => undefined);
+        await db.bookSpeakingAttempts.where('bookId').equals(bookId).delete();
         showAppNotification(this.t('bookLibBookDeleted'), 'success');
         await this.refresh();
         return true;
@@ -391,7 +404,7 @@ export class BookLibraryService {
       this.booksSubject.next(this.booksSubject.value.filter((book) => book.id !== bookId));
       await db.bookTaskResponses.where('bookId').equals(bookId).delete();
       await db.bookAnnotations.delete(bookId).catch(() => undefined);
-      await db.bookAssets.where('bookId').equals(bookId).delete().catch(() => undefined);
+      await db.bookSpeakingAttempts.where('bookId').equals(bookId).delete();
       showAppNotification(this.t('bookLibBookDeleted'), 'success');
       await this.refresh();
       return true;
@@ -435,6 +448,17 @@ export class BookLibraryService {
   }
 
   async saveBook(book: InteractiveBook): Promise<BookRegistryItem | null> {
+    const previous = this.pendingBookSaves.get(book.id) ?? Promise.resolve(null);
+    const run: Promise<BookRegistryItem | null> = previous.catch(() => null).then(() => this.performSaveBook(book));
+    this.pendingBookSaves.set(book.id, run);
+    const clearIfCurrent = () => {
+      if (this.pendingBookSaves.get(book.id) === run) this.pendingBookSaves.delete(book.id);
+    };
+    run.then(clearIfCurrent, clearIfCurrent);
+    return run;
+  }
+
+  private async performSaveBook(book: InteractiveBook): Promise<BookRegistryItem | null> {
     if (this.isDesktopAvailable) {
       const response = await this.invoke<BookRegistryItem>('saveBook', { bookId: book.id, book });
       return this.handleBookMutation(response, this.t('bookLibBookSaved'));
@@ -785,7 +809,7 @@ export class BookLibraryService {
         .filter((file) => file.type === 'directory')
         .map(async (file) => {
           const book = await this.readAndroidBook(file.name, false);
-          return book ? this.toAndroidRegistryItem(book) : null;
+          return book ? await this.toAndroidRegistryItem(book) : null;
         })
     );
 
@@ -826,10 +850,8 @@ export class BookLibraryService {
       encoding: Encoding.UTF8
     });
     await this.warmAndroidBookAssets(nextBook);
-    const registry = this.toAndroidRegistryItem(nextBook);
+    const registry = await this.toAndroidRegistryItem(nextBook);
     if (showRefresh) {
-      await this.refresh();
-    } else {
       await this.refresh();
     }
     return registry;
@@ -1197,16 +1219,31 @@ export class BookLibraryService {
     }).catch(() => undefined);
   }
 
-  private toAndroidRegistryItem(book: InteractiveBook): BookRegistryItem {
+  private async toAndroidRegistryItem(book: InteractiveBook): Promise<BookRegistryItem> {
     return {
       id: book.id,
       title: book.title || 'Untitled Book',
       folderPath: `android-data://${this.androidBookPath(book.id)}`,
       coverPath: book.cover,
       pageCount: book.pages.length,
+      sizeBytes: await this.getAndroidFolderSizeBytes(this.androidBookPath(book.id)),
       createdAt: book.createdAt,
       updatedAt: book.updatedAt
     };
+  }
+
+  private async getAndroidFolderSizeBytes(path: string, depth = 0): Promise<number> {
+    if (depth > 8) return 0;
+    const listing = await Filesystem.readdir({ path, directory: Directory.Data }).catch(() => ({ files: [] }));
+    let total = 0;
+    for (const file of listing.files) {
+      if (file.type === 'directory') {
+        total += await this.getAndroidFolderSizeBytes(`${path}/${file.name}`, depth + 1);
+      } else {
+        total += file.size || 0;
+      }
+    }
+    return total;
   }
 
   private androidBookPath(bookId: string, relativePath = ''): string {

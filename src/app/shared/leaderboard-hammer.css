@@ -1,0 +1,46 @@
+:host {
+  display: contents;
+}
+
+.lb-hammer {
+  position: relative;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  box-shadow: 0 8px 16px rgba(239, 68, 68, 0.4);
+  font-size: 1.3rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: left 220ms ease, top 220ms ease, transform 150ms ease, box-shadow 150ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lb-hammer span {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.lb-hammer:hover {
+  transform: scale(1.06);
+}
+
+.lb-hammer-floating {
+  position: fixed;
+  z-index: 9450;
+  transform: translate(-50%, -50%) rotate(-25deg);
+  transition: none;
+}
+
+.lb-hammer-dragging {
+  cursor: grabbing;
+  box-shadow: 0 14px 26px rgba(239, 68, 68, 0.55);
+  /* Let elementFromPoint() see through the hammer to the row underneath during hit-testing;
+     pointer capture (set on pointerdown) still routes move/up events to this element regardless. */
+  pointer-events: none;
+}

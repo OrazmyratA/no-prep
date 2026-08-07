@@ -4,7 +4,13 @@ type CreatorInkKind = 'ink' | 'highlighter';
 type CreatorPoint = { x: number; y: number };
 
 export class BookCreatorMarkController {
+  private inkRedrawFrame = 0;
+
   constructor(private readonly creator: any) {}
+
+  destroy(): void {
+    this.cancelCreatorInkRedraw();
+  }
 
   startCreatorInk(event: PointerEvent, kind: CreatorInkKind): void {
     const page = this.creator.selectedPage;
@@ -29,13 +35,29 @@ export class BookCreatorMarkController {
     const previous = state.points[state.points.length - 1];
     if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) < 0.0025) return;
     state.points.push(point);
-    this.redrawCreatorLiveInk();
+    this.scheduleCreatorInkRedraw();
+  }
+
+  private scheduleCreatorInkRedraw(): void {
+    if (this.inkRedrawFrame) return;
+    this.inkRedrawFrame = requestAnimationFrame(() => {
+      this.inkRedrawFrame = 0;
+      this.redrawCreatorLiveInk();
+    });
+  }
+
+  private cancelCreatorInkRedraw(): void {
+    if (this.inkRedrawFrame) {
+      cancelAnimationFrame(this.inkRedrawFrame);
+      this.inkRedrawFrame = 0;
+    }
   }
 
   finishCreatorInk(event: PointerEvent): void {
     const state = this.creator.creatorInkState;
     if (!state) return;
     this.updateCreatorInk(event?.clientX ?? 0, event?.clientY ?? 0);
+    this.cancelCreatorInkRedraw();
     this.creator.editorCanvas?.nativeElement.releasePointerCapture?.(event.pointerId);
     const page = this.creator.selectedPage;
     if (page) {
@@ -61,6 +83,7 @@ export class BookCreatorMarkController {
   cancelCreatorInk(): void {
     const state = this.creator.creatorInkState;
     if (!state) return;
+    this.cancelCreatorInkRedraw();
     const page = this.creator.selectedPage;
     if (page && state.points.length) {
       page.elements.push(this.createCreatorStrokeElement(state.points, state.kind));

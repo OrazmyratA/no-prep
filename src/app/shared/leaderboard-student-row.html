@@ -1,0 +1,16 @@
+<div class="lb-row-rank" [class]="medalClass">
+  <span *ngIf="medalEmoji" class="lb-row-rank-medal" aria-hidden="true">{{ medalEmoji }}</span>
+  <span *ngIf="!medalEmoji" class="lb-row-rank-number">{{ rank }}</span>
+</div>
+
+<div class="lb-row-student">
+  <div class="lb-row-avatar">
+    <img *ngIf="imageUrl" [src]="imageUrl" [alt]="entry.text">
+    <span *ngIf="!imageUrl" class="lb-row-avatar-initial">{{ initial }}</span>
+  </div>
+  <span class="lb-row-name">{{ entry.text }}</span>
+</div>
+
+<div class="lb-row-score">
+  <app-leaderboard-star-rating [points]="entry.points" (starClick)="onStarClick()"></app-leaderboard-star-rating>
+</div>

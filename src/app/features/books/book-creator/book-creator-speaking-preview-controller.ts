@@ -28,23 +28,26 @@ export class BookCreatorSpeakingPreviewController {
 
   async previewSpeakingAi(element: BookElement): Promise<void> {
     if (element.type !== 'speakingAi') return;
+    const token = ++this.creator.speakingPreviewToken;
     this.creator.speakingPreviewElementId = element.id;
     this.creator.checkingSpeakingPreview = true;
     this.creator.cdr.detectChanges();
     try {
-      this.creator.speakingPreviewStatus = await this.creator.aiSpeakingRuntime.getStatusForLanguage(
+      const status = await this.creator.aiSpeakingRuntime.getStatusForLanguage(
         String(element.data['language'] || 'en')
       );
-      showAppNotification(
-        this.creator.speakingPreviewStatus.reason,
-        this.creator.speakingPreviewStatus.conversationAvailable ? 'success' : 'info'
-      );
+      if (token !== this.creator.speakingPreviewToken) return;
+      this.creator.speakingPreviewStatus = status;
+      showAppNotification(status.reason, status.conversationAvailable ? 'success' : 'info');
     } catch (error: any) {
+      if (token !== this.creator.speakingPreviewToken) return;
       this.creator.speakingPreviewStatus = null;
       showAppNotification(error?.message || 'Could not check AI speaking packs.', 'error');
     } finally {
-      this.creator.checkingSpeakingPreview = false;
-      this.creator.cdr.detectChanges();
+      if (token === this.creator.speakingPreviewToken) {
+        this.creator.checkingSpeakingPreview = false;
+        this.creator.cdr.detectChanges();
+      }
     }
   }
 

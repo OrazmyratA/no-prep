@@ -1,4 +1,5 @@
 import { BookWorkbook } from '../../../core/book.model';
+import { showAppNotification } from '../../../core/notification';
 
 export class BookCreatorPageImportController {
   private draggedPageIndex: number | null = null;
@@ -117,7 +118,7 @@ export class BookCreatorPageImportController {
     const page = this.creator.selectedPage;
     if (!page) return;
     if (!page.hidden && this.creator.visiblePageCount <= 1) {
-      window.alert(this.creator.languageService.translate('creatorKeepOnePageVisible'));
+      showAppNotification(this.creator.languageService.translate('creatorKeepOnePageVisible'), 'info');
       return;
     }
     this.creator.captureHistory();

@@ -49,7 +49,8 @@ export class BookReaderSpeakingSessionController {
             : latest
         ), startedAt);
         const durationSeconds = sorted.reduce((total: number, attempt: BookSpeakingAttempt) => total + Math.max(0, Math.round(attempt.durationSeconds || 0)), 0);
-        return { sessionId, sessionName, attempts: sorted, startedAt, updatedAt, durationSeconds };
+        const feedback = this.reader.parseSpeakingSessionFeedback(sorted);
+        return { sessionId, sessionName, attempts: sorted, startedAt, updatedAt, durationSeconds, feedback };
       })
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   }
@@ -153,10 +154,15 @@ export class BookReaderSpeakingSessionController {
     if (this.reader.speakingConversationActive) {
       await this.reader.stopSpeakingConversation(true);
     }
+    const feedbackElement = this.reader.activeSpeakingElement;
+    const feedbackSessionId = this.reader.activeSpeakingSessionId;
     this.reader.resetSpeakingSessionState();
     this.reader.moveOwlToCorner();
     showAppNotification('Speaking session finished.', 'success');
     this.reader.forceUiRefresh();
+    if (feedbackElement && feedbackSessionId) {
+      void this.reader.generateSpeakingSessionFeedback(feedbackElement, feedbackSessionId);
+    }
   }
 
   async startSpeakingSession(): Promise<void> {

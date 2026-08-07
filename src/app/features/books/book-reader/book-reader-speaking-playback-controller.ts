@@ -123,6 +123,17 @@ export class BookReaderSpeakingPlaybackController {
         ].join(''));
       }
 
+      const feedback = session.feedback;
+      const hasFeedback = !!(feedback && (feedback.fluency || feedback.vocabulary || feedback.grammar || feedback.summary));
+      const feedbackSection = hasFeedback ? [
+        '<section><h2>Speaking Feedback</h2>',
+        feedback!.fluency ? `<h3>Fluency & Coherence</h3><p>${escapeHtml(feedback!.fluency)}</p>` : '',
+        feedback!.vocabulary ? `<h3>Vocabulary</h3><p>${escapeHtml(feedback!.vocabulary)}</p>` : '',
+        feedback!.grammar ? `<h3>Grammar</h3><p>${escapeHtml(feedback!.grammar)}</p>` : '',
+        feedback!.summary ? `<p><em>${escapeHtml(feedback!.summary)}</em></p>` : '',
+        '</section>'
+      ].join('') : '';
+
       const report = [
         '<!doctype html><html><head><meta charset="utf-8">',
         '<title>NoPrep Speaking Conversation</title>',
@@ -138,6 +149,7 @@ export class BookReaderSpeakingPlaybackController {
         `<p class="files"><strong>Conversation audio:</strong>\n${escapeHtml(conversationAudio ? conversationAudioFilename : 'No combined audio could be created')}</p>`,
         '</section>',
         `<section><h2>Conversation</h2>${transcriptSections.join('')}</section>`,
+        feedbackSection,
         '</body></html>'
       ].join('');
 
@@ -319,8 +331,9 @@ export class BookReaderSpeakingPlaybackController {
     if (!this.reader.speakingPlaybackAudio || !this.reader.playingSpeakingAttemptId) return;
     const audio = this.reader.speakingPlaybackAudio;
     const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+    // No template currently renders this percentage (the old attempt-progress bar was removed),
+    // so this only updates the stored number — it must not trigger Angular CD every animation frame.
     this.reader.speakingProgress[this.reader.playingSpeakingAttemptId] = duration ? (audio.currentTime / duration) * 100 : 0;
-    this.reader.forceUiRefresh();
     this.reader.speakingPlaybackFrame = requestAnimationFrame(() => this.updateSpeakingPlaybackProgress());
   }
 

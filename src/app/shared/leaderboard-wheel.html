@@ -1,0 +1,10 @@
+<div class="lb-wheel-wrapper">
+  <canvas #wheelCanvas [width]="canvasSize" [height]="canvasSize" class="lb-wheel-canvas"></canvas>
+  <button
+    type="button"
+    class="lb-wheel-spin-btn"
+    (click)="spin()"
+    [disabled]="spinning || entries.length === 0">
+    {{ spinning ? ('spinWheelSpinning' | translate) : ('spinWheelSpin' | translate) }}
+  </button>
+</div>

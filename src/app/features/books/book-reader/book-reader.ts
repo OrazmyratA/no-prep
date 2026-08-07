@@ -13,7 +13,7 @@ import { PlatformFileService } from '../../../core/platform-file';
 import { BookTaskResponseService } from '../../../core/book-task-responses';
 import { BookSpeakingAttemptService } from '../../../core/book-speaking-attempts';
 import { AiLanguagePackService, InstalledAiLanguagePack } from '../../../core/ai-language-packs';
-import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus, AiSpeakingTaskConfig, AiSpeakingTurn } from '../../../core/ai-speaking-runtime';
+import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus, AiSpeakingSessionFeedbackResult, AiSpeakingTaskConfig, AiSpeakingTurn } from '../../../core/ai-speaking-runtime';
 import { isBookTaskElement } from '../../../core/book-tasks';
 import {
   BookAnnotationStroke,
@@ -112,6 +112,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   readerSpreadWidthPx: number | null = null;
   private readerInteractionFrame = 0;
   private drawingCanvasFrame = 0;
+  private destroyed = false;
   pdfUrl = '';
   pageAspectRatio = '3 / 4';
   loading = true;
@@ -180,6 +181,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   readerThumbScrollTop = 0;
   readerThumbViewportHeight = 720;
   readerThumbItemHeight = 305;
+  private readerThumbScrollFrame = 0;
+  private pendingReaderThumbScrollTarget: HTMLElement | null = null;
   expandedElement: BookElement | null = null;
   videoFullscreen = false;
   private electronVideoFullscreenFallbackActive = false;
@@ -273,6 +276,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     this.routeSubscription?.unsubscribe();
     this.stopGuideAudio();
     void this.stopSpeakingConversation(false);
@@ -283,6 +287,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.layoutController.destroy();
     if (this.readerInteractionFrame) {
       cancelAnimationFrame(this.readerInteractionFrame);
+    }
+    if (this.readerThumbScrollFrame) {
+      cancelAnimationFrame(this.readerThumbScrollFrame);
     }
     if (this.drawingCanvasFrame) {
       cancelAnimationFrame(this.drawingCanvasFrame);
@@ -1195,17 +1202,17 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.speakingSessionController.getSpeakingAttempts(element);
   }
 
-  trackBySpeakingAttemptId(_index: number, attempt: BookSpeakingAttempt): string {
+  trackBySpeakingAttemptId = (_index: number, attempt: BookSpeakingAttempt): string => {
     return this.speakingSessionController.trackBySpeakingAttemptId(_index, attempt);
-  }
+  };
 
-  trackBySpeakingSessionId(_index: number, session: SpeakingSessionSummary): string {
+  trackBySpeakingSessionId = (_index: number, session: SpeakingSessionSummary): string => {
     return this.speakingSessionController.trackBySpeakingSessionId(_index, session);
-  }
+  };
 
-  trackBySpeakingChatTurnId(_index: number, turn: SpeakingChatTurn): string {
+  trackBySpeakingChatTurnId = (_index: number, turn: SpeakingChatTurn): string => {
     return this.speakingSessionController.trackBySpeakingChatTurnId(_index, turn);
-  }
+  };
 
   getSpeakingSessions(element: BookElement | null): SpeakingSessionSummary[] {
     return this.speakingSessionController.getSpeakingSessions(element);
@@ -1302,9 +1309,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.speakingPackController.getInstalledAiPacks();
   }
 
-  trackByAiPackId(_index: number, pack: InstalledAiLanguagePack): string {
+  trackByAiPackId = (_index: number, pack: InstalledAiLanguagePack): string => {
     return this.speakingPackController.trackByAiPackId(_index, pack);
-  }
+  };
 
   getAiPackQualityLabel(pack: InstalledAiLanguagePack): string {
     return this.speakingPackController.getAiPackQualityLabel(pack);
@@ -1669,12 +1676,21 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   onReaderThumbScroll(event: Event): void {
     const target = event.target as HTMLElement | null;
     if (!target) return;
-    this.readerThumbScrollTop = target.scrollTop;
-    this.readerThumbViewportHeight = target.clientHeight || this.readerThumbViewportHeight;
-    const firstThumb = target.querySelector<HTMLElement>('.reader-page-option');
-    if (firstThumb?.offsetHeight) {
-      this.readerThumbItemHeight = firstThumb.offsetHeight + 8;
-    }
+    this.pendingReaderThumbScrollTarget = target;
+    if (this.readerThumbScrollFrame) return;
+    this.readerThumbScrollFrame = requestAnimationFrame(() => {
+      this.readerThumbScrollFrame = 0;
+      const scrollTarget = this.pendingReaderThumbScrollTarget;
+      this.pendingReaderThumbScrollTarget = null;
+      if (!scrollTarget) return;
+      this.readerThumbScrollTop = scrollTarget.scrollTop;
+      this.readerThumbViewportHeight = scrollTarget.clientHeight || this.readerThumbViewportHeight;
+      const firstThumb = scrollTarget.querySelector<HTMLElement>('.reader-page-option');
+      if (firstThumb?.offsetHeight) {
+        this.readerThumbItemHeight = firstThumb.offsetHeight + 8;
+      }
+      this.cdr.detectChanges();
+    });
   }
 
   @HostListener('window:pointerup')
@@ -1735,6 +1751,29 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private compareSpeakingAttemptsByTurn(a: BookSpeakingAttempt, b: BookSpeakingAttempt): number {
     return this.speakingAiController.compareSpeakingAttemptsByTurn(a, b);
+  }
+
+  private async generateSpeakingSessionFeedback(element: BookElement, sessionId: string): Promise<void> {
+    await this.speakingAiController.generateSpeakingSessionFeedback(element, sessionId);
+  }
+
+  private parseSpeakingSessionFeedback(attempts: BookSpeakingAttempt[]): AiSpeakingSessionFeedbackResult | undefined {
+    for (let index = attempts.length - 1; index >= 0; index -= 1) {
+      const raw = attempts[index].sessionFeedback;
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          fluency: String(parsed?.fluency || ''),
+          vocabulary: String(parsed?.vocabulary || ''),
+          grammar: String(parsed?.grammar || ''),
+          summary: String(parsed?.summary || '')
+        };
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
   }
   private findSpeakingAttemptByKey(key: string): BookSpeakingAttempt | null {
     for (const attempts of this.speakingAttempts.values()) {
@@ -2019,11 +2058,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private forceUiRefresh(): void {
+    if (this.destroyed) return;
     this.zone.run(() => {
+      if (this.destroyed) return;
       this.cdr.detectChanges();
       this.scheduleSpeakingChatScrollToBottom();
       requestAnimationFrame(() => {
+        if (this.destroyed) return;
         this.zone.run(() => {
+          if (this.destroyed) return;
           this.cdr.detectChanges();
           this.scheduleSpeakingChatScrollToBottom();
         });

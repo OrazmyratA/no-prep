@@ -88,7 +88,7 @@ export const GAMES: GameConfig[] = [
     icon: '\u{1F50E}',
     requiresSettings: false,
   },
-    {
+  {
     id: 'line-trace-match',
     nameKey: 'gameLineTraceMatchName',
     descKey: 'gameLineTraceMatchDesc',

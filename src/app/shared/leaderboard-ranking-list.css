@@ -1,0 +1,33 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.lb-list-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  padding: 0.15rem;
+  min-height: 0;
+}
+
+/* Used when the wheel drawer is closed and the list has the full width to itself. */
+.lb-list-rows.lb-two-column {
+  display: block;
+  columns: 2;
+  column-gap: 0.6rem;
+}
+
+.lb-list-rows.lb-two-column > * {
+  break-inside: avoid;
+  margin-bottom: 0.25rem;
+}
+
+.lb-list-empty {
+  text-align: center;
+  color: #6b7280;
+  padding: 1.5rem 0.5rem;
+}

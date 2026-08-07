@@ -1,5 +1,9 @@
 <div class="topics-page min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
   <div class="topics-shell mx-auto w-full max-w-screen-xl">
+    <div *ngIf="leaderboardState.isSelecting" class="leaderboard-picker-banner">
+      <span>{{ 'leaderboardPickerBannerHint' | translate }}</span>
+      <button type="button" (click)="leaderboardState.cancelTopicSelection()">{{ 'leaderboardPickerBannerCancel' | translate }}</button>
+    </div>
     <!-- Header -->
 <div class="topics-header flex flex-wrap lg:flex-nowrap justify-between items-center gap-3 mb-8">
   <!-- Left side: title + category switch + search -->

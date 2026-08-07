@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { db, Topic, Item } from './db.model';
+import { db, Topic, Item, LeaderboardScore } from './db.model';
 
 @Injectable({ providedIn: 'root' })
 export class DbService {
@@ -86,5 +86,31 @@ async duplicateTopic(topicId: number): Promise<number | null> {
 
   async getItemsSnapshot(topicId: number): Promise<Item[]> {
     return await db.items.where('topicId').equals(topicId).sortBy('order');
+  }
+
+  // Leaderboard scores are read once per topic load and mutated locally by the caller,
+  // so unlike the methods above they don't touch topics$/refreshTopics().
+
+  async getLeaderboardScores(topicId: number): Promise<LeaderboardScore[]> {
+    return await db.leaderboardScores.where('topicId').equals(topicId).toArray();
+  }
+
+  async adjustLeaderboardScore(topicId: number, itemId: number, delta: number): Promise<number> {
+    // Plain sequential awaits (no db.transaction wrapper) — Dexie's transaction-zone tracking
+    // breaks under Angular's zone.js when the transaction scope uses native async/await,
+    // causing a "PrematureCommitError". No other method in this file uses transactions either.
+    const existing = await db.leaderboardScores.where('[topicId+itemId]').equals([topicId, itemId]).first();
+    const now = new Date();
+    if (existing) {
+      const points = existing.points + delta;
+      await db.leaderboardScores.update(existing.id!, { points, updatedAt: now });
+      return points;
+    }
+    await db.leaderboardScores.add({ topicId, itemId, points: delta, updatedAt: now });
+    return delta;
+  }
+
+  async resetLeaderboardScores(topicId: number): Promise<void> {
+    await db.leaderboardScores.where('topicId').equals(topicId).delete();
   }
 }

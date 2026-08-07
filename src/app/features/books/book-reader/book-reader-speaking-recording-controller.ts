@@ -127,6 +127,16 @@ export class BookReaderSpeakingRecordingController {
       ? (this.reader.speakingAttempts.get(activeElementId) ?? []).find((attempt: BookSpeakingAttempt) => attempt.key === key)
       : this.reader.findSpeakingAttemptByKey(key);
     try {
+      if (!saveAttempt) {
+        if (activeElementId) {
+          const remaining = (this.reader.speakingAttempts.get(activeElementId) ?? []).filter(
+            (attempt: BookSpeakingAttempt) => attempt.key !== key
+          );
+          this.reader.speakingAttempts.set(activeElementId, remaining);
+        }
+        await this.reader.speakingAttemptService.delete(key).catch(() => undefined);
+        return;
+      }
       const durationSeconds = Math.max(1, Math.round((Date.now() - this.reader.speakingAttemptStartedAt) / 1000));
       if (activeAttempt) {
         activeAttempt.durationSeconds = durationSeconds;

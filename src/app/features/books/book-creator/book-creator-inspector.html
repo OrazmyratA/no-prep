@@ -465,16 +465,21 @@
         <span class="recording-saving-hint" *ngIf="creator.savingRecording">{{ 'save' | translate }}…</span>
       </div>
       <div class="guide-place-hint" *ngIf="creator.placingGuidePin">Click the book page to place this position.</div>
-      <div class="audio-list" *ngIf="creator.getGuideDotTracks(element).length">
+      <div class="audio-list" role="listbox" *ngIf="creator.getGuideDotTracks(element).length">
         <div
           class="audio-row"
           *ngFor="let track of creator.getGuideDotTracks(element); let i = index; trackBy: creator.trackByGuideTrackId"
           [class.selected]="track.id === creator.selectedGuideTrackId"
           draggable="true"
+          tabindex="0"
+          role="option"
+          [attr.aria-selected]="track.id === creator.selectedGuideTrackId"
           (dragstart)="creator.onGuideAudioDragStart(i, $event)"
           (dragover)="creator.onGuideAudioDragOver($event)"
           (drop)="creator.onGuideAudioDrop(element, i, $event)"
-          (click)="creator.selectGuideTrack(element, track)">
+          (click)="creator.selectGuideTrack(element, track)"
+          (keydown.enter)="creator.selectGuideTrack(element, track)"
+          (keydown.space)="$event.preventDefault(); creator.selectGuideTrack(element, track)">
           <div
             class="guide-track-timeline"
             (pointerdown)="creator.startGuideTrackSeekDrag($event, element, track)"

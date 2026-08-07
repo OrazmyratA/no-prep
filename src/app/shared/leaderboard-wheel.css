@@ -1,0 +1,48 @@
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.lb-wheel-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lb-wheel-canvas {
+  width: min(100%, 360px);
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.25));
+}
+
+.lb-wheel-spin-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(3.6rem, 15vmin, 5rem);
+  height: clamp(3.6rem, 15vmin, 5rem);
+  border-radius: 9999px;
+  border: 4px solid white;
+  background: linear-gradient(135deg, #facc15, #f97316);
+  color: white;
+  font-weight: 800;
+  font-size: clamp(0.7rem, 2.2vmin, 0.95rem);
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  transition: transform 150ms ease;
+}
+
+.lb-wheel-spin-btn:hover:not(:disabled) {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.lb-wheel-spin-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

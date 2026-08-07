@@ -201,6 +201,55 @@ async function runDialogueGeneration(pack, input) {
   }
 }
 
+async function runDialogueFeedback(pack, input) {
+  const { runtimeReady, dialogueRunnerPath, dialogueRunnerAvailable, llamaCliPath, llamaCliAvailable } = await getAiRuntimeAvailability(pack);
+  if (!dialogueRunnerAvailable) {
+    throw new Error(`Dialogue runner is not installed in ${getAiRuntimesRoot()}.`);
+  }
+  if (!llamaCliAvailable) {
+    throw new Error(`llama.cpp CLI is not installed. Put llama-cli beside the AI runners or set NOPREP_LLAMA_CLI.`);
+  }
+  if (!runtimeReady.dialogue) {
+    throw new Error('AI pack dialogue model files are missing or not declared.');
+  }
+
+  const tempFolder = path.join(app.getPath('temp'), `noprep-dialogue-feedback-${createId('run')}`);
+  await fsp.mkdir(tempFolder, { recursive: true });
+  try {
+    const requestPath = path.join(tempFolder, 'request.json');
+    await fsp.writeFile(requestPath, JSON.stringify({
+      packId: pack.id,
+      language: pack.language,
+      packPath: pack.folderPath,
+      runtimeFiles: normalizeAiPackRuntimeFiles(pack.runtimeFiles || pack.runtime),
+      dialogueConfig: normalizeAiPackDialogueConfig(pack.dialogueConfig || pack.localDialogue || pack.llm || pack.llamaCpp),
+      llamaCliPath,
+      feedbackMode: true,
+      config: input?.config || {},
+      transcript: Array.isArray(input?.transcript) ? input.transcript.slice(-40) : []
+    }, null, 2), 'utf8');
+
+    const stdout = await execRuntimeText(dialogueRunnerPath, [requestPath], {
+      timeout: 10 * 60 * 1000,
+      maxBuffer: 10 * 1024 * 1024
+    });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      throw new Error('Dialogue runner returned invalid JSON.');
+    }
+    return {
+      fluency: String(parsed?.fluency || '').trim(),
+      vocabulary: String(parsed?.vocabulary || '').trim(),
+      grammar: String(parsed?.grammar || '').trim(),
+      summary: String(parsed?.summary || '').trim()
+    };
+  } finally {
+    await fsp.rm(tempFolder, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 async function convertAudioToWav(ffmpegPath, inputPath, outputPath) {
   await execFileText(ffmpegPath, [
     '-y',
@@ -239,7 +288,8 @@ function normalizeSttResult(value, fallbackLanguage) {
   return {
     runSttTranscription,
     runTtsSynthesis,
-    runDialogueGeneration
+    runDialogueGeneration,
+    runDialogueFeedback
   };
 }
 

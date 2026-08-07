@@ -96,7 +96,7 @@ export class BookCreatorGameController {
     if (element.type !== 'game') return;
     const topicId = Number(element.data['topicId']);
     const hasTopic = Number.isFinite(topicId) && topicId > 0;
-    const confirmed = window.confirm(this.creator.languageService.translate(hasTopic
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate(hasTopic
       ? 'creatorConfirmDeleteLinkedTopic'
       : 'creatorConfirmRemoveGameMarkerLink'));
     if (!confirmed) return;

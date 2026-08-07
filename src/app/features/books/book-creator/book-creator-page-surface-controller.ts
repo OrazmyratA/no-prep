@@ -3,10 +3,10 @@ import { BookWorkbook } from '../../../core/book.model';
 export class BookCreatorPageSurfaceController {
   constructor(private readonly creator: any) {}
 
-  deleteSelectedPage(): void {
+  async deleteSelectedPage(): Promise<void> {
     if (!this.creator.book || this.creator.activePages.length <= 1) return;
 
-    const confirmed = window.confirm(this.creator.languageService.translate('creatorConfirmDeletePage'));
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeletePage'));
     if (!confirmed) return;
 
     this.creator.captureHistory();
@@ -19,11 +19,11 @@ export class BookCreatorPageSurfaceController {
     this.creator.refreshSelectedPageRender();
   }
 
-  clearSelectedPageElements(): void {
+  async clearSelectedPageElements(): Promise<void> {
     const page = this.creator.selectedPage;
     if (!page || page.elements.length === 0) return;
 
-    const confirmed = window.confirm(this.creator.languageService.translate('creatorConfirmClearPageElements'));
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmClearPageElements'));
     if (!confirmed) return;
 
     this.creator.captureHistory();
@@ -33,14 +33,14 @@ export class BookCreatorPageSurfaceController {
     this.creator.selectedElementId = null;
   }
 
-  deleteActiveBookSurface(): void {
+  async deleteActiveBookSurface(): Promise<void> {
     if (!this.creator.book) return;
 
     if (this.creator.activePageSource === 'workbook') {
       const workbook = this.creator.activeWorkbook || this.creator.primaryWorkbook;
       if (!workbook) return;
 
-      const confirmed = window.confirm(this.creator.languageService.translate('creatorConfirmDeleteWorkbook'));
+      const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeleteWorkbook'));
       if (!confirmed) return;
 
       this.creator.captureHistory();
@@ -59,7 +59,7 @@ export class BookCreatorPageSurfaceController {
       return;
     }
 
-    const confirmed = window.confirm(this.creator.languageService.translate('creatorConfirmDeleteStudentBook'));
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeleteStudentBook'));
     if (!confirmed) return;
 
     this.creator.captureHistory();
@@ -81,12 +81,12 @@ export class BookCreatorPageSurfaceController {
     this.creator.refreshSelectedPageRender();
   }
 
-  deletePageAt(index: number, event?: Event): void {
+  async deletePageAt(index: number, event?: Event): Promise<void> {
     event?.stopPropagation();
     if (!this.creator.book || this.creator.book.pages.length <= 1) return;
     if (index < 0 || index >= this.creator.book.pages.length) return;
 
-    const confirmed = window.confirm(this.creator.languageService.translate('creatorConfirmDeletePage'));
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeletePage'));
     if (!confirmed) return;
 
     this.creator.captureHistory();
@@ -101,12 +101,12 @@ export class BookCreatorPageSurfaceController {
     this.creator.refreshSelectedPageRender();
   }
 
-  deleteWorkbookPageAt(workbook: BookWorkbook, index: number, event?: Event): void {
+  async deleteWorkbookPageAt(workbook: BookWorkbook, index: number, event?: Event): Promise<void> {
     event?.stopPropagation();
     if (!this.creator.book || workbook.pages.length <= 1) return;
     if (index < 0 || index >= workbook.pages.length) return;
 
-    const confirmed = window.confirm(this.creator.languageService.translate('creatorConfirmDeleteWorkbookPage'));
+    const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeleteWorkbookPage'));
     if (!confirmed) return;
 
     this.creator.captureHistory();

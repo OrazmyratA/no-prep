@@ -1,0 +1,24 @@
+<div class="lb-row-rank" [class]="medalClass">
+  <span *ngIf="medalEmoji" class="lb-row-rank-medal" aria-hidden="true">{{ medalEmoji }}</span>
+  <span *ngIf="!medalEmoji" class="lb-row-rank-number">{{ rank }}</span>
+</div>
+
+<div class="lb-row-student">
+  <div class="lb-row-avatar lb-row-team-emblem" [class]="emblemLayoutClass">
+    <ng-container *ngIf="memberAvatars.length; else noMembers">
+      <div *ngFor="let member of memberAvatars" class="lb-team-emblem-cell">
+        <img *ngIf="member.imageUrl" [src]="member.imageUrl" [alt]="member.text">
+        <span *ngIf="!member.imageUrl" [style.background]="entry.color">{{ (member.text || '?').charAt(0).toUpperCase() }}</span>
+      </div>
+      <div *ngIf="overflowCount > 0" class="lb-team-emblem-cell lb-team-emblem-overflow">+{{ overflowCount }}</div>
+    </ng-container>
+    <ng-template #noMembers>
+      <span class="lb-row-avatar-initial" [style.background]="entry.color">{{ initial }}</span>
+    </ng-template>
+  </div>
+  <span class="lb-row-name">{{ entry.text }}</span>
+</div>
+
+<div class="lb-row-score">
+  <app-leaderboard-star-rating [points]="entry.points" (starClick)="onStarClick()"></app-leaderboard-star-rating>
+</div>

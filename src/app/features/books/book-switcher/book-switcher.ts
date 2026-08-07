@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, Input, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
@@ -21,7 +21,8 @@ export class BookSwitcherComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private bookLibrary: BookLibraryService
+    private bookLibrary: BookLibraryService,
+    private elementRef: ElementRef<HTMLElement>
   ) {
     this.books$ = this.bookLibrary.books$;
   }
@@ -32,6 +33,19 @@ export class BookSwitcherComponent implements OnInit {
 
   toggle(): void {
     this.open = !this.open;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.open) return;
+    if (!this.elementRef.nativeElement.contains(event.target as Node)) {
+      this.open = false;
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    this.open = false;
   }
 
   async switchBook(book: BookRegistryItem): Promise<void> {

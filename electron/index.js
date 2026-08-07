@@ -173,6 +173,7 @@ const {
   getAiRuntimeAvailability,
   runSttTranscription,
   runDialogueGeneration,
+  runDialogueFeedback,
   runTtsSynthesis,
   normalizeAiLanguage,
   normalizeAiPackDialogueConfig
@@ -477,6 +478,7 @@ registerAiIpc({
   getLlamaCliPath,
   runSttTranscription,
   runDialogueGeneration,
+  runDialogueFeedback,
   closeWarmDialogueSessions,
   runTtsSynthesis
 });

@@ -54,6 +54,13 @@
   padding: 0.45rem;
 }
 
+.icon-btn:focus-visible,
+.icon-tool-btn:focus-visible,
+.color-dot:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 2px;
+}
+
 .icon-btn img,
 .icon-tool-btn img {
   width: 100%;
@@ -242,6 +249,11 @@
   cursor: not-allowed;
 }
 
+.toolbar-page-stepper button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 2px;
+}
+
 .toolbar-page-stepper input {
   width: 3rem;
   height: 1.75rem;
@@ -255,7 +267,8 @@
 
 .toolbar-page-stepper input:focus {
   border-color: #2563eb;
-  outline: none;
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 1px;
 }
 
 .toolbar-page-stepper span {

@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { BookAnnotations, BookSpeakingAttempt, BookTaskResponse, InteractiveBook } from './book.model';
+import { BookAnnotations, BookSpeakingAttempt, BookTaskResponse } from './book.model';
 
 export interface Topic {
   id?: number;
@@ -38,27 +38,18 @@ export interface ThemeSettings {
   updatedAt: Date;
 }
 
-export interface StoredBook {
-  id: string;
-  title: string;
-  book: InteractiveBook;
-  pageCount: number;
-  sizeBytes: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface StoredBookAnnotations {
   bookId: string;
   annotations: BookAnnotations;
   updatedAt: string;
 }
 
-export interface StoredBookAsset {
-  relativePath: string;
-  bookId: string;
-  dataUrl: string;
-  updatedAt: string;
+export interface LeaderboardScore {
+  id?: number;
+  topicId: number;
+  itemId: number;
+  points: number;
+  updatedAt: Date;
 }
 
 export class AppDatabase extends Dexie {
@@ -66,11 +57,10 @@ export class AppDatabase extends Dexie {
   items!: Table<Item, number>;
   themeBackgrounds!: Table<ThemeBackground, number>;
   themeSettings!: Table<ThemeSettings, string>;
-  books!: Table<StoredBook, string>;
   bookAnnotations!: Table<StoredBookAnnotations, string>;
-  bookAssets!: Table<StoredBookAsset, string>;
   bookTaskResponses!: Table<BookTaskResponse, string>;
   bookSpeakingAttempts!: Table<BookSpeakingAttempt, string>;
+  leaderboardScores!: Table<LeaderboardScore, number>;
 
   constructor() {
     super('NoPrepDB');
@@ -113,6 +103,30 @@ export class AppDatabase extends Dexie {
       bookAssets: 'relativePath, bookId, updatedAt',
       bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
       bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt'
+    });
+    this.version(6).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: 'id, title, updatedAt',
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: 'relativePath, bookId, updatedAt',
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]'
+    });
+    this.version(7).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]'
     });
   }
 }

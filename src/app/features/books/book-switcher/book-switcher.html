@@ -1,15 +1,23 @@
 <div class="book-switcher" [class.light]="tone === 'light'">
-  <button type="button" class="switch-button" (click)="toggle()" [title]="'bookSwitcherSwitchBook' | translate" [attr.aria-label]="'bookSwitcherSwitchBook' | translate">
+  <button
+    type="button"
+    class="switch-button"
+    (click)="toggle()"
+    [title]="'bookSwitcherSwitchBook' | translate"
+    [attr.aria-label]="'bookSwitcherSwitchBook' | translate"
+    [attr.aria-expanded]="open"
+    aria-haspopup="menu">
     <img src="assets/images/book/switch-book.png" alt="">
   </button>
 
-  <div class="switch-menu" *ngIf="open">
+  <div class="switch-menu" *ngIf="open" role="menu">
     <div class="switch-menu-title">{{ 'bookSwitcherBooksTitle' | translate }}</div>
 
     <ng-container *ngIf="books$ | async as books">
       <button
         *ngFor="let book of books"
         type="button"
+        role="menuitem"
         class="book-option"
         [class.current]="book.id === currentBookId"
         (click)="switchBook(book)">
