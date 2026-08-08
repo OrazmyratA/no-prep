@@ -22,6 +22,12 @@
   transform: scale(1.02);
 }
 
+/* ===== Team mode: tinted by the student's team color ===== */
+:host.lb-row-team-colored {
+  border-left: 4px solid var(--team-color);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--team-color) 16%, white), white);
+}
+
 /* ===== Rank badge ===== */
 .lb-row-rank {
   display: flex;

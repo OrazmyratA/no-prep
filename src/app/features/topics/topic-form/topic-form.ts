@@ -6,6 +6,7 @@ import { DbService } from '../../../core/db';
 import { db, Item } from '../../../core/db.model'; // import db and Item
 import { LicenseService } from '../../../core/license';
 import { BookLibraryService } from '../../../core/book-library';
+import { LeaderboardStateService } from '../../../core/leaderboard-state';
 
 @Component({
   selector: 'app-topic-form',
@@ -29,7 +30,8 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     private router: Router,
     private dbService: DbService,
     public licenseService: LicenseService,
-    private bookLibrary: BookLibraryService
+    private bookLibrary: BookLibraryService,
+    private leaderboardState: LeaderboardStateService
   ) {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
@@ -70,7 +72,7 @@ async loadTopic(id: number) {
     this.topicForm.patchValue({ name: topic.name });
     const items = await db.items.where('topicId').equals(id).sortBy('order');
     items.forEach((item: Item) => {
-    this.items.push(this.createItemFormGroup(item.text, item.image, item.audio));
+    this.items.push(this.createItemFormGroup(item.id ?? null, item.text, item.image, item.audio));
     });
   }
 }
@@ -85,8 +87,9 @@ onAudioSelected(blob: Blob | null, index: number) {
   }
 }
 
-createItemFormGroup(text: string = '', image: Blob | null = null, audio: Blob | null = null): FormGroup {
+createItemFormGroup(id: number | null = null, text: string = '', image: Blob | null = null, audio: Blob | null = null): FormGroup {
   return this.fb.group({
+    id: [id],
     text: [text],
     image: [image],
     audio: [audio]
@@ -109,7 +112,7 @@ createItemFormGroup(text: string = '', image: Blob | null = null, audio: Blob | 
       this.licenseService.requestReopen();
       return;
     }
-    this.items.push(this.createItemFormGroup());
+    this.items.push(this.createItemFormGroup(null));
   }
 
   addItemAt(index: number) {
@@ -117,7 +120,7 @@ createItemFormGroup(text: string = '', image: Blob | null = null, audio: Blob | 
       this.licenseService.requestReopen();
       return;
     }
-    this.items.insert(index, this.createItemFormGroup());
+    this.items.insert(index, this.createItemFormGroup(null));
   }
 
   removeItem(index: number) {
@@ -169,9 +172,10 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
     const name = this.topicForm.value.name;
     const items = await Promise.all(this.items.controls.map(c => c.value).map(async (item: any) => ({
+      id: item.id ?? undefined,
       text: item.text,
       image: item.image,
-      audio: item.audio   
+      audio: item.audio
     })));
 
     let savedTopicId = this.topicId || 0;
@@ -183,6 +187,11 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       const newId = await this.dbService.createTopic(name);
       await this.dbService.addItems(newId, items);
       savedTopicId = newId;
+    }
+
+    if (this.leaderboardState.isSelecting) {
+      await this.leaderboardState.completeTopicSelection(savedTopicId);
+      return;
     }
 
     if (this.returnToBookId && this.returnToBookElementId) {
@@ -202,6 +211,10 @@ isAudioPanelOpen(item: AbstractControl): boolean {
   }
 
   goBack() {
+    if (this.leaderboardState.isSelecting) {
+      this.leaderboardState.cancelTopicSelection();
+      return;
+    }
     if (this.returnToBookId) {
       this.router.navigate(['/books', this.returnToBookId, 'edit']);
       return;

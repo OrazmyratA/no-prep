@@ -39,10 +39,17 @@
     <ng-template #lbBoard>
       <div class="lb-header">
         <div class="lb-header-title-group">
-          <img
-            src="assets/images/ranking.png"
-            class="lb-list-title-icon"
-            [attr.alt]="'leaderboardRankingTitle' | translate">
+          <button
+            type="button"
+            class="lb-list-title-icon-btn"
+            (click)="commitReorder()"
+            [attr.title]="'leaderboardCommitReorder' | translate"
+            [attr.aria-label]="'leaderboardCommitReorder' | translate">
+            <img
+              src="assets/images/ranking.png"
+              class="lb-list-title-icon"
+              alt="">
+          </button>
           <h2 class="rp-title lb-header-title">{{ selectedTopicName }}</h2>
         </div>
         <div class="lb-header-actions">
@@ -122,11 +129,11 @@
           <app-leaderboard-ranking-list
             class="lb-split-list"
             [entries]="activeEntries"
-            [rowKind]="mode === 'team' ? 'team' : 'student'"
             [twoColumn]="!showWheel"
             [rankedUpItemIds]="rankedUpItemIds"
             [hammerHitItemId]="hammerHitItemId"
-            (starClick)="onStarClick($event)">
+            (starClick)="onStarClick($event)"
+            (addStudent)="addStudent()">
           </app-leaderboard-ranking-list>
 
           <div class="lb-split-wheel-wrap" [class.open]="showWheel">
@@ -136,8 +143,22 @@
               (landed)="onWheelLanded($event)">
             </app-leaderboard-wheel>
 
-            <div class="rp-reveal-overlay" *ngIf="showReveal && selectedEntry" [class.visible]="revealVisible">
-              <div class="rp-reveal-card">
+            <button
+              type="button"
+              class="lb-wheel-reset-btn"
+              *ngIf="!showReveal"
+              (click)="resetWheelPool()"
+              [attr.title]="'leaderboardWheelReset' | translate"
+              [attr.aria-label]="'leaderboardWheelReset' | translate">
+              <span aria-hidden="true">🔁</span> {{ 'leaderboardWheelReset' | translate }}
+            </button>
+
+            <div
+              class="rp-reveal-overlay"
+              *ngIf="showReveal && selectedEntry"
+              [class.visible]="revealVisible"
+              [style.--team-color]="selectedEntry.color || null">
+              <div class="rp-reveal-card" [class.rp-reveal-card-team-colored]="!!selectedEntry.color">
                 <img
                   *ngIf="selectedEntry.image"
                   [src]="imageUrl(selectedEntry.image, selectedEntry.itemId)"

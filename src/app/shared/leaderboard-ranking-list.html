@@ -1,7 +1,6 @@
-<div class="lb-list-rows" [class.lb-two-column]="twoColumn">
+<div class="lb-list-rows" [class.lb-two-column]="twoColumn" [style.--lb-col-count]="columnCount">
   <ng-container *ngFor="let entry of entries; let i = index; trackBy: trackByItemId">
     <app-leaderboard-student-row
-      *ngIf="rowKind === 'student'"
       #row
       [entry]="entry"
       [rank]="i + 1"
@@ -9,16 +8,22 @@
       [hammerHit]="hammerHitItemId === entry.itemId"
       (starClick)="starClick.emit($event)">
     </app-leaderboard-student-row>
-    <app-leaderboard-team-row
-      *ngIf="rowKind === 'team'"
-      #row
-      [entry]="entry"
-      [rank]="i + 1"
-      [rankedUp]="isRankedUp(entry.itemId)"
-      [hammerHit]="hammerHitItemId === entry.itemId"
-      (starClick)="starClick.emit($event)">
-    </app-leaderboard-team-row>
   </ng-container>
 
-  <p *ngIf="!entries.length" class="lb-list-empty">{{ 'leaderboardNoItemsInTopic' | translate }}</p>
+  <button
+    type="button"
+    class="lb-add-student-tile"
+    *ngIf="entries.length"
+    (click)="addStudent.emit()">
+    <span class="lb-add-student-plus" aria-hidden="true">+</span>
+    <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
+  </button>
+
+  <div *ngIf="!entries.length" class="lb-list-empty-wrap">
+    <p class="lb-list-empty">{{ 'leaderboardNoItemsInTopic' | translate }}</p>
+    <button type="button" class="lb-add-student-tile" (click)="addStudent.emit()">
+      <span class="lb-add-student-plus" aria-hidden="true">+</span>
+      <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
+    </button>
+  </div>
 </div>

@@ -12,7 +12,9 @@ import { LeaderboardEntry } from './leaderboard.model';
     '[attr.data-item-id]': 'entry?.itemId',
     '[class.lb-row-top]': 'isTopThree',
     '[class.lb-row-ranked-up]': 'rankedUp',
-    '[class.lb-row-hammer-hit]': 'hammerHit'
+    '[class.lb-row-hammer-hit]': 'hammerHit',
+    '[class.lb-row-team-colored]': '!!entry?.color',
+    '[style.--team-color]': 'entry?.color'
   }
 })
 export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {

@@ -374,4 +374,40 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   sa: 'Show/hide the spin wheel',
 },
 
+'leaderboardCommitReorder': {
+  en: 'Update rankings',
+  tk: 'Update rankings',
+  ru: 'Update rankings',
+  cn: 'Update rankings',
+  cde: 'Update rankings',
+  es: 'Update rankings',
+  fr: 'Update rankings',
+  kr: 'Update rankings',
+  sa: 'Update rankings',
+},
+
+'leaderboardAddStudent': {
+  en: 'Add student',
+  tk: 'Add student',
+  ru: 'Add student',
+  cn: 'Add student',
+  cde: 'Add student',
+  es: 'Add student',
+  fr: 'Add student',
+  kr: 'Add student',
+  sa: 'Add student',
+},
+
+'leaderboardWheelReset': {
+  en: 'Reset wheel',
+  tk: 'Reset wheel',
+  ru: 'Reset wheel',
+  cn: 'Reset wheel',
+  cde: 'Reset wheel',
+  es: 'Reset wheel',
+  fr: 'Reset wheel',
+  kr: 'Reset wheel',
+  sa: 'Reset wheel',
+},
+
 };

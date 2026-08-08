@@ -18,18 +18,25 @@ interface FlipAnimation {
   styleUrls: ['./leaderboard-ranking-list.css']
 })
 export class LeaderboardRankingListComponent implements OnInit, OnChanges, AfterViewChecked, OnDestroy {
-  // Template-variable query (not a component-type query) so it matches whichever row
-  // component is currently rendered — student rows or team rows (see `rowKind`/the template's
-  // `*ngIf="rowKind === '...'" #row` pair). Both expose the same entry/elementRef shape.
+  // Template-variable query so the FLIP/confetti logic below only needs the shared
+  // entry/elementRef shape (LeaderboardRow), not a concrete row component type.
   @ViewChildren('row') rowComponents?: QueryList<LeaderboardRow>;
 
   @Input() entries: LeaderboardEntry[] = [];
-  @Input() rowKind: 'student' | 'team' = 'student';
   @Input() twoColumn = false;
   @Input() rankedUpItemIds: number[] = [];
   @Input() hammerHitItemId: number | null = null;
 
   @Output() starClick = new EventEmitter<number>();
+  @Output() addStudent = new EventEmitter<void>();
+
+  // Exactly 7 students per column, capped at 4 — a single column is full-width (like the
+  // pre-multi-column layout); the 2nd/3rd/4th column appear at 8/15/22 students. Beyond that,
+  // more students per column, not more columns — 4 columns not fitting the panel's width is
+  // handled by horizontal scroll (see .lb-two-column's overflow-x), not by adding a 5th column.
+  get columnCount(): number {
+    return Math.min(4, Math.max(1, Math.ceil(this.entries.length / 7)));
+  }
 
   private confettiInstance: ConfettiInstance | null = null;
   private readonly confettiColors = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', '#f97316'];

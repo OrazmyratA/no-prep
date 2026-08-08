@@ -184,6 +184,22 @@
   min-width: 0;
 }
 
+.lb-list-title-icon-btn {
+  display: block;
+  flex-shrink: 0;
+  padding: 0.2rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.lb-list-title-icon-btn:hover {
+  background: rgba(99, 102, 241, 0.1);
+  transform: scale(1.06);
+}
+
 .lb-list-title-icon {
   height: 1.9rem;
   width: auto;
@@ -314,6 +330,32 @@
   height: 100%;
 }
 
+.lb-wheel-reset-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 0.6rem;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #4338ca;
+  font-weight: 800;
+  font-size: 0.75rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.lb-wheel-reset-btn:hover {
+  background: white;
+  transform: translateX(-50%) translateY(-2px);
+}
+
 @media (max-width: 820px) {
   .lb-split {
     grid-template-columns: 1fr;
@@ -375,6 +417,11 @@
   justify-content: center;
   gap: 0.5rem;
   animation: rpPopIn 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.rp-reveal-card-team-colored {
+  border: 3px solid var(--team-color);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--team-color) 18%, white), white);
 }
 
 .rp-reveal-image {

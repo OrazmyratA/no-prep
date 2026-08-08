@@ -60,9 +60,33 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
   await this.refreshTopics();
 }
 
-  async updateItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt' | 'order'>[]): Promise<void> {
-    await db.items.where('topicId').equals(topicId).delete();
-    await this.addItems(topicId, items);
+  // Updates in place (by id) rather than delete-and-recreate, so items the teacher didn't touch
+  // keep their id — and therefore keep their leaderboardScores row linked (adjustLeaderboardScore
+  // keys scores by itemId, so regenerating ids here would silently zero out everyone's points).
+  // Items without an id (newly added in the form) get inserted; items no longer present get
+  // deleted along with their now-orphaned score row.
+  async updateItems(topicId: number, items: (Omit<Item, 'id' | 'topicId' | 'createdAt' | 'order'> & { id?: number })[]): Promise<void> {
+    const existing = await db.items.where('topicId').equals(topicId).toArray();
+    const existingIds = new Set(existing.map(i => i.id));
+    const incomingIds = new Set(items.filter(i => i.id != null).map(i => i.id));
+    const now = new Date();
+
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
+      if (item.id != null && existingIds.has(item.id)) {
+        await db.items.update(item.id, { text: item.text, image: item.image, audio: item.audio, order: index });
+      } else {
+        await db.items.add({ topicId, text: item.text, image: item.image, audio: item.audio, order: index, createdAt: now });
+      }
+    }
+
+    const removedIds = existing.map(i => i.id!).filter(id => !incomingIds.has(id));
+    if (removedIds.length) {
+      await db.items.bulkDelete(removedIds);
+      await db.leaderboardScores.where('itemId').anyOf(removedIds).delete();
+    }
+
+    await this.refreshTopics();
   }
 
 async duplicateTopic(topicId: number): Promise<number | null> {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Item } from '../core/db.model';
 import { Team } from './leaderboard-team.model';
@@ -29,7 +29,8 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
   constructor(
     public themeService: ThemeService,
     private confirmationService: ConfirmationService,
-    private langService: LanguageService
+    private langService: LanguageService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
@@ -95,17 +96,20 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
     };
     this.workingTeams = [...this.workingTeams, team];
     this.emitChange();
+    this.cdr.detectChanges();
   }
 
   renameTeam(team: Team, name: string) {
     const trimmed = name.trim();
     if (trimmed) team.name = trimmed;
     this.emitChange();
+    this.cdr.detectChanges();
   }
 
   setTeamColor(team: Team, color: string) {
     team.color = color;
     this.emitChange();
+    this.cdr.detectChanges();
   }
 
   async deleteTeam(team: Team) {
@@ -116,6 +120,7 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
     this.workingTeams = this.workingTeams.filter(t => t.id !== team.id);
     this.recomputeUnassigned();
     this.emitChange();
+    this.cdr.detectChanges();
   }
 
   drop(event: CdkDragDrop<Item[]>) {
@@ -127,6 +132,7 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
     }
     this.applyContainerData(event.container.id, event.container.data);
     this.emitChange();
+    this.cdr.detectChanges();
   }
 
   start() {

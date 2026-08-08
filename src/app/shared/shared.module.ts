@@ -19,7 +19,6 @@ import { LeaderboardStudentRowComponent } from './leaderboard-student-row';
 import { LeaderboardHammerComponent } from './leaderboard-hammer';
 import { LeaderboardRankingListComponent } from './leaderboard-ranking-list';
 import { LeaderboardWheelComponent } from './leaderboard-wheel';
-import { LeaderboardTeamRowComponent } from './leaderboard-team-row';
 import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
 
 @NgModule({
@@ -39,7 +38,6 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
     LeaderboardHammerComponent,
     LeaderboardRankingListComponent,
     LeaderboardWheelComponent,
-    LeaderboardTeamRowComponent,
     LeaderboardTeamSetupComponent,
   ],
   providers: [ConfirmationService],
@@ -64,7 +62,6 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
     LeaderboardHammerComponent,
     LeaderboardRankingListComponent,
     LeaderboardWheelComponent,
-    LeaderboardTeamRowComponent,
     LeaderboardTeamSetupComponent
   ]
 })

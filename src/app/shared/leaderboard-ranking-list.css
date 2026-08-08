@@ -14,20 +14,62 @@
   min-height: 0;
 }
 
-/* Used when the wheel drawer is closed and the list has the full width to itself. */
+/* Used when the wheel drawer is closed and the list has the full width to itself. Column count
+   (--lb-col-count, set from the component's columnCount getter) is exactly 7 students per
+   column, capped at 4 — 1 column is full-width (minmax(...,1fr) with only 1 track defined fills
+   100%, same as the plain single-column layout); 2nd/3rd/4th columns appear at 8/15/22 students.
+   If 4 columns' 200px minimums don't all fit the panel's width, it scrolls right instead of
+   squeezing narrower or spawning a 5th column. */
 .lb-list-rows.lb-two-column {
-  display: block;
-  columns: 2;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, auto);
+  grid-template-columns: repeat(var(--lb-col-count, 1), minmax(200px, 1fr));
+  align-content: start;
   column-gap: 0.6rem;
-}
-
-.lb-list-rows.lb-two-column > * {
-  break-inside: avoid;
-  margin-bottom: 0.25rem;
+  row-gap: 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .lb-list-empty {
   text-align: center;
   color: #6b7280;
   padding: 1.5rem 0.5rem;
+}
+
+.lb-list-empty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lb-add-student-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.6rem;
+  padding: 0.5rem 0.6rem;
+  margin-top: 0.15rem;
+  border: 2px dashed #c7d2fe;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: #4f46e5;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.lb-add-student-tile:hover {
+  background: rgba(99, 102, 241, 0.08);
+  border-color: #6366f1;
+}
+
+.lb-add-student-plus {
+  font-size: 1.1rem;
+  line-height: 1;
 }
