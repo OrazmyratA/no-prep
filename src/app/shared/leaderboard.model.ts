@@ -6,6 +6,7 @@ export interface LeaderboardEntry {
   image?: Blob;
   points: number;
   color?: string;
+  absent?: boolean;
 }
 
 export interface LeaderboardRow {

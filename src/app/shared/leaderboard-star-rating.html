@@ -1,7 +1,8 @@
 <svg
   viewBox="0 0 200 200"
   class="lb-star"
-  (click)="onClick()"
+  [class.lb-star-absent]="absent"
+  (click)="onClick($event)"
   role="button"
   tabindex="0"
   [attr.aria-label]="points">

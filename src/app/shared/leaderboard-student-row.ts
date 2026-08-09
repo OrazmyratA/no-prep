@@ -14,16 +14,20 @@ import { LeaderboardEntry } from './leaderboard.model';
     '[class.lb-row-ranked-up]': 'rankedUp',
     '[class.lb-row-hammer-hit]': 'hammerHit',
     '[class.lb-row-team-colored]': '!!entry?.color',
-    '[style.--team-color]': 'entry?.color'
+    '[class.lb-row-absent]': '!!entry?.absent',
+    '[style.--team-color]': 'entry?.color',
+    '(click)': 'onRowClick()'
   }
 })
 export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
   @Input() entry!: LeaderboardEntry;
   @Input() rank = 0;
+  @Input() showMedals = false;
   @Input() rankedUp = false;
   @Input() hammerHit = false;
 
   @Output() starClick = new EventEmitter<number>();
+  @Output() toggleAbsent = new EventEmitter<number>();
 
   imageUrl: string | null = null;
   private objectUrl: string | null = null;
@@ -41,10 +45,11 @@ export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
   }
 
   get isTopThree(): boolean {
-    return this.rank >= 1 && this.rank <= 3;
+    return this.showMedals && this.rank >= 1 && this.rank <= 3;
   }
 
   get medalClass(): string {
+    if (!this.showMedals) return '';
     if (this.rank === 1) return 'lb-medal-gold';
     if (this.rank === 2) return 'lb-medal-silver';
     if (this.rank === 3) return 'lb-medal-bronze';
@@ -52,6 +57,7 @@ export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
   }
 
   get medalEmoji(): string {
+    if (!this.showMedals) return '';
     if (this.rank === 1) return '🥇';
     if (this.rank === 2) return '🥈';
     if (this.rank === 3) return '🥉';
@@ -64,6 +70,10 @@ export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
 
   onStarClick() {
     this.starClick.emit(this.entry.itemId);
+  }
+
+  onRowClick() {
+    if (this.entry) this.toggleAbsent.emit(this.entry.itemId);
   }
 
   private updateImageUrl() {

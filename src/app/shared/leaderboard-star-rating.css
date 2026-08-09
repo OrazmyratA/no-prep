@@ -9,6 +9,11 @@
   overflow: visible;
 }
 
+.lb-star-absent {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .lb-star-shape {
   fill: #cbd5e1;
   stroke: white;

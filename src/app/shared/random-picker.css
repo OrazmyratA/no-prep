@@ -200,6 +200,15 @@
   transform: scale(1.06);
 }
 
+.lb-list-title-icon-btn.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.18));
+}
+
+.lb-list-title-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .lb-list-title-icon {
   height: 1.9rem;
   width: auto;
@@ -280,6 +289,27 @@
 
 .lb-icon-btn.active img {
   filter: brightness(0) invert(1);
+}
+
+.lb-grid-btn {
+  position: relative;
+}
+
+.lb-grid-count-badge {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  min-width: 0.95rem;
+  height: 0.95rem;
+  padding: 0 0.1rem;
+  border-radius: 9999px;
+  background: #6366f1;
+  color: white;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 0.95rem;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* ===== Split layout: ranking list + a wheel drawer that slides in from the right =====

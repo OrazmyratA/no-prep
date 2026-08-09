@@ -1,4 +1,5 @@
 import { AfterViewChecked, Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, QueryList, SimpleChanges, ViewChildren } from '@angular/core';
+import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { GameFinishConfettiService } from './game-finish-overlay';
 import { LeaderboardEntry, LeaderboardRow } from './leaderboard.model';
 
@@ -22,21 +23,17 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   // entry/elementRef shape (LeaderboardRow), not a concrete row component type.
   @ViewChildren('row') rowComponents?: QueryList<LeaderboardRow>;
 
-  @Input() entries: LeaderboardEntry[] = [];
-  @Input() twoColumn = false;
+  @Input() columnBuckets: LeaderboardEntry[][] = [[]];
+  @Input() rankByItemId: Map<number, number> = new Map();
+  @Input() rankingApplied = false;
   @Input() rankedUpItemIds: number[] = [];
   @Input() hammerHitItemId: number | null = null;
 
   @Output() starClick = new EventEmitter<number>();
   @Output() addStudent = new EventEmitter<void>();
-
-  // Exactly 7 students per column, capped at 4 — a single column is full-width (like the
-  // pre-multi-column layout); the 2nd/3rd/4th column appear at 8/15/22 students. Beyond that,
-  // more students per column, not more columns — 4 columns not fitting the panel's width is
-  // handled by horizontal scroll (see .lb-two-column's overflow-x), not by adding a 5th column.
-  get columnCount(): number {
-    return Math.min(4, Math.max(1, Math.ceil(this.entries.length / 7)));
-  }
+  @Output() toggleAbsent = new EventEmitter<number>();
+  @Output() columnsChange = new EventEmitter<number[][]>();
+  @Output() dragActiveChange = new EventEmitter<boolean>();
 
   private confettiInstance: ConfettiInstance | null = null;
   private readonly confettiColors = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', '#f97316'];
@@ -46,6 +43,11 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   private pendingFirstRects: Map<number, DOMRect> | null = null;
   private readonly flipTimers = new Set<ReturnType<typeof setTimeout>>();
 
+  // Set right before a manual drag's reorder is emitted, consumed on the very next ngOnChanges —
+  // CDK already animates the drop itself, so the custom FLIP glide would just fight it over the
+  // same rows' inline transform if it ran too.
+  private suppressNextFlip = false;
+
   constructor(private confettiService: GameFinishConfettiService) {}
 
   ngOnInit() {
@@ -54,13 +56,19 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['entries']) {
-      const previous = changes['entries'].previousValue as LeaderboardEntry[] | undefined;
+    if (changes['columnBuckets']) {
+      const previous = changes['columnBuckets'].previousValue as LeaderboardEntry[][] | undefined;
       if (previous) {
-        const prevOrder = previous.map(e => e.itemId);
-        const currOrder = this.entries.map(e => e.itemId);
+        const prevOrder = previous.flat().map(e => e.itemId);
+        const currOrder = this.columnBuckets.flat().map(e => e.itemId);
         const orderChanged = prevOrder.length !== currOrder.length || prevOrder.some((id, i) => id !== currOrder[i]);
-        if (orderChanged) this.captureFirstRects();
+        if (orderChanged) {
+          if (this.suppressNextFlip) {
+            this.suppressNextFlip = false;
+          } else {
+            this.captureFirstRects();
+          }
+        }
       }
     }
     if (changes['rankedUpItemIds'] && this.rankedUpItemIds.length) {
@@ -89,6 +97,48 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
 
   isRankedUp(itemId: number): boolean {
     return this.rankedUpItemIds.includes(itemId);
+  }
+
+  // ===== Long-press drag-to-reorder, within or between columns (cdkDragStartDelay gates a real
+  // drag behind a hold, so a quick tap still reaches the row's own click handler for toggling
+  // Absent). Each column is its own connected cdkDropList — a cross-column drop transfers the
+  // item directly (no reshuffling of anything else, no auto-backfill of the vacated slot). =====
+
+  onColumnDrop(event: CdkDragDrop<LeaderboardEntry[]>) {
+    if (event.previousContainer === event.container) {
+      if (event.previousIndex === event.currentIndex) return;
+      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+    } else {
+      transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
+    }
+    this.suppressNextFlip = true;
+    this.columnsChange.emit(this.columnBuckets.map(col => col.map(e => e.itemId)));
+  }
+
+  columnListId(index: number): string {
+    return `lb-col-${index}`;
+  }
+
+  connectedColumnIds(index: number): string[] {
+    return this.columnBuckets
+      .map((_, i) => this.columnListId(i))
+      .filter(id => id !== this.columnListId(index));
+  }
+
+  trackByColumnIndex(index: number): number {
+    return index;
+  }
+
+  get hasAnyEntries(): boolean {
+    return this.columnBuckets.some(col => col.length > 0);
+  }
+
+  onDragStarted() {
+    this.dragActiveChange.emit(true);
+  }
+
+  onDragEnded() {
+    this.dragActiveChange.emit(false);
   }
 
   // ===== FLIP reorder animation (First-Last-Invert-Play) =====

@@ -1,29 +1,44 @@
-<div class="lb-list-rows" [class.lb-two-column]="twoColumn" [style.--lb-col-count]="columnCount">
-  <ng-container *ngFor="let entry of entries; let i = index; trackBy: trackByItemId">
-    <app-leaderboard-student-row
-      #row
-      [entry]="entry"
-      [rank]="i + 1"
-      [rankedUp]="isRankedUp(entry.itemId)"
-      [hammerHit]="hammerHitItemId === entry.itemId"
-      (starClick)="starClick.emit($event)">
-    </app-leaderboard-student-row>
-  </ng-container>
+<div class="lb-columns-wrap">
+  <div
+    class="lb-list-rows"
+    *ngFor="let column of columnBuckets; let colIndex = index; trackBy: trackByColumnIndex"
+    cdkDropList
+    [id]="columnListId(colIndex)"
+    [cdkDropListData]="column"
+    [cdkDropListConnectedTo]="connectedColumnIds(colIndex)"
+    (cdkDropListDropped)="onColumnDrop($event)">
+    <ng-container *ngFor="let entry of column; trackBy: trackByItemId">
+      <app-leaderboard-student-row
+        #row
+        cdkDrag
+        [cdkDragStartDelay]="500"
+        (cdkDragStarted)="onDragStarted()"
+        (cdkDragEnded)="onDragEnded()"
+        [entry]="entry"
+        [rank]="rankByItemId.get(entry.itemId) || 0"
+        [showMedals]="rankingApplied"
+        [rankedUp]="isRankedUp(entry.itemId)"
+        [hammerHit]="hammerHitItemId === entry.itemId"
+        (starClick)="starClick.emit($event)"
+        (toggleAbsent)="toggleAbsent.emit($event)">
+      </app-leaderboard-student-row>
+    </ng-container>
 
-  <button
-    type="button"
-    class="lb-add-student-tile"
-    *ngIf="entries.length"
-    (click)="addStudent.emit()">
-    <span class="lb-add-student-plus" aria-hidden="true">+</span>
-    <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
-  </button>
-
-  <div *ngIf="!entries.length" class="lb-list-empty-wrap">
-    <p class="lb-list-empty">{{ 'leaderboardNoItemsInTopic' | translate }}</p>
-    <button type="button" class="lb-add-student-tile" (click)="addStudent.emit()">
+    <button
+      type="button"
+      class="lb-add-student-tile"
+      *ngIf="colIndex === columnBuckets.length - 1 && hasAnyEntries"
+      (click)="addStudent.emit()">
       <span class="lb-add-student-plus" aria-hidden="true">+</span>
       <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
     </button>
   </div>
+</div>
+
+<div *ngIf="!hasAnyEntries" class="lb-list-empty-wrap">
+  <p class="lb-list-empty">{{ 'leaderboardNoItemsInTopic' | translate }}</p>
+  <button type="button" class="lb-add-student-tile" (click)="addStudent.emit()">
+    <span class="lb-add-student-plus" aria-hidden="true">+</span>
+    <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
+  </button>
 </div>

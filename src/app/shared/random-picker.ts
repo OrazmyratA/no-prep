@@ -35,9 +35,17 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   rankedUpItemIds: number[] = [];
   hammerHitItemId: number | null = null;
 
-  // Wheel is a slide-in-from-right drawer, off by default; the ranking list expands to a
-  // two-column layout to use the freed-up width while it's hidden.
+  // Wheel is a slide-in-from-right drawer, off by default; the ranking list expands to use
+  // the freed-up width while it's hidden.
   showWheel = false;
+
+  // Teacher-controlled column count for the ranking list, cycled 1/2/3 by the grid.png header
+  // button. Forced to 1 while the wheel is open (not enough width for multiple columns).
+  gridColumns = 1;
+
+  // True while a long-press drag reorder is in progress — disables the ranking.png commit
+  // button so a full score-based re-sort can't land mid-drag.
+  dragActive = false;
 
   // ===== Team mode =====
   // Teams are a session-only grouping (no DB table, reset on topic change or app restart) used
@@ -77,12 +85,33 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // has gone once, at which point the pool auto-resets (classic no-repeat picker).
   private usedWheelItemIds = new Set<number>();
 
-  // The order rows render in. Never auto-changes on a score change — only commitReorder()
-  // (the ranking.png button) reassigns it, so the teacher controls exactly when the list
-  // reshuffles instead of it happening mid-click-chase. Individual and team mode keep separate
-  // committed orders since they're different entry pools.
-  private committedOrderIndividual: number[] = [];
-  private committedOrderTeam: number[] = [];
+  // Random display order for the wheel's wedges, independent of roster/team order — without
+  // this, teammates entered consecutively in the roster (or grouped during team setup) would
+  // cluster together as adjacent wedges instead of being spread around the wheel. Regenerated
+  // whenever the pool is freshly filled (topic load, explicit/auto wheel reset), not on every
+  // render, so wedge positions stay put mid-round instead of jumping around on unrelated clicks.
+  private wheelOrder: number[] = [];
+
+  // Session-only, like teams — resets on topic reload/app restart. An absent student is fully
+  // locked out of scoring and the wheel (enforced in awardPoint/deductPoint/wheelEntries below).
+  private absentItemIds = new Set<number>();
+
+  // Roster ids in teacher-entry order (roster is already `order`-sorted by db.ts), captured once
+  // per loadTopic — the list's default/reset state, and what toggleRanking() restores on a second tap.
+  private initialOrder: number[] = [];
+
+  // Column buckets are the single source of truth for both order AND column membership. Never
+  // auto-recomputed on a score change — only toggleRanking() (the ranking.png button), a manual
+  // drag, cycleGridColumns(), or toggleAbsent() touches them, so the teacher controls exactly when
+  // and how the list reshuffles. Individual and team mode keep separate buckets since they're
+  // different entry pools (team mode tints by team color but scores are still per-student).
+  private columnsIndividual: number[][] = [[]];
+  private columnsTeam: number[][] = [[]];
+
+  // True only while the current mode's list is actually sorted by score (medals shown). A manual
+  // drag or a grid-column change never sets this — only toggleRanking()'s "apply" branch does.
+  private rankingAppliedIndividual = false;
+  private rankingAppliedTeam = false;
 
   constructor(
     private dbService: DbService,
@@ -135,25 +164,6 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     return this.topics.find(t => t.id === this.selectedTopicId)?.name ?? '';
   }
 
-  get sortedEntries(): LeaderboardEntry[] {
-    const list = this.roster
-      .filter(item => item.id != null)
-      .map(item => this.getCachedEntry(item));
-
-    return this.applyCommittedOrder(list, this.committedOrderIndividual);
-  }
-
-  // Team mode shows every student (not one aggregate row per team), tinted by their team's
-  // color, each keeping their own persisted score — a student not on any team renders untinted,
-  // same as individual mode.
-  get teamEntries(): LeaderboardEntry[] {
-    const list = this.roster
-      .filter(item => item.id != null)
-      .map(item => this.getCachedEntry(item, this.teamColorFor(item.id!)));
-
-    return this.applyCommittedOrder(list, this.committedOrderTeam);
-  }
-
   private teamColorFor(itemId: number): string | undefined {
     return this.teams.find(t => t.memberItemIds.includes(itemId))?.color;
   }
@@ -167,59 +177,137 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private getCachedEntry(item: Item, color?: string): LeaderboardEntry {
     const points = this.scores.get(item.id!) ?? 0;
+    const absent = this.absentItemIds.has(item.id!);
     const cached = this.entryCache.get(item.id!);
     if (cached && cached.text === (item.text ?? '') && cached.image === item.image
-        && cached.points === points && cached.color === color) {
+        && cached.points === points && cached.color === color && cached.absent === absent) {
       return cached;
     }
-    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color };
+    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent };
     this.entryCache.set(item.id!, entry);
     return entry;
   }
 
+  // Every roster entry, current-scored and (in team mode) color-tinted — order doesn't matter
+  // here, this is the raw pool that activeColumns/wheelEntries/score-ranking draw from.
+  private get allActiveEntries(): LeaderboardEntry[] {
+    return this.roster
+      .filter(item => item.id != null)
+      .map(item => this.getCachedEntry(item, this.mode === 'team' ? this.teamColorFor(item.id!) : undefined));
+  }
+
   get activeEntries(): LeaderboardEntry[] {
-    return this.mode === 'team' ? this.teamEntries : this.sortedEntries;
+    return this.allActiveEntries;
   }
 
-  // Entries present in `order` render in that sequence; anything not yet in it (a freshly
-  // added student, or before the very first commit) falls back to a score-sort among just the
-  // unranked entries, appended after the ranked ones.
-  private applyCommittedOrder(list: LeaderboardEntry[], order: number[]): LeaderboardEntry[] {
-    const orderIndex = new Map(order.map((id, i) => [id, i]));
-    return list.sort((a, b) => {
-      const ia = orderIndex.get(a.itemId);
-      const ib = orderIndex.get(b.itemId);
-      if (ia != null && ib != null) return ia - ib;
-      if (ia != null) return -1;
-      if (ib != null) return 1;
-      return b.points - a.points || a.text.localeCompare(b.text);
-    });
+  // The current mode's column buckets, resolved to entries. The wheel drawer forces a single
+  // flattened column at render time without discarding the teacher's stored bucket arrangement —
+  // it reappears exactly as left once the wheel closes.
+  get activeColumns(): LeaderboardEntry[][] {
+    const buckets = this.mode === 'team' ? this.columnsTeam : this.columnsIndividual;
+    const byId = new Map(this.allActiveEntries.map(e => [e.itemId, e]));
+    const entryBuckets = buckets.map(col => col.map(id => byId.get(id)).filter((e): e is LeaderboardEntry => !!e));
+    return this.showWheel ? [entryBuckets.flat()] : entryBuckets;
   }
 
-  // Recomputes the current mode's committed order from live scores — the only place a reorder
-  // (and its FLIP glide/confetti/rank-up celebration) is allowed to happen, triggered by the
-  // teacher tapping the ranking.png button rather than automatically on every point change.
-  commitReorder() {
-    const entriesGetter = this.mode === 'team' ? () => this.teamEntries : () => this.sortedEntries;
-    const before = entriesGetter().map(e => e.itemId);
-    const newOrder = [...entriesGetter()]
+  // Column-major reading order (col0 top-to-bottom, then col1, ...) mapped to a 1-based rank —
+  // drives both the row number and, gated by rankingApplied, which three rows show medals.
+  get rankByItemId(): Map<number, number> {
+    const map = new Map<number, number>();
+    let rank = 1;
+    for (const column of this.activeColumns) {
+      for (const entry of column) map.set(entry.itemId, rank++);
+    }
+    return map;
+  }
+
+  get rankingApplied(): boolean {
+    return this.mode === 'team' ? this.rankingAppliedTeam : this.rankingAppliedIndividual;
+  }
+
+  private chunkIntoColumns(order: number[], columns: number): number[][] {
+    if (columns <= 1) return [order];
+    const size = Math.ceil(order.length / columns);
+    return Array.from({ length: columns }, (_, i) => order.slice(i * size, (i + 1) * size));
+  }
+
+  private flattenColumns(buckets: number[][]): number[] {
+    return buckets.flat();
+  }
+
+  // The ranking.png button toggles between "score-ranked, medals on" and "teacher-entered order,
+  // plain numbers" — it never leaves the list in some third, partially-sorted state.
+  toggleRanking() {
+    this.rankingApplied ? this.revertToInitialOrder() : this.applyScoreRanking();
+  }
+
+  private applyScoreRanking() {
+    const before = this.flattenColumns(this.mode === 'team' ? this.columnsTeam : this.columnsIndividual);
+    const after = [...this.allActiveEntries]
       .sort((a, b) => b.points - a.points || a.text.localeCompare(b.text))
       .map(e => e.itemId);
+    const buckets = this.chunkIntoColumns(after, this.gridColumns);
 
-    if (this.mode === 'team') this.committedOrderTeam = newOrder;
-    else this.committedOrderIndividual = newOrder;
+    if (this.mode === 'team') { this.columnsTeam = buckets; this.rankingAppliedTeam = true; }
+    else { this.columnsIndividual = buckets; this.rankingAppliedIndividual = true; }
 
-    const movers = this.rankUpMovers(before, entriesGetter());
-    if (movers.length) this.celebrate(movers, entriesGetter());
+    const movers = this.rankUpMovers(before, after);
+    if (movers.length) this.celebrate(movers, after[0]);
     else this.cdr.detectChanges();
+  }
+
+  // Reverting is an administrative reset, not a scoring event — no confetti/power-up/flip-sound,
+  // just the list snapping back to how the teacher entered it.
+  private revertToInitialOrder() {
+    const buckets = this.chunkIntoColumns(this.initialOrder, this.gridColumns);
+    if (this.mode === 'team') { this.columnsTeam = buckets; this.rankingAppliedTeam = false; }
+    else { this.columnsIndividual = buckets; this.rankingAppliedIndividual = false; }
+    this.rankedUpItemIds = [];
+    this.cdr.detectChanges();
+  }
+
+  // Toggling ON moves the student to the end of their own current column immediately (a direct
+  // teacher action) and locks them out of scoring/the wheel (enforced in
+  // awardPoint/deductPoint/wheelEntries). Toggling OFF leaves them wherever they ended up — no
+  // attempt to restore their old spot. Never touches other columns' membership.
+  toggleAbsent(itemId: number) {
+    const nowAbsent = !this.absentItemIds.has(itemId);
+    if (nowAbsent) {
+      this.absentItemIds.add(itemId);
+      this.columnsIndividual = this.moveToEndOfOwnColumn(this.columnsIndividual, itemId);
+      this.columnsTeam = this.moveToEndOfOwnColumn(this.columnsTeam, itemId);
+    } else {
+      this.absentItemIds.delete(itemId);
+    }
+    this.cdr.detectChanges();
+  }
+
+  private moveToEndOfOwnColumn(buckets: number[][], itemId: number): number[][] {
+    return buckets.map(col => col.includes(itemId) ? [...col.filter(id => id !== itemId), itemId] : col);
   }
 
   // Wheel spins over whatever hasn't gone yet this round; falls back to the full pool
   // if the "used" set is momentarily empty/stale so the wheel is never left with 0 segments.
+  // Absent students are excluded entirely, even from that fallback. Wedge order follows the
+  // shuffled wheelOrder (falling back to roster order for any id not yet in it, e.g. a student
+  // added mid-session before the next reshuffle), not roster/team order.
   get wheelEntries(): LeaderboardEntry[] {
-    const pool = this.activeEntries;
-    const available = pool.filter(e => !this.usedWheelItemIds.has(e.itemId));
-    return available.length ? available : pool;
+    const pool = this.activeEntries.filter(e => !e.absent);
+    const byId = new Map(pool.map(e => [e.itemId, e]));
+    const shuffledPool = this.wheelOrder.map(id => byId.get(id)).filter((e): e is LeaderboardEntry => !!e);
+    const shuffledIds = new Set(shuffledPool.map(e => e.itemId));
+    const orderedPool = [...shuffledPool, ...pool.filter(e => !shuffledIds.has(e.itemId))];
+    const available = orderedPool.filter(e => !this.usedWheelItemIds.has(e.itemId));
+    return available.length ? available : orderedPool;
+  }
+
+  private shuffle<T>(items: T[]): T[] {
+    const result = [...items];
+    for (let i = result.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
   }
 
   // ===== Overlay open/close =====
@@ -296,19 +384,20 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.selectedEntry = null;
     // A new class list invalidates any teams built for the old one.
     this.teams = [];
+    this.wheelOrder = this.computeInterleavedWheelOrder();
+    this.absentItemIds = new Set();
     this.entryCache.clear();
-    // Seed the committed order from the freshly-loaded scores immediately, rather than leaving
-    // it empty — the list must already be frozen on first render, not just after the first
-    // manual reorder commit.
-    const initialOrder = [...items]
-      .filter(i => i.id != null)
-      .sort((a, b) => (this.scores.get(b.id!) ?? 0) - (this.scores.get(a.id!) ?? 0) || (a.text ?? '').localeCompare(b.text ?? ''))
-      .map(i => i.id!);
-    this.committedOrderIndividual = initialOrder;
-    this.committedOrderTeam = initialOrder;
+    // items is already `order`-sorted by db.ts — this is exactly the teacher's entry order, and
+    // the list's default render state (plain numbers, no medals) until toggleRanking() is tapped.
+    this.initialOrder = items.filter(i => i.id != null).map(i => i.id!);
+    this.columnsIndividual = [[...this.initialOrder]];
+    this.columnsTeam = [[...this.initialOrder]];
+    this.rankingAppliedIndividual = false;
+    this.rankingAppliedTeam = false;
     this.mode = 'individual';
     this.showTeamSetup = false;
     this.showWheel = false;
+    this.gridColumns = 1;
     this.selectedTopicId = topicId;
     this.loadingTopic = false;
     this.saveCachedTopicId(topicId);
@@ -317,6 +406,30 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   toggleWheel() {
     this.showWheel = !this.showWheel;
+    this.cdr.detectChanges();
+  }
+
+  // Changing the column count necessarily changes the number of buckets, so it re-splits the
+  // current flattened reading order evenly across the new count. Doesn't touch rankingApplied —
+  // this is a layout action, not a re-ranking or a manual-arrangement action.
+  cycleGridColumns() {
+    this.gridColumns = this.gridColumns >= 3 ? 1 : this.gridColumns + 1;
+    this.columnsIndividual = this.chunkIntoColumns(this.flattenColumns(this.columnsIndividual), this.gridColumns);
+    this.columnsTeam = this.chunkIntoColumns(this.flattenColumns(this.columnsTeam), this.gridColumns);
+    this.cdr.detectChanges();
+  }
+
+  // Long-press drag reorder (within or between columns). A manual drag turns rankingApplied off
+  // for the current mode — the list is no longer "sorted by score," so medals revert to plain
+  // numbers, matching the same rule toggleRanking() enforces.
+  onColumnsChange(newBuckets: number[][]) {
+    if (this.mode === 'team') { this.columnsTeam = newBuckets; this.rankingAppliedTeam = false; }
+    else { this.columnsIndividual = newBuckets; this.rankingAppliedIndividual = false; }
+    this.cdr.detectChanges();
+  }
+
+  onDragActiveChange(active: boolean) {
+    this.dragActive = active;
     this.cdr.detectChanges();
   }
 
@@ -348,6 +461,9 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.teams = teams;
     this.showTeamSetup = false;
     this.mode = 'team';
+    // Team composition just changed — the wheel's spread-out-by-team order was computed against
+    // the old teams (or no teams at all) and no longer reflects who's actually on which side.
+    this.reshuffleWheelOrder();
     this.cdr.detectChanges();
   }
 
@@ -373,14 +489,14 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // Every student's score is always their own persisted LeaderboardScore row, in both modes —
   // team mode's only difference is that a wheel "Correct" fans an award out to every teammate
   // (see awardPointForTeamOrSelf). Manual star/hammer clicks always affect just the one student.
-  // Reordering never happens here — only commitReorder() (the ranking.png button) does.
+  // Reordering never happens here — only toggleRanking() (the ranking.png button) does.
 
   async onStarClick(itemId: number) {
     await this.awardPoint(itemId);
   }
 
   private async awardPoint(itemId: number) {
-    if (this.selectedTopicId == null) return;
+    if (this.selectedTopicId == null || this.absentItemIds.has(itemId)) return;
     const beforePoints = this.scores.get(itemId) ?? 0;
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, 1);
     if (this.destroyed) return;
@@ -399,7 +515,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   }
 
   private async deductPoint(itemId: number) {
-    if (this.selectedTopicId == null) return;
+    if (this.selectedTopicId == null || this.absentItemIds.has(itemId)) return;
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, -1);
     if (this.destroyed) return;
     this.scores.set(itemId, total);
@@ -412,7 +528,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     // A hit is strictly a decrease — it never legitimately ranks anyone up, and the row never
-    // reorders from it anyway (only commitReorder() reorders). Just clear the hit-bounce state
+    // reorders from it anyway (only toggleRanking() reorders). Just clear the hit-bounce state
     // once the star widget's score-decrease crossfade has had time to play.
     this.setGameTimeout(() => {
       this.hammerHitItemId = null;
@@ -420,20 +536,18 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     }, 600);
   }
 
-  private rankUpMovers(before: number[], entries: LeaderboardEntry[]): number[] {
-    const after = entries.map(e => e.itemId);
+  private rankUpMovers(before: number[], after: number[]): number[] {
     return after
       .map((id, newIndex) => ({ id, newIndex, oldIndex: before.indexOf(id) }))
       .filter(entry => entry.oldIndex !== -1 && entry.newIndex < entry.oldIndex)
       .map(entry => entry.id);
   }
 
-  private celebrate(movers: number[], entries: LeaderboardEntry[]) {
+  private celebrate(movers: number[], topItemId: number | undefined) {
     // power-up.mp3 is reserved for taking over 1st place, not every rank-up — otherwise it
     // fires constantly in a lively class and loses its impact. Confetti/flip still play for
     // any rank-up (handled in leaderboard-ranking-list.ts via rankedUpItemIds).
-    const topEntry = entries[0];
-    if (topEntry && movers.includes(topEntry.itemId)) {
+    if (topItemId != null && movers.includes(topItemId)) {
       this.playSound(this.powerUpSound);
     }
     this.rankedUpItemIds = movers;
@@ -493,6 +607,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.usedWheelItemIds.add(id);
     if (this.usedWheelItemIds.size >= this.roster.length) {
       this.usedWheelItemIds.clear();
+      this.reshuffleWheelOrder();
     }
   }
 
@@ -501,7 +616,43 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // pool again without waiting for it to exhaust and auto-reset.
   resetWheelPool() {
     this.usedWheelItemIds.clear();
+    this.reshuffleWheelOrder();
     this.cdr.detectChanges();
+  }
+
+  private reshuffleWheelOrder() {
+    this.wheelOrder = this.computeInterleavedWheelOrder();
+  }
+
+  // Round-robins through each team (plus one bucket for anyone not on a team) instead of a flat
+  // shuffle, so consecutive wedges are as likely as possible to belong to opposing teams — a
+  // plain shuffle can still land two teammates side by side purely by chance, especially with few
+  // teams. Individual mode / no-teams topics have exactly one group, which reduces to a full
+  // shuffle, same as before. Some same-team adjacency is unavoidable once every other group is
+  // exhausted (e.g. one team outnumbers the rest combined) — the round-robin just minimizes it.
+  private computeInterleavedWheelOrder(): number[] {
+    const rosterIds = this.roster.filter(i => i.id != null).map(i => i.id!);
+    if (!this.teams.length) return this.shuffle(rosterIds);
+
+    const rosterIdSet = new Set(rosterIds);
+    const assigned = new Set<number>();
+    const groups: number[][] = [];
+    for (const team of this.teams) {
+      const members = team.memberItemIds.filter(id => rosterIdSet.has(id));
+      members.forEach(id => assigned.add(id));
+      if (members.length) groups.push(this.shuffle(members));
+    }
+    const unassigned = rosterIds.filter(id => !assigned.has(id));
+    if (unassigned.length) groups.push(this.shuffle(unassigned));
+
+    const shuffledGroups = this.shuffle(groups);
+    const result: number[] = [];
+    for (let round = 0; result.length < rosterIds.length; round++) {
+      for (const group of shuffledGroups) {
+        if (round < group.length) result.push(group[round]);
+      }
+    }
+    return result;
   }
 
   private hideReveal(after?: () => void) {

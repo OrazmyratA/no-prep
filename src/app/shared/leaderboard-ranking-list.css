@@ -5,31 +5,30 @@
   height: 100%;
 }
 
+/* Column count is entirely teacher-controlled via the grid.png header button
+   (random-picker.ts's gridColumns/columnBuckets) — each column is an independently-sized flex
+   item (a contiguous chunk of the reading order, or whatever the teacher dragged into it), not a
+   CSS-Grid cell, so dragging a student out of one column never reshuffles another. 1 column
+   renders full-width (same as the old plain single-column layout); anything that doesn't fit
+   scrolls vertically, never horizontally. */
+.lb-columns-wrap {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  height: 100%;
+  padding: 0.15rem;
+}
+
 .lb-list-rows {
+  flex: 1 1 0;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  overflow-y: auto;
-  padding: 0.15rem;
-  min-height: 0;
-}
-
-/* Used when the wheel drawer is closed and the list has the full width to itself. Column count
-   (--lb-col-count, set from the component's columnCount getter) is exactly 7 students per
-   column, capped at 4 — 1 column is full-width (minmax(...,1fr) with only 1 track defined fills
-   100%, same as the plain single-column layout); 2nd/3rd/4th columns appear at 8/15/22 students.
-   If 4 columns' 200px minimums don't all fit the panel's width, it scrolls right instead of
-   squeezing narrower or spawning a 5th column. */
-.lb-list-rows.lb-two-column {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(7, auto);
-  grid-template-columns: repeat(var(--lb-col-count, 1), minmax(200px, 1fr));
-  align-content: start;
-  column-gap: 0.6rem;
-  row-gap: 0.25rem;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
 .lb-list-empty {

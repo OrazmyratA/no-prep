@@ -9,8 +9,9 @@
     <span *ngIf="!imageUrl" class="lb-row-avatar-initial">{{ initial }}</span>
   </div>
   <span class="lb-row-name">{{ entry.text }}</span>
+  <span *ngIf="entry.absent" class="lb-row-absent-badge">{{ 'leaderboardAbsent' | translate }}</span>
 </div>
 
 <div class="lb-row-score">
-  <app-leaderboard-star-rating [points]="entry.points" (starClick)="onStarClick()"></app-leaderboard-star-rating>
+  <app-leaderboard-star-rating [points]="entry.points" [absent]="!!entry.absent" (starClick)="onStarClick()"></app-leaderboard-star-rating>
 </div>

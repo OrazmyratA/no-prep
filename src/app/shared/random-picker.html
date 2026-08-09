@@ -42,9 +42,11 @@
           <button
             type="button"
             class="lb-list-title-icon-btn"
-            (click)="commitReorder()"
-            [attr.title]="'leaderboardCommitReorder' | translate"
-            [attr.aria-label]="'leaderboardCommitReorder' | translate">
+            [class.active]="rankingApplied"
+            [disabled]="dragActive"
+            (click)="toggleRanking()"
+            [attr.title]="(rankingApplied ? 'leaderboardRestoreOrder' : 'leaderboardCommitReorder') | translate"
+            [attr.aria-label]="(rankingApplied ? 'leaderboardRestoreOrder' : 'leaderboardCommitReorder') | translate">
             <img
               src="assets/images/ranking.png"
               class="lb-list-title-icon"
@@ -88,6 +90,16 @@
           </button>
 
           <button
+            type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img lb-grid-btn"
+            (click)="cycleGridColumns()"
+            [attr.title]="'leaderboardGridColumns' | translate"
+            [attr.aria-label]="'leaderboardGridColumns' | translate">
+            <img src="assets/images/grid.png" alt="" aria-hidden="true">
+            <span class="lb-grid-count-badge" aria-hidden="true">{{ gridColumns }}</span>
+          </button>
+
+          <button
             *ngIf="mode === 'team'"
             type="button"
             class="lb-header-btn lb-icon-btn"
@@ -128,12 +140,16 @@
         <div class="lb-split" [class.lb-split-wheel-open]="showWheel">
           <app-leaderboard-ranking-list
             class="lb-split-list"
-            [entries]="activeEntries"
-            [twoColumn]="!showWheel"
+            [columnBuckets]="activeColumns"
+            [rankByItemId]="rankByItemId"
+            [rankingApplied]="rankingApplied"
             [rankedUpItemIds]="rankedUpItemIds"
             [hammerHitItemId]="hammerHitItemId"
             (starClick)="onStarClick($event)"
-            (addStudent)="addStudent()">
+            (addStudent)="addStudent()"
+            (toggleAbsent)="toggleAbsent($event)"
+            (columnsChange)="onColumnsChange($event)"
+            (dragActiveChange)="onDragActiveChange($event)">
           </app-leaderboard-ranking-list>
 
           <div class="lb-split-wheel-wrap" [class.open]="showWheel">

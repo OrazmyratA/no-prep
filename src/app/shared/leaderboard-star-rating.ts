@@ -9,6 +9,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, In
 })
 export class LeaderboardStarRatingComponent implements OnChanges, OnDestroy {
   @Input() points = 0;
+  @Input() absent = false;
   @Output() starClick = new EventEmitter<void>();
 
   constructor(private cdr: ChangeDetectorRef) {}
@@ -49,7 +50,10 @@ export class LeaderboardStarRatingComponent implements OnChanges, OnDestroy {
     if (this.swapTimer) clearTimeout(this.swapTimer);
   }
 
-  onClick() {
+  onClick(event: MouseEvent) {
+    // The row itself now toggles Absent on any click (leaderboard-student-row.ts) — a star tap
+    // must not also bubble up and trigger that.
+    event.stopPropagation();
     this.starClick.emit();
   }
 

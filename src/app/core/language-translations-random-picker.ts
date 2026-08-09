@@ -386,6 +386,18 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   sa: 'Update rankings',
 },
 
+'leaderboardRestoreOrder': {
+  en: 'Restore original order',
+  tk: 'Restore original order',
+  ru: 'Restore original order',
+  cn: 'Restore original order',
+  cde: 'Restore original order',
+  es: 'Restore original order',
+  fr: 'Restore original order',
+  kr: 'Restore original order',
+  sa: 'Restore original order',
+},
+
 'leaderboardAddStudent': {
   en: 'Add student',
   tk: 'Add student',
@@ -408,6 +420,30 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Reset wheel',
   kr: 'Reset wheel',
   sa: 'Reset wheel',
+},
+
+'leaderboardAbsent': {
+  en: 'Absent',
+  tk: 'Absent',
+  ru: 'Absent',
+  cn: 'Absent',
+  cde: 'Absent',
+  es: 'Absent',
+  fr: 'Absent',
+  kr: 'Absent',
+  sa: 'Absent',
+},
+
+'leaderboardGridColumns': {
+  en: 'Change grid layout',
+  tk: 'Change grid layout',
+  ru: 'Change grid layout',
+  cn: 'Change grid layout',
+  cde: 'Change grid layout',
+  es: 'Change grid layout',
+  fr: 'Change grid layout',
+  kr: 'Change grid layout',
+  sa: 'Change grid layout',
 },
 
 };
