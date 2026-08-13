@@ -151,20 +151,43 @@ export class BookCreatorGameController {
 
     const topicTitle = query.get('linkedTopicTitle') || 'Topic';
     const bookTopicPath = query.get('bookTopicPath') || '';
-    for (const [index, page] of this.creator.book.pages.entries()) {
-      const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === 'game');
-      if (!element) continue;
-
+    const applyTopic = (element: BookElement) => {
       element.data['topicId'] = topicId;
       element.data['topicName'] = topicTitle;
       element.data['bookTopicPath'] = bookTopicPath;
       element.data['label'] = topicTitle;
+    };
+
+    for (const [index, page] of this.creator.book.pages.entries()) {
+      const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === 'game');
+      if (!element) continue;
+
+      applyTopic(element);
+      this.creator.activePageSource = 'main';
+      this.creator.activeWorkbookId = null;
       this.creator.selectedPageIndex = index;
       this.creator.refreshSelectedPageRender();
       this.creator.selectedElementId = element.id;
       await this.creator.save();
       await this.creator.router.navigate(['/books', this.creator.book.id, 'edit'], { replaceUrl: true });
       return;
+    }
+
+    for (const workbook of this.creator.book.workbooks ?? []) {
+      for (const [index, page] of (workbook.pages ?? []).entries()) {
+        const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === 'game');
+        if (!element) continue;
+
+        applyTopic(element);
+        this.creator.activePageSource = 'workbook';
+        this.creator.activeWorkbookId = workbook.id;
+        this.creator.selectedWorkbookPageIndex = index;
+        this.creator.refreshSelectedPageRender();
+        this.creator.selectedElementId = element.id;
+        await this.creator.save();
+        await this.creator.router.navigate(['/books', this.creator.book.id, 'edit'], { replaceUrl: true });
+        return;
+      }
     }
   }
 

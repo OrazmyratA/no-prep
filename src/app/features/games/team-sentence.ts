@@ -55,6 +55,8 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   gameFinished = false;
   winner: 'left' | 'right' | null = null;
   loading = true;
+  private destroyed = false;
+  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   private animationFrame: any;
   private speed = 4;
   reverseMode = false;
@@ -156,7 +158,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
       this.cdr.detectChanges();
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.attachContainersAndStart();
       }, 100);
     }
@@ -165,12 +167,31 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.gameActive = false;
+    this.clearPendingTimers();
     if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
     this.layoutSubscription?.unsubscribe();
     this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
     [this.correctSound, this.buzzSound, this.winSound, this.explodeSound, this.captureSound].forEach(s => s?.pause());
+  }
+
+  private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
+    const timer = setTimeout(() => {
+      this.pendingTimers.delete(timer);
+      if (!this.destroyed) {
+        callback();
+      }
+    }, delay);
+    this.pendingTimers.add(timer);
+    return timer;
+  }
+
+  private clearPendingTimers() {
+    this.pendingTimers.forEach(timer => clearTimeout(timer));
+    this.pendingTimers.clear();
   }
 
   private buildWordImageMap(items: Item[]) {
@@ -460,7 +481,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private freezeTeam(team: Team, durationMs: number = 3000) {
     team.frozenUntil = Date.now() + durationMs;
     // Unfreeze after duration to allow UI updates
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       if (team.frozenUntil && Date.now() >= team.frozenUntil) {
         team.frozenUntil = null;
         this.cdr.detectChanges();
@@ -535,7 +556,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       this.playSound(this.correctSound);
       this.correctTeam = team;
       const completedItemId = this.cardItem?.id;
-      setTimeout(() => {
+      this.setGameTimeout(() => {
         this.correctTeam = null;
         targetTeam.score++;
         targetTeam.sentenceWords = [];
@@ -776,7 +797,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     const key = `${team}-${tileId}`;
     this.shakingTileIds.add(key);
     this.cdr.detectChanges();
-    window.setTimeout(() => {
+    this.setGameTimeout(() => {
       this.shakingTileIds.delete(key);
       this.cdr.detectChanges();
     }, 450);
@@ -889,7 +910,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
 
     // After 3 seconds, stop the returning phase
-    setTimeout(() => {
+    this.setGameTimeout(() => {
       this.explodingTeam = null;
       this.cdr.detectChanges();
     }, 3000);

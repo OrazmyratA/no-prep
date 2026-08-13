@@ -195,7 +195,7 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private buildGrid() {
-    const candidates = this.prepareWords();
+    let candidates = this.prepareWords();
     if (candidates.length === 0) {
       const msg = this.langService.translate('wordSearchNoValidWords');
       showAppNotification(msg, 'error');
@@ -204,18 +204,32 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
 
     candidates.sort((a, b) => b.answer.length - a.answer.length || Math.random() - 0.5);
 
-    const longest = Math.max(...candidates.map(word => word.answer.length));
-    const totalLetters = candidates.reduce((sum, word) => sum + word.answer.length, 0);
-    let size = Math.max(6, longest, Math.ceil(Math.sqrt(totalLetters * 1.15)));
-
+    // Grid size grows with the longest word / total letters, but is capped so a
+    // teacher pasting a very long item (or many items) can't blow the grid up to
+    // hundreds of cells and freeze the page. If it still won't fit at the cap,
+    // drop the longest remaining word and retry rather than looping forever.
     let placed = false;
-    while (!placed) {
-      const success = this.tryBuildGrid(candidates, size);
-      if (success) {
-        placed = true;
-      } else {
-        size++;
+    while (!placed && candidates.length > 0) {
+      const longest = Math.max(...candidates.map(word => word.answer.length));
+      const totalLetters = candidates.reduce((sum, word) => sum + word.answer.length, 0);
+      let size = Math.min(
+        WordSearchComponent.MAX_GRID_SIZE,
+        Math.max(6, longest, Math.ceil(Math.sqrt(totalLetters * 1.15)))
+      );
+
+      while (!placed && size <= WordSearchComponent.MAX_GRID_SIZE) {
+        placed = this.tryBuildGrid(candidates, size);
+        if (!placed) size++;
       }
+
+      if (!placed) {
+        candidates = candidates.slice(1);
+      }
+    }
+
+    if (!placed) {
+      const msg = this.langService.translate('wordSearchNoValidWords');
+      showAppNotification(msg, 'error');
     }
   }
 
@@ -312,6 +326,9 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     return word ? word.color : '';
   }
 
+private static readonly MAX_WORD_LENGTH = 20;
+private static readonly MAX_GRID_SIZE = 30;
+
 private prepareWords(): Array<{ text: string; answer: string }> {
   return this.items
     .map(item => {
@@ -319,7 +336,7 @@ private prepareWords(): Array<{ text: string; answer: string }> {
       const answer = text.toLocaleUpperCase(this.localeByLanguage[this.langService.currentLang]);   // no regex stripping
       return { text, answer };
     })
-    .filter(word => word.answer.length >= 2);
+    .filter(word => word.answer.length >= 2 && word.answer.length <= WordSearchComponent.MAX_WORD_LENGTH);
 }
 
   private tryBuildGrid(candidates: Array<{ text: string; answer: string }>, size: number): boolean {

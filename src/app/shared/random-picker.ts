@@ -28,6 +28,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   roster: Item[] = [];
   scores = new Map<number, number>();
 
+  // Populated only while a "today's session" is running (see toggleScoreSession) — each entry's
+  // pre-session total, kept around purely to render faded on the row as a reminder of what gets
+  // added back when the session ends. Its emptiness IS the "is a session active" signal.
+  private baselinePoints = new Map<number, number>();
+
   showReveal = false;
   revealVisible = false;
   selectedEntry: LeaderboardEntry | null = null;
@@ -178,12 +183,14 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   private getCachedEntry(item: Item, color?: string): LeaderboardEntry {
     const points = this.scores.get(item.id!) ?? 0;
     const absent = this.absentItemIds.has(item.id!);
+    const baselinePoints = this.baselinePoints.get(item.id!);
     const cached = this.entryCache.get(item.id!);
     if (cached && cached.text === (item.text ?? '') && cached.image === item.image
-        && cached.points === points && cached.color === color && cached.absent === absent) {
+        && cached.points === points && cached.color === color && cached.absent === absent
+        && cached.baselinePoints === baselinePoints) {
       return cached;
     }
-    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent };
+    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent, baselinePoints };
     this.entryCache.set(item.id!, entry);
     return entry;
   }
@@ -223,6 +230,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   get rankingApplied(): boolean {
     return this.mode === 'team' ? this.rankingAppliedTeam : this.rankingAppliedIndividual;
+  }
+
+  get sessionActive(): boolean {
+    return this.baselinePoints.size > 0;
   }
 
   private chunkIntoColumns(order: number[], columns: number): number[][] {
@@ -377,6 +388,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
     this.roster = items;
     this.scores = new Map(scoreRows.map(row => [row.itemId, row.points]));
+    // Restores a session in progress across an app close/reload — the baseline lives on the DB
+    // row itself (see db.ts's startScoreSession/endScoreSession), not just in memory.
+    this.baselinePoints = new Map(
+      scoreRows.filter(row => row.baselinePoints != null).map(row => [row.itemId, row.baselinePoints!])
+    );
     this.usedWheelItemIds = new Set();
     // A pending wheel result belongs to the old roster — a new class list invalidates it.
     this.showReveal = false;
@@ -482,6 +498,30 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     await this.dbService.resetLeaderboardScores(this.selectedTopicId);
     if (this.destroyed) return;
     this.scores = new Map();
+    this.baselinePoints = new Map();
+    this.cdr.detectChanges();
+  }
+
+  // ===== Today's session =====
+  // Lets a teacher separate "today's collected points" from the running total without losing
+  // it: starting stashes each student's current total (baselinePoints, persisted on the DB row —
+  // see db.ts) and zeroes their visible score; ending adds the session's points back onto that
+  // stash and clears it. A toggle, same shape as toggleRanking() — one button, two states.
+  async toggleScoreSession() {
+    if (this.selectedTopicId == null) return;
+    if (this.sessionActive) {
+      await this.dbService.endScoreSession(this.selectedTopicId);
+    } else {
+      const confirmed = await this.confirmationService.confirm(this.langService.translate('leaderboardSessionStartConfirm'));
+      if (!confirmed) return;
+      await this.dbService.startScoreSession(this.selectedTopicId);
+    }
+    if (this.destroyed || this.selectedTopicId == null) return;
+    const scoreRows = await this.dbService.getLeaderboardScores(this.selectedTopicId);
+    this.scores = new Map(scoreRows.map(row => [row.itemId, row.points]));
+    this.baselinePoints = new Map(
+      scoreRows.filter(row => row.baselinePoints != null).map(row => [row.itemId, row.baselinePoints!])
+    );
     this.cdr.detectChanges();
   }
 

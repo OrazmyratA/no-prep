@@ -12,6 +12,7 @@ import { BookReaderGuideAudioControlsComponent } from './book-reader/book-reader
 import { BookReaderComponent } from './book-reader/book-reader';
 import { BookReaderPageFrameComponent } from './book-reader/book-reader-page-frame';
 import { BookReaderPageDrawerComponent } from './book-reader/book-reader-page-drawer';
+import { BookReaderProgressMapComponent } from './book-reader/book-reader-progress-map';
 import { BookReaderSpeakingPanelComponent } from './book-reader/book-reader-speaking-panel';
 import { BookReaderTaskOverlayComponent } from './book-reader/book-reader-task-overlay';
 import { BookReaderToolbarComponent } from './book-reader/book-reader-toolbar';
@@ -20,7 +21,7 @@ import { PdfPageCanvasComponent } from './pdf-page-canvas/pdf-page-canvas';
 import { TranslatePipe } from '../../shared/translate-pipe';
 
 @NgModule({
-  declarations: [BookCreatorComponent, BookCreatorEditorSurfaceComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
+  declarations: [BookCreatorComponent, BookCreatorEditorSurfaceComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderProgressMapComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
   imports: [CommonModule, FormsModule, SharedModule, BooksRoutingModule, TranslatePipe]
 })
 export class BooksModule {}

@@ -17,6 +17,7 @@ import {
 } from './book-reader-annotation-utils';
 import { BookReaderDrawingCanvasController } from './book-reader-drawing-canvas-controller';
 import { BookReaderAnnotationHistoryController } from './book-reader-annotation-history-controller';
+import { showAppNotification } from '../../../core/notification';
 
 export class BookReaderAnnotationController {
   private readonly drawingCanvasController: BookReaderDrawingCanvasController;
@@ -447,7 +448,12 @@ export class BookReaderAnnotationController {
     }
     if (!this.reader.annotations) return;
     this.reader.annotations.updatedAt = new Date().toISOString();
-    await this.reader.bookLibrary.saveBookAnnotations(this.reader.annotations);
+    try {
+      await this.reader.bookLibrary.saveBookAnnotations(this.reader.annotations);
+    } catch (error) {
+      console.error('Failed to save annotations:', error);
+      showAppNotification('Could not save your drawing. Please try again.', 'error');
+    }
   }
 
   syncActiveTextEditorSize(event?: Event): void {

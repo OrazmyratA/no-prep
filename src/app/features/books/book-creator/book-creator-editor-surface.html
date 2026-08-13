@@ -17,6 +17,15 @@
     [attr.aria-label]="'nextPage' | translate">
     <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
   </button>
+  <button
+    type="button"
+    class="creator-content-page-btn"
+    *ngIf="creator.hasContentPage() && creator.selectedPage?.type !== 'progressMap'"
+    (click)="$event.stopPropagation(); creator.goToContentPage()"
+    title="Go to content page"
+    aria-label="Go to content page">
+    <span class="creator-content-page-icon">&#128506;</span>
+  </button>
   <div class="editor-canvas-scroll-content">
     <div
       #editorCanvas
@@ -30,7 +39,7 @@
       (wheel)="creator.onEditorWheel($event)"
       (click)="creator.onCanvasBackgroundClick($event)"
       appSwipe
-      [swipeDisabled]="!!creator.placingMatchTask || !!creator.placingTextTask || !!creator.placingChoiceTask || !!creator.placingCircleTask || creator.creatorDrawMode || creator.creatorHighlighterMode || creator.creatorTextMode || creator.isDragging"
+      [swipeDisabled]="!!creator.placingMatchTask || !!creator.placingTextTask || !!creator.placingChoiceTask || !!creator.placingCircleTask || !!creator.placingTracingTask || creator.creatorDrawMode || creator.creatorHighlighterMode || creator.creatorTextMode || creator.isDragging"
       (swipeLeft)="creator.selectPage(creator.activePageIndex + 1)"
       (swipeRight)="creator.selectPage(creator.activePageIndex - 1)"
       (pointerdown)="creator.onCanvasPointerDown($event)">
@@ -62,6 +71,30 @@
       </div>
     </div>
 
+    <div class="progress-map-preview" *ngIf="creator.isProgressMapPage(creator.selectedPage)">
+      <div class="progress-map-preview-empty" *ngIf="!creator.getProgressUnits(creator.selectedPage).length">
+        No units yet. Use the panel on the right to add units.
+      </div>
+      <button
+        type="button"
+        class="progress-map-preview-unit"
+        [class.selected]="creator.isProgressUnitSelected(unit)"
+        *ngFor="let unit of creator.getProgressUnits(creator.selectedPage); let i = index; trackBy: creator.trackByProgressUnitId"
+        (click)="creator.selectProgressUnit(unit); $event.stopPropagation()"
+        title="Click to edit this unit">
+        <div class="progress-map-preview-node">{{ i + 1 }}</div>
+        <div class="progress-map-preview-name">{{ unit.name }}</div>
+        <div class="progress-map-preview-lessons">
+          <span
+            class="progress-map-preview-lesson"
+            *ngFor="let lesson of unit.lessons; trackBy: creator.trackByProgressLessonId">
+            {{ lesson.name }}
+          </span>
+          <span class="progress-map-preview-lesson-empty" *ngIf="!unit.lessons.length">No lessons yet</span>
+        </div>
+      </button>
+    </div>
+
     <div
       *ngFor="let element of creator.selectedPage?.elements; trackBy: creator.trackByElementId"
       class="creator-element"
@@ -85,6 +118,8 @@
       [class.match-side-a]="element.type === 'matchTask' && element.data['side'] === 'A'"
       [class.match-side-b]="element.type === 'matchTask' && element.data['side'] === 'B'"
       [class.pending-match-endpoint]="element.type === 'matchTask' && creator.isPendingMatchEndpoint(element)"
+      [class.tracing-task-element]="element.type === 'tracingTask'"
+      [class.tracing-incomplete]="element.type === 'tracingTask' && !creator.isTracingElementUsable(element)"
       [style.left.%]="element.x * 100"
       [style.top.%]="element.y * 100"
       [style.width.%]="(element.width || 0.08) * 100"
@@ -97,6 +132,7 @@
       <span *ngIf="element.type === 'focus'" class="focus-label"></span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+      <img *ngIf="element.type === 'tracingTask'" class="book-marker-icon tracing-marker-icon" src="assets/images/book/pencil.png" alt="Tracing task">
       <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
         <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
       </span>
@@ -165,6 +201,40 @@
         [attr.aria-label]="'Guide position ' + item.sequence">
         <img src="assets/images/book/pin.png" alt="">
         <span>{{ item.sequence }}</span>
+      </button>
+    </ng-container>
+
+    <ng-container *ngIf="creator.selectedElement as tracingElement">
+      <svg *ngIf="tracingElement.type === 'tracingTask'" class="creator-tracing-line-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+        <path
+          *ngFor="let linePath of creator.getTracingLinePaths(tracingElement)"
+          [attr.d]="linePath"
+          fill="none" stroke="#2563eb" stroke-width="2" vector-effect="non-scaling-stroke" stroke-dasharray="4 3">
+        </path>
+        <polyline
+          *ngIf="tracingElement.type === 'tracingTask' && creator.getTracingPreviewLine(tracingElement) as previewLine"
+          [attr.points]="previewLine"
+          fill="none" stroke="#2563eb" stroke-width="2" vector-effect="non-scaling-stroke" stroke-dasharray="2 4" opacity="0.65">
+        </polyline>
+      </svg>
+      <div
+        *ngIf="tracingElement.type === 'tracingTask' && creator.placingTracingTask && creator.tracingPlacementElementId === tracingElement.id && creator.tracingPreviewPoint as previewPoint"
+        class="creator-tracing-ghost-point"
+        [style.left.%]="previewPoint.x * 100"
+        [style.top.%]="previewPoint.y * 100">
+      </div>
+      <button
+        *ngFor="let item of creator.getTracingPointSequence(tracingElement); trackBy: creator.trackByTracingPointId"
+        type="button"
+        class="creator-tracing-point"
+        [class.jump-point]="item.isJumpPoint"
+        [class.final-point]="item.isFinalPoint"
+        [class.active-part]="creator.isActiveTracingPart(item.part.id)"
+        [style.left.%]="item.point.x * 100"
+        [style.top.%]="item.point.y * 100"
+        (click)="$event.stopPropagation()"
+        (pointerdown)="creator.startTracingPointDrag($event, tracingElement, item.part.id, item.point)"
+        [attr.aria-label]="'Tracing point ' + item.sequence">
       </button>
     </ng-container>
 

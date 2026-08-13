@@ -491,6 +491,120 @@
   color: #ffffff;
 }
 
+.tracing-task-settings {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.tracing-hint {
+  margin: 0;
+  border: 1px dashed #94a3b8;
+  border-radius: 0.42rem;
+  background: #f8fafc;
+  padding: 0.45rem 0.6rem;
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.tracing-parts-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tracing-part-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.3rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.42rem;
+  background: #ffffff;
+  padding: 0.35rem 0.55rem;
+  cursor: grab;
+}
+
+.tracing-part-row.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+}
+
+.tracing-part-label {
+  font-weight: 800;
+  color: #334155;
+}
+
+.tracing-part-count {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.tracing-part-row .mini-icon-btn {
+  min-height: 1.9rem;
+  padding: 0.2rem;
+}
+
+.tracing-part-row .mini-icon-btn img {
+  width: 1rem;
+  height: 1rem;
+}
+
+.tracing-empty-hint {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.4rem 0;
+}
+
+.tracing-add-part-btn {
+  width: 100%;
+}
+
+.tracing-curve-list {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.tracing-curve-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.6fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.3rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.42rem;
+  background: #ffffff;
+  padding: 0.35rem 0.55rem;
+}
+
+.tracing-curve-label {
+  font-weight: 800;
+  color: #334155;
+  font-size: 0.78rem;
+}
+
+.tracing-curve-row input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: #2563eb;
+}
+
+.tracing-curve-value {
+  min-width: 2.2rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: right;
+}
+
 .circle-correct-toggle {
   display: flex;
   align-items: center;
@@ -1181,4 +1295,237 @@
     min-width: 2.05rem;
     min-height: 2.35rem;
   }
+}
+
+.progress-map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.6rem 0;
+}
+
+.progress-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.progress-unit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.progress-unit-chip {
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-unit-chip:hover {
+  border-color: #93c5fd;
+}
+
+.progress-unit-chip.selected {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.progress-map-hint {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.1rem;
+}
+
+.progress-unit-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid #93c5fd;
+  border-radius: 0.6rem;
+  background: #eff6ff;
+  padding: 0.55rem;
+}
+
+.progress-unit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.progress-unit-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.progress-lesson-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-left: 0.6rem;
+  border-left: 2px dashed #cbd5e1;
+}
+
+.progress-lesson-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #ffffff;
+}
+
+.progress-lesson-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.progress-lesson-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.45rem;
+  color: #111827;
+}
+
+.progress-lesson-pages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.progress-lesson-page-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  padding: 0.3rem 0.3rem 0.3rem 0.55rem;
+  cursor: pointer;
+}
+
+.progress-lesson-page-chip:hover {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+.progress-lesson-page-chip:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.progress-lesson-page-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-lesson-page-remove {
+  flex: 0 0 auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.progress-lesson-page-remove:hover {
+  background: rgba(185, 28, 28, 0.12);
+}
+
+.progress-lesson-page-empty {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-style: italic;
+  padding: 0.1rem 0.3rem;
+}
+
+.progress-lesson-search-wrap {
+  position: relative;
+}
+
+.progress-lesson-search {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  color: #111827;
+  font-size: 0.8rem;
+  background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat right 0.5rem center / 1rem 1rem;
+  padding-right: 1.8rem;
+}
+
+.progress-lesson-search-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  right: 0;
+  max-height: 12rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+  padding: 0.25rem;
+}
+
+.progress-lesson-search-result {
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+.progress-lesson-search-result:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.progress-lesson-search-empty {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-style: italic;
 }

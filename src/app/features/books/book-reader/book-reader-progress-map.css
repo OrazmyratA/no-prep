@@ -1,0 +1,831 @@
+:host {
+  display: block;
+  grid-column: 2;
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.progress-map {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+  height: 100%;
+  padding: 0 0 2.4rem;
+  overflow: auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  background-color: #38bdf8;
+  background-repeat: no-repeat;
+  background-position-x: left;
+  background-size: 100% auto;
+  background-attachment: scroll;
+}
+
+.progress-map-header-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  flex-shrink: 0;
+}
+
+.progress-map-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.26rem 1rem 0.46rem;
+  border-radius: 0 0 1rem 1rem;
+  background-color: #17171a;
+  background-repeat: repeat-x;
+  background-position: left center;
+  background-size: auto 100%;
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.6),
+    0 10px 22px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+  max-height: 5rem;
+  opacity: 1;
+  transition: padding 0.3s ease, max-height 0.3s ease, opacity 0.25s ease;
+}
+
+.progress-map-header.collapsed {
+  padding: 0 1rem;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.progress-map-growth {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 0%;
+  background-color: #7dd3fc;
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  background-size: auto 100%;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 95%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 95%, transparent 100%);
+  pointer-events: none;
+  transition: width 0.4s ease;
+}
+
+.progress-map-growth.complete {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.progress-map-header::before,
+.progress-map-header::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.progress-map-header::before {
+  width: 4rem;
+  height: 4rem;
+  top: -2rem;
+  left: -1rem;
+}
+
+.progress-map-header::after {
+  width: 2.6rem;
+  height: 2.6rem;
+  bottom: -1.6rem;
+  right: 6rem;
+}
+
+.progress-map-laser {
+  position: relative;
+  z-index: 39;
+  height: 0.65rem;
+  margin: 0 0 0.6rem;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.progress-map-laser-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 0 0 1rem 1rem;
+  background: rgba(8, 10, 18, 0.65);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 2px 4px rgba(0, 0, 0, 0.5);
+  overflow: visible;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 3%, #000 97%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 3%, #000 97%, transparent 100%);
+}
+
+.progress-map-badge {
+  position: absolute;
+  bottom: 100%;
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.3rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 9999px;
+  background: linear-gradient(160deg, rgba(26, 28, 34, 0.94), rgba(8, 9, 12, 0.94));
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 0 14px 2px rgba(34, 211, 238, 0.4);
+  backdrop-filter: blur(6px);
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #fef9c3;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+  white-space: nowrap;
+  transform: translate(-50%, 50%);
+  transition: opacity 0.25s ease, transform 0.25s ease, left 0.4s ease;
+}
+
+.progress-map-badge.complete {
+  padding: 0.28rem 0.55rem;
+  background: linear-gradient(160deg, rgba(64, 46, 4, 0.94), rgba(24, 16, 2, 0.94));
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(253, 224, 71, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 18px 4px rgba(253, 224, 71, 0.6);
+}
+
+.progress-map-badge-star {
+  font-size: 1.05rem;
+  line-height: 1;
+  display: inline-block;
+  transform-origin: center;
+  filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.9));
+  animation: progress-map-star-shine 1.6s ease-in-out infinite;
+}
+
+.progress-map-header.collapsed ~ .progress-map-laser .progress-map-badge {
+  opacity: 0;
+  transform: translate(-50%, 20%) scale(0.7);
+}
+
+.progress-map-laser-fill {
+  position: absolute;
+  inset: 0;
+  width: 0%;
+  border-radius: 0 0 1rem 1rem;
+  overflow: visible;
+  background: linear-gradient(90deg, #22d3ee 0%, #34d399 55%, #facc15 100%);
+  box-shadow:
+    0 0 10px 3px rgba(52, 211, 153, 0.85),
+    0 0 22px 6px rgba(34, 211, 238, 0.5);
+  transition: width 0.4s ease;
+}
+
+.progress-map-laser-fill::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30%;
+  bottom: 30%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.6));
+  mix-blend-mode: screen;
+  filter: blur(0.4px);
+}
+
+.progress-map-laser-fill::after {
+  content: '';
+  position: absolute;
+  top: -70%;
+  bottom: -70%;
+  width: 22%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.95), transparent);
+  mix-blend-mode: screen;
+  transform: skewX(-22deg) translateX(-160%);
+  animation: progress-map-laser-sweep 2.3s ease-in-out infinite;
+}
+
+@keyframes progress-map-laser-sweep {
+  0% {
+    transform: skewX(-22deg) translateX(-160%);
+  }
+  100% {
+    transform: skewX(-22deg) translateX(420%);
+  }
+}
+
+.progress-map-laser-spark {
+  position: absolute;
+  right: -0.35rem;
+  top: 50%;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow:
+    0 0 8px 3px rgba(255, 255, 255, 0.95),
+    0 0 18px 7px rgba(52, 211, 153, 0.7);
+  transform: translateY(-50%) scale(1);
+  animation: progress-map-laser-spark-pulse 1.4s ease-in-out infinite;
+}
+
+.progress-map-laser-spark::before,
+.progress-map-laser-spark::after {
+  content: '';
+  position: absolute;
+  inset: -1.05rem;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.progress-map-laser-spark::before {
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.7) 0deg 2.4deg, transparent 2.4deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 0%, transparent 68%);
+  animation: progress-map-laser-rays-spin 7s linear infinite;
+}
+
+.progress-map-laser-spark::after {
+  background: repeating-conic-gradient(from 12deg, rgba(253, 224, 71, 0.55) 0deg 1.6deg, transparent 1.6deg 26deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 60%);
+  mask-image: radial-gradient(circle, #000 0%, transparent 60%);
+  animation: progress-map-laser-rays-spin 11s linear infinite reverse;
+}
+
+@keyframes progress-map-laser-rays-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progress-map-laser-spark-pulse {
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.3);
+  }
+}
+
+.progress-map-title {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 4rem;
+  min-width: 3rem;
+  margin: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.progress-map-title-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.16rem 0.55rem;
+  border-radius: 9999px;
+  background: rgba(20, 12, 4, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 3px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes progress-map-star-shine {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.9)) drop-shadow(0 2px 2px rgba(41, 24, 10, 0.5));
+  }
+  50% {
+    transform: scale(1.4) rotate(-8deg);
+    filter: drop-shadow(0 0 13px rgba(253, 224, 71, 1)) drop-shadow(0 2px 2px rgba(41, 24, 10, 0.5));
+  }
+}
+
+.progress-map-stat {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.16rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(20, 12, 4, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+  white-space: nowrap;
+}
+
+.progress-map-stat-icon {
+  font-size: 1rem;
+  line-height: 1;
+  transition: font-size 0.25s ease, opacity 0.2s ease, margin 0.25s ease, width 0.25s ease;
+  display: inline-block;
+  overflow: hidden;
+}
+
+.progress-map-header.collapsed .progress-map-stat-icon {
+  width: 0;
+  font-size: 0;
+  opacity: 0;
+  margin: 0;
+}
+
+.progress-map-share-btn {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: width 0.25s ease, opacity 0.2s ease, transform 0.2s ease;
+}
+
+.progress-map-share-btn:hover {
+  transform: scale(1.06);
+}
+
+.progress-map-header.collapsed .progress-map-share-btn {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.share-card-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.2rem;
+  background: rgba(15, 12, 6, 0.55);
+  box-sizing: border-box;
+}
+
+.share-card-modal {
+  position: relative;
+  width: min(24rem, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.9rem;
+  padding: 1.4rem 1.3rem 1.6rem;
+  border-radius: 1.4rem;
+  background: linear-gradient(180deg, #fdf6e8 0%, #f3e8d0 100%);
+  box-shadow: 0 24px 60px rgba(15, 12, 6, 0.4);
+}
+
+.share-card-close {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 9999px;
+  background: rgba(120, 90, 45, 0.14);
+  color: #5b3a1e;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.share-card-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1080 / 1820;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #eafcef;
+  box-shadow: 0 6px 18px rgba(74, 47, 15, 0.2);
+  display: grid;
+  place-items: center;
+}
+
+.share-card-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.share-card-spinner {
+  color: #8a6a3f;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.share-card-actions {
+  display: flex;
+  gap: 0.7rem;
+}
+
+.share-card-btn {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: none;
+  border-radius: 0.9rem;
+  background: rgba(109, 40, 217, 0.1);
+  color: #4c1d95;
+  font-size: 0.92rem;
+  font-weight: 800;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.share-card-btn:hover {
+  background: rgba(109, 40, 217, 0.18);
+}
+
+.share-card-btn:active {
+  transform: scale(0.97);
+}
+
+.share-card-btn-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.share-card-btn-primary {
+  background: linear-gradient(160deg, #6d28d9 0%, #7c3aed 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 14px rgba(91, 33, 182, 0.35);
+}
+
+.share-card-btn-primary:hover {
+  background: linear-gradient(160deg, #7c3aed 0%, #8b5cf6 100%);
+}
+
+.share-card-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.progress-map-empty {
+  margin: 3rem auto;
+  padding: 0 1rem;
+  color: #64748b;
+  font-weight: 600;
+  text-align: center;
+}
+
+.progress-map-units {
+  position: relative;
+  width: 100%;
+  flex: 0 0 auto;
+  padding: 0.6rem 1rem 0;
+  box-sizing: border-box;
+}
+
+.progress-map-owl {
+  position: absolute;
+  width: 5.4rem;
+  height: auto;
+  transform: translate(10%, -60%);
+  pointer-events: none;
+  z-index: 15;
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.25));
+  transition: left 0.7s ease, top 0.7s ease;
+}
+
+.progress-map-boat {
+  position: absolute;
+  width: 5.4rem;
+  height: auto;
+  pointer-events: none;
+  z-index: 25;
+  filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.25));
+  transition: left 0.7s ease, top 0.7s ease;
+  animation: progress-map-boat-bob 3.4s ease-in-out infinite;
+}
+
+@keyframes progress-map-boat-bob {
+  0%, 100% {
+    margin-top: -0.3rem;
+  }
+  50% {
+    margin-top: 0.3rem;
+  }
+}
+
+.progress-unit {
+  --tree-size: 6.4rem;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 10.5rem;
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: 1;
+  transition: left 0.4s ease, top 0.4s ease;
+}
+
+.progress-unit.open {
+  z-index: 20;
+}
+
+.progress-unit.locked {
+  cursor: not-allowed;
+}
+
+.progress-unit-tree-box {
+  position: relative;
+  width: 10.5rem;
+  height: 10rem;
+  transition: transform 0.18s ease;
+}
+
+.progress-unit:not(.locked):hover .progress-unit-tree-box {
+  transform: translateY(-3px) scale(1.03);
+}
+
+.progress-unit:not(.locked):active .progress-unit-tree-box {
+  transform: translateY(1px) scale(0.98);
+}
+
+.progress-unit-island-img {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 10px rgba(8, 47, 73, 0.28));
+}
+
+.progress-unit-tree-img {
+  position: absolute;
+  left: 50%;
+  bottom: calc(44% + var(--tree-size) / 6);
+  transform: translateX(-50%);
+  width: var(--tree-size);
+  height: var(--tree-size);
+  object-fit: contain;
+  filter: drop-shadow(0 6px 6px rgba(15, 23, 42, 0.18));
+  z-index: 1;
+}
+
+.progress-unit.locked .progress-unit-island-img {
+  filter: grayscale(0.85) brightness(0.85) drop-shadow(0 10px 10px rgba(8, 47, 73, 0.28));
+  opacity: 0.75;
+}
+
+.progress-unit.locked .progress-unit-tree-img {
+  filter: grayscale(0.85) brightness(0.85) drop-shadow(0 6px 6px rgba(15, 23, 42, 0.18));
+  opacity: 0.75;
+}
+
+.progress-lesson-bubble {
+  position: absolute;
+  left: 50%;
+  top: calc(2.2rem - var(--tree-size) / 6);
+  width: 3.2rem;
+  height: 3.2rem;
+  border: none;
+  border-radius: 9999px;
+  padding: 0.18rem;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 32% 26%, #ffffff 0%, #fef3c7 55%, #fcd34d 100%);
+  box-shadow: 0 4px 10px rgba(120, 72, 12, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  z-index: 12;
+  transform: translate(-50%, -50%) translate(0, 0) scale(0);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+}
+
+.progress-unit.open .progress-lesson-bubble {
+  transform: translate(-50%, -50%) translate(var(--bubble-x, 0), var(--bubble-y, 0)) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.progress-lesson-bubble:not(:disabled):hover {
+  filter: brightness(1.05);
+}
+
+.progress-lesson-bubble:not(:disabled):active {
+  filter: brightness(0.95);
+}
+
+.progress-lesson-bubble img {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.25));
+}
+
+.progress-lesson-bubble.locked {
+  background: radial-gradient(circle at 32% 26%, #f8fafc 0%, #cbd5e1 100%);
+  cursor: not-allowed;
+}
+
+.progress-lesson-bubble.locked img {
+  filter: grayscale(1) brightness(0.85) opacity(0.75);
+}
+
+.progress-lesson-bubble.complete {
+  background: radial-gradient(circle at 32% 26%, #ffffff 0%, #bbf7d0 55%, #4ade80 100%);
+}
+
+.progress-lesson-bubble-check {
+  position: absolute;
+  bottom: -0.15rem;
+  right: -0.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 9999px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+}
+
+.progress-lesson-bubble-lock {
+  position: absolute;
+  bottom: -0.3rem;
+  right: -0.3rem;
+  font-size: 0.85rem;
+  filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.4));
+}
+
+.progress-unit-lock-badge {
+  position: absolute;
+  top: calc(2.4rem - var(--tree-size) / 6);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.6rem;
+  filter: grayscale(1) brightness(0.7) drop-shadow(0 2px 3px rgba(15, 23, 42, 0.4));
+}
+
+.progress-unit-label {
+  position: relative;
+  z-index: 5;
+  max-width: 9rem;
+  margin-top: calc(-1 * var(--tree-size) / 2);
+  padding: 0.15rem 0.6rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-align: center;
+  overflow-wrap: break-word;
+}
+
+.progress-unit.locked .progress-unit-label {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.progress-unit-panel {
+  position: fixed;
+  left: 1.1rem;
+  bottom: 1.1rem;
+  width: min(19rem, calc(100vw - 2.2rem));
+  max-height: min(58vh, 24rem);
+  display: flex;
+  flex-direction: column;
+  padding: 0.9rem 1rem 1rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(180deg, #fdf6e8 0%, #f3e8d0 100%);
+  box-shadow: 0 14px 34px rgba(74, 47, 15, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transform: translateY(0.6rem) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  z-index: 30;
+}
+
+.progress-unit-panel.open {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.progress-unit-panel-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(120, 90, 45, 0.18);
+}
+
+.progress-unit-panel-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #5b3a1e;
+}
+
+.progress-unit-panel-close {
+  flex-shrink: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: none;
+  border-radius: 9999px;
+  background: rgba(120, 90, 45, 0.14);
+  color: #5b3a1e;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.progress-unit-panel-empty {
+  padding: 1rem 0;
+  color: #8a6a3f;
+  font-weight: 600;
+  text-align: center;
+}
+
+.progress-unit-panel-list {
+  margin: 0;
+  padding: 0.7rem 0 0;
+  list-style: none;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.progress-unit-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.progress-unit-panel-row-number {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  background: rgba(120, 90, 45, 0.14);
+  color: #5b3a1e;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.progress-unit-panel-row-name {
+  flex: 1 1 auto;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #3f2c14;
+  overflow-wrap: break-word;
+}

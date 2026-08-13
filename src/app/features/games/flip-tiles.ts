@@ -94,6 +94,11 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
     const idParam = this.route.snapshot.paramMap.get('id') ?? this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
     this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
+    if (this.items.length === 0) {
+      showAppNotification(this.langService.translate('flipTilesNoItems'), 'error');
+      this.router.navigate(['/topics', this.topicId, 'activities']);
+      return;
+    }
     this.rebuildCards(this.items);
     this.cdr.detectChanges();
 

@@ -206,6 +206,38 @@
   cursor: not-allowed;
 }
 
+.creator-content-page-btn {
+  position: absolute;
+  right: 0.7rem;
+  bottom: 0.7rem;
+  z-index: 29;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(120, 113, 108, 0.2);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111827;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.creator-content-page-btn:hover {
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.creator-content-page-btn:active {
+  transform: scale(0.96);
+}
+
+.creator-content-page-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
 .pdf-placeholder {
   position: absolute;
   inset: 0;
@@ -216,6 +248,102 @@
   color: #334155;
   text-align: center;
   padding: 1rem;
+}
+
+.progress-map-preview {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: center;
+  gap: 1.6rem 1.4rem;
+  padding: 1.6rem;
+  overflow: auto;
+  background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%);
+}
+
+.progress-map-preview-empty {
+  margin: 2rem auto;
+  color: #64748b;
+  font-weight: 600;
+  text-align: center;
+}
+
+.progress-map-preview-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  width: 8.5rem;
+  border: 2px solid transparent;
+  border-radius: 0.9rem;
+  background: transparent;
+  padding: 0.5rem 0.3rem;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.progress-map-preview-unit:hover {
+  background: rgba(96, 165, 250, 0.12);
+}
+
+.progress-map-preview-unit:active {
+  transform: scale(0.97);
+}
+
+.progress-map-preview-unit.selected {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.18);
+}
+
+.progress-map-preview-node {
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #bfdbfe, #60a5fa 70%);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.1rem;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
+}
+
+.progress-map-preview-unit.selected .progress-map-preview-node {
+  background: radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 70%);
+  box-shadow: 0 8px 18px rgba(217, 119, 6, 0.35);
+}
+
+.progress-map-preview-name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-align: center;
+  overflow-wrap: break-word;
+}
+
+.progress-map-preview-lessons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.progress-map-preview-lesson {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #7c2d12;
+  background: linear-gradient(180deg, #fde68a, #f59e0b);
+  border-radius: 9999px;
+  padding: 0.18rem 0.5rem;
+}
+
+.progress-map-preview-lesson-empty {
+  font-size: 0.65rem;
+  color: #94a3b8;
 }
 
 .page-starter {
@@ -359,7 +487,8 @@
 .creator-element.note-element,
 .creator-element.answer-key-element,
 .creator-element.speaking-ai-element,
-.creator-element.game-element {
+.creator-element.game-element,
+.creator-element.tracing-task-element {
   aspect-ratio: 1 / 1;
   height: auto !important;
 }
@@ -537,6 +666,16 @@
   filter: drop-shadow(0 0.35rem 0.55rem rgba(41, 37, 36, 0.22));
 }
 
+.tracing-marker-icon {
+  filter: drop-shadow(0 0.35rem 0.55rem rgba(41, 37, 36, 0.22));
+}
+
+.creator-element.tracing-task-element.tracing-incomplete {
+  outline: 2px dashed rgba(220, 38, 38, 0.55);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
+}
+
 .note-marker {
   display: grid;
   place-items: center;
@@ -663,6 +802,63 @@
 .creator-guide-pin.selected {
   filter: drop-shadow(0 0 0.55rem rgba(37, 99, 235, 0.85));
   transform: translate(-50%, -88%) scale(1.12);
+}
+
+.creator-tracing-line-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.creator-tracing-point {
+  position: absolute;
+  z-index: 25;
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  border: 2px solid #2563eb;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.24);
+}
+
+.creator-tracing-point:active {
+  cursor: grabbing;
+}
+
+.creator-tracing-point.jump-point {
+  border-color: #b45309;
+  border-style: dashed;
+}
+
+.creator-tracing-point.final-point {
+  border-color: #16a34a;
+  background: rgba(220, 252, 231, 0.92);
+}
+
+.creator-tracing-point.active-part {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.24), 0 2px 6px rgba(15, 23, 42, 0.24);
+}
+
+.creator-tracing-ghost-point {
+  position: absolute;
+  z-index: 24;
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: translate(-50%, -50%);
+  border: 2px dashed #2563eb;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.14);
+  pointer-events: none;
 }
 
 @media (max-width: 960px) {

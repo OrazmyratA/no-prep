@@ -914,10 +914,10 @@ if (this.currentIndex >= this.items.length) {
     }
     const distractors = Array.from(uniqueNames.values());
     if (!distractors.length) return [];
-    const shuffled = distractors.sort(() => Math.random() - 0.5);
+    const shuffled = this.shuffleItems(distractors);
     const chosen = shuffled.slice(0, Math.min(2, shuffled.length));
     const options = [this.currentItem, ...chosen];
-    return options.sort(() => Math.random() - 0.5);
+    return this.shuffleItems(options);
   }
 
   private startFastReveal() {

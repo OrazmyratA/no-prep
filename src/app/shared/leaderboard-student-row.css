@@ -99,9 +99,12 @@
   min-width: 0;
 }
 
+/* Sized to just under the star rating's fixed 55px box (leaderboard-star-rating.css's
+   .lb-star) — the star is the tallest thing in the row, so this is as big as the avatar can
+   get without growing the row past its current height. */
 .lb-row-avatar {
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 9999px;
   overflow: hidden;
   flex-shrink: 0;
@@ -111,7 +114,7 @@
   background: linear-gradient(135deg, #60a5fa, #a855f7);
   color: white;
   font-weight: 800;
-  font-size: 0.85rem;
+  font-size: 1.1rem;
   transition: width 200ms ease, height 200ms ease;
 }
 
@@ -122,9 +125,9 @@
 }
 
 :host.lb-row-top .lb-row-avatar {
-  width: 2.8rem;
-  height: 2.8rem;
-  font-size: 1rem;
+  width: 3.4rem;
+  height: 3.4rem;
+  font-size: 1.25rem;
 }
 
 .lb-row-name {
@@ -142,8 +145,23 @@
   font-size: 0.95rem;
 }
 
+/* Star sits alone on the left so it can be as large as possible; the faded baseline badge sits
+   beside it on the right instead of stacked underneath, so it never constrains the star's size. */
 .lb-row-score {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* ===== Today's session: faded reminder of the pre-session total, added back on session end ===== */
+.lb-row-baseline {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
 /* ===== Flying above another row during the FLIP reorder animation ===== */

@@ -90,6 +90,19 @@ export class BookReaderSpeakingRecordingController {
   }
 
   async stopSpeakingConversation(saveAttempt: boolean): Promise<void> {
+    if (this.reader.speakingStopPromise) {
+      return this.reader.speakingStopPromise;
+    }
+    const stopPromise = this.performStopSpeakingConversation(saveAttempt);
+    this.reader.speakingStopPromise = stopPromise;
+    try {
+      await stopPromise;
+    } finally {
+      this.reader.speakingStopPromise = null;
+    }
+  }
+
+  private async performStopSpeakingConversation(saveAttempt: boolean): Promise<void> {
     if (this.reader.speakingTimer !== null) {
       window.clearInterval(this.reader.speakingTimer);
       this.reader.speakingTimer = null;
@@ -163,7 +176,12 @@ export class BookReaderSpeakingRecordingController {
           }
           await this.reader.tryTranscribeSpeakingAttempt(activeAttempt);
         }
-        await this.reader.speakingAttemptService.save(activeAttempt);
+        try {
+          await this.reader.speakingAttemptService.save(activeAttempt);
+        } catch (error) {
+          console.error('Failed to save speaking attempt:', error);
+          showAppNotification('Could not save your recording. Please try again.', 'error');
+        }
       }
     } finally {
       this.resetSpeakingRecorderState();

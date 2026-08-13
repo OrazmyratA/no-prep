@@ -12,6 +12,8 @@ import { showAppNotification } from '../../../core/notification';
 import { PlatformFileService } from '../../../core/platform-file';
 import { BookTaskResponseService } from '../../../core/book-task-responses';
 import { BookSpeakingAttemptService } from '../../../core/book-speaking-attempts';
+import { BookPageProgressService } from '../../../core/book-page-progress';
+import { BookLastPositionService } from '../../../core/book-last-position';
 import { AiLanguagePackService, InstalledAiLanguagePack } from '../../../core/ai-language-packs';
 import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus, AiSpeakingSessionFeedbackResult, AiSpeakingTaskConfig, AiSpeakingTurn } from '../../../core/ai-speaking-runtime';
 import { isBookTaskElement } from '../../../core/book-tasks';
@@ -20,6 +22,7 @@ import {
   BookAnnotationText,
   BookAnnotations,
   BookElement,
+  BookLessonProgress,
   BookTaskResponse,
   GuideTimelinePin,
   BookWorkbook,
@@ -28,9 +31,17 @@ import {
   BookSpeakingAttempt,
   BookWordBankOption,
   WorkbookLink,
-  InteractiveBook
+  InteractiveBook,
+  ProgressMapLesson,
+  ProgressMapUnit
 } from '../../../core/book.model';
 import { normalizeBookGuideTimelines } from '../../../core/guide-timeline';
+import {
+  getOrderedTracingPoints,
+  isTracingElementUsable,
+  normalizeBookTracingElements,
+  OrderedTracingPoint
+} from '../../../core/book-tracing';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 import {
   BakedDrawingCanvas,
@@ -50,6 +61,7 @@ import {
 } from './book-reader-topic-snapshot';
 import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
 import { BookReaderTaskController } from './book-reader-task-controller';
+import { BookReaderTracingController } from './book-reader-tracing-controller';
 import { BookReaderGuideController } from './book-reader-guide-controller';
 import { BookReaderSpeakingPackController } from './book-reader-speaking-pack-controller';
 import { BookReaderSpeakingSessionController } from './book-reader-speaking-session-controller';
@@ -62,6 +74,7 @@ import { BookReaderAnnotationController } from './book-reader-annotation-control
 import { BookReaderFocusController } from './book-reader-focus-controller';
 import { BookReaderVideoController } from './book-reader-video-controller';
 import { BookReaderLayoutController } from './book-reader-layout-controller';
+import { BookReaderProgressController } from './book-reader-progress-controller';
 import { cloneTextAnnotation } from './book-reader-annotation-utils';
 
 @Component({
@@ -89,6 +102,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   readonly readerContext = this;
   private readonly taskController = new BookReaderTaskController(this);
+  private readonly tracingController = new BookReaderTracingController(this);
   private readonly guideController = new BookReaderGuideController(this);
   private readonly speakingPackController = new BookReaderSpeakingPackController(this);
   private readonly speakingSessionController = new BookReaderSpeakingSessionController(this);
@@ -101,6 +115,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly focusController = new BookReaderFocusController(this);
   private readonly videoController = new BookReaderVideoController(this);
   private readonly layoutController = new BookReaderLayoutController(this);
+  private readonly progressController = new BookReaderProgressController(this);
 
   book: InteractiveBook | null = null;
   currentPageIndex = 0;
@@ -113,6 +128,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readerInteractionFrame = 0;
   private drawingCanvasFrame = 0;
   private destroyed = false;
+  private loadBookToken = 0;
   pdfUrl = '';
   pageAspectRatio = '3 / 4';
   loading = true;
@@ -127,14 +143,18 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   highlighterColor = '#fde047';
   highlighterWidth = 28;
   textColor = '#111827';
+  tracingColor = '#2563eb';
+  tracingWidth = 3;
   readonly annotationColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ffffff'];
   get penColors() { return this.annotationColors; }
   get highlighterColors() { return this.annotationColors; }
   get textColors() { return this.annotationColors; }
+  get tracingColors() { return this.annotationColors; }
   speechSpeeds = [1, 1.5, 2, 0.5];
   speechSpeedIndex = 0;
   annotations: BookAnnotations | null = null;
   guideProgress: Record<string, number> = {};
+  pageProgress: Map<string, BookLessonProgress> = new Map();
   playingGuideElementId: string | null = null;
   pausedGuideElementId: string | null = null;
   guideBubbleText = '';
@@ -197,6 +217,16 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   activeTaskElement: BookElement | null = null;
   activeTaskPageId: string | null = null;
   activeMatchEndpoint: { elementId: string; pageId: string } | null = null;
+  activeTracingSession: {
+    elementId: string;
+    pageId: string;
+    partIndex: number;
+    pointIndex: number;
+    awaitingJump: boolean;
+    completed: boolean;
+    cursorX: number;
+    cursorY: number;
+  } | null = null;
   undoStack: ReaderAnnotationAction[] = [];
   redoStack: ReaderAnnotationAction[] = [];
   private textDrag: { pageId: string; textId?: string } | null = null;
@@ -225,6 +255,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private speakingRecordedChunks: Blob[] = [];
   private speakingActiveAttemptKey: string | null = null;
   private speakingSaveOnStop = true;
+  private speakingStopPromise: Promise<void> | null = null;
   private speakingTurnIndex = 0;
   private speakingPlaybackAudio: HTMLAudioElement | null = null;
   private speakingPlaybackFrame = 0;
@@ -259,6 +290,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     private platformFile: PlatformFileService,
     private taskResponseService: BookTaskResponseService,
     private speakingAttemptService: BookSpeakingAttemptService,
+    private pageProgressService: BookPageProgressService,
+    private lastPositionService: BookLastPositionService,
     private aiLanguagePacks: AiLanguagePackService,
     private aiSpeakingRuntime: AiSpeakingRuntimeService,
     private guidePitch: GuidePitchService
@@ -321,10 +354,15 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    const token = ++this.loadBookToken;
+    const isStale = () => token !== this.loadBookToken || this.destroyed;
+
     await this.flushAnnotationsNow();
     await this.flushTaskResponses();
+    if (isStale()) return;
     this.stopGuideAudio();
     await this.stopSpeakingConversation(false);
+    if (isStale()) return;
     this.stopSpeakingPlayback();
     this.revokeSpeakingAttemptAudioUrls();
     this.loading = true;
@@ -345,7 +383,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.activeTaskElement = null;
     this.activeTaskPageId = null;
     this.activeMatchEndpoint = null;
+    this.activeTracingSession = null;
     this.guideProgress = {};
+    this.pageProgress = new Map();
     this.speakingProgress = {};
     this.speakingAttempts.clear();
     this.activeSpeakingElement = null;
@@ -359,17 +399,31 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.resetDrawingCanvas();
 
     this.book = await this.bookLibrary.getBook(bookId);
+    if (isStale()) return;
     normalizeBookGuideTimelines(this.book);
+    normalizeBookTracingElements(this.book);
     this.markVisiblePagesDirty();
     this.annotations = await this.bookLibrary.getBookAnnotations(bookId) ?? this.createEmptyAnnotations(bookId);
+    if (isStale()) return;
     const responses = await this.taskResponseService.loadBook(bookId);
+    if (isStale()) return;
     this.taskResponses = new Map(responses.map((response) => [response.taskId, response]));
     const validTaskIds = new Set(this.getAllBookPages().flatMap((page) =>
       page.elements.filter(isBookTaskElement).map((element) => element.id)
     ));
     await this.taskResponseService.cleanupBook(bookId, validTaskIds);
+    if (isStale()) return;
     await this.loadSpeakingAttempts(bookId);
-    this.applyNavigationPageState();
+    if (isStale()) return;
+    await this.loadPageProgress(bookId);
+    if (isStale()) return;
+    if (history.state?.pageId) {
+      this.applyNavigationPageState();
+    } else {
+      await this.resumeLastPosition(bookId);
+    }
+    if (isStale()) return;
+    this.persistPageReached(this.currentPage);
     this.loading = false;
     this.syncPageJumpValue();
     this.refreshPdfUrl();
@@ -472,6 +526,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   togglePageDrawer(): void {
     this.navigationController.togglePageDrawer();
+  }
+
+  goToProgressMap(): void {
+    this.navigationController.goToProgressMap();
+  }
+
+  navigateToProgressLesson(unit: ProgressMapUnit, lesson: ProgressMapLesson): void {
+    this.navigationController.navigateToProgressLesson(unit, lesson);
   }
 
   canSwitchLinkedWorkbook(): boolean {
@@ -703,6 +765,52 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.taskController.activateMatchEndpoint(element, page, event);
   }
 
+  toggleTracingElement(element: BookElement, page: BookPage, event?: Event): void {
+    this.tracingController.toggleTracingElement(element, page, event);
+  }
+
+  isTracingActive(element: BookElement): boolean {
+    return this.activeTracingSession?.elementId === element.id && !this.activeTracingSession.completed;
+  }
+
+  isTracingComplete(element: BookElement): boolean {
+    if (this.activeTracingSession?.elementId === element.id) return this.activeTracingSession.completed;
+    return this.taskResponses.get(element.id)?.value === 'completed';
+  }
+
+  getActiveTracingElement(page: BookPage): BookElement | null {
+    if (!this.activeTracingSession || this.activeTracingSession.pageId !== page.id) return null;
+    return page.elements.find((element) => element.id === this.activeTracingSession?.elementId) ?? null;
+  }
+
+  handleTracingJumpClick(element: BookElement, page: BookPage, partId: string, pointId: string, event: Event): void {
+    this.tracingController.handleTracingJumpClick(element, page, partId, pointId, event);
+  }
+
+  getTracingGuidePaths(element: BookElement | null, page: BookPage | null): string[] {
+    return this.tracingController.getTracingGuidePaths(element, page);
+  }
+
+  getTracingLinePaths(element: BookElement | null, page: BookPage | null): { d: string; complete: boolean; incorrect: boolean }[] {
+    return this.tracingController.getTracingLinePaths(element, page);
+  }
+
+  getPageTracingResultPaths(page: BookPage): { d: string; incorrect: boolean }[] {
+    return this.tracingController.getPageTracingResultPaths(page);
+  }
+
+  getTracingPointSequenceForActivePage(page: BookPage): Array<OrderedTracingPoint & { element: BookElement; state: string }> {
+    return this.tracingController.getTracingPointSequenceForActivePage(page);
+  }
+
+  trackByTracingPointId(_index: number, item: OrderedTracingPoint): string {
+    return item.point.id;
+  }
+
+  isTracingElementUsable(element: BookElement): boolean {
+    return isTracingElementUsable(element);
+  }
+
   hasVisibleTasks(): boolean {
     return this.taskController.hasVisibleTasks();
   }
@@ -887,6 +995,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.activateMatchEndpoint(element, page, event);
       return;
     }
+    if (element.type === 'tracingTask' && page) {
+      this.toggleTracingElement(element, page, event);
+      return;
+    }
     if (element.type === 'focus') {
       this.focusController.expandFocusElement(element, page);
       return;
@@ -1058,6 +1170,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     this.selectedText = null;
     this.activeMatchEndpoint = null;
+    this.activeTracingSession = null;
     this.closeTaskInput();
     this.forceUiRefresh();
   }
@@ -1642,11 +1755,18 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.taskResponseSaveTimer = null;
     }
     if (!this.pendingTaskResponseIds.size) return;
-    const responses = Array.from(this.pendingTaskResponseIds)
+    const taskIds = Array.from(this.pendingTaskResponseIds);
+    const responses = taskIds
       .map((taskId) => this.taskResponses.get(taskId))
       .filter((response): response is BookTaskResponse => !!response);
     this.pendingTaskResponseIds.clear();
-    await this.taskResponseService.saveMany(responses);
+    try {
+      await this.taskResponseService.saveMany(responses);
+    } catch (error) {
+      console.error('Failed to save task responses:', error);
+      taskIds.forEach((taskId) => this.pendingTaskResponseIds.add(taskId));
+      showAppNotification('Could not save your answers. Please try again.', 'error');
+    }
   }
 
   private createEmptyAnnotations(bookId: string): BookAnnotations {
@@ -1865,6 +1985,84 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  private async loadPageProgress(bookId: string): Promise<void> {
+    const records = await this.pageProgressService.loadBook(bookId);
+    this.pageProgress = new Map(records.map((record) => [record.pageId, record]));
+    for (const record of records) {
+      if (record.guideDotsCompleted > 0) {
+        this.guideProgress[record.pageId] = Math.max(this.guideProgress[record.pageId] ?? 0, record.guideDotsCompleted);
+      }
+    }
+  }
+
+  persistPageReached(page: BookPage | null): void {
+    if (!page || !this.book) return;
+    const bookId = this.book.id;
+    const workbookId = this.pageSource === 'workbook' ? this.activeWorkbookId ?? undefined : undefined;
+    void this.pageProgressService.markPageReached(bookId, page.id, workbookId).then((record) => {
+      this.pageProgress.set(page.id, record);
+    });
+    void this.lastPositionService.save(bookId, this.pageSource, page.id, workbookId);
+  }
+
+  private async resumeLastPosition(bookId: string): Promise<void> {
+    const record = await this.lastPositionService.load(bookId);
+    if (!record) return;
+
+    if (record.pageSource === 'workbook' && record.workbookId) {
+      const workbook = this.getWorkbook(record.workbookId);
+      const visibleWorkbookPageIds = workbook?.pages.filter((page) => !page.hidden).map((page) => page.id) ?? [];
+      const workbookPageIndex = visibleWorkbookPageIds.findIndex((id) => id === record.pageId);
+      if (workbook && workbookPageIndex >= 0) {
+        this.pageSource = 'workbook';
+        this.activeWorkbookId = workbook.id;
+        this.workbookSession = {
+          mainPageId: '',
+          workbookId: workbook.id,
+          pageIds: visibleWorkbookPageIds
+        };
+        this.markVisiblePagesDirty();
+        this.currentPageIndex = workbookPageIndex;
+        return;
+      }
+    }
+
+    this.markVisiblePagesDirty();
+    const pageIndex = this.visiblePages.findIndex((page) => page.id === record.pageId);
+    if (pageIndex >= 0) {
+      this.currentPageIndex = pageIndex;
+    }
+  }
+
+  persistGuideDotProgress(page: BookPage, count: number): void {
+    if (!this.book) return;
+    const bookId = this.book.id;
+    const workbookId = this.pageSource === 'workbook' ? this.activeWorkbookId ?? undefined : undefined;
+    void this.pageProgressService.markGuideDotsCompleted(bookId, page.id, workbookId, count).then((record) => {
+      this.pageProgress.set(page.id, record);
+    });
+  }
+
+  isLessonComplete(lesson: ProgressMapLesson): boolean {
+    return this.progressController.isLessonComplete(lesson);
+  }
+
+  isLessonUnlocked(unit: ProgressMapUnit, lessonIndex: number): boolean {
+    return this.progressController.isLessonUnlocked(unit, lessonIndex);
+  }
+
+  getUnitCompletionRatio(unit: ProgressMapUnit): number {
+    return this.progressController.getUnitCompletionRatio(unit);
+  }
+
+  isUnitUnlocked(units: ProgressMapUnit[], unitIndex: number): boolean {
+    return this.progressController.isUnitUnlocked(units, unitIndex);
+  }
+
+  getBookCompletionPercent(): number {
+    return this.progressController.getBookCompletionPercent();
+  }
+
   private findElementById(elementId: string): BookElement | null {
     return this.getAllBookPages()
       .flatMap((page) => page.elements)
@@ -1887,6 +2085,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('document:pointermove', ['$event'])
   onDocumentPointerMove(event: PointerEvent): void {
     this.annotationController.onDocumentPointerMove(event);
+    this.tracingController.onDocumentPointerMove(event);
   }
 
   private scheduleReaderInteractionRefresh(): void {

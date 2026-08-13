@@ -713,7 +713,7 @@ onQuizAnswer(selected: Item) {
 
   // Direct elimination (same as old eliminate button)
   eliminate() {
-    if (this.showQuiz || this.gameFinished || this.victoryPending) return; // do not eliminate during quiz
+    if (this.showQuiz || this.gameFinished || this.victoryPending || this.spinning) return; // do not eliminate during quiz or an in-flight spin
     const count = this.currentItems.length;
     if (count === 0) return;
     this.playSound(this.collectSound);
@@ -731,6 +731,11 @@ onQuizAnswer(selected: Item) {
 
   resetGame() {
     if (this.showQuiz) return;
+    if (this.spinFrameId !== null) {
+      cancelAnimationFrame(this.spinFrameId);
+      this.spinFrameId = null;
+    }
+    this.spinning = false;
     this.clearVictoryTimeout();
     this.gameFinished = false;
     this.currentItems = [...this.items];

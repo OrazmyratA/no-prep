@@ -56,6 +56,106 @@
   <div class="page-tool-row" *ngIf="creator.hasCopiedElement() && !creator.selectedElement">
     <button type="button" class="mini-btn" (click)="creator.pasteCopiedElement()">{{ 'creatorPasteElement' | translate }}</button>
   </div>
+  <div class="progress-map-panel" *ngIf="creator.isProgressMapPage(creator.selectedPage) && !creator.selectedElement">
+    <div class="progress-map-header">
+      <strong>Progress Map Units</strong>
+      <button type="button" class="mini-btn" (click)="creator.addProgressUnit()">+ Add Unit</button>
+    </div>
+
+    <div class="progress-unit-chips" *ngIf="creator.getProgressUnits(creator.selectedPage).length">
+      <button
+        type="button"
+        class="progress-unit-chip"
+        *ngFor="let unit of creator.getProgressUnits(creator.selectedPage); trackBy: creator.trackByProgressUnitId"
+        [class.selected]="creator.isProgressUnitSelected(unit)"
+        (click)="creator.selectProgressUnit(unit)">
+        {{ unit.name || 'Unnamed unit' }}
+      </button>
+    </div>
+
+    <div class="progress-map-hint" *ngIf="!creator.getProgressUnits(creator.selectedPage).length">
+      Add a unit, then click it (here or on the page) to edit its lessons.
+    </div>
+    <div class="progress-map-hint" *ngIf="creator.getProgressUnits(creator.selectedPage).length && !creator.selectedProgressUnit(creator.selectedPage)">
+      Click a unit above — or click it on the page — to edit its lessons.
+    </div>
+
+    <div class="progress-unit-card" *ngIf="creator.selectedProgressUnit(creator.selectedPage) as unit">
+      <div class="progress-unit-row">
+        <input
+          type="text"
+          class="progress-unit-name"
+          [ngModel]="unit.name"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.updateProgressUnitName(unit, $event)"
+          (blur)="creator.commitHistoryCapture()"
+          placeholder="Unit name"
+          aria-label="Unit name">
+        <button type="button" class="mini-icon-btn" (click)="creator.moveProgressUnit(unit, -1)" [disabled]="creator.getProgressUnits(creator.selectedPage)[0]?.id === unit.id" title="Move unit up" aria-label="Move unit up">&uarr;</button>
+        <button type="button" class="mini-icon-btn" (click)="creator.moveProgressUnit(unit, 1)" [disabled]="creator.getProgressUnits(creator.selectedPage)[creator.getProgressUnits(creator.selectedPage).length - 1]?.id === unit.id" title="Move unit down" aria-label="Move unit down">&darr;</button>
+        <button type="button" class="mini-icon-btn danger" (click)="creator.removeProgressUnit(unit)" title="Delete unit" aria-label="Delete unit">
+          <img src="assets/images/book/delete.png" alt="">
+        </button>
+      </div>
+
+      <div class="progress-lesson-list">
+        <div class="progress-lesson-card" *ngFor="let lesson of unit.lessons; let li = index; trackBy: creator.trackByProgressLessonId">
+          <div class="progress-lesson-row">
+            <input
+              type="text"
+              class="progress-lesson-name"
+              [ngModel]="lesson.name"
+              (focus)="creator.beginHistoryCapture()"
+              (ngModelChange)="creator.updateProgressLessonName(lesson, $event)"
+              (blur)="creator.commitHistoryCapture()"
+              placeholder="Lesson name"
+              aria-label="Lesson name">
+            <button type="button" class="mini-icon-btn" (click)="creator.moveProgressLesson(unit, lesson, -1)" [disabled]="li === 0" title="Move lesson up" aria-label="Move lesson up">&uarr;</button>
+            <button type="button" class="mini-icon-btn" (click)="creator.moveProgressLesson(unit, lesson, 1)" [disabled]="li === unit.lessons.length - 1" title="Move lesson down" aria-label="Move lesson down">&darr;</button>
+            <button type="button" class="mini-icon-btn danger" (click)="creator.removeProgressLesson(unit, lesson)" title="Delete lesson" aria-label="Delete lesson">
+              <img src="assets/images/book/delete.png" alt="">
+            </button>
+          </div>
+
+          <div class="progress-lesson-pages">
+            <div
+              class="progress-lesson-page-chip"
+              *ngFor="let ref of creator.getProgressLessonPages(lesson)"
+              role="button"
+              tabindex="0"
+              (click)="creator.goToProgressLessonPage(ref)"
+              (keydown.enter)="creator.goToProgressLessonPage(ref)"
+              title="Open this page">
+              <span class="progress-lesson-page-label">{{ creator.getProgressLessonPageLabel(ref) }}</span>
+              <button type="button" class="progress-lesson-page-remove" (click)="creator.removeProgressLessonPage(lesson, ref); $event.stopPropagation()" title="Remove page" aria-label="Remove page">&times;</button>
+            </div>
+            <div class="progress-lesson-page-empty" *ngIf="!creator.getProgressLessonPages(lesson).length">No pages linked yet</div>
+
+            <div class="progress-lesson-search-wrap">
+              <input
+                type="text"
+                class="progress-lesson-search"
+                [ngModel]="creator.getPageSearchQuery(lesson)"
+                (ngModelChange)="creator.setPageSearchQuery(lesson, $event)"
+                placeholder="Search a page to link&hellip; e.g. 4"
+                aria-label="Search for a page to link">
+              <div class="progress-lesson-search-results" *ngIf="creator.getPageSearchQuery(lesson)">
+                <button
+                  type="button"
+                  class="progress-lesson-search-result"
+                  *ngFor="let option of creator.getFilteredLessonPageOptions(lesson); trackBy: creator.trackByPageOptionValue"
+                  (click)="creator.addProgressLessonPage(lesson, option.value); creator.setPageSearchQuery(lesson, '')">
+                  {{ option.label }}
+                </button>
+                <div class="progress-lesson-search-empty" *ngIf="!creator.getFilteredLessonPageOptions(lesson).length">No matching pages</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="mini-btn" (click)="creator.addProgressLesson(unit)">+ Add Lesson</button>
+      </div>
+    </div>
+  </div>
   <div class="page-tool-row link-help" *ngIf="creator.selectedPage && !creator.selectedElement && creator.activePageSource === 'main'">
     <button
       type="button"
@@ -305,6 +405,56 @@
       <div class="match-pair-summary">
         <span>{{ creator.getMatchTaskSideLabel(element) }}</span>
         <strong>{{ creator.getMatchTaskPairNumber(element) }}</strong>
+      </div>
+    </div>
+    <div class="tracing-task-settings" *ngIf="element.type === 'tracingTask'">
+      <label class="circle-correct-toggle">
+        <input
+          type="checkbox"
+          [ngModel]="element.data['correct'] === true"
+          (ngModelChange)="creator.setTracingTaskCorrect(element, $event)">
+        <span>Grade with Check Answers</span>
+      </label>
+      <p class="tracing-hint" *ngIf="creator.placingTracingTask && creator.tracingPlacementElementId === element.id">
+        {{ creator.activeTracingPartId ? 'Click the page to add the next point.' : 'Click the page to start the next part.' }}
+      </p>
+      <div class="tracing-parts-list" role="list">
+        <div
+          class="tracing-part-row"
+          *ngFor="let part of creator.getTracingParts(element); let i = index; trackBy: creator.trackByTracingPartId"
+          role="listitem"
+          [class.active]="creator.isActiveTracingPart(part.id)"
+          draggable="true"
+          (dragstart)="creator.onTracingPartDragStart(i, $event)"
+          (dragover)="creator.onTracingPartDragOver($event)"
+          (drop)="creator.onTracingPartDrop(element, i, $event)">
+          <span class="tracing-part-label">Part {{ i + 1 }}</span>
+          <span class="tracing-part-count">{{ part.points.length }} pts</span>
+          <button type="button" class="mini-icon-btn" (click)="creator.moveTracingPart(element, i, -1)" [disabled]="i === 0" title="Move part up" aria-label="Move part up">↑</button>
+          <button type="button" class="mini-icon-btn" (click)="creator.moveTracingPart(element, i, 1)" [disabled]="i === creator.getTracingParts(element).length - 1" title="Move part down" aria-label="Move part down">↓</button>
+          <button type="button" class="mini-icon-btn danger" (click)="creator.deleteTracingPart(element, part.id)" title="Delete part" aria-label="Delete part">
+            <img src="assets/images/book/delete.png" alt="">
+          </button>
+        </div>
+        <p class="tracing-empty-hint" *ngIf="creator.getTracingParts(element).length === 0">No points placed yet.</p>
+      </div>
+      <button type="button" class="mini-btn tracing-add-part-btn" (click)="creator.addTracingPart(element)" title="Start a new tracing part" aria-label="Start a new tracing part">+ New part</button>
+      <div class="tracing-curve-list" role="list" *ngIf="creator.getTracingSegmentHandles(element).length">
+        <div
+          class="tracing-curve-row"
+          *ngFor="let handle of creator.getTracingSegmentHandles(element); let i = index; trackBy: creator.trackByTracingSegmentId"
+          role="listitem">
+          <span class="tracing-curve-label">Link {{ i + 1 }}</span>
+          <input
+            type="range"
+            min="-2" max="2" step="0.05"
+            [value]="handle.curve"
+            (pointerdown)="creator.beginHistoryCapture()"
+            (input)="creator.setTracingSegmentCurve(element, handle.partId, handle.pointId, $any($event.target).valueAsNumber)"
+            (change)="creator.commitHistoryCapture()"
+            [attr.aria-label]="'Curve of link ' + (i + 1)">
+          <span class="tracing-curve-value">{{ handle.curve | number:'1.2-2' }}</span>
+        </div>
       </div>
     </div>
     <div class="game-link-panel" *ngIf="element.type === 'game'">

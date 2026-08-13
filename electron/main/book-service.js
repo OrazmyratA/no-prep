@@ -89,7 +89,16 @@ function createBookService({
   }
 
   async function writeBookJson(folderPath, book) {
-    await fsp.writeFile(path.join(folderPath, constants.BOOK_JSON_FILE), JSON.stringify(book, null, 2), 'utf8');
+    const jsonPath = path.join(folderPath, constants.BOOK_JSON_FILE);
+    const tempPath = path.join(folderPath, `.${constants.BOOK_JSON_FILE}.${process.pid}-${Date.now()}.tmp`);
+    const content = JSON.stringify(book, null, 2);
+    try {
+      await fsp.writeFile(tempPath, content, 'utf8');
+      await fsp.rename(tempPath, jsonPath);
+    } catch (error) {
+      await fsp.rm(tempPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
   }
 
   function createBlankBookPage() {
@@ -98,6 +107,16 @@ function createBookService({
       type: 'blank',
       backgroundColor: '#ffffff',
       elements: []
+    };
+  }
+
+  function createProgressMapPage() {
+    return {
+      id: createId('page'),
+      type: 'progressMap',
+      backgroundColor: '#ffffff',
+      elements: [],
+      progressUnits: []
     };
   }
 
@@ -447,6 +466,7 @@ function createBookService({
     readBookJson,
     writeBookJson,
     createBlankBookPage,
+    createProgressMapPage,
     createPdfPages,
     normalizeBookRelativePath,
     collectBookAssetReferences,

@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
+import { showAppNotification } from '../../core/notification';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 
 interface Card {
@@ -81,6 +82,11 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.topicId = Number(idParam);
     this.matchWithText = this.route.snapshot.queryParamMap.get('matchWithText') === 'true';
     this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
+    if (this.items.length === 0) {
+      showAppNotification(this.langService.translate('matchPairsNoItems'), 'error');
+      this.router.navigate(['/topics', this.topicId, 'activities']);
+      return;
+    }
     this.setupGame();
 
     this.flipSound = new Audio('assets/sound/flip.mp3');
@@ -310,7 +316,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   peek() {
-    if (this.isPeeking || this.gameFinished) return;
+    if (this.isPeeking || this.gameFinished || this.flippedCards.length > 0) return;
     this.isPeeking = true;
     this.cards.forEach(card => {
       if (!card.matched) card.flipped = true;

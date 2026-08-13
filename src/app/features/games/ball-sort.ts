@@ -780,9 +780,10 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 2000);
   }
 
-  private canMoveTo(_ball: Ball, targetTube: Tube): boolean {
+  private canMoveTo(ball: Ball, targetTube: Tube): boolean {
     if (targetTube.balls.length >= this.ballsPerColor) return false;
-    return true;
+    const topBall = targetTube.balls[targetTube.balls.length - 1];
+    return !topBall || topBall.groupId === ball.groupId;
   }
 
   private isCompleteTube(tube: Tube): boolean {

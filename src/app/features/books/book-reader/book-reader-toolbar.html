@@ -11,8 +11,8 @@
 
   <div class="reader-actions reader-toolbar-center">
     <div class="reader-tool-cluster page-tools">
-      <button type="button" class="tool-btn icon-reader-btn" (click)="reader.togglePageDrawer()" [title]="'readerGoToPage' | translate" [attr.aria-label]="'readerGoToPage' | translate">
-        <img src="assets/images/book/content.png" alt="">
+      <button type="button" class="tool-btn icon-reader-btn" (click)="reader.togglePageDrawer()" [title]="'readerBackToMap' | translate" [attr.aria-label]="'readerBackToMap' | translate">
+        &#128506;
       </button>
       <div class="page-stepper" *ngIf="reader.book && reader.visiblePages.length">
         <button type="button" class="tool-btn icon-turn-btn" (click)="reader.previousPage()" [disabled]="reader.currentPageIndex <= 0" [title]="'previousPage' | translate">
@@ -44,6 +44,15 @@
       </button>
       <button type="button" class="tool-btn icon-reader-btn" [title]="'readerClearAnnotations' | translate" (click)="reader.clearPageAnnotations()" [disabled]="!reader.canClearPageAnnotations()" [attr.aria-label]="'readerClearAnnotations' | translate">
         <img src="assets/images/book/clear.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn check-answer-btn"
+        (click)="reader.checkVisibleTaskAnswers()"
+        [disabled]="!reader.hasVisibleTasks()"
+        title="Check answers"
+        aria-label="Check answers">
+        <img src="assets/images/book/check.png" alt="">
       </button>
     </div>
 
@@ -105,6 +114,21 @@
           <input type="range" min="16" max="48" step="2" [(ngModel)]="reader.highlighterWidth" aria-label="Highlighter size">
         </label>
       </div>
+      <div class="pen-controls tracing-controls" *ngIf="reader.activeTracingSession && !reader.activeTracingSession.completed">
+        <button
+          *ngFor="let color of reader.tracingColors"
+          type="button"
+          class="color-dot"
+          [class.selected]="color === reader.tracingColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="reader.tracingColor = color"
+          [title]="color">
+        </button>
+        <label class="pen-size" title="Tracing line thickness">
+          <input type="range" min="2" max="10" step="1" [(ngModel)]="reader.tracingWidth" aria-label="Tracing line thickness">
+        </label>
+      </div>
       <button type="button" class="tool-btn icon-reader-btn" [class.active]="reader.textMode" [title]="'addTextLabel' | translate" (click)="reader.addTemporaryText()" [attr.aria-label]="'addTextLabel' | translate">
         <img src="assets/images/book/text.png" alt="">
       </button>
@@ -158,15 +182,6 @@
   </div>
 
   <div class="reader-actions reader-toolbar-right">
-    <button
-      type="button"
-      class="tool-btn icon-reader-btn check-answer-btn"
-      (click)="reader.checkVisibleTaskAnswers()"
-      [disabled]="!reader.hasVisibleTasks()"
-      title="Check answers"
-      aria-label="Check answers">
-      <img src="assets/images/book/check.png" alt="">
-    </button>
     <button type="button" class="tool-btn icon-reader-btn" (click)="reader.edit()" [title]="'editTopic' | translate" [attr.aria-label]="'editTopic' | translate">
       <img src="assets/images/book/edit.png" alt="">
     </button>

@@ -24,6 +24,7 @@ function registerBookCreateIpc({
   extractZipPackage,
   getZipUncompressedSize,
   createBlankBookPage,
+  createProgressMapPage,
   createPdfPages,
   getPdfInfo,
   generateFirstPageCover,
@@ -52,7 +53,7 @@ function registerBookCreateIpc({
         version: '1.0',
         id: bookId,
         title,
-        pages: [createBlankBookPage()],
+        pages: [createProgressMapPage(), createBlankBookPage()],
         workbooks: [],
         workbookLinks: {},
         createdAt: now,
@@ -118,7 +119,7 @@ function registerBookCreateIpc({
       await copyFileWithProgress(sourcePdf, pdfDestination, operation);
       const cover = await generateFirstPageCover(pdfDestination, bookFolder);
 
-      const pages = createPdfPages(pdfInfo.pageCount, 'assets/source.pdf');
+      const pages = [createProgressMapPage(), ...createPdfPages(pdfInfo.pageCount, 'assets/source.pdf')];
 
       const book = {
         version: '1.0',
@@ -198,8 +199,21 @@ function registerBookCreateIpc({
         : sanitizeName(path.basename(sourcePdf, path.extname(sourcePdf)), 'Student Book');
       book.sourcePdf = relativePdfPath;
       book.cover = await generateFirstPageCover(destination, registryItem.folderPath);
-      book.pages = createPdfPages(pdfInfo.pageCount, relativePdfPath);
-      book.workbookLinks = {};
+      const preservedPages = (book.pages || []).filter((page) => page?.type !== 'pdf');
+      if (!preservedPages.some((page) => page?.type === 'progressMap')) {
+        preservedPages.unshift(createProgressMapPage());
+      }
+      book.pages = [...preservedPages, ...createPdfPages(pdfInfo.pageCount, relativePdfPath)];
+      if (book.workbookLinks && typeof book.workbookLinks === 'object') {
+        const validMainPageIds = new Set(book.pages.map((page) => page?.id).filter(Boolean));
+        for (const mainPageId of Object.keys(book.workbookLinks)) {
+          if (!validMainPageIds.has(mainPageId)) {
+            delete book.workbookLinks[mainPageId];
+          }
+        }
+      } else {
+        book.workbookLinks = {};
+      }
       book.updatedAt = now;
       await validateBookData(book, registryItem.folderPath, book.title || 'Book');
       await writeBookJson(registryItem.folderPath, book);
@@ -361,7 +375,19 @@ function registerBookCreateIpc({
       workbook.sourcePdf = relativePdfPath;
       workbook.pages = createPdfPages(pdfInfo.pageCount, relativePdfPath, 'workbook-page');
       workbook.updatedAt = now;
-      book.workbookLinks = {};
+      if (book.workbookLinks && typeof book.workbookLinks === 'object') {
+        for (const [mainPageId, links] of Object.entries(book.workbookLinks)) {
+          if (!Array.isArray(links)) continue;
+          const remaining = links.filter((link) => link?.workbookId !== workbook.id);
+          if (remaining.length) {
+            book.workbookLinks[mainPageId] = remaining;
+          } else {
+            delete book.workbookLinks[mainPageId];
+          }
+        }
+      } else {
+        book.workbookLinks = {};
+      }
       book.updatedAt = now;
       await validateBookData(book, registryItem.folderPath, book.title || 'Book');
       await writeBookJson(registryItem.folderPath, book);

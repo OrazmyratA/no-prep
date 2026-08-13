@@ -33,7 +33,7 @@
     <!-- Action Buttons -->
     <div class="mt-0.5 flex justify-center space-x-2">
       <button (click)="eliminate()"
-              [disabled]="currentItems.length === 0 || gameFinished"
+              [disabled]="currentItems.length === 0 || gameFinished || spinning"
               class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-full shadow transition text-sm">
         {{ 'spinWheelEliminate' | translate }}
       </button>

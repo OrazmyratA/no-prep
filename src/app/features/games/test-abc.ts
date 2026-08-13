@@ -273,6 +273,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
   }
 
   nextQuestion() {
+    this.clearFeedbackTimers();
     this.stopActiveAudio();
     if (this.currentIndex + 1 < this.questions.length) {
       this.currentIndex++;
@@ -318,6 +319,7 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
   }
 
   previousQuestion() {
+    this.clearFeedbackTimers();
     this.stopActiveAudio();
     if (this.currentIndex > 0) {
       this.currentIndex--;

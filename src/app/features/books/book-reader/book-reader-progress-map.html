@@ -1,0 +1,155 @@
+<div
+  class="progress-map"
+  [style.background-image]="waterBackgroundImage"
+  [style.background-position-y.px]="waterOffsetPx"
+  (click)="closeUnit()"
+  (scroll)="onMapScroll($event)">
+  <div class="progress-map-header-wrap">
+  <header class="progress-map-header" [class.collapsed]="headerCollapsed" [style.background-image]="beforeImage">
+    <div class="progress-map-growth" [class.complete]="isBookComplete" [style.width.%]="bookCompletionPercent" [style.background-image]="lifeImage"></div>
+
+    <span class="progress-map-title"><span class="progress-map-title-chip">{{ reader.book?.title }}</span></span>
+
+    <div class="progress-map-stat" *ngIf="units.length" title="Units">
+      <span class="progress-map-stat-icon">&#127795;</span>
+      <span class="progress-map-stat-value">{{ currentUnitIndex + 1 }}/{{ units.length }}</span>
+    </div>
+
+    <div class="progress-map-stat" *ngIf="units.length" title="Lessons">
+      <span class="progress-map-stat-icon">&#127807;</span>
+      <span class="progress-map-stat-value">{{ completedLessonsCount }}/{{ totalLessonsCount }}</span>
+    </div>
+
+    <div class="progress-map-stat" title="Pages">
+      <span class="progress-map-stat-icon">&#128196;</span>
+      <span class="progress-map-stat-value">{{ visitedPagesCount }}/{{ totalPagesCount }}</span>
+    </div>
+
+    <button
+      type="button"
+      class="progress-map-share-btn"
+      (click)="openShareCard($event)"
+      aria-label="Share progress"
+      title="Share progress">
+      &#128228;
+    </button>
+  </header>
+
+    <div class="progress-map-laser" aria-hidden="true">
+      <div class="progress-map-badge" [class.complete]="isBookComplete" [style.left.%]="badgeLeftPercent">
+        <span *ngIf="!isBookComplete">{{ bookCompletionPercent }}%</span>
+        <span *ngIf="isBookComplete" class="progress-map-badge-star" title="Complete!">&#11088;</span>
+      </div>
+      <div class="progress-map-laser-track">
+        <div class="progress-map-laser-fill" [style.width.%]="bookCompletionPercent">
+          <span class="progress-map-laser-spark" *ngIf="bookCompletionPercent > 0"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="progress-map-units" *ngIf="units.length" [style.height.rem]="mapContentHeightRem">
+    <img
+      class="progress-map-owl"
+      src="assets/gifs/owl-corner.gif"
+      alt=""
+      [style.left.%]="ownerLeftPercent"
+      [style.top.rem]="ownerTopRem">
+
+    <img
+      class="progress-map-boat"
+      [src]="boatImage"
+      alt=""
+      [style.left.%]="ownerLeftPercent"
+      [style.top.rem]="ownerTopRem"
+      [style.transform]="boatTransform">
+
+    <div
+      class="progress-unit"
+      *ngFor="let unit of units; let i = index; trackBy: trackByUnitId"
+      [class.open]="openUnitId === unit.id"
+      [class.locked]="isUnitLocked(unit)"
+      [class.complete]="isUnitComplete(unit)"
+      [style.left.%]="getUnitLeftPercent(i)"
+      [style.top.rem]="getUnitTopRem(i)"
+      (click)="toggleUnit(unit, $event)">
+      <div class="progress-unit-tree-box">
+        <img class="progress-unit-island-img" [src]="getIslandImage(unit)" alt="">
+        <img class="progress-unit-tree-img" [src]="getTreeImage(unit)" alt="">
+        <span class="progress-unit-lock-badge" *ngIf="isUnitLocked(unit)">&#128274;</span>
+
+        <button
+          type="button"
+          class="progress-lesson-bubble"
+          *ngFor="let lesson of unit.lessons; let li = index; trackBy: trackByLessonId"
+          [class.locked]="isLessonLocked(unit, lesson)"
+          [class.complete]="isLessonComplete(lesson)"
+          [style.--bubble-x.rem]="getLessonOffsetX(unit, li)"
+          [style.--bubble-y.rem]="getLessonOffsetY(unit, li)"
+          [disabled]="!hasLessonTarget(lesson) || isLessonLocked(unit, lesson)"
+          [attr.aria-label]="lesson.name"
+          [title]="lesson.name"
+          (click)="openLesson(unit, lesson, $event)">
+          <img [src]="getLessonIcon(li)" alt="">
+          <span class="progress-lesson-bubble-check" *ngIf="isLessonComplete(lesson)">&#10003;</span>
+          <span class="progress-lesson-bubble-lock" *ngIf="isLessonLocked(unit, lesson)">&#128274;</span>
+        </button>
+      </div>
+      <div class="progress-unit-label">{{ unit.name }}</div>
+    </div>
+  </div>
+
+  <div class="progress-map-empty" *ngIf="!units.length">
+    No units yet. Add units to this page in the Creator.
+  </div>
+
+  <div class="progress-unit-panel" [class.open]="!!openUnit" (click)="$event.stopPropagation()">
+    <ng-container *ngIf="openUnit as unit">
+      <div class="progress-unit-panel-header">
+        <h2 class="progress-unit-panel-title">{{ unit.name }}</h2>
+        <button type="button" class="progress-unit-panel-close" (click)="closeUnit()" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="progress-unit-panel-empty" *ngIf="!unit.lessons.length">No lessons yet</div>
+
+      <ol class="progress-unit-panel-list">
+        <li class="progress-unit-panel-row" *ngFor="let lesson of unit.lessons; let li = index; trackBy: trackByLessonId">
+          <span class="progress-unit-panel-row-number">{{ li + 1 }}</span>
+          <span class="progress-unit-panel-row-name">{{ lesson.name }}</span>
+        </li>
+      </ol>
+    </ng-container>
+  </div>
+
+  <div class="share-card-backdrop" *ngIf="shareCardOpen" (click)="closeShareCard()">
+    <div class="share-card-modal" (click)="$event.stopPropagation()">
+      <button type="button" class="share-card-close" (click)="closeShareCard()" aria-label="Close">&times;</button>
+
+      <div class="share-card-preview">
+        <div class="share-card-spinner" *ngIf="shareCardGenerating">Preparing your card&hellip;</div>
+        <img *ngIf="shareCardImageUrl" [src]="shareCardImageUrl" alt="Your progress card">
+      </div>
+
+      <div class="share-card-actions">
+        <button
+          type="button"
+          class="share-card-btn share-card-btn-primary"
+          *ngIf="canUseNativeShare"
+          (click)="shareImage($event)"
+          [disabled]="!shareCardImageUrl">
+          <span class="share-card-btn-icon">&#128228;</span>
+          <span>Share</span>
+        </button>
+        <button
+          type="button"
+          class="share-card-btn"
+          [class.share-card-btn-primary]="!canUseNativeShare"
+          (click)="downloadShareCard($event)"
+          [disabled]="!shareCardImageUrl">
+          <span class="share-card-btn-icon">&#10515;</span>
+          <span>Download</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

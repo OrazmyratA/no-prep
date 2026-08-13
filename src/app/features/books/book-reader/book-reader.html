@@ -9,7 +9,13 @@
     <div *ngIf="!loading && !book" class="reader-message">{{ 'readerBookNotFound' | translate }}</div>
     <div *ngIf="!loading && book && !currentPage" class="reader-message">{{ 'readerNoVisiblePages' | translate }}</div>
 
-    <div #readerCanvasShell *ngIf="book && currentPage" class="reader-canvas-shell">
+    <app-book-reader-progress-map
+      *ngIf="book && currentPage && currentPage.type === 'progressMap'"
+      [reader]="readerContext"
+      [page]="currentPage">
+    </app-book-reader-progress-map>
+
+    <div #readerCanvasShell *ngIf="book && currentPage && currentPage.type !== 'progressMap'" class="reader-canvas-shell">
       <button
         *ngIf="!expandedFocusElement"
         type="button"
@@ -67,6 +73,7 @@
   </div>
 
   <img
+    *ngIf="currentPage?.type !== 'progressMap'"
     class="owl-guide"
     [class.teaching]="owlTeaching"
     [src]="owlImage"

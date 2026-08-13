@@ -23,7 +23,12 @@ import {
   BookPage,
   BookWordBank,
   BookWordBankOption,
-  InteractiveBook
+  InteractiveBook,
+  ProgressMapLesson,
+  ProgressMapLessonPage,
+  ProgressMapUnit,
+  TracingPart,
+  TracingPoint
 } from '../../../core/book.model';
 import {
   getChoiceTaskBankId,
@@ -36,8 +41,15 @@ import {
   getGuideTracks,
   getOrderedGuidePins
 } from '../../../core/guide-timeline';
+import {
+  getOrderedTracingPoints,
+  getValidTracingParts,
+  isTracingElementUsable,
+  OrderedTracingPoint
+} from '../../../core/book-tracing';
 import { GAMES } from '../../topics/games.config';
 import { BookCreatorElementController } from './book-creator-element-controller';
+import { BookCreatorTracingController, TracingSegmentHandle } from './book-creator-tracing-controller';
 import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface';
 import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
@@ -47,6 +59,7 @@ import { BookCreatorMediaController } from './book-creator-media-controller';
 import { BookCreatorNavigationController } from './book-creator-navigation-controller';
 import { BookCreatorPageImportController } from './book-creator-page-import-controller';
 import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
+import { BookCreatorProgressMapController } from './book-creator-progress-map-controller';
 import { BookCreatorSaveController } from './book-creator-save-controller';
 import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
@@ -135,6 +148,10 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   placingChoiceTask = false;
   placingCircleTask = false;
   placingMatchTask = false;
+  placingTracingTask = false;
+  tracingPlacementElementId: string | null = null;
+  activeTracingPartId: string | null = null;
+  tracingPreviewPoint: { x: number; y: number } | null = null;
   speakingPreviewElementId: string | null = null;
   speakingPreviewStatus: AiSpeakingRuntimeStatus | null = null;
   checkingSpeakingPreview = false;
@@ -218,6 +235,11 @@ Tomorrow I will help my mom.`;
     elementId: string;
     pinId: string;
   } | null = null;
+  tracingPointDragState: {
+    elementId: string;
+    partId: string;
+    pointId: string;
+  } | null = null;
   private taskDrawState: {
     elementId: string;
     startX: number;
@@ -232,6 +254,8 @@ Tomorrow I will help my mom.`;
   private creatorInteractionFrame = 0;
   private guidePinDragFrame = 0;
   private pendingGuidePinPointer: { x: number; y: number } | null = null;
+  private tracingPointDragFrame = 0;
+  pendingTracingPointPointer: { x: number; y: number } | null = null;
   private lastEditorWheelAt = 0;
   private dragState: {
     mode: 'move' | 'resize';
@@ -268,6 +292,7 @@ Tomorrow I will help my mom.`;
 
   private readonly markController = new BookCreatorMarkController(this);
   private readonly taskPlacementController = new BookCreatorTaskPlacementController(this);
+  private readonly tracingController = new BookCreatorTracingController(this);
   private readonly elementController = new BookCreatorElementController(this);
   private readonly gameController = new BookCreatorGameController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
@@ -279,6 +304,7 @@ Tomorrow I will help my mom.`;
   private readonly loadingController = new BookCreatorLoadingController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
+  private readonly progressMapController = new BookCreatorProgressMapController(this);
   private readonly saveController = new BookCreatorSaveController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
   private readonly taskSettingsController = new BookCreatorTaskSettingsController(this);
@@ -301,6 +327,9 @@ Tomorrow I will help my mom.`;
     this.stopGuidePreview();
     if (this.guidePinDragFrame) {
       cancelAnimationFrame(this.guidePinDragFrame);
+    }
+    if (this.tracingPointDragFrame) {
+      cancelAnimationFrame(this.tracingPointDragFrame);
     }
     this.layoutController.destroy();
     this.markController.destroy();
@@ -604,6 +633,86 @@ Tomorrow I will help my mom.`;
     this.taskPlacementController.toggleMatchTaskTool();
   }
 
+  toggleTracingTaskTool(): void {
+    this.tracingController.toggleTracingTaskTool();
+  }
+
+  addTracingPart(element: BookElement): void {
+    this.tracingController.startNewTracingPart(element);
+  }
+
+  deleteTracingPart(element: BookElement, partId: string): void {
+    this.tracingController.deleteTracingPart(element, partId);
+  }
+
+  deleteTracingPoint(element: BookElement, partId: string, pointId: string): void {
+    this.tracingController.deleteTracingPoint(element, partId, pointId);
+  }
+
+  moveTracingPart(element: BookElement, index: number, direction: -1 | 1): void {
+    this.tracingController.moveTracingPart(element, index, direction);
+  }
+
+  onTracingPartDragStart(index: number, event: DragEvent): void {
+    this.tracingController.onTracingPartDragStart(index, event);
+  }
+
+  onTracingPartDragOver(event: DragEvent): void {
+    this.tracingController.onTracingPartDragOver(event);
+  }
+
+  onTracingPartDrop(element: BookElement, index: number, event: DragEvent): void {
+    this.tracingController.onTracingPartDrop(element, index, event);
+  }
+
+  startTracingPointDrag(event: PointerEvent, element: BookElement, partId: string, point: TracingPoint): void {
+    this.tracingController.startTracingPointDrag(event, element, partId, point);
+  }
+
+  getTracingParts(element: BookElement): TracingPart[] {
+    return getValidTracingParts(element);
+  }
+
+  getTracingPointSequence(element: BookElement): OrderedTracingPoint[] {
+    return getOrderedTracingPoints(element);
+  }
+
+  getTracingLinePaths(element: BookElement): string[] {
+    return this.tracingController.getTracingLinePaths(element);
+  }
+
+  getTracingSegmentHandles(element: BookElement): TracingSegmentHandle[] {
+    return this.tracingController.getTracingSegmentHandles(element);
+  }
+
+  setTracingSegmentCurve(element: BookElement, partId: string, pointId: string, curve: number): void {
+    this.tracingController.setTracingSegmentCurve(element, partId, pointId, curve);
+  }
+
+  trackByTracingSegmentId(_index: number, handle: TracingSegmentHandle): string {
+    return handle.pointId;
+  }
+
+  getTracingPreviewLine(element: BookElement): string | null {
+    return this.tracingController.getTracingPreviewLine(element);
+  }
+
+  isTracingElementUsable(element: BookElement): boolean {
+    return isTracingElementUsable(element);
+  }
+
+  isActiveTracingPart(partId: string): boolean {
+    return this.activeTracingPartId === partId;
+  }
+
+  trackByTracingPartId(_index: number, part: TracingPart): string {
+    return part.id;
+  }
+
+  trackByTracingPointId(_index: number, item: OrderedTracingPoint): string {
+    return item.point.id;
+  }
+
   private clearCreatorMarkModes(): void {
     this.creatorDrawMode = false;
     this.creatorHighlighterMode = false;
@@ -623,6 +732,7 @@ Tomorrow I will help my mom.`;
       || this.placingChoiceTask
       || this.placingCircleTask
       || this.placingMatchTask
+      || this.placingTracingTask
       || this.placingGuidePin;
   }
 
@@ -1074,6 +1184,10 @@ Tomorrow I will help my mom.`;
       this.placeMatchEndpoint(event);
       return;
     }
+    if (this.placingTracingTask) {
+      this.tracingController.handleTracingCanvasClick(event);
+      return;
+    }
     if (this.placingTextTask || this.placingChoiceTask || this.placingCircleTask) {
       const type = this.placingCircleTask ? 'circleTask' : this.placingChoiceTask ? 'choiceTask' : 'textTask';
       this.startTaskDraw(event, type);
@@ -1232,6 +1346,19 @@ Tomorrow I will help my mom.`;
       this.scheduleGuidePinDragFrame();
       return;
     }
+    if (this.tracingPointDragState) {
+      event.preventDefault();
+      const pointerEvent = this.getLatestPointerEvent(event);
+      this.pendingTracingPointPointer = { x: pointerEvent.clientX, y: pointerEvent.clientY };
+      this.scheduleTracingPointDragFrame();
+      return;
+    }
+    if (this.placingTracingTask && this.tracingPlacementElementId) {
+      const pointerEvent = this.getLatestPointerEvent(event);
+      this.tracingController.updateTracingPreview(pointerEvent.clientX, pointerEvent.clientY);
+      this.scheduleCreatorInteractionRefresh();
+      return;
+    }
     if (!this.dragState || !this.editorCanvas) return;
     event.preventDefault();
     const pointerEvent = this.getLatestPointerEvent(event);
@@ -1327,6 +1454,7 @@ Tomorrow I will help my mom.`;
       this.taskPlacementController.finishTaskDraw(event);
     }
     this.flushGuidePinDragFrame();
+    this.flushTracingPointDragFrame();
     if (this.timelinePinDragState) {
       const element = this.selectedElement;
       const track = element
@@ -1334,7 +1462,7 @@ Tomorrow I will help my mom.`;
         : null;
       if (track) this.sortGuidePins(track);
     }
-    if (this.dragState || this.timelinePinDragState || this.pagePinDragState) {
+    if (this.dragState || this.timelinePinDragState || this.pagePinDragState || this.tracingPointDragState) {
       this.commitHistoryCapture();
     }
     this.dragState = null;
@@ -1342,6 +1470,8 @@ Tomorrow I will help my mom.`;
     this.timelinePinDragState = null;
     this.pagePinDragState = null;
     this.pendingGuidePinPointer = null;
+    this.tracingPointDragState = null;
+    this.pendingTracingPointPointer = null;
   }
 
   @HostListener('document:pointercancel')
@@ -1354,7 +1484,8 @@ Tomorrow I will help my mom.`;
       this.taskPlacementController.cancelTaskDraw();
     }
     this.flushGuidePinDragFrame();
-    if (this.dragState || this.timelinePinDragState || this.pagePinDragState) {
+    this.flushTracingPointDragFrame();
+    if (this.dragState || this.timelinePinDragState || this.pagePinDragState || this.tracingPointDragState) {
       this.commitHistoryCapture();
     }
     this.dragState = null;
@@ -1362,6 +1493,8 @@ Tomorrow I will help my mom.`;
     this.timelinePinDragState = null;
     this.pagePinDragState = null;
     this.pendingGuidePinPointer = null;
+    this.tracingPointDragState = null;
+    this.pendingTracingPointPointer = null;
   }
 
   @HostListener('window:beforeunload', ['$event'])
@@ -1491,11 +1624,11 @@ Tomorrow I will help my mom.`;
   }
 
   isUniformSizeElement(element: BookElement): boolean {
-    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi', 'matchTask'].includes(element.type);
+    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi', 'matchTask', 'tracingTask'].includes(element.type);
   }
 
   isSquareMarkerElement(element: BookElement): boolean {
-    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi'].includes(element.type);
+    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi', 'tracingTask'].includes(element.type);
   }
 
   getElementWidthPercent(element: BookElement): number {
@@ -1566,6 +1699,7 @@ Tomorrow I will help my mom.`;
       case 'choiceTask': return 'Word Bank Gap';
       case 'circleTask': return 'Circling Choice';
       case 'matchTask': return 'Matching Pair';
+      case 'tracingTask': return 'Tracing Task';
       default: return type.charAt(0).toUpperCase() + type.slice(1);
     }
   }
@@ -1604,6 +1738,114 @@ Tomorrow I will help my mom.`;
 
   getWorkbookLinksForPage(page: BookPage | null): WorkbookLink[] {
     return this.workbookLinkController.getWorkbookLinksForPage(page);
+  }
+
+  isProgressMapPage(page: BookPage | null): boolean {
+    return this.progressMapController.isProgressMapPage(page);
+  }
+
+  isProgressUnitSelected(unit: ProgressMapUnit): boolean {
+    return this.progressMapController.isProgressUnitSelected(unit);
+  }
+
+  selectProgressUnit(unit: ProgressMapUnit): void {
+    this.progressMapController.selectProgressUnit(unit);
+  }
+
+  selectedProgressUnit(page: BookPage | null): ProgressMapUnit | null {
+    return this.progressMapController.selectedProgressUnit(page);
+  }
+
+  getProgressUnits(page: BookPage | null): ProgressMapUnit[] {
+    return this.progressMapController.getProgressUnits(page);
+  }
+
+  trackByProgressUnitId = (index: number, unit: ProgressMapUnit): string => {
+    return this.progressMapController.trackByProgressUnitId(index, unit);
+  };
+
+  trackByProgressLessonId = (index: number, lesson: ProgressMapLesson): string => {
+    return this.progressMapController.trackByProgressLessonId(index, lesson);
+  };
+
+  addProgressUnit(): void {
+    this.progressMapController.addProgressUnit();
+  }
+
+  removeProgressUnit(unit: ProgressMapUnit): void {
+    this.progressMapController.removeProgressUnit(unit);
+  }
+
+  moveProgressUnit(unit: ProgressMapUnit, direction: -1 | 1): void {
+    this.progressMapController.moveProgressUnit(unit, direction);
+  }
+
+  updateProgressUnitName(unit: ProgressMapUnit, value: string): void {
+    this.progressMapController.updateProgressUnitName(unit, value);
+  }
+
+  addProgressLesson(unit: ProgressMapUnit): void {
+    this.progressMapController.addProgressLesson(unit);
+  }
+
+  removeProgressLesson(unit: ProgressMapUnit, lesson: ProgressMapLesson): void {
+    this.progressMapController.removeProgressLesson(unit, lesson);
+  }
+
+  moveProgressLesson(unit: ProgressMapUnit, lesson: ProgressMapLesson, direction: -1 | 1): void {
+    this.progressMapController.moveProgressLesson(unit, lesson, direction);
+  }
+
+  updateProgressLessonName(lesson: ProgressMapLesson, value: string): void {
+    this.progressMapController.updateProgressLessonName(lesson, value);
+  }
+
+  getProgressLessonTargetOptions(): { value: string; label: string }[] {
+    return this.progressMapController.getProgressLessonTargetOptions();
+  }
+
+  getProgressLessonPages(lesson: ProgressMapLesson): ProgressMapLessonPage[] {
+    return this.progressMapController.getProgressLessonPages(lesson);
+  }
+
+  getProgressLessonPageLabel(ref: ProgressMapLessonPage): string {
+    return this.progressMapController.getProgressLessonPageLabel(ref);
+  }
+
+  addProgressLessonPage(lesson: ProgressMapLesson, value: string): void {
+    this.progressMapController.addProgressLessonPage(lesson, value);
+  }
+
+  removeProgressLessonPage(lesson: ProgressMapLesson, ref: ProgressMapLessonPage): void {
+    this.progressMapController.removeProgressLessonPage(lesson, ref);
+  }
+
+  getPageSearchQuery(lesson: ProgressMapLesson): string {
+    return this.progressMapController.getPageSearchQuery(lesson);
+  }
+
+  setPageSearchQuery(lesson: ProgressMapLesson, value: string): void {
+    this.progressMapController.setPageSearchQuery(lesson, value);
+  }
+
+  getFilteredLessonPageOptions(lesson: ProgressMapLesson): { value: string; label: string }[] {
+    return this.progressMapController.getFilteredLessonPageOptions(lesson);
+  }
+
+  goToProgressLessonPage(ref: ProgressMapLessonPage): void {
+    this.progressMapController.goToProgressLessonPage(ref);
+  }
+
+  trackByPageOptionValue = (index: number, option: { value: string; label: string }): string => {
+    return this.progressMapController.trackByPageOptionValue(index, option);
+  };
+
+  hasContentPage(): boolean {
+    return this.progressMapController.hasContentPage();
+  }
+
+  goToContentPage(): void {
+    this.progressMapController.goToContentPage();
   }
 
   shouldShowPageStarter(): boolean {
@@ -1690,6 +1932,10 @@ Tomorrow I will help my mom.`;
 
   setCircleTaskCorrect(element: BookElement, correct: boolean): void {
     this.taskSettingsController.setCircleTaskCorrect(element, correct);
+  }
+
+  setTracingTaskCorrect(element: BookElement, correct: boolean): void {
+    this.taskSettingsController.setTracingTaskCorrect(element, correct);
   }
 
   getMatchTaskGroupIds(): string[] {
@@ -1829,6 +2075,16 @@ Tomorrow I will help my mom.`;
       rotation: 0,
       backgroundColor: '#ffffff',
       elements: []
+    };
+  }
+
+  private createProgressMapPage(): BookPage {
+    return {
+      id: this.createId('page'),
+      type: 'progressMap',
+      backgroundColor: '#ffffff',
+      elements: [],
+      progressUnits: []
     };
   }
 
@@ -1976,6 +2232,10 @@ Tomorrow I will help my mom.`;
     this.taskPlacementController.discardPendingMatchEndpoint();
   }
 
+  private discardIncompleteTracingElement(): void {
+    this.tracingController.discardIncompleteTracingElement();
+  }
+
   private syncPendingMatchEndpoint(): void {
     this.taskPlacementController.syncPendingMatchEndpoint();
   }
@@ -2018,6 +2278,14 @@ Tomorrow I will help my mom.`;
 
   private flushGuidePinDragFrame(): void {
     this.guidePreviewController.flushGuidePinDragFrame();
+  }
+
+  private scheduleTracingPointDragFrame(): void {
+    this.tracingController.scheduleTracingPointDragFrame();
+  }
+
+  private flushTracingPointDragFrame(): void {
+    this.tracingController.flushTracingPointDragFrame();
   }
 
   private applyPendingGuidePinPointer(): void {

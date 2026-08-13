@@ -264,8 +264,9 @@ export class BookLibraryService {
       }
       const pageCount = await this.getPdfPageCount(picked.dataUrl);
       const sourcePdf = picked.relativePath || 'student-book/source.pdf';
+      const preservedPages = (book.pages || []).filter((page) => page.type !== 'pdf');
       book.sourcePdf = sourcePdf;
-      book.pages = this.createPdfPages(sourcePdf, pageCount);
+      book.pages = [...preservedPages, ...this.createPdfPages(sourcePdf, pageCount)];
       book.updatedAt = new Date().toISOString();
       await this.saveAndroidBook(book);
       showAppNotification(this.t('bookLibStudentBookPdfAdded'), 'success');

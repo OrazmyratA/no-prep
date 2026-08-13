@@ -702,10 +702,13 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (team && team.balloons.every(b => b.popped)) {
       team.completed = true;
       team.completedAt = performance.now() - this.gameStartTime;
-      this.gameActive = false;
-      if (this.teamMode) {
-        this.dropGiftAndRevealReward(team.id);
-      } else {
+      // In a 3+ team race, the first team to finish shouldn't freeze everyone
+      // else's board — only end the round once every team has finished (or
+      // immediately for solo play / 2-team head-to-head, which is a duel).
+      const isDuelOrSolo = !this.teamMode || (this.teamCount === 2 && this.teamMode);
+      const allTeamsDone = this.teams.every(t => t.completed);
+      if (isDuelOrSolo || allTeamsDone) {
+        this.gameActive = false;
         this.dropGiftAndRevealReward(team.id);
       }
     } else if (this.teamCount === 2 && this.teamMode) {

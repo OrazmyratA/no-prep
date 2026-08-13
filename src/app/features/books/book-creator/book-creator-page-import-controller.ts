@@ -117,6 +117,10 @@ export class BookCreatorPageImportController {
   toggleSelectedPageHidden(): void {
     const page = this.creator.selectedPage;
     if (!page) return;
+    if (page.type === 'progressMap') {
+      showAppNotification('The progress map page cannot be hidden.', 'info');
+      return;
+    }
     if (!page.hidden && this.creator.visiblePageCount <= 1) {
       showAppNotification(this.creator.languageService.translate('creatorKeepOnePageVisible'), 'info');
       return;

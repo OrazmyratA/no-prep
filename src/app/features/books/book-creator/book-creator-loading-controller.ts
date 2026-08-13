@@ -1,5 +1,6 @@
 import { InteractiveBook } from '../../../core/book.model';
 import { normalizeBookGuideTimelines } from '../../../core/guide-timeline';
+import { normalizeBookTracingElements } from '../../../core/book-tracing';
 
 export class BookCreatorLoadingController {
   constructor(private readonly creator: any) {}
@@ -11,6 +12,7 @@ export class BookCreatorLoadingController {
 
   applyLoadedBook(book: InteractiveBook | null): void {
     normalizeBookGuideTimelines(book);
+    normalizeBookTracingElements(book);
     this.creator.book = book;
     this.creator.assetUrlCache.clear();
     this.creator.selectedPageIndex = 0;
@@ -19,9 +21,12 @@ export class BookCreatorLoadingController {
     this.creator.placingChoiceTask = false;
     this.creator.placingCircleTask = false;
     this.creator.placingMatchTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.activeChoiceWordBankId = null;
     this.creator.activeMatchGroupId = null;
     this.creator.pendingMatchEndpointId = null;
+    this.creator.tracingPlacementElementId = null;
+    this.creator.activeTracingPartId = null;
     this.creator.pageJumpValue = '1';
     this.creator.activePageSource = 'main';
     this.creator.activeWorkbookId = null;

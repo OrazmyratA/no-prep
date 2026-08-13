@@ -159,6 +159,15 @@
         aria-label="Draw circling choices">
         <img src="assets/images/book/circle.png" alt="">
       </button>
+      <button
+        type="button"
+        class="icon-tool-btn"
+        [class.active]="creator.placingTracingTask"
+        (click)="creator.toggleTracingTaskTool()"
+        title="Tracing task"
+        aria-label="Place a tracing task">
+        <img src="assets/images/book/pencil.png" alt="">
+      </button>
     </div>
   </div>
 

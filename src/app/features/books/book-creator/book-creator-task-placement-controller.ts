@@ -16,10 +16,12 @@ export class BookCreatorTaskPlacementController {
   toggleTextTaskTool(): void {
     this.creator.clearCreatorMarkModes();
     this.discardPendingMatchEndpoint();
+    this.creator.discardIncompleteTracingElement();
     this.creator.placingTextTask = !this.creator.placingTextTask;
     this.creator.placingChoiceTask = false;
     this.creator.placingCircleTask = false;
     this.creator.placingMatchTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.activeChoiceWordBankId = null;
     this.creator.activeMatchGroupId = null;
     this.creator.placingGuidePin = false;
@@ -29,11 +31,13 @@ export class BookCreatorTaskPlacementController {
   toggleChoiceTaskTool(): void {
     this.creator.clearCreatorMarkModes();
     this.discardPendingMatchEndpoint();
+    this.creator.discardIncompleteTracingElement();
     const activating = !this.creator.placingChoiceTask;
     this.creator.placingChoiceTask = activating;
     this.creator.placingTextTask = false;
     this.creator.placingCircleTask = false;
     this.creator.placingMatchTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.activeChoiceWordBankId = activating ? this.creator.createId('word-bank') : null;
     this.creator.activeMatchGroupId = null;
     this.creator.placingGuidePin = false;
@@ -43,11 +47,13 @@ export class BookCreatorTaskPlacementController {
   toggleCircleTaskTool(): void {
     this.creator.clearCreatorMarkModes();
     this.discardPendingMatchEndpoint();
+    this.creator.discardIncompleteTracingElement();
     const activating = !this.creator.placingCircleTask;
     this.creator.placingCircleTask = activating;
     this.creator.placingTextTask = false;
     this.creator.placingChoiceTask = false;
     this.creator.placingMatchTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.placingGuidePin = false;
     this.creator.activeChoiceWordBankId = null;
     this.creator.activeMatchGroupId = null;
@@ -58,10 +64,12 @@ export class BookCreatorTaskPlacementController {
     this.creator.clearCreatorMarkModes();
     const activating = !this.creator.placingMatchTask;
     this.discardPendingMatchEndpoint();
+    this.creator.discardIncompleteTracingElement();
     this.creator.placingMatchTask = activating;
     this.creator.placingTextTask = false;
     this.creator.placingChoiceTask = false;
     this.creator.placingCircleTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.placingGuidePin = false;
     this.creator.activeChoiceWordBankId = null;
     this.creator.activeMatchGroupId = activating ? this.creator.createId('match-group') : null;
@@ -70,10 +78,12 @@ export class BookCreatorTaskPlacementController {
 
   clearTaskPlacementModes(): void {
     this.discardPendingMatchEndpoint();
+    this.creator.discardIncompleteTracingElement();
     this.creator.placingTextTask = false;
     this.creator.placingChoiceTask = false;
     this.creator.placingCircleTask = false;
     this.creator.placingMatchTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.placingGuidePin = false;
     this.creator.activeChoiceWordBankId = null;
     this.creator.activeMatchGroupId = null;
@@ -83,10 +93,12 @@ export class BookCreatorTaskPlacementController {
 
   finishTaskPlacement(): void {
     this.discardPendingMatchEndpoint();
+    this.creator.discardIncompleteTracingElement();
     this.creator.placingTextTask = false;
     this.creator.placingChoiceTask = false;
     this.creator.placingCircleTask = false;
     this.creator.placingMatchTask = false;
+    this.creator.placingTracingTask = false;
     this.creator.activeChoiceWordBankId = null;
     this.creator.activeMatchGroupId = null;
   }

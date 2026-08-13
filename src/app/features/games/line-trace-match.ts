@@ -83,7 +83,8 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
     { key: 'Tab', action: 'Move between words and pictures' },
-    { key: 'Enter / Space', action: 'Select or match highlighted tile' },
+    { key: 'Enter', action: 'Select or match highlighted tile' },
+    { key: 'Space', action: 'Play the sound clue' },
     { key: 'Escape', action: 'Cancel selection' }
   ];
 
@@ -381,7 +382,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   // ---- Keyboard fallback ----
   onTileKeydown(event: KeyboardEvent, el: BoardElement) {
     if (el.matched || this.gameFinished) return;
-    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    if (event.key === 'Enter') {
       event.preventDefault();
       this.activateElement(el);
     } else if (event.key === 'Escape') {
@@ -900,7 +901,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     return this.imageUrls.get(itemId)!;
   }
 
-  // ---- Keyboard shortcuts (Escape to cancel selection globally) ----
+  // ---- Keyboard shortcuts (Escape cancels selection, Space plays the sound clue) ----
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -908,7 +909,16 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     if (event.key === 'Escape' && this.selectedElementId) {
       event.preventDefault();
       this.clearSelection();
+      return;
     }
+    if (this.isSpaceKey(event) && !this.gameFinished && this.hasAudioItems) {
+      event.preventDefault();
+      this.activateSoundQuiz();
+    }
+  }
+
+  private isSpaceKey(event: KeyboardEvent): boolean {
+    return event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space';
   }
 
   private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {

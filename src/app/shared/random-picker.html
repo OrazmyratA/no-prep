@@ -110,6 +110,15 @@
           </button>
           <button
             type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img"
+            [class.active]="sessionActive"
+            (click)="toggleScoreSession()"
+            [attr.title]="(sessionActive ? 'leaderboardSessionEnd' : 'leaderboardSessionStart') | translate"
+            [attr.aria-label]="(sessionActive ? 'leaderboardSessionEnd' : 'leaderboardSessionStart') | translate">
+            <img src="assets/images/today.png" alt="" aria-hidden="true">
+          </button>
+          <button
+            type="button"
             class="lb-header-btn lb-icon-btn"
             (click)="resetScores()"
             [attr.title]="'leaderboardResetScores' | translate"

@@ -126,6 +126,12 @@ export class BookCreatorTaskSettingsController {
     element.data['correct'] = correct;
   }
 
+  setTracingTaskCorrect(element: BookElement, correct: boolean): void {
+    if (element.type !== 'tracingTask' || element.data['correct'] === correct) return;
+    this.creator.captureHistory();
+    element.data['correct'] = correct;
+  }
+
   getMatchTaskGroupIds(): string[] {
     const groupIds = (this.creator.selectedPage?.elements || [])
       .filter((element: BookElement) => element.type === 'matchTask')

@@ -109,7 +109,7 @@ export class BookCreatorNavigationController {
   }
 
   setCreatorZoom(value: number): void {
-    this.creator.creatorZoom = this.creator.clamp(Number(value) || 1, 0.55, 2);
+    this.creator.creatorZoom = this.creator.clamp(Number(value) || 1, 0.55, 4);
     this.creator.updateCreatorCanvasWidth(() => {
       if (this.creator.creatorZoom > 1) {
         this.creator.centerCreatorZoom();

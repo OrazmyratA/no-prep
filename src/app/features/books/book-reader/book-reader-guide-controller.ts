@@ -396,7 +396,9 @@ export class BookReaderGuideController {
     const dots = this.getGuideDots(page);
     const index = dots.findIndex((dot) => dot.id === element.id);
     if (index < 0) return;
-    this.reader.guideProgress[page.id] = Math.max(this.reader.guideProgress[page.id] ?? 0, index + 1);
+    const count = Math.max(this.reader.guideProgress[page.id] ?? 0, index + 1);
+    this.reader.guideProgress[page.id] = count;
+    this.reader.persistGuideDotProgress(page, count);
   }
 
   private getGuideDots(page: BookPage): BookElement[] {

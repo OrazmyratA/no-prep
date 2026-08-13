@@ -30,6 +30,19 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
   },
 
 
+  'readerBackToMap': {
+    en: 'Back to Map',
+    tk: 'Karta dolan',
+    ru: 'Вернуться к карте',
+    cn: '返回地图',
+    cde: 'Zurück zur Karte',
+    es: 'Volver al mapa',
+    fr: 'Retour à la carte',
+    kr: '지도로 돌아가기',
+    sa: 'العودة إلى الخريطة',
+  },
+
+
 
 
   'previousPage': {

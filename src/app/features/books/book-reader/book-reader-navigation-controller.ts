@@ -1,4 +1,5 @@
 import { createTextImageDataUrl } from './book-reader-annotation-utils';
+import { getLessonPageRefs, ProgressMapLesson, ProgressMapUnit } from '../../../core/book.model';
 
 export class BookReaderNavigationController {
   constructor(private readonly reader: any) {}
@@ -29,13 +30,87 @@ export class BookReaderNavigationController {
     this.reader.activeTextInput = null;
     this.reader.closeTaskInput();
     this.reader.activeMatchEndpoint = null;
+    this.reader.activeTracingSession = null;
     this.reader.updateReaderSpreadWidth();
+    this.reader.persistPageReached(this.reader.currentPage);
     if (closeDrawer) this.reader.pageDrawerOpen = false;
   }
 
   togglePageDrawer(): void {
-    this.reader.pageDrawerOpen = !this.reader.pageDrawerOpen;
+    this.goToProgressMap();
+  }
+
+  goToProgressMap(): void {
+    if (!this.reader.book) return;
+    const mapIndex = this.reader.book.pages.findIndex((page: { type: string }) => page.type === 'progressMap');
+    if (mapIndex < 0) return;
+    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+    this.reader.stopGuideAudioAndReturnHome();
+    this.reader.activeSpeakingElement = null;
+    this.reader.activeSpeakingPage = null;
+    this.reader.speakingPanelExpanded = false;
+    this.reader.resetSpeakingSessionState();
+    this.reader.closeExpandedFocus();
+    this.reader.pageSource = 'main';
+    this.reader.activeWorkbookId = null;
+    this.reader.workbookSession = null;
+    this.reader.markVisiblePagesDirty();
+    const returnIndex = this.reader.visiblePages.findIndex((page: { id: string }) => page.id === this.reader.book.pages[mapIndex].id);
+    this.reader.currentPageIndex = returnIndex >= 0 ? returnIndex : 0;
+    this.reader.refreshPdfUrl();
+    this.reader.resetDrawingCanvas();
+    this.reader.syncPageJumpValue();
     this.reader.updateReaderSpreadWidth();
+  }
+
+  navigateToProgressLesson(unit: ProgressMapUnit, lesson: ProgressMapLesson): void {
+    if (!this.reader.book) return;
+    const refs = getLessonPageRefs(lesson);
+    if (!refs.length) return;
+    const lessonIndex = unit.lessons.findIndex((item) => item.id === lesson.id);
+    if (lessonIndex >= 0 && !this.reader.isLessonUnlocked(unit, lessonIndex)) return;
+    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+
+    const pageProgress = this.reader.pageProgress as Map<string, { reached?: boolean }>;
+    const target = refs.find((ref) => !pageProgress?.get(ref.pageId)?.reached) ?? refs[0];
+
+    this.reader.stopGuideAudioAndReturnHome();
+    this.reader.activeSpeakingElement = null;
+    this.reader.activeSpeakingPage = null;
+    this.reader.speakingPanelExpanded = false;
+    this.reader.resetSpeakingSessionState();
+    this.reader.closeExpandedFocus();
+
+    if (!target.workbookId) {
+      const index = this.reader.book.pages.findIndex((page: { id: string }) => page.id === target.pageId);
+      if (index < 0) return;
+      this.reader.pageSource = 'main';
+      this.reader.activeWorkbookId = null;
+      this.reader.workbookSession = null;
+      this.reader.markVisiblePagesDirty();
+      const returnIndex = this.reader.visiblePages.findIndex((page: { id: string }) => page.id === target.pageId);
+      this.reader.currentPageIndex = returnIndex >= 0 ? returnIndex : index;
+    } else {
+      const workbook = this.reader.getWorkbook(target.workbookId);
+      if (!workbook) return;
+      const targetIndex = workbook.pages.findIndex((page: { id: string }) => page.id === target.pageId);
+      if (targetIndex < 0) return;
+      this.reader.pageSource = 'workbook';
+      this.reader.activeWorkbookId = workbook.id;
+      this.reader.workbookSession = {
+        mainPageId: this.reader.currentPage?.id || '',
+        workbookId: workbook.id,
+        pageIds: workbook.pages.map((page: { id: string }) => page.id)
+      };
+      this.reader.markVisiblePagesDirty();
+      this.reader.currentPageIndex = targetIndex;
+    }
+
+    this.reader.refreshPdfUrl();
+    this.reader.resetDrawingCanvas();
+    this.reader.syncPageJumpValue();
+    this.reader.updateReaderSpreadWidth();
+    this.reader.persistPageReached(this.reader.currentPage);
   }
 
   canSwitchLinkedWorkbook(): boolean {
@@ -63,12 +138,12 @@ export class BookReaderNavigationController {
       const returnIndex = this.reader.visiblePages.findIndex((page: { id: string }) => page.id === mainPageId);
       this.reader.currentPageIndex = returnIndex >= 0 ? returnIndex : 0;
       this.reader.syncPageJumpValue();
-      this.reader.pageDrawerOpen = true;
       this.reader.expandedElement = null;
       this.reader.expandedFocusElement = null;
       this.reader.refreshPdfUrl();
       this.reader.resetDrawingCanvas();
       this.reader.updateReaderSpreadWidth();
+      this.reader.persistPageReached(this.reader.currentPage);
       return;
     }
 
@@ -90,12 +165,12 @@ export class BookReaderNavigationController {
     this.reader.markVisiblePagesDirty();
     this.reader.currentPageIndex = 0;
     this.reader.syncPageJumpValue();
-    this.reader.pageDrawerOpen = true;
     this.reader.expandedElement = null;
     this.reader.expandedFocusElement = null;
     this.reader.refreshPdfUrl();
     this.reader.resetDrawingCanvas();
     this.reader.updateReaderSpreadWidth();
+    this.reader.persistPageReached(this.reader.currentPage);
   }
 
   nextPage(): void {
@@ -105,7 +180,7 @@ export class BookReaderNavigationController {
   }
 
   setZoom(value: number): void {
-    this.reader.zoom = Math.min(2, Math.max(0.5, value));
+    this.reader.zoom = Math.min(4, Math.max(0.5, value));
     this.reader.updateReaderSpreadWidth(() => {
       if (this.reader.zoom > 1) this.reader.centerReaderZoom();
     });

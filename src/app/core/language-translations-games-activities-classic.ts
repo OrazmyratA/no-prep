@@ -656,6 +656,30 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'flipTilesNoItems': {
+  en: 'Add images or text to this topic before playing Flip Tiles.',
+  tk: 'Flip Tiles oýnamazdan öň bu tema surat ýa-da tekst goşuň.',
+  ru: 'Добавьте изображения или текст в эту тему перед игрой Flip Tiles.',
+  cn: '在玩翻转卡片之前，请为该主题添加图片或文字。',
+  cde: 'Fügen Sie diesem Thema Bilder oder Text hinzu, bevor Sie Flip Tiles spielen.',
+  es: 'Agrega imágenes o texto a este tema antes de jugar Flip Tiles.',
+  fr: 'Ajoutez des images ou du texte à ce sujet avant de jouer à Flip Tiles.',
+  kr: 'Flip Tiles를 플레이하기 전에 이 주제에 이미지나 텍스트를 추가하세요.',
+  sa: 'أضف صورًا أو نصًا إلى هذا الموضوع قبل لعب Flip Tiles.',
+},
+
+'matchPairsNoItems': {
+  en: 'Add images or text to this topic before playing Match Pairs.',
+  tk: 'Match Pairs oýnamazdan öň bu tema surat ýa-da tekst goşuň.',
+  ru: 'Добавьте изображения или текст в эту тему перед игрой Match Pairs.',
+  cn: '在玩配对游戏之前，请为该主题添加图片或文字。',
+  cde: 'Fügen Sie diesem Thema Bilder oder Text hinzu, bevor Sie Match Pairs spielen.',
+  es: 'Agrega imágenes o texto a este tema antes de jugar Match Pairs.',
+  fr: 'Ajoutez des images ou du texte à ce sujet avant de jouer à Match Pairs.',
+  kr: 'Match Pairs를 플레이하기 전에 이 주제에 이미지나 텍스트를 추가하세요.',
+  sa: 'أضف صورًا أو نصًا إلى هذا الموضوع قبل لعب Match Pairs.',
+},
+
 'flipTilesNoContent': {
   en: 'No image or text',
   tk: 'Surat ýa-da tekst ýok',

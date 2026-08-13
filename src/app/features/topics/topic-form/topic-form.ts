@@ -7,6 +7,8 @@ import { db, Item } from '../../../core/db.model'; // import db and Item
 import { LicenseService } from '../../../core/license';
 import { BookLibraryService } from '../../../core/book-library';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
+import { LanguageService } from '../../../core/language';
+import { ConfirmationService } from '../../../shared/confirmation';
 
 @Component({
   selector: 'app-topic-form',
@@ -20,6 +22,7 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   topicId?: number;
   returnToBookId = '';
   returnToBookElementId = '';
+  saving = false;
   private expandedImageItems = new WeakSet<AbstractControl>();
   private expandedAudioItems = new WeakSet<AbstractControl>();
   @ViewChild('topicNameInput') topicNameInput?: ElementRef<HTMLInputElement>;
@@ -31,7 +34,9 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     private dbService: DbService,
     public licenseService: LicenseService,
     private bookLibrary: BookLibraryService,
-    private leaderboardState: LeaderboardStateService
+    private leaderboardState: LeaderboardStateService,
+    private langService: LanguageService,
+    private confirmationService: ConfirmationService
   ) {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
@@ -123,10 +128,16 @@ createItemFormGroup(id: number | null = null, text: string = '', image: Blob | n
     this.items.insert(index, this.createItemFormGroup(null));
   }
 
-  removeItem(index: number) {
+  async removeItem(index: number) {
     if (!this.licenseService.fullAccess) {
       this.licenseService.requestReopen();
       return;
+    }
+    const item = this.items.at(index);
+    const hasContent = !!(item.get('text')?.value || item.get('image')?.value || item.get('audio')?.value);
+    if (hasContent) {
+      const confirmed = await this.confirmationService.confirm(this.langService.translate('deleteItemConfirmation'));
+      if (!confirmed) return;
     }
     this.items.removeAt(index);
   }
@@ -168,46 +179,51 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       return;
     }
 
-    if (this.topicForm.invalid) return;
+    if (this.topicForm.invalid || this.saving) return;
 
-    const name = this.topicForm.value.name;
-    const items = await Promise.all(this.items.controls.map(c => c.value).map(async (item: any) => ({
-      id: item.id ?? undefined,
-      text: item.text,
-      image: item.image,
-      audio: item.audio
-    })));
+    this.saving = true;
+    try {
+      const name = this.topicForm.value.name;
+      const items = await Promise.all(this.items.controls.map(c => c.value).map(async (item: any) => ({
+        id: item.id ?? undefined,
+        text: item.text,
+        image: item.image,
+        audio: item.audio
+      })));
 
-    let savedTopicId = this.topicId || 0;
-    if (this.isEdit && this.topicId) {
-      await this.dbService.updateTopic(this.topicId, name);
-      await this.dbService.updateItems(this.topicId, items);
-      savedTopicId = this.topicId;
-    } else {
-      const newId = await this.dbService.createTopic(name);
-      await this.dbService.addItems(newId, items);
-      savedTopicId = newId;
+      let savedTopicId = this.topicId || 0;
+      if (this.isEdit && this.topicId) {
+        await this.dbService.updateTopic(this.topicId, name);
+        await this.dbService.updateItems(this.topicId, items);
+        savedTopicId = this.topicId;
+      } else {
+        const newId = await this.dbService.createTopic(name);
+        await this.dbService.addItems(newId, items);
+        savedTopicId = newId;
+      }
+
+      if (this.leaderboardState.isSelecting) {
+        await this.leaderboardState.completeTopicSelection(savedTopicId);
+        return;
+      }
+
+      if (this.returnToBookId && this.returnToBookElementId) {
+        const snapshotResult = await this.saveTopicInsideBook(savedTopicId);
+        this.router.navigate(['/books', this.returnToBookId, 'edit'], {
+          queryParams: {
+            linkedElementId: this.returnToBookElementId,
+            linkedTopicId: savedTopicId,
+            linkedTopicTitle: name,
+            bookTopicPath: snapshotResult?.relativePath || null
+          }
+        });
+        return;
+      }
+
+      this.router.navigate(['/topics', savedTopicId, 'activities']);
+    } finally {
+      this.saving = false;
     }
-
-    if (this.leaderboardState.isSelecting) {
-      await this.leaderboardState.completeTopicSelection(savedTopicId);
-      return;
-    }
-
-    if (this.returnToBookId && this.returnToBookElementId) {
-      const snapshotResult = await this.saveTopicInsideBook(savedTopicId);
-      this.router.navigate(['/books', this.returnToBookId, 'edit'], {
-        queryParams: {
-          linkedElementId: this.returnToBookElementId,
-          linkedTopicId: savedTopicId,
-          linkedTopicTitle: name,
-          bookTopicPath: snapshotResult?.relativePath || null
-        }
-      });
-      return;
-    }
-
-    this.router.navigate(['/topics', savedTopicId, 'activities']);
   }
 
   goBack() {

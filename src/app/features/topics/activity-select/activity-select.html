@@ -19,10 +19,6 @@
       <!-- Game card with conditional behavior for AI game -->
       <div *ngFor="let game of games"
            (click)="onGameClick(game)"
-           [attr.title]="isPremiumLocked(game) ? ('license.title' | translate) : null"
-           [class.opacity-40]="isPremiumLocked(game)"
-           [class.cursor-not-allowed]="isPremiumLocked(game)"
-           [class.coming-soon]="isPremiumLocked(game)"
            class="relative bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
            [class.opacity-40.2]="selectedGame && selectedGame !== game"
            [class.ring-4]="selectedGame === game"

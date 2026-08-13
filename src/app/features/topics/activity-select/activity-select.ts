@@ -121,10 +121,6 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
     this.router.navigate(['/topics']);
   }
 
-  isPremiumLocked(game: GameConfig): boolean {
-    return false;
-  }
-
   private loadBookReturnContext(): BookActivityReturnContext | null {
     const query = this.route.snapshot.queryParamMap;
     const bookId = query.get('returnToBookId') || '';

@@ -4,6 +4,7 @@
   [class.screenshotting]="primary && reader.screenshotting"
   [class.delete-mode]="reader.deleteMode"
   [class.surface-tool-active]="reader.isReaderSurfaceToolActive()"
+  [class.tracing-session-active]="!!reader.getActiveTracingElement(page) && !reader.activeTracingSession.completed"
   [class.focus-crop-page]="primary && reader.isFocusCropActive(page)"
   (click)="reader.onPageFrameClick($event)"
   appSwipe
@@ -117,6 +118,48 @@
       </line>
     </svg>
 
+    <svg class="tracing-result-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
+      <path
+        *ngFor="let result of reader.getPageTracingResultPaths(page)"
+        [class.incorrect]="result.incorrect"
+        [attr.d]="result.d"
+        [style.stroke-width]="reader.tracingWidth"
+        fill="none"
+        vector-effect="non-scaling-stroke">
+      </path>
+    </svg>
+
+    <svg class="tracing-guide-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" *ngIf="reader.getActiveTracingElement(page) as activeTracingGuideElement">
+      <path
+        *ngFor="let linePath of reader.getTracingGuidePaths(activeTracingGuideElement, page)"
+        [attr.d]="linePath"
+        fill="none"
+        vector-effect="non-scaling-stroke">
+      </path>
+    </svg>
+
+    <svg class="tracing-line-layer" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" *ngIf="reader.getActiveTracingElement(page) as activeTracingElement">
+      <path
+        *ngFor="let line of reader.getTracingLinePaths(activeTracingElement, page)"
+        [class.complete]="line.complete"
+        [class.incorrect]="line.incorrect"
+        [attr.d]="line.d"
+        [style.stroke]="!line.complete && !line.incorrect ? reader.tracingColor : null"
+        [style.stroke-width]="reader.tracingWidth"
+        fill="none"
+        vector-effect="non-scaling-stroke">
+      </path>
+    </svg>
+
+    <img
+      *ngIf="reader.getActiveTracingElement(page) && !reader.activeTracingSession.completed"
+      class="tracing-cursor-pencil"
+      [style.left.%]="reader.activeTracingSession.cursorX * 100"
+      [style.top.%]="reader.activeTracingSession.cursorY * 100"
+      src="assets/images/book/pencil.png"
+      alt=""
+      aria-hidden="true">
+
     <div
       *ngFor="let element of page.elements; trackBy: reader.trackByElementId"
       class="reader-element"
@@ -148,9 +191,13 @@
       [class.match-available]="element.type === 'matchTask' && reader.isMatchEndpointAvailable(element, page)"
       [class.match-connected]="element.type === 'matchTask' && reader.isMatchEndpointConnected(element, page)"
       [class.match-missing]="element.type === 'matchTask' && reader.isMatchEndpointMissing(element, page)"
+      [class.tracing-task-element]="element.type === 'tracingTask'"
+      [class.tracing-active]="element.type === 'tracingTask' && reader.isTracingActive(element)"
+      [class.tracing-complete]="element.type === 'tracingTask' && reader.isTracingComplete(element)"
+      [class.tracing-empty]="element.type === 'tracingTask' && !reader.isTracingElementUsable(element)"
       [class.task-active]="(element.type === 'textTask' || element.type === 'choiceTask') && reader.activeTaskElement?.id === element.id"
-      [class.task-correct]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) === 'correct'"
-      [class.task-incorrect]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) === 'incorrect'"
+      [class.task-correct]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask' || element.type === 'tracingTask') && reader.getTaskResult(element) === 'correct'"
+      [class.task-incorrect]="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask' || element.type === 'tracingTask') && reader.getTaskResult(element) === 'incorrect'"
       [class.hidden-focus]="element.type === 'focus' && !reader.focusMode"
       [attr.data-element-id]="element.id"
       [style.left.%]="element.x * 100"
@@ -163,6 +210,7 @@
       <span *ngIf="element.type === 'focus'" class="focus-label"></span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+      <img *ngIf="element.type === 'tracingTask'" class="book-marker-icon tracing-marker-icon" src="assets/images/book/pencil.png" alt="Tracing task">
       <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
         <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">
       </span>
@@ -230,12 +278,27 @@
         <span></span>
       </button>
       <span
-        *ngIf="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask') && reader.getTaskResult(element) !== 'unchecked'"
+        *ngIf="(element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask' || element.type === 'tracingTask') && reader.getTaskResult(element) !== 'unchecked'"
         class="task-result-badge"
         [class.task-result-correct]="reader.getTaskResult(element) === 'correct'"
         [class.task-result-incorrect]="reader.getTaskResult(element) === 'incorrect'"
         aria-hidden="true">{{ reader.getTaskResult(element) === 'correct' ? '✓' : '✗' }}</span>
     </div>
+
+    <ng-container *ngIf="reader.getActiveTracingElement(page) as activeTracingElement">
+      <button
+        *ngFor="let item of reader.getTracingPointSequenceForActivePage(page); trackBy: reader.trackByTracingPointId"
+        type="button"
+        class="tracing-point-marker"
+        [class.required-jump]="item.state === 'required-jump'"
+        [class.next-linkable]="item.state === 'next'"
+        [class.reached]="item.state === 'reached'"
+        [style.left.%]="item.point.x * 100"
+        [style.top.%]="item.point.y * 100"
+        (click)="reader.handleTracingJumpClick(item.element, page, item.part.id, item.point.id, $event)"
+        aria-label="Tracing point">
+      </button>
+    </ng-container>
 
     <button
       type="button"

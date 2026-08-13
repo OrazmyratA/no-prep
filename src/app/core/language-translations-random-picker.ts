@@ -98,6 +98,54 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   sa: 'Reset every student\'s points for this class list? This cannot be undone.',
 },
 
+'leaderboardSessionStart': {
+  en: 'Start today\'s session',
+  tk: 'Start today\'s session',
+  ru: 'Start today\'s session',
+  cn: 'Start today\'s session',
+  cde: 'Start today\'s session',
+  es: 'Start today\'s session',
+  fr: 'Start today\'s session',
+  kr: 'Start today\'s session',
+  sa: 'Start today\'s session',
+},
+
+'leaderboardSessionEnd': {
+  en: 'End session & save totals',
+  tk: 'End session & save totals',
+  ru: 'End session & save totals',
+  cn: 'End session & save totals',
+  cde: 'End session & save totals',
+  es: 'End session & save totals',
+  fr: 'End session & save totals',
+  kr: 'End session & save totals',
+  sa: 'End session & save totals',
+},
+
+'leaderboardSessionStartConfirm': {
+  en: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  tk: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  ru: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  cn: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  cde: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  es: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  fr: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  kr: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+  sa: 'Start today\'s session? Everyone\'s score will show 0 until you end the session, when today\'s points are added back to their total.',
+},
+
+'leaderboardSessionBaselineHint': {
+  en: 'Previous total, added back when the session ends',
+  tk: 'Previous total, added back when the session ends',
+  ru: 'Previous total, added back when the session ends',
+  cn: 'Previous total, added back when the session ends',
+  cde: 'Previous total, added back when the session ends',
+  es: 'Previous total, added back when the session ends',
+  fr: 'Previous total, added back when the session ends',
+  kr: 'Previous total, added back when the session ends',
+  sa: 'Previous total, added back when the session ends',
+},
+
 'leaderboardRankingTitle': {
   en: 'Rankings',
   tk: 'Rankings',

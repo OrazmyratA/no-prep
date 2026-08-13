@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { BookAnnotations, BookSpeakingAttempt, BookTaskResponse } from './book.model';
+import { BookAnnotations, BookLastPosition, BookLessonProgress, BookSpeakingAttempt, BookTaskResponse } from './book.model';
 
 export interface Topic {
   id?: number;
@@ -49,6 +49,10 @@ export interface LeaderboardScore {
   topicId: number;
   itemId: number;
   points: number;
+  // Set while a "today's session" is in progress (see startScoreSession/endScoreSession in
+  // db.ts) — the pre-session total, stashed so it can be added back to whatever's collected
+  // during the session. null/absent means no session is active for this row.
+  baselinePoints?: number | null;
   updatedAt: Date;
 }
 
@@ -61,6 +65,8 @@ export class AppDatabase extends Dexie {
   bookTaskResponses!: Table<BookTaskResponse, string>;
   bookSpeakingAttempts!: Table<BookSpeakingAttempt, string>;
   leaderboardScores!: Table<LeaderboardScore, number>;
+  bookLessonProgress!: Table<BookLessonProgress, string>;
+  bookLastPosition!: Table<BookLastPosition, string>;
 
   constructor() {
     super('NoPrepDB');
@@ -127,6 +133,33 @@ export class AppDatabase extends Dexie {
       bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
       bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
       leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]'
+    });
+    this.version(8).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt'
+    });
+    this.version(9).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
+      bookLastPosition: 'key, profileId, bookId, updatedAt'
     });
   }
 }

@@ -47,6 +47,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   private timerInterval: any;
   private roundActive = false;
   isPaused = false; // for sandwich menu
+  private manuallyPaused = false; // true when the player paused via P/togglePause, not just by opening the menu
 
   // Reveal state — true while non-odd items are fading out after a correct pick
   isRevealingOdd = false;
@@ -130,6 +131,8 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     this.gameActive = true;
     this.gameFinished = false;
     this.isRevealingOdd = false;
+    this.isPaused = false;
+    this.manuallyPaused = false;
     this.keyboardSelectedItemIndex = 0;
     this.nextRound();
   }
@@ -401,10 +404,14 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   }
 
   onMenuOpenChange(isOpen: boolean) {
-    this.isPaused = isOpen;
     if (isOpen) {
+      this.isPaused = true;
       this.clearTimer();
-    } else {
+    } else if (!this.manuallyPaused) {
+      // Only auto-resume if the player didn't explicitly pause (P key/button)
+      // before opening the menu — otherwise closing the menu would silently
+      // restart the round timer against their intent.
+      this.isPaused = false;
       if (this.roundActive && this.gameActive) {
         this.startRoundTimer();
       }
@@ -435,6 +442,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   private togglePause() {
     if (!this.gameActive || this.gameFinished || !this.roundActive) return;
     this.isPaused = !this.isPaused;
+    this.manuallyPaused = this.isPaused;
     if (this.isPaused) {
       this.clearTimer();
     } else {

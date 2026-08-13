@@ -9,7 +9,8 @@ import {
   isChoiceTaskAnswerCorrect,
   isCircleTaskCorrectTarget,
   isMatchTaskConnectionCorrect,
-  isTextTaskAnswerCorrect
+  isTextTaskAnswerCorrect,
+  isTracingTaskGradingEnabled
 } from '../../../core/book-tasks';
 import {
   BookElement,
@@ -198,6 +199,15 @@ export class BookReaderTaskController {
     this.reader.forceUiRefresh();
   }
 
+  markTracingCompleted(element: BookElement, page: BookPage): void {
+    if (!this.reader.book || element.type !== 'tracingTask') return;
+    const existing = this.reader.taskResponses.get(element.id);
+    const response = this.createTaskResponse(element, page, 'completed', 'unchecked', existing?.attempts ?? 0);
+    this.reader.taskResponses.set(element.id, response);
+    this.reader.pendingTaskResponseIds.add(element.id);
+    this.reader.scheduleTaskResponseSave();
+  }
+
   hasVisibleTasks(): boolean {
     return this.getVisibleTaskEntries().length > 0;
   }
@@ -209,6 +219,7 @@ export class BookReaderTaskController {
     this.checkTextAndChoiceTasks(entries, changed);
     this.checkCircleTasks(entries, changed);
     this.checkMatchTasks(entries, changed);
+    this.checkTracingTasks(entries, changed);
     this.reader.activeMatchEndpoint = null;
     void this.reader.taskResponseService.saveMany(changed);
     this.reader.forceUiRefresh();
@@ -289,7 +300,7 @@ export class BookReaderTaskController {
 
   private checkTextAndChoiceTasks(entries: Array<{ page: BookPage; element: BookElement }>, changed: BookTaskResponse[]): void {
     for (const { page, element } of entries.filter((entry) =>
-      entry.element.type !== 'circleTask' && entry.element.type !== 'matchTask'
+      entry.element.type !== 'circleTask' && entry.element.type !== 'matchTask' && entry.element.type !== 'tracingTask'
     )) {
       const existing = this.reader.taskResponses.get(element.id);
       const value = existing?.value ?? '';
@@ -333,6 +344,18 @@ export class BookReaderTaskController {
         const correct = isMatchTaskConnectionCorrect(source, endpointById.get(value) ?? null);
         this.storeCheckedResponse(source, page, value, correct, existing, changed);
       }
+    }
+  }
+
+  private checkTracingTasks(entries: Array<{ page: BookPage; element: BookElement }>, changed: BookTaskResponse[]): void {
+    for (const { page, element } of entries.filter((entry) => entry.element.type === 'tracingTask')) {
+      const existing = this.reader.taskResponses.get(element.id);
+      const completed = existing?.value === 'completed';
+      const correct = completed && isTracingTaskGradingEnabled(element);
+      const response = this.createTaskResponse(element, page, existing?.value ?? '', correct ? 'correct' : 'incorrect', (existing?.attempts ?? 0) + 1);
+      this.reader.taskResponses.set(element.id, response);
+      changed.push(response);
+      this.reader.pendingTaskResponseIds.delete(element.id);
     }
   }
 

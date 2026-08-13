@@ -3,6 +3,19 @@ import type { TranslationDictionary } from './language-types';
 export const CORE_TRANSLATIONS: TranslationDictionary = {
 
 
+'topicNotFound': {
+  en: 'Topic not found',
+  tk: 'Tema tapylmady',
+  ru: 'Тема не найдена',
+  cn: '未找到主题',
+  cde: 'Thema nicht gefunden',
+  es: 'Tema no encontrado',
+  fr: 'Sujet introuvable',
+  kr: '주제를 찾을 수 없습니다',
+  sa: 'الموضوع غير موجود',
+},
+
+
 'noTopicsYet': {
   en: 'No topics yet',
   tk: 'Heniz tema ýok',
@@ -1525,6 +1538,30 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Êtes-vous sûr de vouloir supprimer ce sujet ? Cette action est irréversible.',
   kr: '이 주제를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
   sa: 'هل أنت متأكد من رغبتك في حذف هذا الموضوع؟ لا يمكن التراجع عن هذا الإجراء.',
+},
+
+'deleteItem': {
+  en: 'Delete item',
+  tk: 'Elementi poz',
+  ru: 'Удалить элемент',
+  cn: '删除项目',
+  cde: 'Element löschen',
+  es: 'Eliminar elemento',
+  fr: 'Supprimer l’élément',
+  kr: '항목 삭제',
+  sa: 'حذف العنصر',
+},
+
+'deleteItemConfirmation': {
+  en: 'Delete this item? Its text, image, audio, and any recorded scores for it will be lost once you save.',
+  tk: 'Bu elementi pozmalymy? Onuň teksti, suraty, sesi we ýazylan utuklary saklanyňyzdan soň ýitirler.',
+  ru: 'Удалить этот элемент? Его текст, изображение, аудио и все записанные результаты будут потеряны после сохранения.',
+  cn: '删除此项目？保存后，其文本、图片、音频及已记录的分数都将丢失。',
+  cde: 'Dieses Element löschen? Text, Bild, Audio und alle erfassten Punktzahlen gehen nach dem Speichern verloren.',
+  es: '¿Eliminar este elemento? Su texto, imagen, audio y cualquier puntuación registrada se perderán al guardar.',
+  fr: 'Supprimer cet élément ? Son texte, son image, son audio et les scores enregistrés seront perdus après l’enregistrement.',
+  kr: '이 항목을 삭제하시겠습니까? 저장하면 텍스트, 이미지, 오디오 및 기록된 점수가 사라집니다.',
+  sa: 'هل تريد حذف هذا العنصر؟ سيتم فقدان نصه وصورته وصوته وأي نقاط مسجلة له بعد الحفظ.',
 },
 
 

@@ -89,6 +89,7 @@ export class BookReaderAnnotationHistoryController {
     }
     this.reader.closeTaskInput();
     this.reader.activeMatchEndpoint = null;
+    this.reader.activeTracingSession = null;
     void this.reader.taskResponseService.deleteForPages(this.reader.book!.id, pageIds);
     this.pushUndoAction(action);
     this.reader.selectedText = null;

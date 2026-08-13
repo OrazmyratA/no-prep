@@ -109,6 +109,9 @@ export class BookCreatorElementController {
       page.wordBanks ??= [];
       page.wordBanks.push(JSON.parse(JSON.stringify(this.creator.copiedWordBank)) as BookWordBank);
     }
+    if (copy.type === 'matchTask') {
+      copy.data = { ...copy.data, pairId: this.creator.createId('match-pair') };
+    }
     copy.id = this.creator.createId(source.type);
     copy.x = this.creator.clamp((source.x || 0) + offset, 0, 1 - (source.width || 0.08));
     copy.y = this.creator.clamp((source.y || 0) + offset, 0, 1 - (source.height || 0.08));

@@ -83,7 +83,10 @@ export class SpotlightComponent implements OnInit, OnDestroy {
     this.topicId = Number(idParam);
 
     const spotlightParam = this.route.snapshot.queryParams['spotlightSize'];
-    if (spotlightParam) this.spotlightSize = Number(spotlightParam);
+    const parsedSpotlightSize = Number(spotlightParam);
+    if (spotlightParam && Number.isFinite(parsedSpotlightSize)) {
+      this.spotlightSize = Math.max(1, parsedSpotlightSize);
+    }
 
      try {
       this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -448,6 +451,13 @@ private loadItem(index: number) {
     }
   }
 
+  // Cancels a pending auto-advance from a held collection timer before we
+  // navigate away, so it can't fire against whatever item we land on next.
+  private cancelPendingAdvance() {
+    this.isNearItem = false;
+    this.clearTimer();
+  }
+
   revealAllScreen() {
     this.clearRevealTimer();
     this.revealAll = true;
@@ -462,6 +472,7 @@ private loadItem(index: number) {
 
   previousItem() {
     if (this.currentIndex > 0) {
+      this.cancelPendingAdvance();
       this.currentIndex--;
       this.loadItem(this.currentIndex);
       this.startSpotlightJourney();
@@ -470,6 +481,7 @@ private loadItem(index: number) {
 
   nextItem() {
     if (this.currentIndex < this.items.length - 1) {
+      this.cancelPendingAdvance();
       this.currentIndex++;
       this.loadItem(this.currentIndex);
       this.startSpotlightJourney();
@@ -478,6 +490,7 @@ private loadItem(index: number) {
 
   randomItem() {
     if (this.items.length === 0) return;
+    this.cancelPendingAdvance();
     if (this.items.length === 1) {
       this.loadItem(0);
       this.startSpotlightJourney();
@@ -508,6 +521,7 @@ private loadItem(index: number) {
   }
 
   resetGame() {
+    this.cancelPendingAdvance();
     this.currentIndex = 0;
     this.loadItem(0);
     this.startSpotlightJourney();

@@ -5,6 +5,7 @@ import {
   Input,
   Output,
   EventEmitter,
+  NgZone,
   OnChanges,
   OnInit,
   OnDestroy,
@@ -78,7 +79,8 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     private fb: FormBuilder,
     private pixabay: PixabayService,
     private langService: LanguageService,
-    private platform: PlatformService
+    private platform: PlatformService,
+    private zone: NgZone
   ) {
     this.searchControl = this.fb.control('');
     this.googleSearchControl = this.fb.control('');
@@ -431,8 +433,10 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       const fileName = `pixabay-${img.id}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       const compressedBlob = await this.compressImage(file);
-      this.setPreview(compressedBlob);
-      this.imageSelected.emit(compressedBlob);
+      this.zone.run(() => {
+        this.setPreview(compressedBlob);
+        this.imageSelected.emit(compressedBlob);
+      });
     } catch (error) {
       console.error('Failed to fetch image', error);
     }
@@ -489,8 +493,13 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     if (!file.type.startsWith('image/')) return;
     try {
       const compressedBlob = await this.compressImage(file);
-      this.setPreview(compressedBlob);
-      this.imageSelected.emit(compressedBlob);
+      // browser-image-compression resolves via a Web Worker message, which can
+      // resume outside Angular's zone — without this, the preview wouldn't
+      // render until some unrelated event (e.g. a click) forced change detection.
+      this.zone.run(() => {
+        this.setPreview(compressedBlob);
+        this.imageSelected.emit(compressedBlob);
+      });
     } catch (error) {
       console.error('Compression failed', error);
     }

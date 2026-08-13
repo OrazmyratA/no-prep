@@ -137,4 +137,29 @@ async duplicateTopic(topicId: number): Promise<number | null> {
   async resetLeaderboardScores(topicId: number): Promise<void> {
     await db.leaderboardScores.where('topicId').equals(topicId).delete();
   }
+
+  // "Today's session": stashes each row's current total as baselinePoints, then zeroes points so
+  // the teacher sees just what's collected from here on. adjustLeaderboardScore only ever writes
+  // points/updatedAt, so it leaves baselinePoints untouched while a session is running. A student
+  // with no row yet (never scored) has nothing to stash — their first point during the session
+  // creates a row with no baselinePoints at all, which is already their correct total.
+  async startScoreSession(topicId: number): Promise<void> {
+    const rows = await db.leaderboardScores.where('topicId').equals(topicId).toArray();
+    const now = new Date();
+    for (const row of rows) {
+      await db.leaderboardScores.update(row.id!, { baselinePoints: row.points, points: 0, updatedAt: now });
+    }
+  }
+
+  // Adds each row's session-collected points back onto its stashed baseline and clears the
+  // stash. Rows with no baselinePoints (never had a session, or were created after the session
+  // started) are left as-is — their current points are already the correct total.
+  async endScoreSession(topicId: number): Promise<void> {
+    const rows = await db.leaderboardScores.where('topicId').equals(topicId).toArray();
+    const now = new Date();
+    for (const row of rows) {
+      if (row.baselinePoints == null) continue;
+      await db.leaderboardScores.update(row.id!, { points: row.points + row.baselinePoints, baselinePoints: null, updatedAt: now });
+    }
+  }
 }

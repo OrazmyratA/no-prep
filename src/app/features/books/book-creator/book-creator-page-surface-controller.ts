@@ -1,10 +1,15 @@
 import { BookWorkbook } from '../../../core/book.model';
+import { showAppNotification } from '../../../core/notification';
 
 export class BookCreatorPageSurfaceController {
   constructor(private readonly creator: any) {}
 
   async deleteSelectedPage(): Promise<void> {
     if (!this.creator.book || this.creator.activePages.length <= 1) return;
+    if (this.creator.activePageSource === 'main' && this.creator.activePages[this.creator.activePageIndex]?.type === 'progressMap') {
+      showAppNotification('The progress map page cannot be deleted.', 'info');
+      return;
+    }
 
     const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeletePage'));
     if (!confirmed) return;
@@ -63,7 +68,7 @@ export class BookCreatorPageSurfaceController {
     if (!confirmed) return;
 
     this.creator.captureHistory();
-    this.creator.book.pages = [this.creator.createBlankPage()];
+    this.creator.book.pages = [this.creator.createProgressMapPage(), this.creator.createBlankPage()];
     this.creator.book.sourcePdf = '';
     this.creator.book.cover = '';
     this.creator.book.workbookLinks = {};
@@ -85,6 +90,10 @@ export class BookCreatorPageSurfaceController {
     event?.stopPropagation();
     if (!this.creator.book || this.creator.book.pages.length <= 1) return;
     if (index < 0 || index >= this.creator.book.pages.length) return;
+    if (this.creator.book.pages[index]?.type === 'progressMap') {
+      showAppNotification('The progress map page cannot be deleted.', 'info');
+      return;
+    }
 
     const confirmed = await this.creator.confirmationService.confirm(this.creator.languageService.translate('creatorConfirmDeletePage'));
     if (!confirmed) return;

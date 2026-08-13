@@ -545,6 +545,12 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.checkedIndices.clear();
     this.currentIndex = 0;
     this.gameFinished = false;
+    // The whiteboard/canvas sits behind *ngIf="!gameFinished", so it was just
+    // destroyed and is about to be recreated as a brand-new DOM node — drop the
+    // stale observer so installResizeObserver() rebinds to the new element
+    // instead of silently no-opping because `resizeObserver` is still truthy.
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
     this.loadItem(0);
   }
 
