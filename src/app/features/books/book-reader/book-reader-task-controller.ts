@@ -9,9 +9,9 @@ import {
   isChoiceTaskAnswerCorrect,
   isCircleTaskCorrectTarget,
   isMatchTaskConnectionCorrect,
-  isTextTaskAnswerCorrect,
-  isTracingTaskGradingEnabled
+  isTextTaskAnswerCorrect
 } from '../../../core/book-tasks';
+import { getGradedTracingParts } from '../../../core/book-tracing';
 import {
   BookElement,
   BookPage,
@@ -203,6 +203,17 @@ export class BookReaderTaskController {
     if (!this.reader.book || element.type !== 'tracingTask') return;
     const existing = this.reader.taskResponses.get(element.id);
     const response = this.createTaskResponse(element, page, 'completed', 'unchecked', existing?.attempts ?? 0);
+    response.tracingPartResults = existing?.tracingPartResults;
+    this.reader.taskResponses.set(element.id, response);
+    this.reader.pendingTaskResponseIds.add(element.id);
+    this.reader.scheduleTaskResponseSave();
+  }
+
+  markTracingPartCompleted(element: BookElement, page: BookPage, partId: string): void {
+    if (!this.reader.book || element.type !== 'tracingTask') return;
+    const existing = this.reader.taskResponses.get(element.id);
+    const response = this.createTaskResponse(element, page, existing?.value ?? '', existing?.result ?? 'unchecked', existing?.attempts ?? 0);
+    response.tracingPartResults = { ...existing?.tracingPartResults, [partId]: true };
     this.reader.taskResponses.set(element.id, response);
     this.reader.pendingTaskResponseIds.add(element.id);
     this.reader.scheduleTaskResponseSave();
@@ -350,9 +361,11 @@ export class BookReaderTaskController {
   private checkTracingTasks(entries: Array<{ page: BookPage; element: BookElement }>, changed: BookTaskResponse[]): void {
     for (const { page, element } of entries.filter((entry) => entry.element.type === 'tracingTask')) {
       const existing = this.reader.taskResponses.get(element.id);
-      const completed = existing?.value === 'completed';
-      const correct = completed && isTracingTaskGradingEnabled(element);
+      const gradedParts = getGradedTracingParts(element);
+      const partResults = existing?.tracingPartResults ?? {};
+      const correct = gradedParts.length > 0 && gradedParts.every((part) => partResults[part.id] === true);
       const response = this.createTaskResponse(element, page, existing?.value ?? '', correct ? 'correct' : 'incorrect', (existing?.attempts ?? 0) + 1);
+      response.tracingPartResults = partResults;
       this.reader.taskResponses.set(element.id, response);
       changed.push(response);
       this.reader.pendingTaskResponseIds.delete(element.id);

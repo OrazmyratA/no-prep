@@ -290,6 +290,10 @@ export class BookCreatorTracingController {
     return handles;
   }
 
+  getTracingSegmentHandlesForPart(element: BookElement, partId: string): TracingSegmentHandle[] {
+    return this.getTracingSegmentHandles(element).filter((handle) => handle.partId === partId);
+  }
+
   setTracingSegmentCurve(element: BookElement, partId: string, pointId: string, curve: number): void {
     if (element.type !== 'tracingTask') return;
     const part = getTracingParts(element).find((candidate) => candidate.id === partId);

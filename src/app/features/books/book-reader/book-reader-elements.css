@@ -443,6 +443,13 @@
   }
 }
 
+.tracing-part-result-badge {
+  top: auto;
+  right: auto;
+  transform: translate(-50%, -140%);
+  z-index: 35;
+}
+
 .tracing-cursor-pencil {
   position: absolute;
   z-index: 34;

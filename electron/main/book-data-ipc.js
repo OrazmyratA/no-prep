@@ -5,6 +5,9 @@ function registerBookDataIpc({
   path,
   pathToFileURL,
   getMainWindow,
+  getFfmpegPath,
+  firstExistingPath,
+  execFileText,
   readRegistry,
   writeRegistry,
   repairBookRegistryItems,
@@ -157,9 +160,18 @@ function registerBookDataIpc({
       const ext = path.extname(sourcePath);
       const safeBaseName = sanitizeName(path.basename(sourcePath, ext), 'asset');
       const fileName = `${safeBaseName}-${Date.now()}${ext}`;
-      const relativePath = path.posix.join('assets', kind, fileName);
-      const destination = path.join(registryItem.folderPath, 'assets', kind, fileName);
+      let relativePath = path.posix.join('assets', kind, fileName);
+      let destination = path.join(registryItem.folderPath, 'assets', kind, fileName);
       await copyFile(sourcePath, destination);
+
+      if (kind === 'audio') {
+        const converted = await convertCopiedAudioToSeekableWav(destination, registryItem.folderPath, kind, safeBaseName);
+        if (converted) {
+          destination = converted.destination;
+          relativePath = converted.relativePath;
+        }
+      }
+
       const stat = await fsp.stat(destination);
       await updateRegistrySizeByDelta(registryItem, stat.size);
 
@@ -173,6 +185,44 @@ function registerBookDataIpc({
       return operationError('ASSET_FAILED', error?.message || 'Could not add this asset.');
     }
   });
+
+  // Uploaded audio (mp3/m4a/ogg) frequently lacks a seek index Chromium can use, which
+  // makes the guide-dot timeline unable to jump to any position but the start. Re-encoding
+  // to PCM WAV guarantees the file is properly seekable, same as recorded guide-dot audio.
+  async function convertCopiedAudioToSeekableWav(sourceDestination, bookFolderPath, kind, safeBaseName) {
+    if (String(sourceDestination).toLowerCase().endsWith('.wav')) return null;
+    if (typeof getFfmpegPath !== 'function' || typeof firstExistingPath !== 'function' || typeof execFileText !== 'function') {
+      return null;
+    }
+    const ffmpegPath = await firstExistingPath(getFfmpegPath());
+    if (!ffmpegPath) return null;
+
+    const wavFileName = `${safeBaseName}-${Date.now()}-seekable.wav`;
+    const wavDestination = path.join(bookFolderPath, 'assets', kind, wavFileName);
+    try {
+      await execFileText(ffmpegPath, [
+        '-y',
+        '-hide_banner',
+        '-loglevel', 'error',
+        '-i', sourceDestination,
+        '-ac', '1',
+        '-ar', '44100',
+        '-f', 'wav',
+        wavDestination
+      ], {
+        timeout: 5 * 60 * 1000,
+        maxBuffer: 1024 * 1024
+      });
+    } catch (error) {
+      console.error('Audio seekability conversion failed, keeping original upload:', error);
+      return null;
+    }
+    await fsp.unlink(sourceDestination).catch(() => {});
+    return {
+      destination: wavDestination,
+      relativePath: path.posix.join('assets', kind, wavFileName)
+    };
+  }
 
   ipcMain.handle('books:save-asset-data', async (_event, input) => {
     try {

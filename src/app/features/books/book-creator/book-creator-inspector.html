@@ -57,6 +57,26 @@
     <button type="button" class="mini-btn" (click)="creator.pasteCopiedElement()">{{ 'creatorPasteElement' | translate }}</button>
   </div>
   <div class="progress-map-panel" *ngIf="creator.isProgressMapPage(creator.selectedPage) && !creator.selectedElement">
+    <div class="progress-map-mode-row">
+      <button
+        type="button"
+        class="progress-map-mode-switch"
+        [class.is-explorer]="creator.getProgressNavigationMode(creator.selectedPage) === 'explorer'"
+        (click)="creator.toggleProgressNavigationMode()"
+        [attr.aria-label]="creator.getProgressNavigationMode(creator.selectedPage) === 'explorer' ? 'Explorer mode: free navigation' : 'Reader mode: locked to the open lesson'">
+        <span class="progress-map-mode-thumb"></span>
+        <span class="progress-map-mode-icon">
+          <img src="assets/images/book/reader-mode.png" alt="">
+        </span>
+        <span class="progress-map-mode-icon">
+          <img src="assets/images/book/explorer-mode.png" alt="">
+        </span>
+      </button>
+      <div class="progress-map-mode-copy">
+        <strong>{{ creator.getProgressNavigationMode(creator.selectedPage) === 'explorer' ? 'Explorer mode' : 'Reader mode' }}</strong>
+        <span>{{ creator.getProgressNavigationMode(creator.selectedPage) === 'explorer' ? 'Free navigation through the whole book.' : 'Locked to each lesson\'s linked pages until finished.' }}</span>
+      </div>
+    </div>
     <div class="progress-map-header">
       <strong>Progress Map Units</strong>
       <button type="button" class="mini-btn" (click)="creator.addProgressUnit()">+ Add Unit</button>
@@ -408,54 +428,68 @@
       </div>
     </div>
     <div class="tracing-task-settings" *ngIf="element.type === 'tracingTask'">
-      <label class="circle-correct-toggle">
-        <input
-          type="checkbox"
-          [ngModel]="element.data['correct'] === true"
-          (ngModelChange)="creator.setTracingTaskCorrect(element, $event)">
-        <span>Grade with Check Answers</span>
-      </label>
+      <div class="tracing-order-toggle" title="Sequential order vs. any order">
+        <img src="assets/images/book/order.png" class="tracing-order-icon" alt="Sequential order">
+        <button
+          type="button"
+          class="tracing-order-switch"
+          role="switch"
+          [attr.aria-checked]="element.data['anyOrder'] === true"
+          [class.on]="element.data['anyOrder'] === true"
+          (click)="creator.setTracingAnyOrder(element, element.data['anyOrder'] !== true)"
+          aria-label="Allow tracing parts in any order">
+          <span class="tracing-order-thumb"></span>
+        </button>
+        <img src="assets/images/book/any.png" class="tracing-order-icon" alt="Any order">
+      </div>
       <p class="tracing-hint" *ngIf="creator.placingTracingTask && creator.tracingPlacementElementId === element.id">
         {{ creator.activeTracingPartId ? 'Click the page to add the next point.' : 'Click the page to start the next part.' }}
       </p>
       <div class="tracing-parts-list" role="list">
-        <div
-          class="tracing-part-row"
-          *ngFor="let part of creator.getTracingParts(element); let i = index; trackBy: creator.trackByTracingPartId"
-          role="listitem"
-          [class.active]="creator.isActiveTracingPart(part.id)"
-          draggable="true"
-          (dragstart)="creator.onTracingPartDragStart(i, $event)"
-          (dragover)="creator.onTracingPartDragOver($event)"
-          (drop)="creator.onTracingPartDrop(element, i, $event)">
-          <span class="tracing-part-label">Part {{ i + 1 }}</span>
-          <span class="tracing-part-count">{{ part.points.length }} pts</span>
-          <button type="button" class="mini-icon-btn" (click)="creator.moveTracingPart(element, i, -1)" [disabled]="i === 0" title="Move part up" aria-label="Move part up">↑</button>
-          <button type="button" class="mini-icon-btn" (click)="creator.moveTracingPart(element, i, 1)" [disabled]="i === creator.getTracingParts(element).length - 1" title="Move part down" aria-label="Move part down">↓</button>
-          <button type="button" class="mini-icon-btn danger" (click)="creator.deleteTracingPart(element, part.id)" title="Delete part" aria-label="Delete part">
-            <img src="assets/images/book/delete.png" alt="">
-          </button>
+        <div class="tracing-part-block" *ngFor="let part of creator.getTracingParts(element); let i = index; trackBy: creator.trackByTracingPartId">
+          <div
+            class="tracing-part-row"
+            role="listitem"
+            [class.active]="creator.isActiveTracingPart(part.id)"
+            draggable="true"
+            (dragstart)="creator.onTracingPartDragStart(i, $event)"
+            (dragover)="creator.onTracingPartDragOver($event)"
+            (drop)="creator.onTracingPartDrop(element, i, $event)">
+            <span class="tracing-part-label">Part {{ i + 1 }}</span>
+            <span class="tracing-part-count">{{ part.points.length }} pts</span>
+            <label class="tracing-part-graded-toggle" title="Grade this part with Check Answers">
+              <input
+                type="checkbox"
+                [ngModel]="part.graded === true"
+                (ngModelChange)="creator.setTracingPartGraded(element, part.id, $event)">
+            </label>
+            <button type="button" class="mini-icon-btn" (click)="creator.moveTracingPart(element, i, -1)" [disabled]="i === 0" title="Move part up" aria-label="Move part up">↑</button>
+            <button type="button" class="mini-icon-btn" (click)="creator.moveTracingPart(element, i, 1)" [disabled]="i === creator.getTracingParts(element).length - 1" title="Move part down" aria-label="Move part down">↓</button>
+            <button type="button" class="mini-icon-btn danger" (click)="creator.deleteTracingPart(element, part.id)" title="Delete part" aria-label="Delete part">
+              <img src="assets/images/book/delete.png" alt="">
+            </button>
+          </div>
+          <div class="tracing-curve-list" role="list" *ngIf="creator.getTracingSegmentHandlesForPart(element, part.id).length">
+            <div
+              class="tracing-curve-row"
+              *ngFor="let handle of creator.getTracingSegmentHandlesForPart(element, part.id); let j = index; trackBy: creator.trackByTracingSegmentId"
+              role="listitem">
+              <span class="tracing-curve-label">Link {{ j + 1 }}</span>
+              <input
+                type="range"
+                min="-2" max="2" step="0.05"
+                [value]="handle.curve"
+                (pointerdown)="creator.beginHistoryCapture()"
+                (input)="creator.setTracingSegmentCurve(element, handle.partId, handle.pointId, $any($event.target).valueAsNumber)"
+                (change)="creator.commitHistoryCapture()"
+                [attr.aria-label]="'Curve of link ' + (j + 1) + ' in part ' + (i + 1)">
+              <span class="tracing-curve-value">{{ handle.curve | number:'1.2-2' }}</span>
+            </div>
+          </div>
         </div>
         <p class="tracing-empty-hint" *ngIf="creator.getTracingParts(element).length === 0">No points placed yet.</p>
       </div>
       <button type="button" class="mini-btn tracing-add-part-btn" (click)="creator.addTracingPart(element)" title="Start a new tracing part" aria-label="Start a new tracing part">+ New part</button>
-      <div class="tracing-curve-list" role="list" *ngIf="creator.getTracingSegmentHandles(element).length">
-        <div
-          class="tracing-curve-row"
-          *ngFor="let handle of creator.getTracingSegmentHandles(element); let i = index; trackBy: creator.trackByTracingSegmentId"
-          role="listitem">
-          <span class="tracing-curve-label">Link {{ i + 1 }}</span>
-          <input
-            type="range"
-            min="-2" max="2" step="0.05"
-            [value]="handle.curve"
-            (pointerdown)="creator.beginHistoryCapture()"
-            (input)="creator.setTracingSegmentCurve(element, handle.partId, handle.pointId, $any($event.target).valueAsNumber)"
-            (change)="creator.commitHistoryCapture()"
-            [attr.aria-label]="'Curve of link ' + (i + 1)">
-          <span class="tracing-curve-value">{{ handle.curve | number:'1.2-2' }}</span>
-        </div>
-      </div>
     </div>
     <div class="game-link-panel" *ngIf="element.type === 'game'">
       <div class="linked-topic-card" *ngIf="element.data['topicId']; else noLinkedTopic">
@@ -539,32 +573,11 @@
           (blur)="creator.commitHistoryCapture()"
           [placeholder]="creator.speakingPromptExample"></textarea>
       </label>
-      <div class="speaking-pack-note">
-        Required pack: {{ creator.getSpeakingAiRequiredPackLabel(element) }}
-      </div>
-      <label>
-        Pack download URL
-        <input
-          type="url"
-          [ngModel]="element.data['packUrl']"
-          (focus)="creator.beginHistoryCapture()"
-          (ngModelChange)="creator.updateSpeakingAiField(element, 'packUrl', $event)"
-          (blur)="creator.commitHistoryCapture()"
-          placeholder="https://...">
-      </label>
       <button type="button" class="mini-btn" (click)="creator.previewSpeakingAi(element)" [disabled]="creator.checkingSpeakingPreview">
         {{ creator.checkingSpeakingPreview && creator.isSpeakingPreviewVisible(element) ? 'Checking...' : 'Preview' }}
       </button>
       <div class="speaking-preview-card" *ngIf="creator.isSpeakingPreviewVisible(element)">
         <p>{{ creator.getSpeakingPreviewStatusText() }}</p>
-        <div
-          class="speaking-preview-row"
-          *ngFor="let row of creator.getSpeakingPreviewRows()"
-          [class.ready]="row.ready">
-          <span>{{ row.label }}</span>
-          <strong>{{ row.ready ? 'Ready' : 'Missing' }}</strong>
-          <small>{{ creator.getSpeakingPreviewPackMeta(row.pack) }}</small>
-        </div>
       </div>
     </div>
     <div class="video-settings-panel" *ngIf="element.type === 'video'">
@@ -633,6 +646,7 @@
           <div
             class="guide-track-timeline"
             (pointerdown)="creator.startGuideTrackSeekDrag($event, element, track)"
+            (click)="$event.stopPropagation()"
             (dragstart)="$event.preventDefault()">
             <input
               type="range"

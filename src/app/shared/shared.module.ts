@@ -11,6 +11,8 @@ import { TranslatePipe } from './translate-pipe';
 import { AudioUploaderComponent } from './audio-uploader';
 import { ThemePickerComponent } from './theme-picker';
 import { SwipeDirective } from './swipe.directive';
+import { BodyPortalDirective } from './body-portal.directive';
+import { HorizontalToolbarScrollDirective } from './horizontal-toolbar-scroll.directive';
 import { GameKeyboardHelpComponent } from './game-keyboard-help';
 import { GameFinishOverlayComponent } from './game-finish-overlay';
 import { RandomPickerComponent } from './random-picker';
@@ -30,6 +32,8 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
     AudioUploaderComponent,
     ThemePickerComponent,
     SwipeDirective,
+    BodyPortalDirective,
+    HorizontalToolbarScrollDirective,
     GameKeyboardHelpComponent,
     GameFinishOverlayComponent,
     RandomPickerComponent,
@@ -54,6 +58,7 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
     AudioUploaderComponent,
     ThemePickerComponent,
     SwipeDirective,
+    HorizontalToolbarScrollDirective,
     GameKeyboardHelpComponent,
     GameFinishOverlayComponent,
     RandomPickerComponent,

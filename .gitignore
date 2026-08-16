@@ -49,6 +49,7 @@ license.dat
 android/keystore.properties
 android/*.jks
 android/*.keystore
+electron/ai-config.json
 
 # System files
 .DS_Store

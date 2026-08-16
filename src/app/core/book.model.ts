@@ -49,6 +49,8 @@ export interface TracingPoint {
 export interface TracingPart {
   id: string;
   points: TracingPoint[];
+  /** Whether this part's completion counts toward Check Answers grading. */
+  graded?: boolean;
 }
 
 export interface ProgressMapLessonPage {
@@ -79,6 +81,8 @@ export function getLessonPageRefs(lesson: ProgressMapLesson): ProgressMapLessonP
   return [];
 }
 
+export type ProgressNavigationMode = 'explorer' | 'reader';
+
 export interface BookPage {
   id: string;
   type: BookPageType;
@@ -90,6 +94,16 @@ export interface BookPage {
   wordBanks?: BookWordBank[];
   elements: BookElement[];
   progressUnits?: ProgressMapUnit[];
+  progressNavigationMode?: ProgressNavigationMode;
+}
+
+/**
+ * Reader-mode is the default: undefined/legacy progress-map pages are
+ * treated as reader-mode so existing books get the locked-navigation
+ * behavior without a migration.
+ */
+export function getProgressNavigationMode(page: BookPage | null | undefined): ProgressNavigationMode {
+  return page?.progressNavigationMode === 'explorer' ? 'explorer' : 'reader';
 }
 
 export interface WorkbookLink {
@@ -214,6 +228,8 @@ export interface BookTaskResponse {
   value: string;
   result: BookTaskResult;
   attempts: number;
+  /** Per tracingTask part id, whether the student reached/completed it. */
+  tracingPartResults?: Record<string, boolean>;
   updatedAt: string;
 }
 
@@ -235,6 +251,7 @@ export interface BookLastPosition {
   pageSource: 'main' | 'workbook';
   workbookId?: string;
   pageId: string;
+  lessonId?: string;
   updatedAt: string;
 }
 

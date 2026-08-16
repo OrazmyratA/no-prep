@@ -40,6 +40,28 @@
   max-height: 76vh;
 }
 
+/* When video controls (-1s / maximize / +1s) are present, reserve them their own
+   flex row so a tall video can never push them out of the clipped popover. */
+.reader-popover:has(.video-seek-controls) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.reader-popover:has(.video-seek-controls) .expanded-video-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.reader-popover:has(.video-seek-controls) .expanded-video-frame video {
+  height: 100%;
+  max-height: 100%;
+}
+
+.reader-popover:has(.video-seek-controls) .video-seek-controls {
+  flex: 0 0 auto;
+}
+
 .expanded-video-frame {
   position: relative;
   width: 100%;

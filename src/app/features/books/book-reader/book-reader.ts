@@ -14,8 +14,8 @@ import { BookTaskResponseService } from '../../../core/book-task-responses';
 import { BookSpeakingAttemptService } from '../../../core/book-speaking-attempts';
 import { BookPageProgressService } from '../../../core/book-page-progress';
 import { BookLastPositionService } from '../../../core/book-last-position';
-import { AiLanguagePackService, InstalledAiLanguagePack } from '../../../core/ai-language-packs';
 import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus, AiSpeakingSessionFeedbackResult, AiSpeakingTaskConfig, AiSpeakingTurn } from '../../../core/ai-speaking-runtime';
+import { ConfirmationService } from '../../../shared/confirmation';
 import { isBookTaskElement } from '../../../core/book-tasks';
 import {
   BookAnnotationStroke,
@@ -33,7 +33,9 @@ import {
   WorkbookLink,
   InteractiveBook,
   ProgressMapLesson,
-  ProgressMapUnit
+  ProgressMapUnit,
+  getLessonPageRefs,
+  getProgressNavigationMode
 } from '../../../core/book.model';
 import { normalizeBookGuideTimelines } from '../../../core/guide-timeline';
 import {
@@ -60,6 +62,7 @@ import {
   getSafeBookTopicItems
 } from './book-reader-topic-snapshot';
 import { BookReaderSpeakingPanelComponent } from './book-reader-speaking-panel';
+import { BookReaderProgressMapComponent } from './book-reader-progress-map';
 import { BookReaderTaskController } from './book-reader-task-controller';
 import { BookReaderTracingController } from './book-reader-tracing-controller';
 import { BookReaderGuideController } from './book-reader-guide-controller';
@@ -99,6 +102,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('expandedVideoFrame') expandedVideoFrame?: ElementRef<HTMLElement>;
   @ViewChild('guidePinMediaFrame') guidePinMediaFrame?: ElementRef<HTMLElement>;
   @ViewChild(BookReaderSpeakingPanelComponent) speakingPanel?: BookReaderSpeakingPanelComponent;
+  @ViewChild(BookReaderProgressMapComponent) progressMapComponent?: BookReaderProgressMapComponent;
 
   readonly readerContext = this;
   private readonly taskController = new BookReaderTaskController(this);
@@ -122,6 +126,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   pageSource: 'main' | 'workbook' = 'main';
   activeWorkbookId: string | null = null;
   workbookSession: { mainPageId: string; workbookId: string; pageIds: string[] } | null = null;
+  lessonSession: { unitId: string; lessonId: string; pageIds: string[] } | null = null;
   zoom = 1;
   twoPageMode = false;
   readerSpreadWidthPx: number | null = null;
@@ -187,10 +192,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   speakingRecordingOuterGlow = '1.5rem';
   speakingRuntimeStatus: AiSpeakingRuntimeStatus | null = null;
   checkingSpeakingRuntime = false;
-  importingSpeakingPack = false;
-  aiPackManagerOpen = false;
-  aiPackManagerBusy = false;
-  aiPackAdvancedOpen = false;
+  speakingApiKeyDraft = '';
+  savingSpeakingApiKey = false;
+  speakingApiKeyError = '';
+  speakingResponsePending = false;
   owlImage = 'assets/gifs/owl-corner.gif';
   owlX = 0;
   owlY = 0;
@@ -220,9 +225,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   activeTracingSession: {
     elementId: string;
     pageId: string;
-    partIndex: number;
+    anyOrder: boolean;
+    completedPartIds: string[];
+    activePartId: string | null;
     pointIndex: number;
-    awaitingJump: boolean;
     completed: boolean;
     cursorX: number;
     cursorY: number;
@@ -266,7 +272,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private speakingRecordingAnalyser: AnalyserNode | null = null;
   private speakingRecordingLevelFrame = 0;
   private speakingRecordingLevelData: Uint8Array<ArrayBuffer> | null = null;
-  private promptedSpeakingPackLinks = new Set<string>();
   private focusContentStyleCacheKey = '';
   private focusContentStyleCacheValue: Record<string, string> = {};
   private assetUrlCache = new Map<string, string>();
@@ -292,9 +297,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     private speakingAttemptService: BookSpeakingAttemptService,
     private pageProgressService: BookPageProgressService,
     private lastPositionService: BookLastPositionService,
-    private aiLanguagePacks: AiLanguagePackService,
     private aiSpeakingRuntime: AiSpeakingRuntimeService,
-    private guidePitch: GuidePitchService
+    private guidePitch: GuidePitchService,
+    private confirmationService: ConfirmationService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -312,6 +317,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.destroyed = true;
     this.routeSubscription?.unsubscribe();
     this.stopGuideAudio();
+    this.aiSpeakingRuntime.stopSpeaking();
     void this.stopSpeakingConversation(false);
     this.stopSpeakingRecordingLevelMeter();
     this.stopSpeakingPlayback();
@@ -376,6 +382,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pageDrawerOpen = false;
     this.activeWorkbookId = null;
     this.workbookSession = null;
+    this.lessonSession = null;
     this.markVisiblePagesDirty();
     this.pdfUrl = '';
     this.annotations = null;
@@ -464,6 +471,18 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return this.visiblePagesCache;
     }
 
+    if (this.pageSource === 'main' && this.lessonSession) {
+      const pagesById = new Map((this.book?.pages ?? []).map((page) => [page.id, page]));
+      const lessonPages = this.lessonSession.pageIds
+        .map((pageId) => pagesById.get(pageId) ?? null)
+        .filter((page): page is BookPage => !!page && !page.hidden);
+      if (lessonPages.length) {
+        this.visiblePagesCache = lessonPages;
+        this.visiblePagesDirty = false;
+        return this.visiblePagesCache;
+      }
+    }
+
     this.visiblePagesCache = this.book?.pages.filter((page) => !page.hidden) ?? [];
     this.visiblePagesDirty = false;
     return this.visiblePagesCache;
@@ -508,12 +527,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.pageSource === 'workbook'
       ? this.activeWorkbook?.title || this.languageService.translate('workbookLabel')
       : this.book?.title || this.languageService.translate('bookReaderTitle');
-  }
-
-  get readerSubtitle(): string {
-    return this.pageSource === 'workbook'
-      ? this.languageService.translate('workbookLabel')
-      : this.languageService.translate('studentBookLabel');
   }
 
   previousPage(): void {
@@ -670,7 +683,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       target?.closest('.choice-task-element') ||
       target?.closest('.task-response-dock') ||
       target?.closest('.speaking-ai-dock') ||
-      target?.closest('.ai-pack-manager-backdrop') ||
       target?.closest('.word-bank-dialog')
     ) return;
     this.closeTaskInput();
@@ -685,7 +697,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.speakingConversationActive || this.speakingSessionActive) return;
     if (
       target?.closest('.speaking-ai-dock') ||
-      target?.closest('.ai-pack-manager-backdrop') ||
       target?.closest('.speaking-ai-element')
     ) return;
     this.activeSpeakingElement = null;
@@ -797,6 +808,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getPageTracingResultPaths(page: BookPage): { d: string; incorrect: boolean }[] {
     return this.tracingController.getPageTracingResultPaths(page);
+  }
+
+  getTracingPartBadges(page: BookPage): Array<{ key: string; x: number; y: number; correct: boolean }> {
+    return this.tracingController.getTracingPartBadges(page);
+  }
+
+  trackByTracingPartBadgeKey(_index: number, badge: { key: string }): string {
+    return badge.key;
   }
 
   getTracingPointSequenceForActivePage(page: BookPage): Array<OrderedTracingPoint & { element: BookElement; state: string }> {
@@ -928,41 +947,53 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   async takeScreenshot(): Promise<void> {
-    const target = this.twoPageMode && this.companionPage
-      ? this.readerSpread?.nativeElement
-      : this.getPrimaryPageFrameElement();
+    const isProgressMap = this.currentPage?.type === 'progressMap';
+    const target = isProgressMap
+      ? this.progressMapComponent?.scrollElement ?? null
+      : (this.twoPageMode && this.companionPage ? this.readerSpread?.nativeElement : this.getPrimaryPageFrameElement());
     if (!this.book || !target) return;
     this.screenshotting = true;
     await this.nextFrame();
-    const rect = target.getBoundingClientRect();
-    const api = (window as any)?.electronAPI;
-    const pageLabel = this.twoPageMode && this.companionPage
-      ? `pages ${this.currentPageIndex + 1}-${this.currentPageIndex + 2}`
-      : `page ${this.currentPageIndex + 1}`;
+    const pageLabel = isProgressMap
+      ? 'progress map'
+      : (this.twoPageMode && this.companionPage
+        ? `pages ${this.currentPageIndex + 1}-${this.currentPageIndex + 2}`
+        : `page ${this.currentPageIndex + 1}`);
     const fileName = `${this.book.title || 'NoPrep Book'} ${pageLabel}.png`;
     try {
-      if (typeof api?.capturePageScreenshot === 'function') {
-        const response = await api.capturePageScreenshot({
-          x: Math.max(0, Math.round(rect.left)),
-          y: Math.max(0, Math.round(rect.top)),
-          width: Math.max(1, Math.round(rect.width)),
-          height: Math.max(1, Math.round(rect.height)),
-          fileName
-        });
-        if (response?.ok) {
-          showAppNotification(this.languageService.translate('readerScreenshotSaved'), 'success');
-        } else {
-          showAppNotification(response?.message || this.languageService.translate('readerScreenshotSaveFailed'), 'error');
+      // The progress map scrolls, so a screen-region capture (native or otherwise)
+      // would only grab whatever's currently visible — render the full scrollable
+      // content directly instead so the whole map, top to bottom, ends up in the file.
+      if (!isProgressMap) {
+        const rect = target.getBoundingClientRect();
+        const api = (window as any)?.electronAPI;
+        if (typeof api?.capturePageScreenshot === 'function') {
+          const response = await api.capturePageScreenshot({
+            x: Math.max(0, Math.round(rect.left)),
+            y: Math.max(0, Math.round(rect.top)),
+            width: Math.max(1, Math.round(rect.width)),
+            height: Math.max(1, Math.round(rect.height)),
+            fileName
+          });
+          if (response?.ok) {
+            showAppNotification(this.languageService.translate('readerScreenshotSaved'), 'success');
+          } else {
+            showAppNotification(response?.message || this.languageService.translate('readerScreenshotSaveFailed'), 'error');
+          }
+          return;
         }
-        return;
       }
 
-      const canvas = await html2canvas(target, {
-        backgroundColor: null,
-        scale: Math.min(2, window.devicePixelRatio || 1),
-        useCORS: true,
-        logging: false
-      });
+      if (isProgressMap) {
+        this.progressMapComponent?.prepareForFullCapture();
+        await this.nextFrame();
+      }
+      let canvas: HTMLCanvasElement;
+      try {
+        canvas = await this.captureFullElement(target);
+      } finally {
+        if (isProgressMap) this.progressMapComponent?.restoreAfterFullCapture();
+      }
       await this.platformFile.saveDataUrlToDownloads(
         canvas.toDataURL('image/png'),
         fileName,
@@ -971,6 +1002,37 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       showAppNotification('Screenshot saved to Downloads/No-Prep Screenshots.', 'success');
     } finally {
       this.screenshotting = false;
+    }
+  }
+
+  private async captureFullElement(target: HTMLElement): Promise<HTMLCanvasElement> {
+    const needsExpand = target.scrollHeight > target.clientHeight;
+    const previousHeight = target.style.height;
+    const previousMaxHeight = target.style.maxHeight;
+    const previousOverflow = target.style.overflow;
+    if (needsExpand) {
+      // Temporarily let the element lay out at its full content height instead of
+      // its scrolled viewport height, so html2canvas has nothing left to clip.
+      target.style.height = `${target.scrollHeight}px`;
+      target.style.maxHeight = 'none';
+      target.style.overflow = 'visible';
+      await this.nextFrame();
+    }
+    try {
+      return await html2canvas(target, {
+        backgroundColor: null,
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+        logging: false,
+        height: target.scrollHeight,
+        windowHeight: target.scrollHeight
+      });
+    } finally {
+      if (needsExpand) {
+        target.style.height = previousHeight;
+        target.style.maxHeight = previousMaxHeight;
+        target.style.overflow = previousOverflow;
+      }
     }
   }
 
@@ -1005,7 +1067,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (element.type === 'video' || element.type === 'note' || element.type === 'answerKey') {
-      if (!this.confirmStopSpeakingForInterruption()) return;
+      if (!(await this.confirmStopSpeakingForInterruption())) return;
       this.stopGuideAudioAndReturnHome();
       this.expandedElement = element;
       return;
@@ -1025,7 +1087,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (element.type === 'game') {
-      if (!this.confirmStopSpeakingForInterruption()) return;
+      if (!(await this.confirmStopSpeakingForInterruption())) return;
       this.stopGuideAudioAndReturnHome();
       await this.openGameElement(element, page);
     }
@@ -1283,32 +1345,24 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.speakingPackController.getSpeakingAiLanguage(element);
   }
 
-  getSpeakingAiPackLabel(element: BookElement | null): string {
-    return this.speakingPackController.getSpeakingAiPackLabel(element);
-  }
-
-  isSpeakingAiPackInstalled(element: BookElement | null): boolean {
-    return this.speakingPackController.isSpeakingAiPackInstalled(element);
-  }
-
-  getSpeakingRequiredPackText(): string {
-    return this.speakingPackController.getSpeakingRequiredPackText();
-  }
-
-  getSpeakingPackUrl(element: BookElement | null = this.activeSpeakingElement): string {
-    return this.speakingPackController.getSpeakingPackUrl(element);
-  }
-
-  hasSpeakingPackUrl(element: BookElement | null = this.activeSpeakingElement): boolean {
-    return this.speakingPackController.hasSpeakingPackUrl(element);
-  }
-
-  openSpeakingPackUrl(element: BookElement | null = this.activeSpeakingElement): void {
-    this.speakingPackController.openSpeakingPackUrl(element);
+  isSpeakingAiReady(element: BookElement | null): boolean {
+    return this.speakingPackController.isSpeakingAiReady(element);
   }
 
   getSpeakingRuntimeStatusText(): string {
     return this.speakingPackController.getSpeakingRuntimeStatusText();
+  }
+
+  needsSpeakingApiKeySetup(): boolean {
+    return this.speakingPackController.needsApiKeySetup();
+  }
+
+  openGroqApiKeyPage(): void {
+    this.speakingPackController.openGroqApiKeyPage();
+  }
+
+  saveSpeakingApiKey(): void {
+    void this.speakingPackController.saveApiKey(this.speakingApiKeyDraft);
   }
 
   getSpeakingAttempts(element: BookElement | null): BookSpeakingAttempt[] {
@@ -1406,79 +1460,18 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  async importSpeakingAiPack(): Promise<void> {
-    await this.speakingPackController.importSpeakingAiPack();
-  }
-
-  async openAiPackManager(): Promise<void> {
-    await this.speakingPackController.openAiPackManager();
-  }
-
-  closeAiPackManager(): void {
-    this.speakingPackController.closeAiPackManager();
-  }
-
-  getInstalledAiPacks(): InstalledAiLanguagePack[] {
-    return this.speakingPackController.getInstalledAiPacks();
-  }
-
-  trackByAiPackId = (_index: number, pack: InstalledAiLanguagePack): string => {
-    return this.speakingPackController.trackByAiPackId(_index, pack);
-  };
-
-  getAiPackQualityLabel(pack: InstalledAiLanguagePack): string {
-    return this.speakingPackController.getAiPackQualityLabel(pack);
-  }
-
-  getAiPackFeatureLabels(pack: InstalledAiLanguagePack): string[] {
-    return this.speakingPackController.getAiPackFeatureLabels(pack);
-  }
-
-  getAiPackRuntimeSummary(pack: InstalledAiLanguagePack): string {
-    return this.speakingPackController.getAiPackRuntimeSummary(pack);
-  }
-
-  getAiPackRequirementText(pack: InstalledAiLanguagePack): string {
-    return this.speakingPackController.getAiPackRequirementText(pack);
-  }
-
-  getAiPackSizeText(pack: InstalledAiLanguagePack): string {
-    return this.speakingPackController.getAiPackSizeText(pack);
-  }
-
-  getAiPackSelectedRole(pack: InstalledAiLanguagePack): string {
-    return this.speakingPackController.getAiPackSelectedRole(pack);
-  }
-
-  getAiPackManagerRows(): { label: string; pack: InstalledAiLanguagePack | null; ready: boolean }[] {
-    return this.speakingPackController.getAiPackManagerRows();
-  }
-
-  async removeAiPack(pack: InstalledAiLanguagePack): Promise<void> {
-    await this.speakingPackController.removeAiPack(pack);
-  }
-
   toggleSpeakingAttemptPlayback(attempt: BookSpeakingAttempt, source: 'student' | 'ai' = 'student'): void {
     this.speakingPlaybackController.toggleSpeakingAttemptPlayback(attempt, source);
   }
 
-  private async processSpeakingAttemptAudio(attempt: BookSpeakingAttempt): Promise<void> {
-    if (!attempt.audio) {
-      showAppNotification('This attempt has no recorded audio yet.', 'info');
+  private async replaySpeakingAttemptAiVoice(attempt: BookSpeakingAttempt): Promise<void> {
+    const text = this.getSpeakingAttemptAiText(attempt);
+    if (!text) {
+      showAppNotification('This attempt has no speaking response yet.', 'info');
       return;
     }
-    attempt.transcript = 'Processing offline AI response...';
-    this.forceUiRefresh();
-    const status = await this.refreshSpeakingRuntimeStatus();
-    if (!status.speechToTextAvailable) {
-      attempt.transcript = status.reason || 'Offline speech recognition is not ready.';
-      await this.speakingAttemptService.save(attempt);
-      showAppNotification(attempt.transcript, 'error');
-      return;
-    }
-    await this.tryTranscribeSpeakingAttempt(attempt);
-    await this.speakingAttemptService.save(attempt);
-    this.forceUiRefresh();
+    const language = this.getSpeakingAiLanguage(this.findElementById(attempt.elementId));
+    await this.aiSpeakingRuntime.speak(text, language);
   }
 
   async exportSpeakingAttempt(attempt: BookSpeakingAttempt): Promise<void> {
@@ -1548,8 +1541,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  async canDeactivate(): Promise<boolean> {
+    return this.confirmStopSpeakingForInterruption();
+  }
+
   async close(): Promise<void> {
-    if (!this.confirmStopSpeakingForInterruption()) return;
+    if (!(await this.confirmStopSpeakingForInterruption())) return;
     this.stopGuideAudioAndReturnHome();
     this.activeSpeakingElement = null;
     this.activeSpeakingPage = null;
@@ -1560,7 +1557,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   async edit(): Promise<void> {
     if (!this.book) return;
-    if (!this.confirmStopSpeakingForInterruption()) return;
+    if (!(await this.confirmStopSpeakingForInterruption())) return;
     this.stopGuideAudioAndReturnHome();
     this.activeSpeakingElement = null;
     this.activeSpeakingPage = null;
@@ -1822,10 +1819,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.speakingPackController.refreshSpeakingRuntimeStatus(element);
   }
 
-  private maybePromptForSpeakingPackLink(element: BookElement | null, status: AiSpeakingRuntimeStatus | null): void {
-    this.speakingPackController.maybePromptForSpeakingPackLink(element, status);
-  }
-
   private async startSpeakingConversation(): Promise<void> {
     await this.speakingRecordingController.startSpeakingConversation();
   }
@@ -1877,6 +1870,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     await this.speakingAiController.generateSpeakingSessionFeedback(element, sessionId);
   }
 
+  private async generateSpeakingClosingFeedback(element: BookElement, sessionId: string): Promise<void> {
+    await this.speakingAiController.generateSpeakingClosingFeedback(element, sessionId);
+  }
+
   private parseSpeakingSessionFeedback(attempts: BookSpeakingAttempt[]): AiSpeakingSessionFeedbackResult | undefined {
     for (let index = attempts.length - 1; index >= 0; index -= 1) {
       const raw = attempts[index].sessionFeedback;
@@ -1904,10 +1901,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private resetSpeakingSessionState(): void {
-    const sessionId = this.activeSpeakingSessionId;
-    if (sessionId) {
-      void this.aiSpeakingRuntime.closeDialogueSession(sessionId);
-    }
+    this.aiSpeakingRuntime.stopSpeaking();
     this.speakingSessionActive = false;
     this.activeSpeakingSessionId = null;
     this.speakingSessionStartedAt = 0;
@@ -1955,13 +1949,21 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     void audio.play().catch(() => undefined);
   }
 
-  private confirmStopSpeakingForInterruption(): boolean {
+  private async confirmStopSpeakingForInterruption(): Promise<boolean> {
     if (!this.speakingConversationActive && !this.speakingSessionActive) return true;
-    const confirmed = window.confirm('AI conversation is running. Stop and save it before leaving?');
+    // Electron's native window.confirm() can leave the renderer without keyboard
+    // focus after it closes, which makes text inputs on the next page appear frozen.
+    // The in-app confirmation modal avoids that entirely.
+    const confirmed = await this.confirmationService.confirm('AI conversation is running. Stop and save it before leaving?');
     if (confirmed) {
+      const feedbackElement = this.activeSpeakingElement;
+      const feedbackSessionId = this.activeSpeakingSessionId;
       void this.stopSpeakingConversation(true);
       this.resetSpeakingSessionState();
       this.moveOwlToCorner();
+      if (feedbackElement && feedbackSessionId) {
+        void this.generateSpeakingClosingFeedback(feedbackElement, feedbackSessionId);
+      }
     }
     return confirmed;
   }
@@ -2002,12 +2004,40 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     void this.pageProgressService.markPageReached(bookId, page.id, workbookId).then((record) => {
       this.pageProgress.set(page.id, record);
     });
-    void this.lastPositionService.save(bookId, this.pageSource, page.id, workbookId);
+    void this.lastPositionService.save(
+      bookId,
+      this.pageSource,
+      page.id,
+      workbookId,
+      undefined,
+      this.lessonSession?.lessonId
+    );
+  }
+
+  private findLessonById(lessonId: string): { unit: ProgressMapUnit; lesson: ProgressMapLesson } | null {
+    const mapPage = this.book?.pages.find((page) => page.type === 'progressMap');
+    for (const unit of mapPage?.progressUnits ?? []) {
+      const lesson = unit.lessons.find((item) => item.id === lessonId);
+      if (lesson) return { unit, lesson };
+    }
+    return null;
+  }
+
+  private restoreLessonSession(lessonId: string | undefined): void {
+    this.lessonSession = null;
+    if (!lessonId || !this.isProgressReaderModeActive()) return;
+    const found = this.findLessonById(lessonId);
+    if (!found) return;
+    const mainPageIds = getLessonPageRefs(found.lesson).filter((ref) => !ref.workbookId).map((ref) => ref.pageId);
+    if (!mainPageIds.length) return;
+    this.lessonSession = { unitId: found.unit.id, lessonId: found.lesson.id, pageIds: mainPageIds };
   }
 
   private async resumeLastPosition(bookId: string): Promise<void> {
     const record = await this.lastPositionService.load(bookId);
     if (!record) return;
+
+    this.restoreLessonSession(record.lessonId);
 
     if (record.pageSource === 'workbook' && record.workbookId) {
       const workbook = this.getWorkbook(record.workbookId);
@@ -2045,6 +2075,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isLessonComplete(lesson: ProgressMapLesson): boolean {
     return this.progressController.isLessonComplete(lesson);
+  }
+
+  isProgressReaderModeActive(): boolean {
+    const mapPage = this.book?.pages.find((page) => page.type === 'progressMap');
+    return !!mapPage && getProgressNavigationMode(mapPage) === 'reader';
   }
 
   isLessonUnlocked(unit: ProgressMapUnit, lessonIndex: number): boolean {

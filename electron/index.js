@@ -21,45 +21,36 @@ protocol.registerSchemesAsPrivileged([
 
 const {
   BOOK_JSON_FILE,
-  AI_PACK_MANIFEST_FILE,
   BOOK_ANNOTATIONS_FILE,
   BOOK_PACKAGE_EXTENSION,
   MAX_INLINE_IMAGE_BYTES,
   MAX_AUDIO_RECORDING_BYTES,
-  MAX_STT_AUDIO_BYTES,
-  MAX_TTS_TEXT_CHARS,
-  MAX_TOPIC_SNAPSHOT_BYTES,
-  WARM_DIALOGUE_IDLE_MS,
-  WARM_DIALOGUE_START_TIMEOUT_MS,
-  WARM_DIALOGUE_TURN_TIMEOUT_MS
+  MAX_TOPIC_SNAPSHOT_BYTES
 } = require('./main/constants');
 const { operationResult, operationError } = require('./main/operation-result');
 const {
   createId,
   sanitizeName,
   extensionForMimeType,
-  clampNumber,
   decodeBase64DataUrl
 } = require('./main/value-utils');
 const { createPathHelpers } = require('./main/paths');
 const {
   pathExists,
-  isPathInside,
   getDirectorySize,
   getAvailableBytes,
   firstExistingPath,
   ensureEnoughSpace,
   formatBytesForDialog,
-  execFileText,
-  execRuntimeText
+  execFileText
 } = require('./main/fs-utils');
 const { createArchiveUtils } = require('./main/archive-utils');
 const { createBookAssetProtocol } = require('./main/book-asset-protocol');
 const { createBookRegistryService } = require('./main/book-registry-service');
 const { createBookService } = require('./main/book-service');
 const { createBookStorageService } = require('./main/book-storage-service');
-const { createAiPackService } = require('./main/ai-pack-service');
-const { createWarmDialogueService } = require('./main/ai-warm-dialogue');
+const { createGroqService } = require('./main/ai-groq-service');
+const { createEdgeTtsService } = require('./main/ai-edge-tts-service');
 const { registerAppIpc } = require('./main/app-ipc');
 const { registerAiIpc } = require('./main/ai-ipc');
 const { registerBookDataIpc } = require('./main/book-data-ipc');
@@ -84,15 +75,8 @@ const bookStorage = createBookStorageService({
 });
 const {
   getBooksRoot,
-  getAiPacksRoot,
-  getAiRuntimesRoot,
-  getSttRunnerPath,
-  getTtsRunnerPath,
-  getDialogueRunnerPath,
-  getLlamaCliPath,
   getFfmpegPath,
-  getRegistryPath,
-  getAiPackRegistryPath
+  getRegistryPath
 } = createPathHelpers(app, { getBooksRoot: bookStorage.getBooksRoot });
 const {
   copyFileWithProgress,
@@ -162,77 +146,38 @@ const {
   normalizeBookRelativePath,
   protocol
 });
-const {
-  configureWarmDialogueService,
-  ensureAiPacksRoot,
-  readAiPackRegistry,
-  removeAiPackRegistryItem,
-  installAiPackFolder,
-  installAiPackManifestFile,
-  findAiPack,
-  getMissingAiPackRuntimeFiles,
-  getAiRuntimeAvailability,
-  runSttTranscription,
-  runDialogueGeneration,
-  runDialogueFeedback,
-  runTtsSynthesis,
-  normalizeAiLanguage,
-  normalizeAiPackDialogueConfig
-} = createAiPackService({
-  app,
-  fsp,
-  path,
-  getAiPacksRoot,
-  getAiPackRegistryPath,
-  getAiRuntimesRoot,
-  getSttRunnerPath,
-  getTtsRunnerPath,
-  getDialogueRunnerPath,
-  getLlamaCliPath,
-  getFfmpegPath,
-  pathExists,
-  isPathInside,
-  getDirectorySize,
-  firstExistingPath,
-  execFileText,
-  execRuntimeText,
-  copyDirectoryWithProgress,
-  sendBookProgress,
-  createId,
-  sanitizeName,
-  extensionForMimeType,
-  decodeBase64DataUrl,
-  normalizeBookRelativePath,
-  constants: {
-    AI_PACK_MANIFEST_FILE,
-    MAX_STT_AUDIO_BYTES,
-    MAX_TTS_TEXT_CHARS
+function getUserAiConfigPath() {
+  return path.join(app.getPath('userData'), 'ai-config.json');
+}
+function readGroqApiKeyFromFile(configPath) {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    return String(parsed?.groqApiKey || '').trim();
+  } catch {
+    return '';
   }
-});
-const {
-  runWarmDialogueGeneration,
-  closeWarmDialogueSessions,
-  closeAllWarmDialogueSessions
-} = createWarmDialogueService({
-  crypto: require('crypto'),
-  spawn: require('child_process').spawn,
-  fs,
-  path,
-  isPathInside,
-  clampNumber,
-  normalizeAiLanguage,
-  normalizeBookRelativePath,
-  normalizeAiPackDialogueConfig,
-  constants: {
-    WARM_DIALOGUE_IDLE_MS,
-    WARM_DIALOGUE_START_TIMEOUT_MS,
-    WARM_DIALOGUE_TURN_TIMEOUT_MS
+}
+function getGroqApiKey() {
+  if (process.env.NOPREP_GROQ_API_KEY) {
+    return process.env.NOPREP_GROQ_API_KEY;
   }
-});
-configureWarmDialogueService({
-  runWarmDialogueGeneration,
-  closeWarmDialogueSessions
-});
+  const userKey = readGroqApiKeyFromFile(getUserAiConfigPath());
+  if (userKey) {
+    return userKey;
+  }
+  // Developer-only fallback for running from source; never present in a packaged build.
+  return readGroqApiKeyFromFile(path.join(__dirname, 'ai-config.json'));
+}
+async function saveUserGroqApiKey(apiKey) {
+  const configPath = getUserAiConfigPath();
+  await fsp.mkdir(path.dirname(configPath), { recursive: true });
+  await fsp.writeFile(configPath, JSON.stringify({ groqApiKey: apiKey }, null, 2), 'utf8');
+}
+async function clearUserGroqApiKey() {
+  await fsp.rm(getUserAiConfigPath(), { force: true });
+}
+const aiService = createGroqService({ getApiKey: getGroqApiKey });
+const ttsService = createEdgeTtsService();
 
 async function ensureBooksRoot() {
   await fsp.mkdir(getBooksRoot(), { recursive: true });
@@ -333,7 +278,7 @@ function createWindow() {
       allowRunningInsecureContent: false,
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: isDev,
+      devTools: true,
       webSecurity: true,
       preload: preloadPath
     },
@@ -351,6 +296,10 @@ function createWindow() {
     if ((input.control || input.meta) && ['+', '-', '=', '0'].includes(input.key)) {
       event.preventDefault();
       resetRendererZoom();
+    }
+    if (input.type === 'keyDown' && input.key === 'F12') {
+      event.preventDefault();
+      mainWindow.webContents.toggleDevTools();
     }
   });
   mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
@@ -426,12 +375,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  closeAllWarmDialogueSessions();
   if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('before-quit', () => {
-  closeAllWarmDialogueSessions();
 });
 
 app.on('activate', () => {
@@ -454,34 +398,12 @@ registerAppIpc({
 });
 registerAiIpc({
   ipcMain,
-  dialog,
-  fsp,
-  path,
-  getMainWindow: () => mainWindow,
-  createId,
-  sendBookProgress,
-  makeBookProgress,
   operationResult,
   operationError,
-  readAiPackRegistry,
-  removeAiPackRegistryItem,
-  ensureAiPacksRoot,
-  getAiPacksRoot,
-  installAiPackFolder,
-  installAiPackManifestFile,
-  getZipUncompressedSize,
-  extractZipPackage,
-  findAiPack,
-  getMissingAiPackRuntimeFiles,
-  getAiRuntimeAvailability,
-  getAiRuntimesRoot,
-  getFfmpegPath,
-  getLlamaCliPath,
-  runSttTranscription,
-  runDialogueGeneration,
-  runDialogueFeedback,
-  closeWarmDialogueSessions,
-  runTtsSynthesis
+  aiService,
+  ttsService,
+  saveUserGroqApiKey,
+  clearUserGroqApiKey
 });
 registerBookDataIpc({
   ipcMain,
@@ -490,6 +412,9 @@ registerBookDataIpc({
   path,
   pathToFileURL,
   getMainWindow: () => mainWindow,
+  getFfmpegPath,
+  firstExistingPath,
+  execFileText,
   readRegistry,
   writeRegistry,
   repairBookRegistryItems,

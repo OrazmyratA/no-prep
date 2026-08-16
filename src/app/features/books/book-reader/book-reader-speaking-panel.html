@@ -1,5 +1,5 @@
 <div class="speaking-ai-dock" *ngIf="reader.activeSpeakingElement">
-  <div class="speaking-ai-main" *ngIf="reader.isSpeakingAiPackInstalled(reader.activeSpeakingElement) || reader.checkingSpeakingRuntime; else missingSpeakingPack">
+  <div class="speaking-ai-main" *ngIf="reader.isSpeakingAiReady(reader.activeSpeakingElement) || reader.checkingSpeakingRuntime; else speakingAiUnavailable">
     <button
       type="button"
       class="speaking-ai-start"
@@ -17,36 +17,44 @@
       [attr.aria-label]="reader.speakingPanelExpanded ? 'Hide attempts' : 'Show attempts'">
       <img [src]="reader.speakingPanelExpanded ? 'assets/images/book/hide.png' : 'assets/images/book/show.png'" alt="">
     </button>
-    <button
-      type="button"
-      class="speaking-ai-pack-button"
-      (click)="reader.openAiPackManager()"
-      aria-label="Speaking Pack"
-      title="Speaking Pack">
-      AI
-    </button>
   </div>
-  <ng-template #missingSpeakingPack>
-    <div class="speaking-ai-missing-pack">
+  <ng-template #speakingAiUnavailable>
+    <div class="speaking-ai-missing-pack" *ngIf="!reader.needsSpeakingApiKeySetup()">
       <div>
-        <strong>{{ reader.getSpeakingAiLanguage(reader.activeSpeakingElement) | uppercase }} Speaking Pack required</strong>
-        <span>{{ reader.getSpeakingRequiredPackText() }}</span>
+        <strong>AI Speaking unavailable</strong>
+        <span>{{ reader.getSpeakingRuntimeStatusText() }}</span>
       </div>
       <div class="speaking-ai-missing-actions">
+        <button type="button" class="speaking-ai-mini" (click)="reader.refreshSpeakingRuntimeStatus()">
+          Retry
+        </button>
+      </div>
+    </div>
+    <div class="speaking-ai-setup" *ngIf="reader.needsSpeakingApiKeySetup()">
+      <div>
+        <strong>Set up AI Speaking</strong>
+        <span>Get a free Groq API key, then paste it below.</span>
+      </div>
+      <button type="button" class="speaking-ai-mini" (click)="reader.openGroqApiKeyPage()">
+        Get free API key
+      </button>
+      <div class="speaking-ai-setup-row">
+        <input
+          type="password"
+          class="speaking-ai-setup-input"
+          [(ngModel)]="reader.speakingApiKeyDraft"
+          placeholder="Paste your Groq API key"
+          (keydown.enter)="reader.saveSpeakingApiKey()"
+          aria-label="Groq API key">
         <button
           type="button"
           class="speaking-ai-mini"
-          *ngIf="reader.hasSpeakingPackUrl(reader.activeSpeakingElement)"
-          (click)="reader.openSpeakingPackUrl(reader.activeSpeakingElement)">
-          Get Pack
-        </button>
-        <button type="button" class="speaking-ai-mini" (click)="reader.importSpeakingAiPack()" [disabled]="reader.importingSpeakingPack">
-          {{ reader.importingSpeakingPack ? 'Importing' : 'Import Pack' }}
-        </button>
-        <button type="button" class="speaking-ai-pack-button" (click)="reader.openAiPackManager()" aria-label="Speaking Pack" title="Speaking Pack">
-          AI
+          [disabled]="reader.savingSpeakingApiKey || !reader.speakingApiKeyDraft.trim()"
+          (click)="reader.saveSpeakingApiKey()">
+          {{ reader.savingSpeakingApiKey ? 'Saving...' : 'Save' }}
         </button>
       </div>
+      <span class="speaking-ai-setup-error" *ngIf="reader.speakingApiKeyError">{{ reader.speakingApiKeyError }}</span>
     </div>
   </ng-template>
   <div class="speaking-ai-attempts" *ngIf="reader.speakingPanelExpanded">
@@ -69,6 +77,7 @@
         type="button"
         class="speaking-ai-speak"
         [class.recording]="reader.speakingConversationActive"
+        [class.thinking]="reader.speakingResponsePending"
         [style.--voice-aura-scale]="reader.speakingRecordingAuraScale"
         [style.--voice-ring-scale]="reader.speakingRecordingRingScale"
         [style.--voice-aura-opacity]="reader.speakingRecordingAuraOpacity"
@@ -76,7 +85,7 @@
         [style.--voice-glow]="reader.speakingRecordingGlow"
         [style.--voice-outer-glow]="reader.speakingRecordingOuterGlow"
         (click)="reader.toggleSpeakingTurnRecording()"
-        [disabled]="reader.checkingSpeakingRuntime"
+        [disabled]="reader.checkingSpeakingRuntime || reader.speakingResponsePending"
         [attr.aria-label]="reader.getSpeakingTurnActionLabel()"
         [title]="reader.getSpeakingTurnActionLabel()">
         <img [src]="reader.speakingConversationActive ? 'assets/images/book/stop record.png' : 'assets/images/book/microphone.png'" alt="">
@@ -118,73 +127,4 @@
       </div>
     </ng-template>
   </div>
-</div>
-
-<div class="ai-pack-manager-backdrop" *ngIf="reader.aiPackManagerOpen" (click)="reader.closeAiPackManager()">
-  <section class="ai-pack-manager" (click)="$event.stopPropagation()" aria-label="Speaking Pack">
-    <header>
-      <div>
-        <strong>Speaking Packs</strong>
-        <span>{{ reader.getSpeakingAiLanguage(reader.activeSpeakingElement) | uppercase }} language</span>
-      </div>
-      <button type="button" class="speaking-ai-mini danger" (click)="reader.closeAiPackManager()" aria-label="Close Speaking Pack">
-        <img src="assets/images/book/close.png" alt="">
-      </button>
-    </header>
-
-    <div class="ai-pack-readiness">
-      <div
-        class="ai-pack-readiness-row"
-        *ngFor="let row of reader.getAiPackManagerRows()"
-        [class.ready]="row.ready">
-        <span>{{ row.label }}</span>
-        <strong>{{ row.ready ? 'Ready' : 'Missing' }}</strong>
-      </div>
-    </div>
-
-    <p class="ai-pack-reason">{{ reader.getSpeakingRuntimeStatusText() }}</p>
-
-    <div class="ai-pack-actions">
-      <button
-        type="button"
-        class="speaking-ai-mini"
-        *ngIf="reader.hasSpeakingPackUrl(reader.activeSpeakingElement)"
-        (click)="reader.openSpeakingPackUrl(reader.activeSpeakingElement)">
-        Get Pack
-      </button>
-      <button type="button" class="speaking-ai-mini" (click)="reader.importSpeakingAiPack()" [disabled]="reader.importingSpeakingPack || reader.aiPackManagerBusy">
-        {{ reader.importingSpeakingPack ? 'Importing' : 'Import Pack' }}
-      </button>
-      <button type="button" class="speaking-ai-mini" (click)="reader.openAiPackManager()" [disabled]="reader.aiPackManagerBusy">
-        {{ reader.aiPackManagerBusy ? 'Checking' : 'Refresh' }}
-      </button>
-      <button type="button" class="speaking-ai-mini" (click)="reader.aiPackAdvancedOpen = !reader.aiPackAdvancedOpen">
-        {{ reader.aiPackAdvancedOpen ? 'Hide Advanced' : 'Advanced' }}
-      </button>
-    </div>
-
-    <div class="ai-pack-list">
-      <div class="speaking-ai-empty" *ngIf="!reader.getInstalledAiPacks().length">
-        No Speaking Packs installed.
-      </div>
-      <article class="ai-pack-card" *ngFor="let pack of reader.getInstalledAiPacks(); trackBy: reader.trackByAiPackId">
-        <div class="ai-pack-card-main">
-          <strong>{{ pack.label }}</strong>
-          <span>{{ pack.language | uppercase }} · {{ reader.getAiPackQualityLabel(pack) }} Speaking Pack</span>
-          <em *ngIf="reader.getAiPackSelectedRole(pack)">{{ reader.getAiPackSelectedRole(pack) }}</em>
-          <div class="ai-pack-advanced" *ngIf="reader.aiPackAdvancedOpen">
-            <small>{{ reader.getAiPackRuntimeSummary(pack) }}<ng-container *ngIf="reader.getAiPackSizeText(pack)"> · {{ reader.getAiPackSizeText(pack) }}</ng-container></small>
-            <small *ngIf="pack.modelSizeLabel">{{ pack.modelSizeLabel }}</small>
-            <small *ngIf="reader.getAiPackRequirementText(pack)">{{ reader.getAiPackRequirementText(pack) }}</small>
-          </div>
-        </div>
-        <div class="ai-pack-feature-tags">
-          <span *ngFor="let feature of reader.getAiPackFeatureLabels(pack)">{{ feature }}</span>
-        </div>
-        <button type="button" class="speaking-ai-mini danger" (click)="reader.removeAiPack(pack)" [disabled]="reader.aiPackManagerBusy" aria-label="Remove Speaking Pack">
-          <img src="assets/images/book/delete.png" alt="">
-        </button>
-      </article>
-    </div>
-  </section>
 </div>

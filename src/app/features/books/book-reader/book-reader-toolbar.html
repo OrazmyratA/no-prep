@@ -1,11 +1,19 @@
-<header class="reader-toolbar">
+<header class="reader-toolbar" appHorizontalToolbarScroll #toolbarScroll="toolbarScroll">
+  <button
+    type="button"
+    class="toolbar-scroll-btn toolbar-scroll-left"
+    [class.toolbar-scroll-hidden]="!toolbarScroll.canScrollLeft"
+    [tabindex]="toolbarScroll.canScrollLeft ? 0 : -1"
+    (click)="toolbarScroll.scroll(-1)"
+    aria-label="Scroll toolbar left">
+    &#8249;
+  </button>
   <div class="reader-toolbar-left">
     <button type="button" class="tool-btn icon-reader-btn reader-back-btn" (click)="reader.close()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
       <img src="assets/images/book/back.png" alt="">
     </button>
     <div class="reader-title">
       <strong>{{ reader.readerTitle }}</strong>
-      <span>{{ reader.readerSubtitle }}</span>
     </div>
   </div>
 
@@ -14,7 +22,7 @@
       <button type="button" class="tool-btn icon-reader-btn" (click)="reader.togglePageDrawer()" [title]="'readerBackToMap' | translate" [attr.aria-label]="'readerBackToMap' | translate">
         &#128506;
       </button>
-      <div class="page-stepper" *ngIf="reader.book && reader.visiblePages.length">
+      <div class="page-stepper" *ngIf="reader.book && reader.visiblePages.length && (!reader.isProgressReaderModeActive() || reader.lessonSession)">
         <button type="button" class="tool-btn icon-turn-btn" (click)="reader.previousPage()" [disabled]="reader.currentPageIndex <= 0" [title]="'previousPage' | translate">
           <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
         </button>
@@ -35,28 +43,7 @@
       </div>
     </div>
 
-    <div class="reader-tool-cluster history-tools">
-      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerUndoAnnotation' | translate" (click)="reader.undoAnnotation()" [disabled]="!reader.canUndoAnnotation()" [attr.aria-label]="'readerUndoAnnotation' | translate">
-        <img src="assets/images/book/undo.png" alt="">
-      </button>
-      <button type="button" class="tool-btn icon-reader-btn" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate" (click)="reader.redoAnnotation()" [disabled]="!reader.canRedoAnnotation()">
-        <img src="assets/images/book/redo.png" alt="">
-      </button>
-      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerClearAnnotations' | translate" (click)="reader.clearPageAnnotations()" [disabled]="!reader.canClearPageAnnotations()" [attr.aria-label]="'readerClearAnnotations' | translate">
-        <img src="assets/images/book/clear.png" alt="">
-      </button>
-      <button
-        type="button"
-        class="tool-btn icon-reader-btn check-answer-btn"
-        (click)="reader.checkVisibleTaskAnswers()"
-        [disabled]="!reader.hasVisibleTasks()"
-        title="Check answers"
-        aria-label="Check answers">
-        <img src="assets/images/book/check.png" alt="">
-      </button>
-    </div>
-
-    <div class="reader-tool-cluster zoom-tools">
+    <div class="reader-tool-cluster view-tools">
       <button type="button" class="tool-btn icon-reader-btn" (click)="reader.setZoom(reader.zoom + 0.1)" [title]="'zoomIn' | translate" [attr.aria-label]="'zoomIn' | translate">
         <img src="assets/images/book/zoom-in.png" alt="">
       </button>
@@ -66,9 +53,26 @@
       <button type="button" class="tool-btn icon-reader-btn" (click)="reader.rotateCurrentPage()" [disabled]="!reader.currentPage" title="Rotate page" aria-label="Rotate page">
         <img src="assets/images/book/rotate-right.png" alt="">
       </button>
+      <button
+        type="button"
+        class="tool-btn icon-reader-btn"
+        (click)="reader.toggleTwoPageMode()"
+        [title]="(reader.twoPageMode ? 'singlePageLabel' : 'twoPagesLabel') | translate"
+        [attr.aria-label]="(reader.twoPageMode ? 'readerShowSinglePage' : 'readerShowTwoPages') | translate">
+        <img [src]="reader.twoPageMode ? 'assets/images/book/single page.png' : 'assets/images/book/two pages.png'" alt="">
+      </button>
     </div>
 
     <div class="reader-tool-cluster mark-tools">
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerUndoAnnotation' | translate" (click)="reader.undoAnnotation()" [disabled]="!reader.canUndoAnnotation()" [attr.aria-label]="'readerUndoAnnotation' | translate">
+        <img src="assets/images/book/undo.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate" (click)="reader.redoAnnotation()" [disabled]="!reader.canRedoAnnotation()">
+        <img src="assets/images/book/redo.png" alt="">
+      </button>
+      <button type="button" class="tool-btn icon-reader-btn" [title]="'readerClearAnnotations' | translate" (click)="reader.clearPageAnnotations()" [disabled]="!reader.canClearPageAnnotations()" [attr.aria-label]="'readerClearAnnotations' | translate">
+        <img src="assets/images/book/clear.png" alt="">
+      </button>
       <button type="button" class="tool-btn icon-reader-btn" [class.active]="reader.focusMode" [title]="'focusLabel' | translate" (click)="reader.toggleFocusMode()" [attr.aria-label]="'focusLabel' | translate">
         <img src="assets/images/book/focus.png" alt="">
       </button>
@@ -172,11 +176,12 @@
       </button>
       <button
         type="button"
-        class="tool-btn icon-reader-btn"
-        (click)="reader.toggleTwoPageMode()"
-        [title]="(reader.twoPageMode ? 'singlePageLabel' : 'twoPagesLabel') | translate"
-        [attr.aria-label]="(reader.twoPageMode ? 'readerShowSinglePage' : 'readerShowTwoPages') | translate">
-        <img [src]="reader.twoPageMode ? 'assets/images/book/single page.png' : 'assets/images/book/two pages.png'" alt="">
+        class="tool-btn icon-reader-btn check-answer-btn"
+        (click)="reader.checkVisibleTaskAnswers()"
+        [disabled]="!reader.hasVisibleTasks()"
+        title="Check answers"
+        aria-label="Check answers">
+        <img src="assets/images/book/check.png" alt="">
       </button>
     </div>
   </div>
@@ -186,4 +191,13 @@
       <img src="assets/images/book/edit.png" alt="">
     </button>
   </div>
+  <button
+    type="button"
+    class="toolbar-scroll-btn toolbar-scroll-right"
+    [class.toolbar-scroll-hidden]="!toolbarScroll.canScrollRight"
+    [tabindex]="toolbarScroll.canScrollRight ? 0 : -1"
+    (click)="toolbarScroll.scroll(1)"
+    aria-label="Scroll toolbar right">
+    &#8250;
+  </button>
 </header>

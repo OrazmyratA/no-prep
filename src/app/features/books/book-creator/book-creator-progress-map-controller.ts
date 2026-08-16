@@ -1,4 +1,12 @@
-import { BookPage, getLessonPageRefs, ProgressMapLesson, ProgressMapLessonPage, ProgressMapUnit } from '../../../core/book.model';
+import {
+  BookPage,
+  getLessonPageRefs,
+  getProgressNavigationMode,
+  ProgressMapLesson,
+  ProgressMapLessonPage,
+  ProgressMapUnit,
+  ProgressNavigationMode
+} from '../../../core/book.model';
 
 export class BookCreatorProgressMapController {
   selectedUnitId: string | null = null;
@@ -8,6 +16,18 @@ export class BookCreatorProgressMapController {
 
   isProgressMapPage(page: BookPage | null): boolean {
     return page?.type === 'progressMap';
+  }
+
+  getProgressNavigationMode(page: BookPage | null): ProgressNavigationMode {
+    return getProgressNavigationMode(page);
+  }
+
+  toggleProgressNavigationMode(): void {
+    const page = this.creator.selectedPage;
+    if (!page || page.type !== 'progressMap') return;
+    this.creator.captureHistory();
+    page.progressNavigationMode = getProgressNavigationMode(page) === 'explorer' ? 'reader' : 'explorer';
+    this.creator.markBookDirty();
   }
 
   isProgressUnitSelected(unit: ProgressMapUnit): boolean {
@@ -114,6 +134,11 @@ export class BookCreatorProgressMapController {
     this.creator.markBookDirty();
   }
 
+  /**
+   * Lessons only link student-book (main) pages — a lesson's connection to
+   * workbook pages comes from the page-level workbook-link feature instead,
+   * so Reader-mode's lesson boundary always resolves to a set of main pages.
+   */
   getProgressLessonTargetOptions(): { value: string; label: string }[] {
     const book = this.creator.book;
     if (!book) return [];
@@ -123,11 +148,6 @@ export class BookCreatorProgressMapController {
       if (page.type === 'progressMap') return;
       options.push({ value: `main::${page.id}`, label: `Page ${index + 1} — ${bookTitle}` });
     });
-    for (const workbook of book.workbooks ?? []) {
-      workbook.pages.forEach((page: BookPage, index: number) => {
-        options.push({ value: `${workbook.id}::${page.id}`, label: `Page ${index + 1} — ${workbook.title}` });
-      });
-    }
     return options;
   }
 

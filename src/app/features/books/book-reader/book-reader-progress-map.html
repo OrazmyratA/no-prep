@@ -1,4 +1,5 @@
 <div
+  #mapScroll
   class="progress-map"
   [style.background-image]="waterBackgroundImage"
   [style.background-position-y.px]="waterOffsetPx"
@@ -51,6 +52,7 @@
   <div class="progress-map-units" *ngIf="units.length" [style.height.rem]="mapContentHeightRem">
     <img
       class="progress-map-owl"
+      *ngIf="!isBookComplete"
       src="assets/gifs/owl-corner.gif"
       alt=""
       [style.left.%]="ownerLeftPercent"
@@ -58,6 +60,7 @@
 
     <img
       class="progress-map-boat"
+      *ngIf="!isBookComplete"
       [src]="boatImage"
       alt=""
       [style.left.%]="ownerLeftPercent"
@@ -97,6 +100,28 @@
       </div>
       <div class="progress-unit-label">{{ unit.name }}</div>
     </div>
+  </div>
+
+  <div
+    class="progress-map-beach-wrap"
+    *ngIf="units.length"
+    [style.opacity]="beachRevealProgress"
+    [style.transform]="beachRevealTransform">
+    <img
+      class="progress-map-beach"
+      [src]="beachImage"
+      alt=""
+      (load)="onBeachImageLoad()">
+    <img
+      class="progress-map-beach-boat"
+      *ngIf="isBookComplete"
+      [src]="boatImage"
+      alt="">
+    <img
+      class="progress-map-beach-owl"
+      *ngIf="isBookComplete"
+      src="assets/gifs/owl-corner.gif"
+      alt="">
   </div>
 
   <div class="progress-map-empty" *ngIf="!units.length">

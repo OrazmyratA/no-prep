@@ -23,13 +23,11 @@ export class BookReaderSpeakingPlaybackController {
     }
     const blob = source === 'ai' ? attempt.responseAudio : attempt.audio;
     if (!blob) {
-      if (source === 'ai' && attempt.audio) {
-        void this.reader.processSpeakingAttemptAudio(attempt);
+      if (source === 'ai') {
+        void this.reader.replaySpeakingAttemptAiVoice(attempt);
         return;
       }
-      showAppNotification(source === 'ai'
-        ? 'This attempt has no speaking response yet.'
-        : 'This attempt has no recorded audio yet.', 'info');
+      showAppNotification('This attempt has no recorded audio yet.', 'info');
       return;
     }
     this.stopSpeakingPlayback();

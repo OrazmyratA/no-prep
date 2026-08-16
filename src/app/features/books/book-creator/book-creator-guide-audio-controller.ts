@@ -4,6 +4,7 @@ import {
 } from '../../../core/book.model';
 import { syncLegacyGuideAudioFiles } from '../../../core/guide-timeline';
 import { showAppNotification } from '../../../core/notification';
+import { decodeAudioBlobToMonoWav } from '../../../core/audio-wav';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -131,10 +132,19 @@ export class BookCreatorGuideAudioController {
       recorder.onstop = async () => {
         this.clearRecordingTimeout();
         stream?.getTracks().forEach((track) => track.stop());
-        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/mp4' });
-        if (!blob.size || !this.creator.book) return;
+        const rawBlob = new Blob(chunks, { type: recorder.mimeType || 'audio/mp4' });
+        if (!rawBlob.size || !this.creator.book) return;
         this.creator.savingRecording = true;
         try {
+          // Recorder output (webm/opus, mp4/aac) commonly has no usable duration in its
+          // container until fully played once, which breaks seeking. Re-encoding to WAV
+          // guarantees a properly seekable file for the teacher-position timeline.
+          let blob: Blob;
+          try {
+            blob = await decodeAudioBlobToMonoWav(rawBlob);
+          } catch {
+            blob = rawBlob;
+          }
           const dataUrl = await this.creator.blobToDataUrl(blob);
           const saved = await this.creator.bookLibrary.saveAudioRecording(this.creator.book.id, dataUrl);
           if (!saved) return;

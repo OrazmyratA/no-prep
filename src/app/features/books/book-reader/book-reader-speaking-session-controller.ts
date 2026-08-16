@@ -147,7 +147,9 @@ export class BookReaderSpeakingSessionController {
   }
 
   getSpeakingTurnActionLabel(): string {
-    return this.reader.speakingConversationActive ? 'Stop' : 'Speak';
+    if (this.reader.speakingConversationActive) return 'Stop';
+    if (this.reader.speakingResponsePending) return 'Thinking';
+    return 'Speak';
   }
 
   async finishSpeakingSessionAsync(): Promise<void> {
@@ -162,31 +164,16 @@ export class BookReaderSpeakingSessionController {
     this.reader.forceUiRefresh();
     if (feedbackElement && feedbackSessionId) {
       void this.reader.generateSpeakingSessionFeedback(feedbackElement, feedbackSessionId);
+      void this.reader.generateSpeakingClosingFeedback(feedbackElement, feedbackSessionId);
     }
   }
 
   async startSpeakingSession(): Promise<void> {
     if (!this.reader.book || !this.reader.activeSpeakingElement) return;
     const status = await this.reader.refreshSpeakingRuntimeStatus();
-    if (!status.pack) {
-      this.reader.maybePromptForSpeakingPackLink(this.reader.activeSpeakingElement, status);
-      showAppNotification(status.reason || 'Import the required Speaking Pack first.', 'info');
-      return;
-    }
-    if (!status.recordingAvailable) {
-      this.reader.maybePromptForSpeakingPackLink(this.reader.activeSpeakingElement, status);
-      showAppNotification(status.reason || 'Speaking practice is not available on this device.', 'error');
-      return;
-    }
     if (!status.conversationAvailable) {
-      this.reader.maybePromptForSpeakingPackLink(this.reader.activeSpeakingElement, status);
-    }
-    if (status.speechToTextAvailable && status.textToSpeechAvailable && !status.conversationAvailable) {
-      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
-    } else if (status.speechToTextAvailable && !status.conversationAvailable) {
-      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet.', 'info');
-    } else if (!status.conversationAvailable) {
-      showAppNotification(status.reason || 'Speaking Pack is not fully ready yet. Recording-only attempt will start.', 'info');
+      showAppNotification(status.reason || 'AI speaking is not available right now.', 'error');
+      return;
     }
     this.reader.speakingSessionActive = true;
     this.reader.activeSpeakingSessionId = this.reader.createId('speaking-session');

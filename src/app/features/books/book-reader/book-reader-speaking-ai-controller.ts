@@ -38,7 +38,7 @@ export class BookReaderSpeakingAiController {
     this.reader.moveOwlToElement(element, page);
     this.reader.owlTeaching = false;
     this.reader.owlImage = 'assets/gifs/owl-corner.gif';
-    void this.reader.refreshSpeakingRuntimeStatus(element).then((status: unknown) => this.reader.maybePromptForSpeakingPackLink(element, status));
+    void this.reader.refreshSpeakingRuntimeStatus(element);
     this.reader.forceUiRefresh();
   }
 
@@ -46,86 +46,81 @@ export class BookReaderSpeakingAiController {
     const taskElement = this.reader.activeSpeakingElement?.id === attempt.elementId
       ? this.reader.activeSpeakingElement
       : this.reader.findElementById(attempt.elementId);
-    if (!attempt.audio || !taskElement || !this.reader.speakingRuntimeStatus?.speechToTextAvailable) return;
-    const sttPack = this.reader.speakingRuntimeStatus.featurePacks.speechToText ?? this.reader.speakingRuntimeStatus.pack;
-    const dialoguePack = this.reader.speakingRuntimeStatus.featurePacks.dialogue ?? this.reader.speakingRuntimeStatus.pack;
-    const ttsPack = this.reader.speakingRuntimeStatus.featurePacks.textToSpeech ?? this.reader.speakingRuntimeStatus.pack;
-    if (!sttPack) return;
+    if (!taskElement || !attempt.audio) return;
+    const language = this.reader.getSpeakingAiLanguage(taskElement);
+
+    this.reader.speakingResponsePending = true;
+    this.reader.forceUiRefresh();
     try {
-      const transcript = await this.reader.aiSpeakingRuntime.transcribeAudio({
-        audio: attempt.audio,
-        mimeType: attempt.audioMimeType || attempt.audio.type || 'audio/webm',
-        language: sttPack.language,
-        packId: sttPack.id
-      });
-      const lines = [
-        `Student: ${transcript.text || '[no speech detected]'}`
-      ];
-      attempt.studentText = transcript.text || '';
+      let studentText = '';
+      try {
+        const transcript = await this.reader.aiSpeakingRuntime.transcribeAudio({
+          audio: attempt.audio,
+          mimeType: attempt.audioMimeType || attempt.audio.type || 'audio/webm',
+          language
+        });
+        studentText = transcript.text || '';
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Speech recognition is not available right now.';
+        attempt.studentText = '';
+        attempt.aiText = message;
+        attempt.transcript = `Student: [could not transcribe]\n\nAI unavailable: ${message}`;
+        showAppNotification(message, 'error');
+        return;
+      }
+      attempt.studentText = studentText;
+      const lines = [`Student: ${studentText || '[no speech detected]'}`];
       attempt.transcript = lines.join('\n\n');
       this.reader.forceUiRefresh();
+
       let spokenResponse = '';
-      if (this.reader.speakingRuntimeStatus.dialogueAvailable && dialoguePack) {
-        try {
-          const config = this.buildSpeakingTaskConfig(taskElement);
-          const dialogue = await this.reader.aiSpeakingRuntime.generateDialogueResponse({
-            config,
-            history: this.buildSpeakingDialogueHistory(attempt, transcript.text),
-            latestStudentText: transcript.text,
-            sessionId: attempt.sessionId || this.reader.activeSpeakingSessionId || undefined,
-            language: dialoguePack.language,
-            packId: dialoguePack.id
-          });
-          if (dialogue.responseText) lines.push(`AI: ${dialogue.responseText}`);
-          if (dialogue.feedback) lines.push(`Feedback: ${dialogue.feedback}`);
-          spokenResponse = dialogue.responseText || dialogue.feedback || '';
-          attempt.aiText = spokenResponse;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Offline dialogue failed.';
-          lines.push(`AI feedback unavailable: ${message}`);
-        }
-        if (!spokenResponse) {
-          spokenResponse = transcript.text
-            ? 'Thanks. Your speaking attempt has been saved. Please try one more sentence.'
-            : 'I could not hear speech clearly. Please try again when you are ready.';
-          lines.push(`AI: ${spokenResponse}`);
-          attempt.aiText = spokenResponse;
-        }
-      } else {
-        spokenResponse = transcript.text
-          ? 'Your speaking attempt has been saved. Your transcript is ready.'
+      try {
+        const config = this.buildSpeakingTaskConfig(taskElement);
+        const dialogue = await this.reader.aiSpeakingRuntime.generateDialogueResponse({
+          config,
+          history: this.buildSpeakingDialogueHistory(attempt, studentText),
+          latestStudentText: studentText,
+          sessionId: attempt.sessionId || this.reader.activeSpeakingSessionId || undefined,
+          language
+        });
+        spokenResponse = dialogue.responseText || '';
+        if (spokenResponse) lines.push(`AI: ${spokenResponse}`);
+        attempt.aiText = spokenResponse;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'AI speaking is not available right now.';
+        lines.push(`AI unavailable: ${message}`);
+        attempt.aiText = message;
+        attempt.transcript = lines.join('\n\n');
+        showAppNotification(message, 'error');
+        return;
+      }
+
+      if (!spokenResponse) {
+        spokenResponse = studentText
+          ? 'Thanks. Your speaking attempt has been saved. Please try one more sentence.'
           : 'I could not hear speech clearly. Please try again when you are ready.';
         lines.push(`AI: ${spokenResponse}`);
-        lines.push('Speaking feedback unavailable: Speaking Pack is not fully ready.');
         attempt.aiText = spokenResponse;
       }
       attempt.transcript = lines.join('\n\n');
-      if (spokenResponse && this.reader.speakingRuntimeStatus.textToSpeechAvailable && ttsPack) {
-        try {
-          const speech = await this.reader.aiSpeakingRuntime.synthesizeSpeech({
-            text: spokenResponse,
-            language: ttsPack.language,
-            packId: ttsPack.id
-          });
-          attempt.responseAudio = speech.audio;
-          attempt.responseAudioMimeType = speech.mimeType;
-          this.reader.forceUiRefresh();
-          this.reader.playSpeakingAttemptAudio(attempt, 'ai');
-          showAppNotification('Speaking response is ready.', 'success');
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Offline speech synthesis failed.';
-          attempt.transcript = `${attempt.transcript}\n\nSpeaking voice unavailable: ${message}`;
-          showAppNotification(`Speaking voice unavailable: ${message}`, 'error');
-        }
-      } else if (spokenResponse && !this.reader.speakingRuntimeStatus.textToSpeechAvailable) {
-        const message = this.reader.speakingRuntimeStatus.reason || 'Offline text-to-speech is not ready.';
-        attempt.transcript = `${attempt.transcript}\n\nSpeaking voice unavailable: ${message}`;
+      this.reader.forceUiRefresh();
+
+      const synthesized = await this.reader.aiSpeakingRuntime.synthesizeSpeechAudio(spokenResponse, language);
+      if (synthesized) {
+        attempt.responseAudio = synthesized.blob;
+        attempt.responseAudioMimeType = synthesized.mimeType;
+        await this.reader.speakingAttemptService.save(attempt);
       }
-    } catch (error) {
-      attempt.transcript = error instanceof Error
-        ? `Recording captured. Offline AI processing failed: ${error.message}`
-        : 'Recording captured. Offline AI processing failed.';
-      showAppNotification(attempt.transcript, 'error');
+
+      this.reader.aiSpeakingRuntime.stopSpeaking();
+      if (synthesized) {
+        void this.reader.aiSpeakingRuntime.playAudioBlob(synthesized.blob);
+      } else {
+        void this.reader.aiSpeakingRuntime.speak(spokenResponse, language);
+      }
+    } finally {
+      this.reader.speakingResponsePending = false;
+      this.reader.forceUiRefresh();
     }
   }
 
@@ -149,17 +144,14 @@ export class BookReaderSpeakingAiController {
       }
     }
     if (!transcript.some((turn) => turn.speaker === 'student')) return;
-
-    const dialoguePack = this.reader.speakingRuntimeStatus?.featurePacks?.dialogue ?? this.reader.speakingRuntimeStatus?.pack;
-    if (!dialoguePack) return;
+    if (!this.reader.speakingRuntimeStatus?.dialogueAvailable) return;
 
     try {
       const config = this.buildSpeakingTaskConfig(element);
       const feedback = await this.reader.aiSpeakingRuntime.generateSessionFeedback({
         config,
         transcript,
-        language: dialoguePack.language,
-        packId: dialoguePack.id
+        language: this.reader.getSpeakingAiLanguage(element)
       });
       const lastAttempt = attempts[attempts.length - 1];
       lastAttempt.sessionFeedback = JSON.stringify(feedback);
@@ -168,6 +160,86 @@ export class BookReaderSpeakingAiController {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not generate speaking feedback.';
       showAppNotification(message, 'info');
+    }
+  }
+
+  async generateSpeakingClosingFeedback(element: BookElement, sessionId: string): Promise<void> {
+    const attempts = (this.reader.speakingAttempts.get(element.id) ?? [])
+      .filter((attempt: BookSpeakingAttempt) => attempt.sessionId === sessionId)
+      .sort((a: BookSpeakingAttempt, b: BookSpeakingAttempt) => this.compareSpeakingAttemptsByTurn(a, b));
+    if (!attempts.length) return;
+
+    const transcript: AiSpeakingFeedbackTurn[] = [];
+    for (const attempt of attempts) {
+      const studentText = this.getSpeakingAttemptStudentText(attempt);
+      const aiText = this.getSpeakingAttemptAiText(attempt);
+      if (studentText) transcript.push({ speaker: 'student', text: studentText });
+      if (aiText) transcript.push({ speaker: 'ai', text: aiText });
+    }
+    // Nothing to react to if the student never actually said anything this session.
+    if (!transcript.some((turn) => turn.speaker === 'student')) return;
+    if (!this.reader.speakingRuntimeStatus?.dialogueAvailable) return;
+
+    const language = this.reader.getSpeakingAiLanguage(element);
+    let responseText = '';
+    try {
+      const config = this.buildSpeakingTaskConfig(element);
+      const closing = await this.reader.aiSpeakingRuntime.generateClosingFeedback({ config, transcript, language });
+      responseText = String(closing?.responseText || '').trim();
+    } catch {
+      // Silent: the conversation itself already completed successfully; a missed
+      // closing remark shouldn't surface as an error to the student.
+      return;
+    }
+    if (!responseText) return;
+
+    const lastAttempt = attempts[attempts.length - 1];
+    const nextTurnIndex = attempts.reduce(
+      (max: number, attempt: BookSpeakingAttempt) => Math.max(max, Number(attempt.turnIndex ?? -1)),
+      -1
+    ) + 1;
+    const now = new Date().toISOString();
+    const attemptId = this.reader.createId('speaking-attempt');
+    const closingAttempt: BookSpeakingAttempt = {
+      key: this.reader.speakingAttemptService.makeKey(lastAttempt.bookId, element.id, attemptId, lastAttempt.profileId),
+      profileId: lastAttempt.profileId,
+      bookId: lastAttempt.bookId,
+      pageId: lastAttempt.pageId,
+      elementId: element.id,
+      attemptId,
+      sessionId,
+      sessionName: lastAttempt.sessionName,
+      turnIndex: nextTurnIndex,
+      startedAt: now,
+      endedAt: now,
+      durationSeconds: 0,
+      status: 'saved',
+      transcript: `AI: ${responseText}`,
+      studentText: '',
+      aiText: responseText,
+      updatedAt: now
+    };
+
+    // Synthesize and persist before ever attempting playback, so the feedback (text
+    // and audio) survives even if the student closes the app before it finishes speaking.
+    const synthesized = await this.reader.aiSpeakingRuntime.synthesizeSpeechAudio(responseText, language);
+    if (synthesized) {
+      closingAttempt.responseAudio = synthesized.blob;
+      closingAttempt.responseAudioMimeType = synthesized.mimeType;
+    }
+
+    this.reader.speakingAttempts.set(element.id, [
+      ...(this.reader.speakingAttempts.get(element.id) ?? []),
+      closingAttempt
+    ]);
+    await this.reader.speakingAttemptService.save(closingAttempt);
+    this.reader.forceUiRefresh();
+
+    this.reader.aiSpeakingRuntime.stopSpeaking();
+    if (synthesized) {
+      void this.reader.aiSpeakingRuntime.playAudioBlob(synthesized.blob);
+    } else {
+      void this.reader.aiSpeakingRuntime.speak(responseText, language);
     }
   }
 
@@ -239,7 +311,6 @@ export class BookReaderSpeakingAiController {
     const transcript = String(attempt.transcript || '').toLowerCase();
     return attempt.status === 'active'
       || transcript.includes('processing')
-      || transcript.includes('recording captured')
       || (!!attempt.studentText && !attempt.aiText);
   }
 

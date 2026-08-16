@@ -1,5 +1,6 @@
-import { Component, Input } from '@angular/core';
+import { AfterViewInit, Component, DoCheck, ElementRef, Input, NgZone, OnDestroy, ViewChild } from '@angular/core';
 import { BookPage, getLessonPageRefs, ProgressMapLesson, ProgressMapUnit } from '../../../core/book.model';
+import { ConfettiInstance, GameFinishConfettiService } from '../../../shared/game-finish-overlay';
 
 @Component({
   selector: 'app-book-reader-progress-map',
@@ -7,9 +8,33 @@ import { BookPage, getLessonPageRefs, ProgressMapLesson, ProgressMapUnit } from 
   templateUrl: './book-reader-progress-map.html',
   styleUrls: ['./book-reader-progress-map.css']
 })
-export class BookReaderProgressMapComponent {
+export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, OnDestroy {
   @Input({ required: true }) reader!: any;
   @Input({ required: true }) page!: BookPage;
+  @ViewChild('mapScroll') private mapScrollRef?: ElementRef<HTMLElement>;
+
+  get scrollElement(): HTMLElement | null {
+    return this.mapScrollRef?.nativeElement ?? null;
+  }
+
+  // Both the beach's reveal and the collapsible header are driven by scroll
+  // position; a full-page capture lays everything out unclipped regardless of
+  // scroll, so force both into their fully-shown state for the duration of it.
+  prepareForFullCapture(): void {
+    this.headerCollapsed = false;
+    this.beachRevealProgress = 1;
+  }
+
+  restoreAfterFullCapture(): void {
+    const target = this.mapScrollRef?.nativeElement;
+    this.headerCollapsed = !!target && target.scrollTop > this.headerCollapseThresholdPx;
+    this.updateBeachReveal(target);
+  }
+
+  constructor(
+    private ngZone: NgZone,
+    private confettiService: GameFinishConfettiService
+  ) {}
 
   openUnitId: string | null = null;
   headerCollapsed = false;
@@ -39,15 +64,88 @@ export class BookReaderProgressMapComponent {
   private readonly bottomPaddingRem = 14;
   private readonly lessonOrbitRadiusRem = 6.6;
   private readonly headerCollapseThresholdPx = 40;
+  private readonly beachRevealSlidePx = 40;
 
   readonly beforeImage = "url('assets/images/book/tree/before.png')";
   readonly lifeImage = "url('assets/images/book/tree/life.png')";
   readonly waterBackgroundImage = "url('assets/images/book/islend/water.gif')";
   readonly boatImage = 'assets/images/book/islend/boat.png';
+  readonly beachImage = 'assets/images/book/islend/beach.png';
   private readonly waterImageNaturalWidth = 529;
   private readonly waterImageNaturalHeight = 759;
 
   waterOffsetPx = 0;
+  beachRevealProgress = 0;
+
+  private wasBookComplete = false;
+  private confettiInstance: ConfettiInstance | null = null;
+  private confettiTimer: ReturnType<typeof setInterval> | null = null;
+  private isDestroyed = false;
+  private readonly confettiColors = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', '#f97316', '#ffffff'];
+
+  ngAfterViewInit(): void {
+    // Short books may not have enough content to scroll at all, in which case
+    // no scroll event will ever fire — reveal the beach based on initial layout instead,
+    // once the map's images have had a frame to lay out.
+    requestAnimationFrame(() => requestAnimationFrame(() => this.updateBeachReveal(this.mapScrollRef?.nativeElement)));
+  }
+
+  ngDoCheck(): void {
+    const complete = this.isBookComplete;
+    if (complete && !this.wasBookComplete) {
+      this.startCelebrationConfetti();
+    } else if (!complete && this.wasBookComplete) {
+      this.stopCelebrationConfetti();
+    }
+    this.wasBookComplete = complete;
+  }
+
+  ngOnDestroy(): void {
+    this.isDestroyed = true;
+    this.stopCelebrationConfetti();
+  }
+
+  private startCelebrationConfetti(): void {
+    this.ngZone.runOutsideAngular(async () => {
+      try {
+        const confettiInstance = await this.confettiService.create();
+        if (this.isDestroyed) {
+          confettiInstance.reset();
+          return;
+        }
+        this.confettiInstance = confettiInstance;
+        this.fireCelebrationBurst();
+        this.confettiTimer = setInterval(() => this.fireCelebrationBurst(), 3000);
+      } catch (error) {
+        console.warn('Book-completion confetti could not start.', error);
+      }
+    });
+  }
+
+  private fireCelebrationBurst(): void {
+    if (!this.confettiInstance) return;
+    this.confettiInstance({
+      colors: this.confettiColors,
+      disableForReducedMotion: false,
+      zIndex: 2147483647,
+      particleCount: 160,
+      spread: 100,
+      startVelocity: 42,
+      ticks: 240,
+      gravity: 0.9,
+      scalar: 1,
+      origin: { x: 0.5, y: 0.85 }
+    });
+  }
+
+  private stopCelebrationConfetti(): void {
+    if (this.confettiTimer) {
+      clearInterval(this.confettiTimer);
+      this.confettiTimer = null;
+    }
+    this.confettiInstance?.reset();
+    this.confettiInstance = null;
+  }
 
   get isBoatMirrored(): boolean {
     const index = this.currentUnitIndex;
@@ -69,6 +167,28 @@ export class BookReaderProgressMapComponent {
     const renderedHeight = target.clientWidth * (this.waterImageNaturalHeight / this.waterImageNaturalWidth);
     const cap = Math.max(0, renderedHeight - target.clientHeight);
     this.waterOffsetPx = -Math.min(target.scrollTop, cap);
+    this.updateBeachReveal(target);
+  }
+
+  onBeachImageLoad(): void {
+    // The map is recreated every time this page is reopened (it's behind an *ngIf),
+    // so the beach image reloads from scratch each time; until it finishes loading,
+    // scrollHeight understates the map's true height and the reveal math is stale.
+    this.updateBeachReveal(this.mapScrollRef?.nativeElement);
+  }
+
+  private updateBeachReveal(target: HTMLElement | null | undefined): void {
+    if (!target) return;
+    const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+    // Fades and slides in continuously as the bottom of the scroll approaches,
+    // rather than snapping into view once a fixed threshold is crossed.
+    const revealThreshold = Math.max(160, target.clientHeight * 0.6);
+    this.beachRevealProgress = this.clamp(1 - distanceFromBottom / revealThreshold, 0, 1);
+  }
+
+  get beachRevealTransform(): string {
+    const offset = (1 - this.beachRevealProgress) * this.beachRevealSlidePx;
+    return `translateY(${offset}px)`;
   }
 
   get units(): ProgressMapUnit[] {

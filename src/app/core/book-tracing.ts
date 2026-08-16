@@ -29,6 +29,10 @@ export function isTracingElementUsable(element: BookElement | null | undefined):
   return getValidTracingParts(element).length > 0;
 }
 
+export function getGradedTracingParts(element: BookElement | null | undefined): TracingPart[] {
+  return getValidTracingParts(element).filter((part) => part.graded === true);
+}
+
 // How far a point's `curve` field can range, either direction.
 export const TRACING_CURVE_LIMIT = 2;
 
@@ -125,6 +129,10 @@ export function normalizeTracingElement(element: BookElement): boolean {
   if (element.type !== 'tracingTask') return false;
 
   const parts = getTracingParts(element);
+  // Legacy books graded the whole element via element.data['correct'] before grading moved
+  // to individual parts; carry that forward as "every part graded" so existing books don't
+  // silently lose their grading the first time they're opened after this change.
+  const legacyGradeAll = element.data?.['correct'] === true && !parts.some((part) => part?.graded !== undefined);
   const normalizedParts = parts
     .filter((part) => !!part && typeof part === 'object')
     .map((part, partIndex) => {
@@ -134,7 +142,8 @@ export function normalizeTracingElement(element: BookElement): boolean {
         .map((point, pointIndex) => normalizePoint(point, element.id, partIndex, pointIndex));
       return {
         id: String(part.id || `${element.id}-part-${partIndex + 1}`),
-        points: normalizedPoints
+        points: normalizedPoints,
+        graded: part.graded === true || legacyGradeAll
       } satisfies TracingPart;
     })
     .filter((part) => part.points.length > 0);

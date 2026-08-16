@@ -26,6 +26,52 @@
   display: none;
 }
 
+.toolbar-scroll-btn {
+  position: sticky;
+  z-index: 6;
+  flex: 0 0 auto;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--reader-border);
+  border-radius: 9999px;
+  background: rgba(255, 253, 246, 0.96);
+  color: #57534e;
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(92, 76, 54, 0.22);
+  -webkit-tap-highlight-color: transparent;
+  opacity: 1;
+  transition: opacity 0.15s ease;
+}
+
+/* Faded out (not removed) when there's nothing left to scroll to, so its
+   layout space stays reserved — removing it outright would shift whatever
+   sits next to it into that spot, letting a fast repeated click land on the
+   wrong button the instant this one disappears. */
+.toolbar-scroll-btn.toolbar-scroll-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toolbar-scroll-btn:hover {
+  background: #ffffff;
+  color: #292524;
+}
+
+.toolbar-scroll-left {
+  left: 0;
+  margin-right: -0.2rem;
+}
+
+.toolbar-scroll-right {
+  right: 0;
+  margin-left: -0.2rem;
+}
+
 .reader-toolbar-left,
 .reader-toolbar-center,
 .reader-toolbar-right {
@@ -36,17 +82,8 @@
 }
 
 .reader-actions.reader-toolbar-center {
-  flex: 1 1 auto;
   flex-wrap: nowrap;
   justify-content: center;
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  mask-image: linear-gradient(90deg, transparent, #000 1rem, #000 calc(100% - 1rem), transparent);
-}
-
-.reader-actions.reader-toolbar-center::-webkit-scrollbar {
-  display: none;
 }
 
 .reader-title {
@@ -73,7 +110,6 @@
   font-weight: 900;
 }
 
-.reader-title span,
 .zoom-label {
   color: #78716c;
   font-size: 0.74rem;
@@ -212,10 +248,6 @@
     font-size: 0.72rem;
   }
 
-  .reader-title span {
-    font-size: 0.62rem;
-  }
-
   .tool-btn {
     width: 1.82rem;
     height: 1.82rem;
@@ -259,15 +291,6 @@
     padding: 0.1rem 0 0.3rem;
   }
 
-  .reader-toolbar-center {
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .reader-toolbar-center::-webkit-scrollbar {
-    display: none;
-  }
-
   .tool-btn {
     width: 2rem;
     height: 2rem;
@@ -280,8 +303,7 @@
   }
 
   .pen-size span,
-  .pen-size-label,
-  .reader-title span {
+  .pen-size-label {
     display: none;
   }
 

@@ -27,6 +27,7 @@ import {
   ProgressMapLesson,
   ProgressMapLessonPage,
   ProgressMapUnit,
+  ProgressNavigationMode,
   TracingPart,
   TracingPoint
 } from '../../../core/book.model';
@@ -61,7 +62,7 @@ import { BookCreatorPageImportController } from './book-creator-page-import-cont
 import { BookCreatorPageSurfaceController } from './book-creator-page-surface-controller';
 import { BookCreatorProgressMapController } from './book-creator-progress-map-controller';
 import { BookCreatorSaveController } from './book-creator-save-controller';
-import { BookCreatorSpeakingPreviewController, SpeakingPreviewRow } from './book-creator-speaking-preview-controller';
+import { BookCreatorSpeakingPreviewController } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 import { BookCreatorTaskSettingsController } from './book-creator-task-settings-controller';
 import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
@@ -105,6 +106,7 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   loading = true;
   selectedPdfUrl = '';
   pageAspectRatio = '3 / 4';
+  private lastPdfRenderKey: string | null = null;
   creatorZoom = 1;
   creatorCanvasWidthPx: number | null = null;
   creatorScreenshotting = false;
@@ -168,6 +170,12 @@ Daily routines and what the learner did yesterday.
 Learner level:
 Beginner / A1
 
+Correction feedback:
+Choose one line below and delete the other two.
+During the conversation - correct mistakes briefly as we talk, then keep going with a question.
+At the end - do not correct during the conversation; when we finish, give one short spoken piece of feedback (one thing done well, one thing to improve).
+Off - do not give correction feedback.
+
 Goal:
 Help the learner speak naturally in full sentences about yesterday and tomorrow.
 
@@ -182,9 +190,7 @@ Have a real conversation, not a fixed quiz.
 Ask short follow-up questions when useful.
 Do not force the questions in a strict order.
 Encourage the learner to add more detail.
-Correct important mistakes gently when useful.
 If the learner asks for help, give a short example.
-If the learner asks for feedback, give one strength and one improvement.
 Keep the conversation in English unless a simple explanation is needed.
 Continue until the learner finishes the conversation.
 
@@ -531,7 +537,11 @@ Tomorrow I will help my mom.`;
     if (!page?.elements.length) return;
     const focusElement = page.elements.pop();
     if (!focusElement) return;
-    page.elements.unshift(focusElement);
+    const lastFocusIndex = page.elements.reduce(
+      (lastIndex, element, index) => (element.type === 'focus' ? index : lastIndex),
+      -1
+    );
+    page.elements.splice(lastFocusIndex + 1, 0, focusElement);
   }
 
   addNote(): void {
@@ -612,8 +622,7 @@ Tomorrow I will help my mom.`;
     this.addElement('speakingAi', {
       label: 'AI Speaking',
       language: 'en',
-      prompt: this.speakingPromptExample,
-      packUrl: ''
+      prompt: this.speakingPromptExample
     }, 0.08, 0.08);
   }
 
@@ -683,6 +692,10 @@ Tomorrow I will help my mom.`;
 
   getTracingSegmentHandles(element: BookElement): TracingSegmentHandle[] {
     return this.tracingController.getTracingSegmentHandles(element);
+  }
+
+  getTracingSegmentHandlesForPart(element: BookElement, partId: string): TracingSegmentHandle[] {
+    return this.tracingController.getTracingSegmentHandlesForPart(element, partId);
   }
 
   setTracingSegmentCurve(element: BookElement, partId: string, pointId: string, curve: number): void {
@@ -970,10 +983,6 @@ Tomorrow I will help my mom.`;
     this.speakingPreviewController.updateSpeakingAiField(element, field, value);
   }
 
-  getSpeakingAiRequiredPackLabel(element: BookElement): string {
-    return this.speakingPreviewController.getSpeakingAiRequiredPackLabel(element);
-  }
-
   async previewSpeakingAi(element: BookElement): Promise<void> {
     await this.speakingPreviewController.previewSpeakingAi(element);
   }
@@ -984,14 +993,6 @@ Tomorrow I will help my mom.`;
 
   getSpeakingPreviewStatusText(): string {
     return this.speakingPreviewController.getSpeakingPreviewStatusText();
-  }
-
-  getSpeakingPreviewRows(): SpeakingPreviewRow[] {
-    return this.speakingPreviewController.getSpeakingPreviewRows();
-  }
-
-  getSpeakingPreviewPackMeta(pack: SpeakingPreviewRow['pack']): string {
-    return this.speakingPreviewController.getSpeakingPreviewPackMeta(pack);
   }
 
   isGameActivityRestricted(element: BookElement): boolean {
@@ -1744,6 +1745,14 @@ Tomorrow I will help my mom.`;
     return this.progressMapController.isProgressMapPage(page);
   }
 
+  getProgressNavigationMode(page: BookPage | null): ProgressNavigationMode {
+    return this.progressMapController.getProgressNavigationMode(page);
+  }
+
+  toggleProgressNavigationMode(): void {
+    this.progressMapController.toggleProgressNavigationMode();
+  }
+
   isProgressUnitSelected(unit: ProgressMapUnit): boolean {
     return this.progressMapController.isProgressUnitSelected(unit);
   }
@@ -1934,8 +1943,12 @@ Tomorrow I will help my mom.`;
     this.taskSettingsController.setCircleTaskCorrect(element, correct);
   }
 
-  setTracingTaskCorrect(element: BookElement, correct: boolean): void {
-    this.taskSettingsController.setTracingTaskCorrect(element, correct);
+  setTracingPartGraded(element: BookElement, partId: string, graded: boolean): void {
+    this.taskSettingsController.setTracingPartGraded(element, partId, graded);
+  }
+
+  setTracingAnyOrder(element: BookElement, anyOrder: boolean): void {
+    this.taskSettingsController.setTracingAnyOrder(element, anyOrder);
   }
 
   getMatchTaskGroupIds(): string[] {
@@ -2371,15 +2384,29 @@ Tomorrow I will help my mom.`;
 
   private refreshSelectedPageRender(): void {
     const page = this.selectedPage;
-    this.pageAspectRatio = '3 / 4';
     const sourcePdf = page?.sourcePdf || this.activeWorkbook?.sourcePdf || this.book?.sourcePdf;
     if (!this.book || !page || page.type !== 'pdf' || !sourcePdf) {
+      this.pageAspectRatio = '3 / 4';
       this.selectedPdfUrl = '';
       this.selectedElementId = null;
+      this.lastPdfRenderKey = null;
       this.updateCreatorCanvasWidth();
       return;
     }
     this.selectedPdfUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
+    const renderKey = `${this.selectedPdfUrl}|${page.pdfPage || 1}|${this.getPageRotation(page)}`;
+    // <app-pdf-page-canvas> only re-renders (and re-reports its measured pageSize) when its
+    // sourceUrl/pageNumber/rotation inputs actually change (see its ngOnChanges). Resetting
+    // pageAspectRatio to the 3:4 placeholder here unconditionally left it permanently stuck
+    // there whenever this ran twice in a row for the same page with nothing to trigger a
+    // fresh measurement — e.g. the reader's "warm navigation" back to the creator calls
+    // applyLoadedBook (and this) twice for the same page. Every dot/pencil icon is
+    // positioned as a % of this box, so a stuck wrong ratio silently shifted them relative
+    // to the real PDF page underneath.
+    if (renderKey !== this.lastPdfRenderKey) {
+      this.pageAspectRatio = '3 / 4';
+      this.lastPdfRenderKey = renderKey;
+    }
     this.selectedElementId = null;
     this.updateCreatorCanvasWidth();
   }

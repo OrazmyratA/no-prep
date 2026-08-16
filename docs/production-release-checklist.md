@@ -5,13 +5,14 @@ Use this checklist before publishing a GitHub tag, Electron installer, or Androi
 ## 1. Source Control
 
 - Review `git status --short` and make sure every changed file belongs to the release.
-- Keep generated folders out of Git: `dist/`, `release/`, Android build output, coverage, and local AI packs.
-- Do not commit private signing material:
+- Keep generated folders out of Git: `dist/`, `release/`, Android build output, coverage.
+- Do not commit private signing material or API keys:
   - `android/keystore.properties`
   - `android/*.jks`
   - `android/*.keystore`
   - `private.pem`
   - `license.dat`
+  - `electron/ai-config.json` (see `docs/ai-speaking.md`)
 - Keep binary release assets marked as binary through `.gitattributes`.
 
 ## 2. Dependency And Test Gate
@@ -39,9 +40,9 @@ npm run electron:build
 Check that the installer includes:
 
 - `dist/**/*`
-- `electron/**/*`
-- `electron/ai-runtimes/**/*`
-- `node_modules/sherpa-onnx/**/*`
+- `electron/**/*` (except `electron/ai-config.json` and `electron/ai-config.example.json`,
+  which are explicitly excluded — confirm they're not inside `release/win-unpacked/resources`
+  after a build)
 - `node_modules/@ffmpeg-installer/**/*`
 - `native/security-core/*.node`
 
@@ -52,7 +53,9 @@ Before sharing the installer, smoke test:
 - Play local video and fullscreen with the custom fullscreen control.
 - Use draw, highlighter, text, screenshot, page navigation, zoom, rotate, and two-page mode.
 - Click a game icon and return to the same reader page.
-- Click a speaking icon with a complete AI speaking pack installed.
+- Click a speaking icon with `NOPREP_GROQ_API_KEY` or `electron/ai-config.json` configured, and
+  confirm AI Speaking responds (see `docs/ai-speaking.md`). Without either, the reader should
+  show "AI Speaking unavailable" rather than erroring.
 
 ## 4. Android Release
 
@@ -74,37 +77,27 @@ Smoke test on at least one phone and one tablet or resizable emulator:
 - Book import/export to device storage.
 - Game navigation back to the reader page.
 
-Offline AI speaking currently depends on platform runtime availability. Treat Electron as the primary supported AI-speaking release target until Android-native STT, TTS, and dialogue runtimes are packaged and tested.
+AI Speaking is Electron-only and requires internet access plus a configured Groq API key — see
+`docs/ai-speaking.md`. It is not available on Android; the Android build does not need any AI
+Speaking setup.
 
-## 5. AI Speaking Pack Distribution
+## 5. AI Speaking Configuration
 
-AI packs are not stored inside book folders. Share them separately as one folder per language/quality tier.
+See `docs/ai-speaking.md` for the full picture. The short version for a release build:
 
-A complete English speaking setup needs compatible packs for:
-
-- Listening: speech-to-text model files.
-- Conversation: local dialogue GGUF model.
-- Voice: text-to-speech model files.
-
-Teachers or readers can import the pack folder from the reader UI. The app will rebuild its local AI pack registry after import, so the registry file itself should not be shared as the source of truth.
-
-Recommended pack structure:
-
-```text
-English Speaking Pack/
-  manifest.json
-  stt/
-  dialogue/
-  tts/
-```
-
-If stronger dialogue is needed, ship a separate dialogue-only advanced pack for the same language. The app can combine the best installed listening, conversation, and voice packs for that language.
+- `electron/ai-config.json` is gitignored and excluded from packaging on purpose — verify a
+  fresh `npm run electron:build` does not bundle it (check `release/win-unpacked/resources` after
+  building).
+- Teachers set up their own key in-app: the AI Speaking panel shows a "Get free API key" button
+  (opens `console.groq.com/keys` via `shell.openExternal`) plus a field to paste the key back in.
+  The key is written to `app.getPath('userData')/ai-config.json`, never bundled in the installer.
 
 ## 6. Final Pre-Upload Check
 
 - No local AppData book folders are copied into the repo.
 - No sample student recordings or transcripts are committed.
 - No real API keys, passwords, keystores, or private certificates are committed.
+- `electron/ai-config.json` does not exist inside `release/win-unpacked` after packaging.
 - Electron installer opens without missing runtime files.
 - Android `.aab` is signed and accepted by Play Console upload validation.
 - Production build artifacts are generated from a clean command run, not copied manually.

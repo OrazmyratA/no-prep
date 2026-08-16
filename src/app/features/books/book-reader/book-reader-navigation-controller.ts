@@ -10,9 +10,10 @@ export class BookReaderNavigationController {
     this.reader.goToPage(this.reader.currentPageIndex - 1, false);
   }
 
-  goToPage(index: number, closeDrawer = false): void {
+  async goToPage(index: number, closeDrawer = false): Promise<void> {
     if (index < 0 || index >= this.reader.visiblePages.length) return;
-    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+    if (this.reader.isProgressReaderModeActive() && !this.reader.lessonSession) return;
+    if (!(await this.reader.confirmStopSpeakingForInterruption())) return;
     this.reader.swipeDir?.cancel();
     this.reader.stopGuideAudioAndReturnHome();
     if (this.reader.activeSpeakingElement) {
@@ -40,11 +41,11 @@ export class BookReaderNavigationController {
     this.goToProgressMap();
   }
 
-  goToProgressMap(): void {
+  async goToProgressMap(): Promise<void> {
     if (!this.reader.book) return;
     const mapIndex = this.reader.book.pages.findIndex((page: { type: string }) => page.type === 'progressMap');
     if (mapIndex < 0) return;
-    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+    if (!(await this.reader.confirmStopSpeakingForInterruption())) return;
     this.reader.stopGuideAudioAndReturnHome();
     this.reader.activeSpeakingElement = null;
     this.reader.activeSpeakingPage = null;
@@ -54,6 +55,7 @@ export class BookReaderNavigationController {
     this.reader.pageSource = 'main';
     this.reader.activeWorkbookId = null;
     this.reader.workbookSession = null;
+    this.reader.lessonSession = null;
     this.reader.markVisiblePagesDirty();
     const returnIndex = this.reader.visiblePages.findIndex((page: { id: string }) => page.id === this.reader.book.pages[mapIndex].id);
     this.reader.currentPageIndex = returnIndex >= 0 ? returnIndex : 0;
@@ -63,13 +65,13 @@ export class BookReaderNavigationController {
     this.reader.updateReaderSpreadWidth();
   }
 
-  navigateToProgressLesson(unit: ProgressMapUnit, lesson: ProgressMapLesson): void {
+  async navigateToProgressLesson(unit: ProgressMapUnit, lesson: ProgressMapLesson): Promise<void> {
     if (!this.reader.book) return;
     const refs = getLessonPageRefs(lesson);
     if (!refs.length) return;
     const lessonIndex = unit.lessons.findIndex((item) => item.id === lesson.id);
     if (lessonIndex >= 0 && !this.reader.isLessonUnlocked(unit, lessonIndex)) return;
-    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+    if (!(await this.reader.confirmStopSpeakingForInterruption())) return;
 
     const pageProgress = this.reader.pageProgress as Map<string, { reached?: boolean }>;
     const target = refs.find((ref) => !pageProgress?.get(ref.pageId)?.reached) ?? refs[0];
@@ -80,6 +82,11 @@ export class BookReaderNavigationController {
     this.reader.speakingPanelExpanded = false;
     this.reader.resetSpeakingSessionState();
     this.reader.closeExpandedFocus();
+
+    const mainPageIds = refs.filter((ref) => !ref.workbookId).map((ref) => ref.pageId);
+    this.reader.lessonSession = this.reader.isProgressReaderModeActive() && mainPageIds.length
+      ? { unitId: unit.id, lessonId: lesson.id, pageIds: mainPageIds }
+      : null;
 
     if (!target.workbookId) {
       const index = this.reader.book.pages.findIndex((page: { id: string }) => page.id === target.pageId);
@@ -120,9 +127,9 @@ export class BookReaderNavigationController {
     return !!this.reader.getCurrentWorkbookLink();
   }
 
-  toggleLinkedWorkbook(): void {
+  async toggleLinkedWorkbook(): Promise<void> {
     if (!this.reader.book) return;
-    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+    if (!(await this.reader.confirmStopSpeakingForInterruption())) return;
     this.reader.closeTaskInput();
     this.reader.stopGuideAudioAndReturnHome();
     this.reader.activeSpeakingElement = null;
@@ -201,8 +208,8 @@ export class BookReaderNavigationController {
     void this.reader.saveAnnotations();
   }
 
-  toggleTwoPageMode(): void {
-    if (!this.reader.confirmStopSpeakingForInterruption()) return;
+  async toggleTwoPageMode(): Promise<void> {
+    if (!(await this.reader.confirmStopSpeakingForInterruption())) return;
     this.reader.stopGuideAudioAndReturnHome();
     this.reader.activeSpeakingElement = null;
     this.reader.activeSpeakingPage = null;

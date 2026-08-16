@@ -1,4 +1,13 @@
-<div class="creator-toolbar">
+<div class="creator-toolbar" appHorizontalToolbarScroll #toolbarScroll="toolbarScroll">
+  <button
+    type="button"
+    class="toolbar-scroll-btn toolbar-scroll-left"
+    [class.toolbar-scroll-hidden]="!toolbarScroll.canScrollLeft"
+    [tabindex]="toolbarScroll.canScrollLeft ? 0 : -1"
+    (click)="toolbarScroll.scroll(-1)"
+    aria-label="Scroll toolbar left">
+    &#8249;
+  </button>
   <div class="creator-toolbar-left">
     <button type="button" class="icon-btn" (click)="creator.goBack()" [title]="'readerBack' | translate" [attr.aria-label]="'readerBack' | translate">
       <img src="assets/images/book/back.png" alt="">
@@ -6,15 +15,36 @@
   </div>
 
   <div class="creator-actions creator-toolbar-middle" *ngIf="creator.book">
-    <div class="toolbar-group">
-      <button type="button" class="icon-tool-btn" (click)="creator.undo()" [disabled]="!creator.canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">
-        <img src="assets/images/book/undo.png" alt="">
+    <div class="toolbar-page-stepper" *ngIf="creator.activePages.length > 1">
+      <button
+        type="button"
+        (click)="creator.selectPage(creator.activePageIndex - 1)"
+        [disabled]="creator.activePageIndex <= 0"
+        [title]="'previousPage' | translate"
+        [attr.aria-label]="'previousPage' | translate">
+        <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.redo()" [disabled]="!creator.canRedo()" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate">
-        <img src="assets/images/book/redo.png" alt="">
+      <input
+        type="number"
+        min="1"
+        [max]="creator.activePages.length"
+        [(ngModel)]="creator.pageJumpValue"
+        (focus)="creator.startPageJump()"
+        (keydown.enter)="creator.commitPageJump()"
+        (keydown.escape)="creator.cancelPageJump()"
+        (blur)="creator.commitPageJump()"
+        [attr.aria-label]="'readerGoToPage' | translate">
+      <span>/ {{ creator.activePages.length }}</span>
+      <button
+        type="button"
+        (click)="creator.selectPage(creator.activePageIndex + 1)"
+        [disabled]="creator.activePageIndex >= creator.activePages.length - 1"
+        [title]="'nextPage' | translate"
+        [attr.aria-label]="'nextPage' | translate">
+        <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
       </button>
     </div>
-    <div class="toolbar-group creator-mark-group">
+    <div class="toolbar-group view-tools">
       <button type="button" class="icon-tool-btn" (click)="creator.setCreatorZoom(creator.creatorZoom + 0.1)" [title]="'zoomIn' | translate" [attr.aria-label]="'zoomIn' | translate">
         <img src="assets/images/book/zoom-in.png" alt="">
       </button>
@@ -23,6 +53,17 @@
       </button>
       <button type="button" class="icon-tool-btn" (click)="creator.rotateSelectedPage()" title="Rotate page" aria-label="Rotate page">
         <img src="assets/images/book/rotate-right.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.takeCreatorScreenshot()" [disabled]="creator.creatorScreenshotting" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate">
+        <img src="assets/images/book/screenshot.png" alt="">
+      </button>
+    </div>
+    <div class="toolbar-group mark-tools">
+      <button type="button" class="icon-tool-btn" (click)="creator.undo()" [disabled]="!creator.canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">
+        <img src="assets/images/book/undo.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" (click)="creator.redo()" [disabled]="!creator.canRedo()" [title]="'redo' | translate" [attr.aria-label]="'redo' | translate">
+        <img src="assets/images/book/redo.png" alt="">
       </button>
       <button type="button" class="icon-tool-btn" [class.active]="creator.creatorDrawMode" (click)="creator.addInkMark()" [title]="'drawLabel' | translate" [attr.aria-label]="'drawLabel' | translate">
         <img src="assets/images/book/draw.png" alt="">
@@ -62,38 +103,6 @@
       </div>
       <button type="button" class="icon-tool-btn" [class.active]="creator.creatorTextMode" (click)="creator.addTextMark()" title="Text" aria-label="Text">
         <span aria-hidden="true">T</span>
-      </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.takeCreatorScreenshot()" [disabled]="creator.creatorScreenshotting" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate">
-        <img src="assets/images/book/screenshot.png" alt="">
-      </button>
-    </div>
-    <div class="toolbar-page-stepper" *ngIf="creator.activePages.length > 1">
-      <button
-        type="button"
-        (click)="creator.selectPage(creator.activePageIndex - 1)"
-        [disabled]="creator.activePageIndex <= 0"
-        [title]="'previousPage' | translate"
-        [attr.aria-label]="'previousPage' | translate">
-        <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
-      </button>
-      <input
-        type="number"
-        min="1"
-        [max]="creator.activePages.length"
-        [(ngModel)]="creator.pageJumpValue"
-        (focus)="creator.startPageJump()"
-        (keydown.enter)="creator.commitPageJump()"
-        (keydown.escape)="creator.cancelPageJump()"
-        (blur)="creator.commitPageJump()"
-        [attr.aria-label]="'readerGoToPage' | translate">
-      <span>/ {{ creator.activePages.length }}</span>
-      <button
-        type="button"
-        (click)="creator.selectPage(creator.activePageIndex + 1)"
-        [disabled]="creator.activePageIndex >= creator.activePages.length - 1"
-        [title]="'nextPage' | translate"
-        [attr.aria-label]="'nextPage' | translate">
-        <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
       </button>
     </div>
     <div class="toolbar-group insert-group">
@@ -181,4 +190,13 @@
       </button>
     </div>
   </div>
+  <button
+    type="button"
+    class="toolbar-scroll-btn toolbar-scroll-right"
+    [class.toolbar-scroll-hidden]="!toolbarScroll.canScrollRight"
+    [tabindex]="toolbarScroll.canScrollRight ? 0 : -1"
+    (click)="toolbarScroll.scroll(1)"
+    aria-label="Scroll toolbar right">
+    &#8250;
+  </button>
 </div>

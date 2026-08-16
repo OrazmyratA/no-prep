@@ -3,17 +3,35 @@ import { BookLessonProgress, BookPage, getLessonPageRefs, ProgressMapLesson, Pro
 export class BookReaderProgressController {
   constructor(private readonly reader: any) {}
 
+  /**
+   * A lesson only links main-book pages; any workbook pages linked to those
+   * main pages (via the page-level workbook-link feature) still count
+   * toward finishing the lesson, so they're pulled in here too.
+   */
   private getLessonPages(lesson: ProgressMapLesson): BookPage[] {
     const refs = getLessonPageRefs(lesson);
     const pages: BookPage[] = [];
+    const seenIds = new Set<string>();
+    const addPage = (page: BookPage | undefined | null) => {
+      if (page && !seenIds.has(page.id)) {
+        seenIds.add(page.id);
+        pages.push(page);
+      }
+    };
+
     for (const ref of refs) {
       if (ref.workbookId) {
         const workbook = this.reader.getWorkbook(ref.workbookId);
-        const page = workbook?.pages.find((item: BookPage) => item.id === ref.pageId);
-        if (page) pages.push(page);
-      } else {
-        const page = this.reader.book?.pages.find((item: BookPage) => item.id === ref.pageId);
-        if (page) pages.push(page);
+        addPage(workbook?.pages.find((item: BookPage) => item.id === ref.pageId));
+        continue;
+      }
+      addPage(this.reader.book?.pages.find((item: BookPage) => item.id === ref.pageId));
+      const links = this.reader.book?.workbookLinks?.[ref.pageId] ?? [];
+      for (const link of links as { workbookId: string; pageIds: string[] }[]) {
+        const workbook = this.reader.getWorkbook(link.workbookId);
+        for (const pageId of link.pageIds ?? []) {
+          addPage(workbook?.pages.find((item: BookPage) => item.id === pageId));
+        }
       }
     }
     return pages;

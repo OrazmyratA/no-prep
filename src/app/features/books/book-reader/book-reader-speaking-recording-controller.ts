@@ -10,6 +10,7 @@ export class BookReaderSpeakingRecordingController {
       void this.stopSpeakingConversation(true);
       return;
     }
+    if (this.reader.speakingResponsePending) return;
     if (!this.reader.speakingSessionActive) {
       await this.reader.startSpeakingSession();
     }
@@ -18,6 +19,9 @@ export class BookReaderSpeakingRecordingController {
 
   async startSpeakingConversation(): Promise<void> {
     if (!this.reader.book || !this.reader.activeSpeakingElement || !this.reader.activeSpeakingPage) return;
+    // Barge-in: a student starting to talk should always cut off whatever the AI is still saying,
+    // the same way a real conversation partner would stop talking the moment you start speaking.
+    this.reader.aiSpeakingRuntime.stopSpeaking();
     await this.stopSpeakingConversation(false);
     if (!this.reader.speakingSessionActive || !this.reader.activeSpeakingSessionId) {
       this.reader.speakingSessionActive = true;
@@ -49,7 +53,7 @@ export class BookReaderSpeakingRecordingController {
         startedAt: now.toISOString(),
         durationSeconds: 0,
         status: 'active',
-        transcript: 'Recording captured. Speech transcript will appear after the Speaking Pack is ready.',
+        transcript: 'Recording...',
         updatedAt: now.toISOString()
       };
 
@@ -155,27 +159,16 @@ export class BookReaderSpeakingRecordingController {
         activeAttempt.durationSeconds = durationSeconds;
         activeAttempt.endedAt = new Date().toISOString();
         activeAttempt.status = 'saved';
-        activeAttempt.transcript = saveAttempt
-          ? activeAttempt.transcript
-          : 'Attempt stopped before the offline AI engine finished processing.';
         const blob = this.reader.speakingRecordedChunks.length
           ? new Blob(this.reader.speakingRecordedChunks, { type: mimeType || this.reader.speakingMediaRecorder?.mimeType || 'audio/webm' })
           : null;
         if (blob?.size) {
           activeAttempt.audio = blob;
           activeAttempt.audioMimeType = blob.type || mimeType || 'audio/webm';
-          const attemptElement = this.reader.findElementById(activeAttempt.elementId) ?? this.reader.activeSpeakingElement;
-          await this.reader.refreshSpeakingRuntimeStatus(attemptElement).catch(() => this.reader.speakingRuntimeStatus);
-          if (this.reader.speakingRuntimeStatus?.speechToTextAvailable) {
-            activeAttempt.transcript = 'Processing speech transcript...';
-            this.reader.forceUiRefresh();
-          } else {
-            activeAttempt.transcript = this.reader.speakingRuntimeStatus?.reason
-              ? `Recording captured. ${this.reader.speakingRuntimeStatus.reason}`
-              : 'Recording captured. Offline AI processing is not ready yet.';
-          }
-          await this.reader.tryTranscribeSpeakingAttempt(activeAttempt);
         }
+        activeAttempt.transcript = 'Processing speech transcript...';
+        this.reader.forceUiRefresh();
+        await this.reader.tryTranscribeSpeakingAttempt(activeAttempt);
         try {
           await this.reader.speakingAttemptService.save(activeAttempt);
         } catch (error) {

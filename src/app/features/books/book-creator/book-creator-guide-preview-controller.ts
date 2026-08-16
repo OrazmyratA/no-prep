@@ -63,13 +63,16 @@ export class BookCreatorGuidePreviewController {
 
   selectGuideTrack(element: BookElement, track: GuideAudioTrack): void {
     if (element.type !== 'guideDot') return;
+    const trackChanged = this.creator.selectedGuideTrackId !== track.id;
     if (this.creator.activePreviewAudio && this.creator.previewGuideTrackId !== track.id) {
       this.stopGuidePreview();
     }
     const wasPreviewingTrack = this.creator.previewGuideTrackId === track.id;
     this.creator.selectedGuideTrackId = track.id;
-    this.creator.selectedGuidePinId = null;
-    this.creator.placingGuidePin = false;
+    if (trackChanged) {
+      this.creator.selectedGuidePinId = null;
+      this.creator.placingGuidePin = false;
+    }
     const rememberedTime = this.creator.guideTrackSeekTimes[track.id] ?? 0;
     this.creator.previewGuideCurrentTime = wasPreviewingTrack
       ? this.creator.activePreviewAudio?.currentTime ?? this.creator.previewGuideCurrentTime
@@ -253,7 +256,9 @@ export class BookCreatorGuidePreviewController {
       if (duration > 0) {
         track.duration = duration;
         this.creator.previewGuideDuration = duration;
-        audio.currentTime = this.creator.clamp(startTime, 0, duration);
+      }
+      if (startTime > 0) {
+        audio.currentTime = duration > 0 ? this.creator.clamp(startTime, 0, duration) : startTime;
       }
     };
     audio.ontimeupdate = () => {

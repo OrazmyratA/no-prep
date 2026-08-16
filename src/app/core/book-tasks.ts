@@ -1,4 +1,5 @@
 import { BookElement, BookPage, BookWordBank, BookWordBankOption } from './book.model';
+import { getGradedTracingParts } from './book-tracing';
 
 export function isBookTaskElement(element: BookElement): boolean {
   return element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask' || element.type === 'matchTask' || element.type === 'tracingTask';
@@ -49,7 +50,7 @@ export function isCircleTaskCorrectTarget(element: BookElement): boolean {
 }
 
 export function isTracingTaskGradingEnabled(element: BookElement): boolean {
-  return element.type === 'tracingTask' && element.data?.['correct'] === true;
+  return element.type === 'tracingTask' && getGradedTracingParts(element).length > 0;
 }
 
 export type MatchTaskSide = 'A' | 'B';

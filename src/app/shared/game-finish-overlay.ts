@@ -23,7 +23,7 @@ interface ConfettiOrigin {
   y?: number;
 }
 
-interface ConfettiOptions {
+export interface ConfettiOptions {
   angle?: number;
   colors?: string[];
   decay?: number;
@@ -41,7 +41,7 @@ interface ConfettiOptions {
   zIndex?: number;
 }
 
-type ConfettiInstance = ((options?: ConfettiOptions) => Promise<unknown> | null) & {
+export type ConfettiInstance = ((options?: ConfettiOptions) => Promise<unknown> | null) & {
   reset: () => void;
 };
 

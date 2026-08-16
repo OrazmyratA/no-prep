@@ -1,24 +1,17 @@
 import { Injectable } from '@angular/core';
 import { PlatformService } from './platform';
-import { AiLanguagePackService, InstalledAiLanguagePack } from './ai-language-packs';
 
 export type AiSpeakingRuntimePlatform = 'electron' | 'android' | 'web';
 
 export interface AiSpeakingRuntimeStatus {
   platform: AiSpeakingRuntimePlatform;
-  pack: InstalledAiLanguagePack | null;
-  featurePacks: {
-    speechToText: InstalledAiLanguagePack | null;
-    textToSpeech: InstalledAiLanguagePack | null;
-    dialogue: InstalledAiLanguagePack | null;
-  };
+  online: boolean;
   recordingAvailable: boolean;
   speechToTextAvailable: boolean;
   textToSpeechAvailable: boolean;
   dialogueAvailable: boolean;
   conversationAvailable: boolean;
-  missingFeatures: string[];
-  missingRuntimeFiles: string[];
+  apiKeyConfigured: boolean;
   reason: string;
 }
 
@@ -39,27 +32,6 @@ export interface AiSpeakingTurn {
   endedAt?: string;
 }
 
-export interface AiSpeakingAudioInput {
-  audio: Blob;
-  mimeType: string;
-  language: string;
-  packId: string;
-}
-
-export interface AiSpeakingTranscriptionSegment {
-  text: string;
-  startSeconds: number;
-  endSeconds: number;
-  confidence?: number;
-}
-
-export interface AiSpeakingTranscriptionResult {
-  text: string;
-  language: string;
-  confidence?: number;
-  segments?: AiSpeakingTranscriptionSegment[];
-}
-
 export interface AiSpeakingDialogueInput {
   config: AiSpeakingTaskConfig;
   history: AiSpeakingTurn[];
@@ -67,12 +39,10 @@ export interface AiSpeakingDialogueInput {
   openingTurn?: boolean;
   sessionId?: string;
   language?: string;
-  packId?: string;
 }
 
 export interface AiSpeakingDialogueResult {
   responseText: string;
-  feedback?: string;
   shouldEnd?: boolean;
 }
 
@@ -86,7 +56,6 @@ export interface AiSpeakingSessionFeedbackInput {
   config: AiSpeakingTaskConfig;
   transcript: AiSpeakingFeedbackTurn[];
   language?: string;
-  packId?: string;
 }
 
 export interface AiSpeakingSessionFeedbackResult {
@@ -96,153 +65,119 @@ export interface AiSpeakingSessionFeedbackResult {
   summary: string;
 }
 
-export interface AiSpeakingSynthesisInput {
-  text: string;
-  language: string;
-  packId: string;
-  voice?: string;
-}
-
-export interface AiSpeakingSynthesisResult {
+export interface AiSpeakingAudioInput {
   audio: Blob;
   mimeType: string;
+  language: string;
 }
 
-export interface AiSpeakingConversationResult {
-  transcript: AiSpeakingTurn[];
-  feedback: string;
-  audio?: Blob;
+export interface AiSpeakingTranscriptionResult {
+  text: string;
 }
-
-const REQUIRED_CONVERSATION_FEATURES = ['speech-to-text', 'text-to-speech', 'local-dialogue'];
 
 declare const window: any;
 
 @Injectable({ providedIn: 'root' })
 export class AiSpeakingRuntimeService {
-  constructor(
-    private platform: PlatformService,
-    private packs: AiLanguagePackService
-  ) {}
+  constructor(private platform: PlatformService) {}
 
-  async getStatusForLanguage(language: string): Promise<AiSpeakingRuntimeStatus> {
-    await this.packs.refresh().catch(() => undefined);
-    const featurePacks = this.packs.getFeaturePacksForLanguage(language);
-    const pack = this.packs.getPackForLanguage(language)
-      ?? featurePacks.dialogue
-      ?? featurePacks.speechToText
-      ?? featurePacks.textToSpeech;
-    const recordingAvailable = this.isRecordingAvailable();
+  async getStatusForLanguage(_language: string): Promise<AiSpeakingRuntimeStatus> {
     const platform = this.getPlatform();
-    if (!pack) {
-      return {
-        platform,
-        pack: null,
-        featurePacks: {
-          speechToText: null,
-          textToSpeech: null,
-          dialogue: null
-        },
-        recordingAvailable,
-        speechToTextAvailable: false,
-        textToSpeechAvailable: false,
-        dialogueAvailable: false,
-        conversationAvailable: false,
-        missingFeatures: [...REQUIRED_CONVERSATION_FEATURES],
-        missingRuntimeFiles: [],
-        reason: 'Speaking Pack is not installed.'
-      };
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    const recordingAvailable = this.isRecordingAvailable();
+    const textToSpeechAvailable = typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function'
+      || (typeof window?.speechSynthesis !== 'undefined' && typeof window?.SpeechSynthesisUtterance === 'function');
+    const apiKeyConfigured = await this.isAiServiceConfigured();
+    const aiServiceConfigured = online && apiKeyConfigured;
+    // Speech-to-text and dialogue both go through the same Groq call path, so they share one gate.
+    const speechToTextAvailable = aiServiceConfigured;
+    const dialogueAvailable = aiServiceConfigured;
+    const conversationAvailable = recordingAvailable && speechToTextAvailable && textToSpeechAvailable && dialogueAvailable;
+
+    let reason = 'AI speaking is ready.';
+    if (!apiKeyConfigured) {
+      reason = 'AI speaking is not configured on this device.';
+    } else if (!online) {
+      reason = 'AI speaking needs an internet connection.';
+    } else if (!recordingAvailable) {
+      reason = 'Microphone access is not available on this device.';
+    } else if (!textToSpeechAvailable) {
+      reason = 'Text-to-speech is not supported in this browser.';
     }
 
-    const sttBridge = featurePacks.speechToText
-      ? await this.getNativeBridgeStatus(featurePacks.speechToText).catch(() => null)
-      : null;
-    const ttsBridge = featurePacks.textToSpeech
-      ? await this.getNativeBridgeStatus(featurePacks.textToSpeech).catch(() => null)
-      : null;
-    const dialogueBridge = featurePacks.dialogue
-      ? await this.getNativeBridgeStatus(featurePacks.dialogue).catch(() => null)
-      : null;
-    const missingFeatures = [
-      ...(!featurePacks.speechToText ? ['speech-to-text'] : []),
-      ...(!featurePacks.textToSpeech ? ['text-to-speech'] : []),
-      ...(!featurePacks.dialogue ? ['local-dialogue'] : [])
-    ];
-    const missingRuntimeFiles = Array.from(new Set([
-      ...(sttBridge?.missingRuntimeFiles ?? []),
-      ...(ttsBridge?.missingRuntimeFiles ?? []),
-      ...(dialogueBridge?.missingRuntimeFiles ?? [])
-    ]));
-    const speechToTextAvailable = !!featurePacks.speechToText && !!sttBridge?.speechToTextAvailable;
-    const textToSpeechAvailable = !!featurePacks.textToSpeech && !!ttsBridge?.textToSpeechAvailable;
-    const dialogueAvailable = !!featurePacks.dialogue && !!dialogueBridge?.dialogueAvailable;
-    const conversationAvailable = missingFeatures.length === 0
-      && missingRuntimeFiles.length === 0
-      && speechToTextAvailable
-      && textToSpeechAvailable
-      && dialogueAvailable;
     return {
       platform,
-      pack,
-      featurePacks,
+      online,
       recordingAvailable,
       speechToTextAvailable,
       textToSpeechAvailable,
       dialogueAvailable,
       conversationAvailable,
-      missingFeatures,
-      missingRuntimeFiles,
-      reason: conversationAvailable
-        ? 'Speaking Pack is ready.'
-        : this.buildReadinessReason(missingFeatures, missingRuntimeFiles, sttBridge?.reason, ttsBridge?.reason, dialogueBridge?.reason)
+      apiKeyConfigured,
+      reason
     };
   }
 
-  async runConversation(_config: AiSpeakingTaskConfig, _signal?: AbortSignal): Promise<AiSpeakingConversationResult> {
-    throw new Error('Offline AI conversation engine is not connected yet.');
+  readonly groqApiKeyPageUrl = 'https://console.groq.com/keys';
+
+  openApiKeyPage(): void {
+    const api = window?.electronAPI;
+    if (typeof api?.openExternalUrl === 'function') {
+      void api.openExternalUrl(this.groqApiKeyPageUrl);
+    } else if (typeof window !== 'undefined') {
+      window.open(this.groqApiKeyPageUrl, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  async saveApiKey(apiKey: string): Promise<boolean> {
+    const api = window?.electronAPI;
+    if (typeof api?.aiSpeakingSaveApiKey !== 'function') return false;
+    try {
+      const response = await api.aiSpeakingSaveApiKey({ apiKey });
+      return !!response?.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async clearApiKey(): Promise<boolean> {
+    const api = window?.electronAPI;
+    if (typeof api?.aiSpeakingClearApiKey !== 'function') return false;
+    try {
+      const response = await api.aiSpeakingClearApiKey();
+      return !!response?.ok;
+    } catch {
+      return false;
+    }
   }
 
   async transcribeAudio(input: AiSpeakingAudioInput): Promise<AiSpeakingTranscriptionResult> {
     const api = window?.electronAPI;
     if (typeof api?.aiSpeakingTranscribeAudio !== 'function') {
-      throw new Error('Offline speech recognition engine is not connected yet.');
+      throw new Error('Speech recognition engine is not connected yet.');
     }
     const response = await api.aiSpeakingTranscribeAudio({
-      packId: input.packId,
-      language: input.language,
+      audioBase64: await this.blobToBase64(input.audio),
       mimeType: input.mimeType,
-      audioDataUrl: await this.blobToDataUrl(input.audio)
+      language: input.language
     });
     if (!response?.ok) {
-      throw new Error(response?.message || 'Offline speech recognition failed.');
+      throw new Error(response?.message || 'Speech recognition failed.');
     }
-    return {
-      text: String(response.result?.text || ''),
-      language: String(response.result?.language || input.language),
-      confidence: Number.isFinite(Number(response.result?.confidence)) ? Number(response.result.confidence) : undefined,
-      segments: Array.isArray(response.result?.segments)
-        ? response.result.segments.map((segment: any) => ({
-            text: String(segment?.text || ''),
-            startSeconds: Math.max(0, Number(segment?.startSeconds) || 0),
-            endSeconds: Math.max(0, Number(segment?.endSeconds) || 0),
-            confidence: Number.isFinite(Number(segment?.confidence)) ? Number(segment.confidence) : undefined
-          }))
-        : undefined
-    };
+    return { text: String(response.result?.text || '') };
   }
 
   async generateDialogueResponse(input: AiSpeakingDialogueInput): Promise<AiSpeakingDialogueResult> {
     const api = window?.electronAPI;
     if (typeof api?.aiSpeakingGenerateResponse !== 'function') {
-      throw new Error('Offline dialogue engine is not connected yet.');
+      throw new Error('AI speaking engine is not connected yet.');
     }
     const response = await api.aiSpeakingGenerateResponse(input);
     if (!response?.ok) {
-      throw new Error(response?.message || 'Offline dialogue generation failed.');
+      throw new Error(response?.message || 'AI dialogue generation failed.');
     }
     return {
       responseText: String(response.result?.responseText || ''),
-      feedback: response.result?.feedback ? String(response.result.feedback) : undefined,
       shouldEnd: !!response.result?.shouldEnd
     };
   }
@@ -250,11 +185,11 @@ export class AiSpeakingRuntimeService {
   async generateSessionFeedback(input: AiSpeakingSessionFeedbackInput): Promise<AiSpeakingSessionFeedbackResult> {
     const api = window?.electronAPI;
     if (typeof api?.aiSpeakingGenerateSessionFeedback !== 'function') {
-      throw new Error('Offline speaking feedback engine is not connected yet.');
+      throw new Error('AI speaking feedback engine is not connected yet.');
     }
     const response = await api.aiSpeakingGenerateSessionFeedback(input);
     if (!response?.ok) {
-      throw new Error(response?.message || 'Offline speaking feedback failed.');
+      throw new Error(response?.message || 'AI speaking feedback failed.');
     }
     return {
       fluency: String(response.result?.fluency || ''),
@@ -264,27 +199,124 @@ export class AiSpeakingRuntimeService {
     };
   }
 
-  async closeDialogueSession(sessionId: string): Promise<void> {
+  async generateClosingFeedback(input: AiSpeakingSessionFeedbackInput): Promise<{ responseText: string }> {
     const api = window?.electronAPI;
-    if (typeof api?.aiSpeakingCloseDialogueSession !== 'function') return;
-    await api.aiSpeakingCloseDialogueSession({ sessionId: String(sessionId || '') }).catch(() => undefined);
+    if (typeof api?.aiSpeakingGenerateClosingFeedback !== 'function') {
+      throw new Error('AI speaking feedback engine is not connected yet.');
+    }
+    const response = await api.aiSpeakingGenerateClosingFeedback(input);
+    if (!response?.ok) {
+      throw new Error(response?.message || 'AI closing feedback failed.');
+    }
+    return { responseText: String(response.result?.responseText || '') };
   }
 
-  async synthesizeSpeech(input: AiSpeakingSynthesisInput): Promise<AiSpeakingSynthesisResult> {
+  async speak(text: string, language = 'en-US'): Promise<void> {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return;
+    this.stopSpeaking();
+
+    const synthesized = await this.synthesizeSpeechAudio(trimmed, language);
+    if (synthesized) {
+      await this.playAudioBlob(synthesized.blob);
+      return;
+    }
+    await this.speakWithBrowserVoice(trimmed, language);
+  }
+
+  // Synthesizes without playing, so callers (like saving a speaking attempt) can
+  // persist the AI's voice clip even when playback is deferred or interrupted.
+  async synthesizeSpeechAudio(text: string, language = 'en-US'): Promise<{ blob: Blob; mimeType: string } | null> {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return null;
     const api = window?.electronAPI;
-    if (typeof api?.aiSpeakingSynthesizeSpeech !== 'function') {
-      throw new Error('Offline text-to-speech engine is not connected yet.');
+    if (typeof api?.aiSpeakingSynthesizeSpeech !== 'function') return null;
+    try {
+      const response = await api.aiSpeakingSynthesizeSpeech({ text: trimmed, language });
+      if (response?.ok && response.result?.audioBase64) {
+        const mimeType = response.result.mimeType || 'audio/mpeg';
+        return { blob: this.base64ToBlob(response.result.audioBase64, mimeType), mimeType };
+      }
+    } catch {
+      // Caller falls back to the browser voice when this returns null.
     }
-    const response = await api.aiSpeakingSynthesizeSpeech(input);
-    if (!response?.ok) {
-      throw new Error(response?.message || 'Offline speech synthesis failed.');
+    return null;
+  }
+
+  stopSpeaking(): void {
+    window?.speechSynthesis?.cancel?.();
+    if (this.currentAudio) {
+      try { this.currentAudio.pause(); } catch { /* already stopped */ }
+      this.currentAudio = null;
     }
-    const audioDataUrl = String(response.result?.audioDataUrl || '');
-    const mimeType = String(response.result?.mimeType || 'audio/wav');
-    return {
-      audio: await this.dataUrlToBlob(audioDataUrl, mimeType),
-      mimeType
-    };
+  }
+
+  private currentAudio: HTMLAudioElement | null = null;
+
+  playAudioBlob(blob: Blob): Promise<void> {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      this.currentAudio = audio;
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        URL.revokeObjectURL(url);
+        if (this.currentAudio === audio) this.currentAudio = null;
+        resolve();
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      void audio.play().catch(finish);
+    });
+  }
+
+  private base64ToBlob(base64: string, mimeType: string): Blob {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return new Blob([bytes], { type: mimeType });
+  }
+
+  private speakWithBrowserVoice(text: string, language: string): Promise<void> {
+    return new Promise((resolve) => {
+      const synth = window?.speechSynthesis;
+      if (!synth || typeof window?.SpeechSynthesisUtterance !== 'function') {
+        resolve();
+        return;
+      }
+      const utterance = new window.SpeechSynthesisUtterance(text);
+      utterance.lang = language || 'en-US';
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(safetyTimer);
+        resolve();
+      };
+      // Some Electron/Windows setups never fire onend/onerror if no TTS voice is
+      // registered yet — without this fallback, any awaiter would hang forever.
+      const safetyTimer = window.setTimeout(finish, 15000);
+      utterance.onend = finish;
+      utterance.onerror = finish;
+      synth.speak(utterance);
+    });
+  }
+
+  private async isAiServiceConfigured(): Promise<boolean> {
+    const api = window?.electronAPI;
+    if (typeof api?.getAiSpeakingRuntimeStatus !== 'function') {
+      return true;
+    }
+    try {
+      const response = await api.getAiSpeakingRuntimeStatus({});
+      return !!response?.ok && !!response.result?.apiKeyConfigured;
+    } catch {
+      return false;
+    }
   }
 
   private getPlatform(): AiSpeakingRuntimePlatform {
@@ -297,101 +329,15 @@ export class AiSpeakingRuntimeService {
     return !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
   }
 
-  private getMissingConversationFeatures(pack: InstalledAiLanguagePack): string[] {
-    const features = new Set((pack.features ?? []).map((feature) => String(feature).trim().toLowerCase()));
-    return REQUIRED_CONVERSATION_FEATURES.filter((feature) => !features.has(feature));
-  }
-
-  private hasFeature(pack: InstalledAiLanguagePack, feature: string): boolean {
-    return (pack.features ?? []).some((item) => String(item).trim().toLowerCase() === feature);
-  }
-
-  private buildReadinessReason(
-    missingFeatures: string[],
-    missingRuntimeFiles: string[],
-    ...runtimeReasons: Array<string | undefined>
-  ): string {
-    if (missingFeatures.length) {
-      return 'Speaking Pack is incomplete. Install the full speaking pack for this language.';
-    }
-    if (missingRuntimeFiles.length) {
-      return 'Speaking Pack files are incomplete. Import the pack again.';
-    }
-    return runtimeReasons.find((reason) => !!reason && !/runner|runtime files?|STT|TTS|dialogue/i.test(reason))
-      || 'Speaking Pack is not ready yet. Recording attempts are still available.';
-  }
-
-  private getFeatureLabel(feature: string): string {
-    switch (feature) {
-      case 'speech-to-text':
-        return 'speech recognition';
-      case 'text-to-speech':
-        return 'AI voice';
-      case 'local-dialogue':
-        return 'AI dialogue';
-      default:
-        return feature;
-    }
-  }
-
-  private async getNativeBridgeStatus(pack: InstalledAiLanguagePack): Promise<{
-    speechToTextAvailable?: boolean;
-    textToSpeechAvailable?: boolean;
-    dialogueAvailable?: boolean;
-    conversationAvailable: boolean;
-    missingRuntimeFiles?: string[];
-    reason?: string;
-  } | null> {
-    const api = window?.electronAPI;
-    if (typeof api?.getAiSpeakingRuntimeStatus === 'function') {
-      const response = await api.getAiSpeakingRuntimeStatus({ packId: pack.id, language: pack.language });
-      if (response?.ok) {
-        return {
-          speechToTextAvailable: !!response.result?.speechToTextAvailable,
-          textToSpeechAvailable: !!response.result?.textToSpeechAvailable,
-          dialogueAvailable: !!response.result?.dialogueAvailable,
-          conversationAvailable: !!response.result?.conversationAvailable,
-          missingRuntimeFiles: Array.isArray(response.result?.missingRuntimeFiles)
-            ? response.result.missingRuntimeFiles.map((item: unknown) => String(item || '')).filter(Boolean)
-            : [],
-          reason: response.result?.reason ? String(response.result.reason) : undefined
-        };
-      }
-      return {
-        speechToTextAvailable: false,
-        textToSpeechAvailable: false,
-        dialogueAvailable: false,
-        conversationAvailable: false,
-        missingRuntimeFiles: [],
-        reason: response?.message || 'Electron AI runtime is not available.'
-      };
-    }
-
-    return null;
-  }
-
-  private blobToDataUrl(blob: Blob): Promise<string> {
+  private blobToBase64(blob: Blob): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        resolve(result.slice(result.indexOf(',') + 1));
+      };
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
     });
-  }
-
-  private dataUrlToBlob(dataUrl: string, fallbackMimeType: string): Blob {
-    const match = /^data:([^;,]+)?(;base64)?,(.*)$/i.exec(String(dataUrl || ''));
-    if (!match) {
-      throw new Error('Invalid AI voice audio data.');
-    }
-    const mimeType = match[1] || fallbackMimeType;
-    const isBase64 = !!match[2];
-    const payload = match[3] || '';
-    const binary = isBase64 ? atob(payload) : decodeURIComponent(payload);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) {
-      bytes[index] = binary.charCodeAt(index);
-    }
-    return new Blob([bytes], { type: mimeType });
   }
 }

@@ -165,7 +165,7 @@
       class="reader-element"
       [class.companion-element]="companion"
       [class.focus-element]="element.type === 'focus'"
-      [class.focus-visible]="reader.focusMode && element.type === 'focus'"
+      [class.focus-visible]="reader.focusMode && element.type === 'focus' && !reader.expandedFocusElement"
       [class.dot-element]="element.type === 'guideDot'"
       [class.dot-disabled]="element.type === 'guideDot' && !reader.isGuideDotEnabled(element, page)"
       [class.dot-paused]="element.id === reader.pausedGuideElementId"
@@ -207,7 +207,7 @@
       (click)="reader.activateElement(element, $event, page)">
       <img *ngIf="element.type === 'image'" [src]="reader.getElementAssetUrl(element)" [alt]="reader.getElementText(element)">
       <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
-      <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+      <span *ngIf="element.type === 'focus' && !reader.expandedFocusElement" class="focus-label"></span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
       <img *ngIf="element.type === 'tracingTask'" class="book-marker-icon tracing-marker-icon" src="assets/images/book/pencil.png" alt="Tracing task">
@@ -299,6 +299,15 @@
         aria-label="Tracing point">
       </button>
     </ng-container>
+
+    <span
+      *ngFor="let badge of reader.getTracingPartBadges(page); trackBy: reader.trackByTracingPartBadgeKey"
+      class="task-result-badge tracing-part-result-badge"
+      [class.task-result-correct]="badge.correct"
+      [class.task-result-incorrect]="!badge.correct"
+      [style.left.%]="badge.x * 100"
+      [style.top.%]="badge.y * 100"
+      aria-hidden="true">{{ badge.correct ? '✓' : '✗' }}</span>
 
     <button
       type="button"

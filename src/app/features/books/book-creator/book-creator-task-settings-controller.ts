@@ -10,6 +10,7 @@ import {
   getMatchTaskSide,
   getPageWordBank
 } from '../../../core/book-tasks';
+import { getTracingParts } from '../../../core/book-tracing';
 
 export class BookCreatorTaskSettingsController {
   constructor(private readonly creator: any) {}
@@ -126,10 +127,18 @@ export class BookCreatorTaskSettingsController {
     element.data['correct'] = correct;
   }
 
-  setTracingTaskCorrect(element: BookElement, correct: boolean): void {
-    if (element.type !== 'tracingTask' || element.data['correct'] === correct) return;
+  setTracingPartGraded(element: BookElement, partId: string, graded: boolean): void {
+    if (element.type !== 'tracingTask') return;
+    const part = getTracingParts(element).find((item) => item.id === partId);
+    if (!part || part.graded === graded) return;
     this.creator.captureHistory();
-    element.data['correct'] = correct;
+    part.graded = graded;
+  }
+
+  setTracingAnyOrder(element: BookElement, anyOrder: boolean): void {
+    if (element.type !== 'tracingTask' || element.data['anyOrder'] === anyOrder) return;
+    this.creator.captureHistory();
+    element.data['anyOrder'] = anyOrder;
   }
 
   getMatchTaskGroupIds(): string[] {

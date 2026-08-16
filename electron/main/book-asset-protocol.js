@@ -70,7 +70,9 @@ function createBookAssetProtocol({
         if (!resolved) {
           return new Response('Book asset not found', { status: 404 });
         }
-        return net.fetch(pathToFileURL(resolved).toString());
+        return net.fetch(pathToFileURL(resolved).toString(), {
+          headers: request.headers
+        });
       } catch {
         return new Response('Invalid book asset URL', { status: 400 });
       }

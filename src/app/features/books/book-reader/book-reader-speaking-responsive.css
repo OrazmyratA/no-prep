@@ -24,26 +24,4 @@
   .speaking-ai-session-row {
     grid-template-columns: 1.9rem minmax(0, 1fr) 1.9rem 1.9rem;
   }
-
-  .ai-pack-manager-backdrop {
-    padding: 0.45rem;
-  }
-
-  .ai-pack-manager {
-    max-height: calc(100vh - 0.9rem);
-    border-radius: 0.8rem;
-  }
-
-  .ai-pack-readiness {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ai-pack-card {
-    grid-template-columns: minmax(0, 1fr) 2rem;
-  }
-
-  .ai-pack-feature-tags {
-    grid-column: 1 / -1;
-    justify-content: flex-start;
-  }
 }

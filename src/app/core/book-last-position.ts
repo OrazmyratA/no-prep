@@ -19,7 +19,8 @@ export class BookLastPositionService {
     pageSource: 'main' | 'workbook',
     pageId: string,
     workbookId: string | undefined,
-    profileId = this.defaultProfileId
+    profileId = this.defaultProfileId,
+    lessonId?: string
   ): Promise<void> {
     const key = this.makeKey(bookId, profileId);
     const record: BookLastPosition = {
@@ -29,6 +30,7 @@ export class BookLastPositionService {
       pageSource,
       workbookId,
       pageId,
+      lessonId,
       updatedAt: new Date().toISOString()
     };
     await db.bookLastPosition.put(record);
