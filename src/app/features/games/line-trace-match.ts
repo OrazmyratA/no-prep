@@ -306,11 +306,12 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     if (moved && this.dragPoints.length < this.maxTracePoints) {
       this.dragPoints.push(point);
 
-      // Bail out the instant the live trace crosses an existing line, rather
-      // than waiting for commit — otherwise a wandering/looping path can end
-      // up encircling a still-unmatched tile, permanently trapping it (any
-      // future path to it would also have to cross this one).
-      if (this.noCrossing && this.newSegmentCrossesExistingLine()) {
+      // Bail out the instant the live trace crosses an existing line — or
+      // itself — rather than waiting for commit. Without the self-crossing
+      // check, a player could loop their own in-progress trace around a
+      // still-unmatched tile, permanently trapping it (any future path to
+      // it would also have to cross this loop).
+      if (this.noCrossing && (this.newSegmentCrossesExistingLine() || this.newSegmentCrossesOwnPath())) {
         this.cancelDragOnCrossing(event);
         return;
       }
@@ -331,6 +332,22 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
       for (let j = 0; j < linePoints.length - 1; j++) {
         if (this.segmentsIntersect(p1, p2, linePoints[j], linePoints[j + 1])) return true;
       }
+    }
+    return false;
+  }
+
+  // Tests the freshly-added segment against the rest of the SAME in-progress
+  // drag path, so a player can't loop their own trace back around on itself.
+  // The immediately preceding segment is skipped since it shares an endpoint
+  // with the new one (touching there is normal continuation, not a crossing).
+  private newSegmentCrossesOwnPath(): boolean {
+    const points = this.dragPoints;
+    const n = points.length;
+    if (n < 4) return false;
+    const p1 = points[n - 2];
+    const p2 = points[n - 1];
+    for (let j = 0; j < n - 3; j++) {
+      if (this.segmentsIntersect(p1, p2, points[j], points[j + 1])) return true;
     }
     return false;
   }
@@ -474,7 +491,11 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     const path = this.resolvePath(source, target, rawPath);
     if (path.length < 2) return;
 
-    if (this.noCrossing && this.crossesExistingLine(path)) {
+    // resolvePath() snaps the endpoints onto the tile centers after the drag
+    // already ended, which can introduce a segment the live per-point check
+    // never saw — so self-intersection needs a final check here too, not
+    // just against other matched lines.
+    if (this.noCrossing && (this.crossesExistingLine(path) || this.pathSelfIntersects(path))) {
       this.resetBoard();
       return;
     }
@@ -559,6 +580,19 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     for (let i = 0; i < a.length - 1; i++) {
       for (let j = 0; j < b.length - 1; j++) {
         if (this.segmentsIntersect(a[i], a[i + 1], b[j], b[j + 1])) return true;
+      }
+    }
+    return false;
+  }
+
+  // Checks a single path against itself, so a loop that would encircle an
+  // unmatched tile is rejected even if it only came together once the
+  // snapped endpoints were added (see tryCommitMatch). Adjacent segments
+  // are skipped since they share an endpoint by construction, not a crossing.
+  private pathSelfIntersects(path: Point[]): boolean {
+    for (let i = 0; i < path.length - 1; i++) {
+      for (let j = i + 2; j < path.length - 1; j++) {
+        if (this.segmentsIntersect(path[i], path[i + 1], path[j], path[j + 1])) return true;
       }
     }
     return false;

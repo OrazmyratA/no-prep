@@ -353,9 +353,10 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    if (tube.balls.length >= this.ballsPerColor) {
-      this.rejectMoveToFullTube(team);
-    }
+    // Reject any disallowed target — a full tube or (since canMoveTo now
+    // checks color) a top-ball color mismatch — otherwise the click is
+    // silently swallowed and the lifted ball stays stuck selected forever.
+    this.rejectInvalidMove(team);
   }
 
   addTube(team: BallSortTeam) {
@@ -479,7 +480,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     if (tube) this.markTubeBounce(team, tube);
   }
 
-  private rejectMoveToFullTube(team: BallSortTeam) {
+  private rejectInvalidMove(team: BallSortTeam) {
     const sourceIndex = team.selected?.tubeIndex;
     if (sourceIndex === undefined) return;
     this.dropSelectedBall(team, sourceIndex, this.errorSound);
@@ -780,10 +781,9 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     }, 2000);
   }
 
-  private canMoveTo(ball: Ball, targetTube: Tube): boolean {
+  private canMoveTo(_ball: Ball, targetTube: Tube): boolean {
     if (targetTube.balls.length >= this.ballsPerColor) return false;
-    const topBall = targetTube.balls[targetTube.balls.length - 1];
-    return !topBall || topBall.groupId === ball.groupId;
+    return true;
   }
 
   private isCompleteTube(tube: Tube): boolean {

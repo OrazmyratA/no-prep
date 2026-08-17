@@ -153,7 +153,8 @@ export class BookReaderDrawingCanvasController {
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.strokeStyle = stroke.color;
-    context.globalAlpha = stroke.kind === 'highlighter' ? 0.36 : 1;
+    context.globalCompositeOperation = stroke.kind === 'highlighter' ? 'multiply' : 'source-over';
+    context.globalAlpha = stroke.kind === 'highlighter' ? 0.58 : 1;
     context.moveTo(stroke.points[0].x * canvas.width, stroke.points[0].y * canvas.height);
     for (const point of stroke.points.slice(1)) {
       context.lineTo(point.x * canvas.width, point.y * canvas.height);

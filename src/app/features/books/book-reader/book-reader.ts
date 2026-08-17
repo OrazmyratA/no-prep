@@ -565,6 +565,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.navigationController.setZoom(value);
   }
 
+  onReaderWheel(event: WheelEvent): void {
+    this.navigationController.onReaderWheel(event);
+  }
+
   rotateCurrentPage(): void {
     this.navigationController.rotateCurrentPage();
   }

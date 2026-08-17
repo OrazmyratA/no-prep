@@ -390,12 +390,12 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
           ctx.lineTo(p.x * this.deviceScale, p.y * this.deviceScale);
         }
       });
-      ctx.lineWidth = this.brushRadius * 1.3 * this.deviceScale;
+      ctx.lineWidth = this.brushRadius * 0.5 * this.deviceScale;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.strokeStyle = '#facc15';
-      ctx.shadowColor = 'rgba(250, 204, 21, 0.8)';
-      ctx.shadowBlur = 12 * this.deviceScale;
+      ctx.shadowColor = 'rgba(250, 204, 21, 0.6)';
+      ctx.shadowBlur = 2 * this.deviceScale;
       ctx.stroke();
       ctx.restore();
     }

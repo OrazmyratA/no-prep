@@ -153,10 +153,13 @@ export class BookCreatorPageImportController {
     this.creator.book = updated;
     this.creator.activePageSource = 'main';
     this.creator.activeWorkbookId = null;
-    this.creator.selectedPageIndex = 0;
+    // Uploading always puts the book's progress-map page first, so landing on index 0
+    // shows that instead of the PDF the teacher just added — jump to the PDF itself.
+    const firstPdfPageIndex = updated.pages.findIndex((page: { type: string }) => page.type === 'pdf');
+    this.creator.selectedPageIndex = firstPdfPageIndex >= 0 ? firstPdfPageIndex : 0;
     this.creator.selectedWorkbookPageIndex = 0;
     this.creator.linkingMainPageId = null;
-    this.creator.pageJumpValue = '1';
+    this.creator.pageJumpValue = String(this.creator.selectedPageIndex + 1);
     this.creator.markBookClean();
     this.creator.clearHistory();
     this.creator.refreshSelectedPageRender();

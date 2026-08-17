@@ -16,7 +16,7 @@
     </div>
   </div>
 
-  <div *ngIf="book" class="creator-workspace" [class.page-strip-collapsed]="pageStripCollapsed" [class.inspector-collapsed]="inspectorCollapsed">
+  <div *ngIf="book" class="creator-workspace" [class.page-strip-collapsed]="pageStripCollapsed" [class.inspector-collapsed]="inspectorCollapsed" [style.--creator-side-right.px]="inspectorWidthPx">
     <div
       class="mobile-panel-backdrop"
       *ngIf="pageStripOpen || inspectorOpen"

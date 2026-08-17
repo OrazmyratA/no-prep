@@ -19,8 +19,8 @@
 }
 
 .media-card {
-  width: min(420px, 76vw);
-  height: clamp(140px, 24vh, 220px);
+  width: min(480px, 84vw);
+  height: clamp(160px, 28vh, 260px);
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.45s ease;

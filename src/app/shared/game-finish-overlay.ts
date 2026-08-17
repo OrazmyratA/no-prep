@@ -9,6 +9,7 @@ import {
   OnDestroy,
   Output
 } from '@angular/core';
+import confetti from 'canvas-confetti';
 
 export interface GameFinishRanking {
   position?: number;
@@ -45,28 +46,31 @@ export type ConfettiInstance = ((options?: ConfettiOptions) => Promise<unknown> 
   reset: () => void;
 };
 
-type CanvasConfettiApi = ConfettiInstance & {
-  create: (canvas: HTMLCanvasElement, options?: {
-    disableForReducedMotion?: boolean;
-    resize?: boolean;
-    useWorker?: boolean;
-  }) => ConfettiInstance;
-};
-
-interface CanvasConfettiModule {
-  default?: CanvasConfettiApi;
+// canvas-confetti is bundled directly (not dynamically imported) so it loads
+// as part of this already-lazy chunk rather than through a second, separate
+// runtime import() — in Electron's packaged (file://) build, that extra
+// dynamic-import hop was unreliable and silently failed, leaving the finish
+// screen working but with no confetti.
+//
+// The library's default export also lazily creates a Web Worker from a blob:
+// URL the first time it's called (useWorker defaults to true internally).
+// Electron's CSP (script-src 'self', no worker-src) silently blocks that
+// blob-URL worker — the confetti canvas is already handed off to it, so
+// nothing ever draws, with no error surfacing to our try/catch. Using
+// confetti.create() with useWorker explicitly false forces main-thread
+// rendering instead, avoiding the worker path entirely.
+let mainThreadConfetti: ConfettiInstance | null = null;
+function getMainThreadConfetti(): ConfettiInstance {
+  if (!mainThreadConfetti) {
+    mainThreadConfetti = confetti.create(undefined, { useWorker: false, resize: true }) as unknown as ConfettiInstance;
+  }
+  return mainThreadConfetti;
 }
 
 @Injectable({ providedIn: 'root' })
 export class GameFinishConfettiService {
   async create(): Promise<ConfettiInstance> {
-    const confettiModule = await import('canvas-confetti') as CanvasConfettiModule;
-    const confettiApi = confettiModule.default;
-    if (typeof confettiApi !== 'function') {
-      throw new Error('canvas-confetti launcher is unavailable.');
-    }
-
-    return confettiApi;
+    return getMainThreadConfetti();
   }
 }
 

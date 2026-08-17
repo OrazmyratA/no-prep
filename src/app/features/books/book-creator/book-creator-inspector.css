@@ -27,6 +27,36 @@
   transition: opacity 0.2s ease, transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease;
 }
 
+.inspector-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0.6rem;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 6;
+}
+
+.inspector-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.2rem;
+  height: 2.4rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(120, 113, 108, 0.24);
+  transition: background 0.16s ease, height 0.16s ease;
+}
+
+.inspector-resize-handle:hover::after,
+.inspector-resize-handle:active::after {
+  background: rgba(37, 99, 235, 0.55);
+  height: 3.2rem;
+}
+
 .inspector-collapsed-rail {
   position: sticky;
   top: 0;
@@ -343,6 +373,17 @@
 .speaking-question-list {
   display: grid;
   gap: 0.32rem;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.speaking-ai-image-field {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.speaking-ai-image-label {
   color: #475569;
   font-size: 0.78rem;
   font-weight: 800;
@@ -1147,16 +1188,22 @@
 }
 
 .guide-track-timeline {
-  position: relative;
-  min-height: 2rem;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 0.1rem;
   padding-block: 0.22rem;
   cursor: pointer;
   touch-action: none;
 }
 
-.guide-track-timeline input[type='range'] {
+.guide-track-scrubber {
+  position: relative;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+}
+
+.guide-track-scrubber input[type='range'] {
   position: relative;
   z-index: 2;
   width: 100%;
@@ -1165,6 +1212,46 @@
   cursor: pointer;
   pointer-events: none;
   touch-action: none;
+}
+
+/* The native thumb follows the browser's own edge-compensated formula, not a
+   plain time/duration percentage, so it drifts out of sync with the pin
+   marker (which is plain-percentage). Hide the thumb and use a custom
+   playhead below instead, positioned with the exact same math as the pin so
+   the two always agree; the accent-colored track fill stays as the at-a-
+   glance progress bar. */
+.guide-track-scrubber input[type='range']::-webkit-slider-thumb {
+  opacity: 0;
+}
+
+.guide-track-scrubber input[type='range']::-moz-range-thumb {
+  opacity: 0;
+}
+
+.guide-track-playhead {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.62rem;
+  height: 0.62rem;
+  transform: translate(-50%, -50%);
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: #2563eb;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.32);
+  pointer-events: none;
+  z-index: 3;
+  will-change: left;
+}
+
+.guide-track-timer {
+  align-self: flex-end;
+  font-size: 0.64rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: #94a3b8;
+  pointer-events: none;
 }
 
 .guide-pitch-row {
@@ -1298,6 +1385,10 @@
 }
 
 @media (max-width: 960px) {
+  .inspector-resize-handle {
+    display: none;
+  }
+
   .inspector,
   .inspector-collapsed-rail {
     grid-column: 1;

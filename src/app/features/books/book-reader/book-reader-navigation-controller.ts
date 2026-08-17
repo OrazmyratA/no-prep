@@ -1,5 +1,6 @@
 import { createTextImageDataUrl } from './book-reader-annotation-utils';
 import { getLessonPageRefs, ProgressMapLesson, ProgressMapUnit } from '../../../core/book.model';
+import { clamp } from './book-reader-geometry';
 
 export class BookReaderNavigationController {
   constructor(private readonly reader: any) {}
@@ -191,6 +192,16 @@ export class BookReaderNavigationController {
     this.reader.updateReaderSpreadWidth(() => {
       if (this.reader.zoom > 1) this.reader.centerReaderZoom();
     });
+  }
+
+  // Trackpad pinch gestures (and ctrl+scroll-wheel) arrive as wheel events
+  // with ctrlKey set by the browser — everything else is left to native
+  // scroll/pan behavior.
+  onReaderWheel(event: WheelEvent): void {
+    if (!event.ctrlKey || !this.reader.book) return;
+    event.preventDefault();
+    const step = clamp(-event.deltaY * 0.0018, -0.35, 0.35);
+    this.setZoom(this.reader.zoom + step);
   }
 
   rotateCurrentPage(): void {

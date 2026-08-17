@@ -161,8 +161,15 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     if (token !== this.renderToken) return;
 
     const scale = Math.max(0.25, this.renderScale || 1);
+    // baseViewport intentionally omits `rotation` so pdf.js applies the PDF page's own
+    // embedded /Rotate by itself — this is what gets reported as the page's natural size.
     const baseViewport = page.getViewport({ scale });
-    const viewport = page.getViewport({ scale, rotation: this.normalizeRotation(this.rotation) });
+    // `rotation` in getViewport() is an absolute override, not an adjustment — passing only
+    // our own manual rotation here would discard the PDF's /Rotate entirely. Many PDFs
+    // (scanned pages, landscape spreads split into portrait pages, etc.) rely on that flag
+    // to display right side up, so the actual render has to add our rotation on top of it.
+    const renderRotation = this.normalizeRotation((page.rotate || 0) + this.normalizeRotation(this.rotation));
+    const viewport = page.getViewport({ scale, rotation: renderRotation });
     const canvas = this.canvasRef.nativeElement;
     const context = canvas.getContext('2d');
     if (!context) {

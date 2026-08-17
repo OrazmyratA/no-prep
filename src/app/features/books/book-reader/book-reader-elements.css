@@ -54,12 +54,12 @@
 }
 
 .highlighter-stroke-svg {
-  opacity: 0.42;
+  opacity: 0.58;
   mix-blend-mode: multiply;
 }
 
 .highlighter-mark {
-  opacity: 0.42;
+  opacity: 0.58;
   mix-blend-mode: multiply;
 }
 

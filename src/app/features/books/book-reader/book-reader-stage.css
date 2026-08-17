@@ -46,7 +46,8 @@
 }
 
 .reader-stage.zoomed .reader-canvas-shell {
-  justify-self: center;
+  align-self: start;
+  justify-self: start;
   width: max-content;
   min-width: 100%;
   max-width: none;
@@ -75,13 +76,13 @@
 }
 
 .reader-spread.zoomed {
-  align-self: center;
-  justify-self: center;
+  align-self: start;
+  justify-self: start;
 }
 
 .reader-spread.two-page.zoomed {
   align-self: start;
-  justify-self: center;
+  justify-self: start;
 }
 
 .page-frame {

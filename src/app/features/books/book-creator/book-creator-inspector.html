@@ -14,6 +14,12 @@
   <img class="drawer-toggle-icon inspector-hide-icon" src="assets/images/book/sidebar.png" alt="">
 </button>
 <aside class="inspector" [class.open]="creator.inspectorOpen" *ngIf="!creator.inspectorCollapsed">
+  <div
+    class="inspector-resize-handle"
+    (pointerdown)="creator.startInspectorResize($event)"
+    title="Drag to resize"
+    aria-hidden="true">
+  </div>
   <h2 *ngIf="!creator.selectedElement">{{ creator.activePageLabel }}</h2>
   <div class="page-title-editor" *ngIf="!creator.selectedElement">
     <input
@@ -563,6 +569,16 @@
           (blur)="creator.commitHistoryCapture()"
           placeholder="en, tr, ar...">
       </label>
+      <div class="speaking-ai-image-field">
+        <span class="speaking-ai-image-label">Topic image (optional)</span>
+        <div class="guide-pin-image" *ngIf="creator.getSpeakingAiImageUrl(element) as speakingAiImageUrl">
+          <img [src]="speakingAiImageUrl" alt="">
+        </div>
+        <app-image-uploader
+          [contextKey]="element.id"
+          (imageSelected)="creator.onSpeakingAiImageSelected($event, element)">
+        </app-image-uploader>
+      </div>
       <label>
         Teacher prompt
         <textarea
@@ -648,26 +664,35 @@
             (pointerdown)="creator.startGuideTrackSeekDrag($event, element, track)"
             (click)="$event.stopPropagation()"
             (dragstart)="$event.preventDefault()">
-            <input
-              type="range"
-              min="0"
-              [max]="creator.getGuideTrackDuration(track)"
-              step="0.01"
-              [value]="creator.getGuideTrackCurrentTime(track)"
-              (click)="$event.stopPropagation()"
-              aria-label="Audio track progress">
-            <button
-              *ngFor="let pin of track.pins"
-              type="button"
-              draggable="false"
-              class="guide-timeline-pin"
-              [class.selected]="pin.id === creator.selectedGuidePinId"
-              [style.left.%]="pin.time / creator.getGuideTrackDuration(track) * 100"
-              (click)="creator.selectGuidePin(element, track, pin, $event)"
-              (pointerdown)="creator.startGuideTimelinePinDrag($event, element, track, pin)"
-              [title]="creator.formatGuideTime(pin.time)"
-              aria-label="Timed teacher position">
-            </button>
+            <div class="guide-track-scrubber">
+              <input
+                type="range"
+                min="0"
+                [max]="creator.getGuideTrackDuration(track)"
+                step="0.01"
+                [value]="creator.getGuideTrackCurrentTime(track)"
+                (click)="$event.stopPropagation()"
+                aria-label="Audio track progress">
+              <span
+                class="guide-track-playhead"
+                [style.left.%]="creator.getGuideTrackCurrentTime(track) / creator.getGuideTrackDuration(track) * 100"
+                aria-hidden="true">
+              </span>
+              <button
+                *ngIf="creator.getSelectedTimelinePin(track) as pin"
+                type="button"
+                draggable="false"
+                class="guide-timeline-pin selected"
+                [style.left.%]="pin.time / creator.getGuideTrackDuration(track) * 100"
+                (click)="creator.selectGuidePin(element, track, pin, $event)"
+                (pointerdown)="creator.startGuideTimelinePinDrag($event, element, track, pin)"
+                [title]="creator.formatGuideTime(pin.time)"
+                aria-label="Timed teacher position">
+              </button>
+            </div>
+            <span class="guide-track-timer" aria-hidden="true">
+              {{ creator.formatGuideTime(creator.getGuideTrackCurrentTime(track)) }} / {{ creator.formatGuideTime(creator.getGuideTrackDuration(track)) }}
+            </span>
           </div>
           <div class="guide-pitch-row" *ngIf="track.id === creator.selectedGuideTrackId" (click)="$event.stopPropagation()">
             <span class="guide-pitch-label">♂</span>

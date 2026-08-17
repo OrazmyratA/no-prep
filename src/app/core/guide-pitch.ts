@@ -20,16 +20,31 @@ export class GuidePitchService {
   ): Promise<() => void> {
     if (!pitchSemitones) return () => {};
 
+    let ctx: AudioContext;
+    let source: MediaElementAudioSourceNode;
     try {
-      const ctx = this.getContext();
+      ctx = this.getContext();
+      source = ctx.createMediaElementSource(audio);
+    } catch {
+      return () => {};
+    }
+
+    // createMediaElementSource() permanently reroutes this <audio> element's output
+    // into the Web Audio graph — from here on it only makes sound through whatever
+    // this node is connected to. Connect straight to the destination immediately so
+    // playback is never silent, then upgrade to the pitch-shifted path below if it
+    // succeeds; if the worklet fails to load, this direct connection is what's left.
+    source.connect(ctx.destination);
+
+    try {
       await this.ensureRegistered(ctx);
       await ctx.resume();
 
-      const source = ctx.createMediaElementSource(audio);
       const node = new SoundTouchNode({ context: ctx });
       node.pitchSemitones.value = pitchSemitones;
       node.playbackRate.value = playbackRate;
 
+      source.disconnect(ctx.destination);
       source.connect(node);
       node.connect(ctx.destination);
 
@@ -38,7 +53,9 @@ export class GuidePitchService {
         try { node.disconnect(); } catch { /* already disconnected */ }
       };
     } catch {
-      return () => {};
+      return () => {
+        try { source.disconnect(); } catch { /* already disconnected */ }
+      };
     }
   }
 

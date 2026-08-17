@@ -13,6 +13,8 @@ import { showAppNotification } from '../../../core/notification';
 export class BookReaderSpeakingAiController {
   constructor(private readonly reader: any) {}
 
+  private readonly imageDataUrlCache = new Map<string, string>();
+
   isSpeakingAiEnabled(element: BookElement, page = this.reader.currentPage): boolean {
     if (!page || element.type !== 'speakingAi') return false;
     if (this.isPageInActiveSpread(page)) {
@@ -76,6 +78,7 @@ export class BookReaderSpeakingAiController {
       let spokenResponse = '';
       try {
         const config = this.buildSpeakingTaskConfig(taskElement);
+        config.imageDataUrl = await this.getSpeakingAiImageDataUrl(taskElement);
         const dialogue = await this.reader.aiSpeakingRuntime.generateDialogueResponse({
           config,
           history: this.buildSpeakingDialogueHistory(attempt, studentText),
@@ -255,6 +258,34 @@ export class BookReaderSpeakingAiController {
       sampleAnswer: String(element.data?.['sampleAnswer'] || ''),
       maxDurationSeconds: 0
     };
+  }
+
+  private async getSpeakingAiImageDataUrl(element: BookElement): Promise<string> {
+    const imageSrc = String(element.data?.['imageSrc'] || '');
+    if (!imageSrc) return '';
+    const cached = this.imageDataUrlCache.get(imageSrc);
+    if (cached) return cached;
+    try {
+      const url = this.reader.getCachedAssetUrl(imageSrc);
+      if (!url) return '';
+      const response = await fetch(url);
+      if (!response.ok) return '';
+      const blob = await response.blob();
+      const dataUrl = await this.blobToDataUrl(blob);
+      this.imageDataUrlCache.set(imageSrc, dataUrl);
+      return dataUrl;
+    } catch {
+      return '';
+    }
+  }
+
+  private blobToDataUrl(blob: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
   }
 
   buildSpeakingDialogueHistory(currentAttempt: BookSpeakingAttempt, latestStudentText: string): AiSpeakingTurn[] {

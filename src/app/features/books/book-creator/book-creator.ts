@@ -103,6 +103,11 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   pageStripCollapsed = false;
   inspectorOpen = false;
   inspectorCollapsed = false;
+  readonly inspectorMinWidthPx = 260;
+  readonly inspectorMaxWidthPx = 520;
+  inspectorWidthPx = 292;
+  private readonly inspectorWidthStorageKey = 'creatorInspectorWidthPx';
+  private inspectorResizeState: { startClientX: number; startWidth: number } | null = null;
   loading = true;
   selectedPdfUrl = '';
   pageAspectRatio = '3 / 4';
@@ -294,6 +299,7 @@ Tomorrow I will help my mom.`;
   ) {
     this.progress$ = this.bookLibrary.progress$;
     this.topics$ = this.db.topics$;
+    this.inspectorWidthPx = this.readStoredInspectorWidth();
   }
 
   private readonly markController = new BookCreatorMarkController(this);
@@ -402,7 +408,13 @@ Tomorrow I will help my mom.`;
     this.loading = false;
     this.refreshCreatorView();
     if (created) {
-      await this.ngZone.run(() => this.router.navigate(['/books', created.id, 'edit']));
+      // The new book's progress-map page always lands first, so navigate straight to
+      // the uploaded PDF's own first page instead of landing on the blank map.
+      const fullBook = await this.bookLibrary.getBook(created.id);
+      const firstPdfPage = fullBook?.pages.find((page) => page.type === 'pdf');
+      await this.ngZone.run(() => this.router.navigate(['/books', created.id, 'edit'], {
+        state: firstPdfPage ? { pageId: firstPdfPage.id, pageSource: 'main' } : undefined
+      }));
     }
   }
 
@@ -983,6 +995,14 @@ Tomorrow I will help my mom.`;
     this.speakingPreviewController.updateSpeakingAiField(element, field, value);
   }
 
+  async onSpeakingAiImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
+    await this.speakingPreviewController.onSpeakingAiImageSelected(blob, element);
+  }
+
+  getSpeakingAiImageUrl(element: BookElement): string {
+    return this.speakingPreviewController.getSpeakingAiImageUrl(element);
+  }
+
   async previewSpeakingAi(element: BookElement): Promise<void> {
     await this.speakingPreviewController.previewSpeakingAi(element);
   }
@@ -1323,8 +1343,26 @@ Tomorrow I will help my mom.`;
     };
   }
 
+  startInspectorResize(event: PointerEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    (event.currentTarget as HTMLElement | null)?.setPointerCapture?.(event.pointerId);
+    document.body.classList.add('creator-panel-resizing');
+    this.inspectorResizeState = { startClientX: event.clientX, startWidth: this.inspectorWidthPx };
+  }
+
   @HostListener('document:pointermove', ['$event'])
   onDocumentPointerMove(event: PointerEvent): void {
+    if (this.inspectorResizeState) {
+      event.preventDefault();
+      const pointerEvent = this.getLatestPointerEvent(event);
+      const dx = this.inspectorResizeState.startClientX - pointerEvent.clientX;
+      const maxWidthForViewport = Math.max(this.inspectorMinWidthPx, window.innerWidth - 480);
+      const maxWidth = Math.min(this.inspectorMaxWidthPx, maxWidthForViewport);
+      this.inspectorWidthPx = this.clamp(this.inspectorResizeState.startWidth + dx, this.inspectorMinWidthPx, maxWidth);
+      this.updateCreatorCanvasWidth();
+      return;
+    }
     if (this.creatorInkState) {
       event.preventDefault();
       const events = typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [event];
@@ -1448,6 +1486,11 @@ Tomorrow I will help my mom.`;
 
   @HostListener('document:pointerup', ['$event'])
   onDocumentPointerUp(event: PointerEvent): void {
+    if (this.inspectorResizeState) {
+      this.inspectorResizeState = null;
+      document.body.classList.remove('creator-panel-resizing');
+      this.persistInspectorWidth();
+    }
     if (this.creatorInkState) {
       this.markController.finishCreatorInk(event);
     }
@@ -1477,6 +1520,10 @@ Tomorrow I will help my mom.`;
 
   @HostListener('document:pointercancel')
   onDocumentPointerCancel(): void {
+    if (this.inspectorResizeState) {
+      this.inspectorResizeState = null;
+      document.body.classList.remove('creator-panel-resizing');
+    }
     this.swipeDir?.cancel();
     if (this.creatorInkState) {
       this.markController.cancelCreatorInk();
@@ -1993,6 +2040,10 @@ Tomorrow I will help my mom.`;
     return track?.pins.find((pin) => pin.id === this.selectedGuidePinId) ?? null;
   }
 
+  getSelectedTimelinePin(track: GuideAudioTrack): GuideTimelinePin | null {
+    return track.pins.find((pin) => pin.id === this.selectedGuidePinId) ?? null;
+  }
+
   getGuidePinSequence(element: BookElement) {
     return getOrderedGuidePins(element);
   }
@@ -2325,6 +2376,23 @@ Tomorrow I will help my mom.`;
 
   private clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
+  }
+
+  private readStoredInspectorWidth(): number {
+    try {
+      const raw = Number(localStorage.getItem(this.inspectorWidthStorageKey));
+      return Number.isFinite(raw) && raw > 0
+        ? this.clamp(raw, this.inspectorMinWidthPx, this.inspectorMaxWidthPx)
+        : this.inspectorWidthPx;
+    } catch {
+      return this.inspectorWidthPx;
+    }
+  }
+
+  private persistInspectorWidth(): void {
+    try {
+      localStorage.setItem(this.inspectorWidthStorageKey, String(Math.round(this.inspectorWidthPx)));
+    } catch { /* storage unavailable */ }
   }
 
   private createTextImageDataUrl(text: string, color: string): string {

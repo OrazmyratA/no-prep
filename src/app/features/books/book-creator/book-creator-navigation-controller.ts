@@ -59,6 +59,16 @@ export class BookCreatorNavigationController {
   }
 
   onEditorWheel(event: WheelEvent): void {
+    // Trackpad pinch gestures (and ctrl+scroll-wheel) arrive as wheel events
+    // with ctrlKey set by the browser — treat those as zoom regardless of
+    // current zoom level, before the page-turn/pan logic below runs.
+    if (event.ctrlKey) {
+      if (!this.creator.book) return;
+      event.preventDefault();
+      const step = this.creator.clamp(-event.deltaY * 0.0018, -0.35, 0.35);
+      this.setCreatorZoom(this.creator.creatorZoom + step);
+      return;
+    }
     if (this.creator.creatorZoom > 1) return;
     if (!this.creator.book || Math.abs(event.deltaY) < 18) return;
     event.preventDefault();

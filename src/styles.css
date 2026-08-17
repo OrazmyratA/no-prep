@@ -8,6 +8,11 @@ app-root {
   height: 100%;
 }
 
+body.creator-panel-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 .game-keyboard-hint-badge {
   position: absolute;
   top: 0.35rem;

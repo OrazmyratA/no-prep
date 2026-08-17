@@ -33,7 +33,8 @@
         [class.two-page]="twoPageMode && companionPage && !expandedFocusElement"
         [class.zoomed]="zoom > 1"
         [class.focus-crop-active]="expandedFocusElement"
-        [style.width.px]="readerSpreadWidthPx">
+        [style.width.px]="readerSpreadWidthPx"
+        (wheel)="onReaderWheel($event)">
         <app-book-reader-page-frame
           [reader]="readerContext"
           [page]="currentPage"

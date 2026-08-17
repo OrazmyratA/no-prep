@@ -141,7 +141,7 @@ export class BookCreatorMarkController {
     context.save();
     context.scale(ratio, ratio);
     context.globalCompositeOperation = state.kind === 'highlighter' ? 'multiply' : 'source-over';
-    context.globalAlpha = state.kind === 'highlighter' ? 0.42 : 1;
+    context.globalAlpha = state.kind === 'highlighter' ? 0.58 : 1;
     context.strokeStyle = this.getCreatorStrokeColor(state.kind);
     context.lineWidth = this.getCreatorStrokeWidth(state.kind);
     context.lineCap = 'round';
