@@ -1,4 +1,6 @@
-const GROQ_CHAT_MODEL = 'llama-3.3-70b-versatile';
+// Groq retired its Llama chat models (llama-3.3-70b-versatile, llama-3.1-8b-instant
+// both now 404 model_not_found) — switched to their hosted GPT-OSS model instead.
+const GROQ_CHAT_MODEL = 'openai/gpt-oss-120b';
 const GROQ_TRANSCRIBE_MODEL = 'whisper-large-v3-turbo';
 const GROQ_API_BASE = 'https://api.groq.com/openai/v1';
 
@@ -149,7 +151,10 @@ Never invent mistakes or achievements the student didn't actually make. Output o
         model: GROQ_CHAT_MODEL,
         messages: [{ role: 'system', content: systemPrompt }, ...messages],
         max_tokens: maxTokens,
-        temperature
+        temperature,
+        // GPT-OSS reasons internally before answering; keeping this low leaves enough
+        // of max_tokens for the actual reply instead of being spent on reasoning text.
+        reasoning_effort: 'low'
       })
     });
     const data = await response.json();

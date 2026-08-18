@@ -204,6 +204,11 @@
   transform: rotate(90deg);
 }
 
+.creator-content-page-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
 .icon-tool-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;

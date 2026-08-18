@@ -378,17 +378,6 @@
   font-weight: 800;
 }
 
-.speaking-ai-image-field {
-  display: grid;
-  gap: 0.32rem;
-}
-
-.speaking-ai-image-label {
-  color: #475569;
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
 .speaking-ai-settings input,
 .speaking-ai-settings textarea {
   width: 100%;

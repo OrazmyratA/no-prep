@@ -31,6 +31,7 @@ export class BookCreatorElementController {
     }
     this.creator.pruneUnusedWordBanks(page);
     this.creator.selectedElementId = null;
+    this.creator.cdr.detectChanges();
   }
 
   duplicateSelectedElement(): void {

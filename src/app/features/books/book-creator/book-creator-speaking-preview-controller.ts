@@ -13,27 +13,6 @@ export class BookCreatorSpeakingPreviewController {
     this.creator.markBookDirty();
   }
 
-  async onSpeakingAiImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
-    if (!this.creator.book || element.type !== 'speakingAi') return;
-    if (!blob) {
-      this.creator.captureHistory();
-      delete element.data['imageSrc'];
-      this.creator.markBookDirty();
-      return;
-    }
-    const dataUrl = await this.creator.blobToDataUrl(blob);
-    const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, 'speaking-ai');
-    if (!saved) return;
-    this.creator.captureHistory();
-    element.data['imageSrc'] = saved.relativePath;
-    this.creator.markBookDirty();
-  }
-
-  getSpeakingAiImageUrl(element: BookElement): string {
-    const imageSrc = element.type === 'speakingAi' ? String(element.data?.['imageSrc'] || '') : '';
-    return imageSrc ? this.creator.getCachedAssetUrl(imageSrc) : '';
-  }
-
   async previewSpeakingAi(element: BookElement): Promise<void> {
     if (element.type !== 'speakingAi') return;
     const token = ++this.creator.speakingPreviewToken;

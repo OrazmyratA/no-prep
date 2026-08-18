@@ -1,31 +1,4 @@
 <main #editorCanvasShell class="editor-canvas-shell" [class.zoomed]="creator.creatorZoom > 1">
-  <button
-    type="button"
-    class="creator-page-edge previous"
-    (click)="$event.stopPropagation(); creator.selectPage(creator.activePageIndex - 1)"
-    [disabled]="creator.activePageIndex <= 0"
-    [title]="'previousPage' | translate"
-    [attr.aria-label]="'previousPage' | translate">
-    <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
-  </button>
-  <button
-    type="button"
-    class="creator-page-edge next"
-    (click)="$event.stopPropagation(); creator.selectPage(creator.activePageIndex + 1)"
-    [disabled]="creator.activePageIndex >= creator.activePages.length - 1"
-    [title]="'nextPage' | translate"
-    [attr.aria-label]="'nextPage' | translate">
-    <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
-  </button>
-  <button
-    type="button"
-    class="creator-content-page-btn"
-    *ngIf="creator.hasContentPage() && creator.selectedPage?.type !== 'progressMap'"
-    (click)="$event.stopPropagation(); creator.goToContentPage()"
-    title="Go to content page"
-    aria-label="Go to content page">
-    <span class="creator-content-page-icon">&#128506;</span>
-  </button>
   <div class="editor-canvas-scroll-content">
     <div
       #editorCanvas

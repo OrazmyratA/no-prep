@@ -807,6 +807,11 @@ Tomorrow I will help my mom.`;
         this.duplicateSelectedElement();
         return;
       }
+      if (shortcutKey === 's') {
+        event.preventDefault();
+        if (this.book) void this.save();
+        return;
+      }
       return;
     }
 
@@ -887,6 +892,20 @@ Tomorrow I will help my mom.`;
     if (!element) return false;
     if (element.isContentEditable) return true;
     return !!element.closest('input, textarea, select, [contenteditable="true"]');
+  }
+
+  /**
+   * Selecting/dragging a canvas element calls event.preventDefault() on pointerdown (to stop
+   * native drag/text-selection), which as a side effect blocks the browser's native focus
+   * transfer too — so a form control left focused in the inspector (a size slider, topic
+   * dropdown, etc.) stays focused and keeps swallowing keydown shortcuts like Delete via
+   * isKeyboardEditingTarget, even though the user is now clearly interacting with the canvas.
+   */
+  private releaseStaleInspectorFocus(): void {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && this.isKeyboardEditingTarget(active)) {
+      active.blur();
+    }
   }
 
   addGuideDot(): void {
@@ -993,14 +1012,6 @@ Tomorrow I will help my mom.`;
 
   updateSpeakingAiField(element: BookElement, field: string, value: unknown): void {
     this.speakingPreviewController.updateSpeakingAiField(element, field, value);
-  }
-
-  async onSpeakingAiImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
-    await this.speakingPreviewController.onSpeakingAiImageSelected(blob, element);
-  }
-
-  getSpeakingAiImageUrl(element: BookElement): string {
-    return this.speakingPreviewController.getSpeakingAiImageUrl(element);
   }
 
   async previewSpeakingAi(element: BookElement): Promise<void> {
@@ -1281,6 +1292,7 @@ Tomorrow I will help my mom.`;
   }
 
   startElementDrag(event: PointerEvent, element: BookElement): void {
+    this.releaseStaleInspectorFocus();
     if (this.isFixedCreatorMark(element)) {
       event.stopPropagation();
       this.selectedElementId = element.id;
@@ -1311,6 +1323,7 @@ Tomorrow I will help my mom.`;
   }
 
   startElementResize(event: PointerEvent, element: BookElement): void {
+    this.releaseStaleInspectorFocus();
     if (this.isFixedCreatorMark(element)) {
       event.stopPropagation();
       this.selectedElementId = element.id;

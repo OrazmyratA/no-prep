@@ -16,13 +16,20 @@ export class BookCreatorSaveController {
     if (!this.creator.book) return true;
     this.creator.discardPendingMatchEndpoint();
     const saved = await this.creator.bookLibrary.saveBook(this.creator.book);
-    if (saved) {
-      this.creator.book.updatedAt = saved.updatedAt;
-      this.markBookClean();
-      this.clearHistory();
-      return true;
-    }
-    return false;
+    // saveBook() resolves via the Electron IPC bridge, which resumes this continuation
+    // outside Angular's zone under contextIsolation — without ngZone.run() here the dirty
+    // flag flips but nothing tells Angular to re-render, so the save button keeps glowing
+    // until an unrelated click forces a check (same pattern used elsewhere in this file).
+    return this.creator.ngZone.run(() => {
+      if (saved) {
+        this.creator.book.updatedAt = saved.updatedAt;
+        this.markBookClean();
+        this.clearHistory();
+        this.creator.cdr.detectChanges();
+        return true;
+      }
+      return false;
+    });
   }
 
   async openReader(): Promise<void> {

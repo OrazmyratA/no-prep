@@ -569,16 +569,6 @@
           (blur)="creator.commitHistoryCapture()"
           placeholder="en, tr, ar...">
       </label>
-      <div class="speaking-ai-image-field">
-        <span class="speaking-ai-image-label">Topic image (optional)</span>
-        <div class="guide-pin-image" *ngIf="creator.getSpeakingAiImageUrl(element) as speakingAiImageUrl">
-          <img [src]="speakingAiImageUrl" alt="">
-        </div>
-        <app-image-uploader
-          [contextKey]="element.id"
-          (imageSelected)="creator.onSpeakingAiImageSelected($event, element)">
-        </app-image-uploader>
-      </div>
       <label>
         Teacher prompt
         <textarea

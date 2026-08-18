@@ -57,6 +57,15 @@
       <button type="button" class="icon-tool-btn" (click)="creator.takeCreatorScreenshot()" [disabled]="creator.creatorScreenshotting" [title]="'readerScreenshot' | translate" [attr.aria-label]="'readerScreenshot' | translate">
         <img src="assets/images/book/screenshot.png" alt="">
       </button>
+      <button
+        type="button"
+        class="icon-tool-btn"
+        *ngIf="creator.hasContentPage() && creator.selectedPage?.type !== 'progressMap'"
+        (click)="creator.goToContentPage()"
+        title="Go to content page"
+        aria-label="Go to content page">
+        <span class="creator-content-page-icon">&#128506;</span>
+      </button>
     </div>
     <div class="toolbar-group mark-tools">
       <button type="button" class="icon-tool-btn" (click)="creator.undo()" [disabled]="!creator.canUndo()" [title]="'undoLabel' | translate" [attr.aria-label]="'undoLabel' | translate">

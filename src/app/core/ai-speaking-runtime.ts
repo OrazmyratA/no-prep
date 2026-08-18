@@ -23,8 +23,6 @@ export interface AiSpeakingTaskConfig {
   vocabulary: string;
   sampleAnswer: string;
   maxDurationSeconds: number;
-  /** Optional teacher-uploaded topic image, as a data: URL, sent to a vision-capable model. */
-  imageDataUrl?: string;
 }
 
 export interface AiSpeakingTurn {
