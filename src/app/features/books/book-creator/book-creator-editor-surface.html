@@ -35,7 +35,7 @@
       <span *ngIf="creator.activePageSource === 'main'">{{ 'creatorUploadStudentPdfHint' | translate }}</span>
       <span *ngIf="creator.activePageSource === 'workbook'">{{ 'creatorUploadWorkbookPdfHint' | translate }}</span>
       <div class="starter-actions">
-        <button type="button" class="mini-btn" (click)="creator.activePageSource === 'workbook' ? creator.uploadWorkbookPdf() : creator.uploadStudentPdf()">
+        <button type="button" class="mini-btn" (click)="creator.handleStarterPdfUpload()">
           {{ 'creatorUploadPdf' | translate }}
         </button>
         <button type="button" class="mini-btn" (click)="creator.addImageToCurrentPage()">

@@ -574,6 +574,89 @@ export class BookLibraryService {
     }
   }
 
+  /**
+   * Adds a second PDF's pages alongside whatever is already on the shelf, right after
+   * afterPageId, instead of replacing the whole book/workbook like replaceMainPdf /
+   * replaceWorkbookPdf do. Returns the ids of the newly inserted pages so the caller can
+   * navigate straight to them.
+   */
+  async insertPdfPages(
+    bookId: string,
+    target: 'main' | 'workbook',
+    afterPageId: string,
+    workbookId?: string | null
+  ): Promise<{ book: InteractiveBook; insertedPageIds: string[] } | null> {
+    this.showImmediateProgress('create', this.t('bookLibChoosePdfToInsert'));
+
+    if (this.isDesktopAvailable) {
+      const response = await this.invoke<{ book: InteractiveBook; insertedPageIds: string[] }>('insertBookPdfPages', {
+        bookId,
+        target,
+        workbookId,
+        afterPageId
+      });
+      if (response.ok && response.result) {
+        showAppNotification(this.t('bookLibPdfPagesInserted'), 'success');
+        await this.refresh();
+        return response.result;
+      }
+      this.progressSubject.next(null);
+      if (response.error !== 'CANCELLED') {
+        this.showError(response, this.t('bookLibCouldNotInsertPdf'));
+      }
+      return null;
+    }
+
+    const book = await this.getBook(bookId);
+    const insertId = this.createId('insert');
+    const picked = this.isAndroidBookStorageAvailable
+      ? await this.pickAndroidBookFile(bookId, {
+          relativePath: `inserts/${insertId}/source.pdf`,
+          mimeTypes: ['application/pdf']
+        })
+      : null;
+    if (!book || !picked) {
+      this.progressSubject.next(null);
+      return null;
+    }
+
+    try {
+      if (!this.isAndroidBookStorageAvailable) {
+        this.showError({ ok: false, error: 'ELECTRON_REQUIRED' }, this.t('bookLibOperationFailed'));
+        return null;
+      }
+      const sourcePdf = picked.relativePath || `inserts/${insertId}/source.pdf`;
+      const pageCount = await this.getPdfPageCount(picked.dataUrl);
+      const newPages = this.createPdfPages(sourcePdf, pageCount);
+
+      let targetPages: BookPage[];
+      if (target === 'workbook') {
+        const workbook = (book.workbooks ?? []).find((item) => item.id === workbookId);
+        if (!workbook) {
+          this.progressSubject.next(null);
+          return null;
+        }
+        workbook.pages = workbook.pages ?? [];
+        targetPages = workbook.pages;
+        workbook.updatedAt = new Date().toISOString();
+      } else {
+        book.pages = book.pages ?? [];
+        targetPages = book.pages;
+      }
+
+      const afterIndex = afterPageId ? targetPages.findIndex((page) => page.id === afterPageId) : -1;
+      const insertAt = afterIndex >= 0 ? afterIndex + 1 : targetPages.length;
+      targetPages.splice(insertAt, 0, ...newPages);
+
+      book.updatedAt = new Date().toISOString();
+      await this.saveAndroidBook(book);
+      showAppNotification(this.t('bookLibPdfPagesInserted'), 'success');
+      return { book, insertedPageIds: newPages.map((page) => page.id) };
+    } finally {
+      this.progressSubject.next(null);
+    }
+  }
+
   async getBookAnnotations(bookId: string): Promise<BookAnnotations | null> {
     if (this.isDesktopAvailable) {
       const response = await this.invoke<BookAnnotations>('readBookAnnotations', { bookId });

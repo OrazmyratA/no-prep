@@ -38,6 +38,19 @@ export interface BookElement {
   data: Record<string, any>;
 }
 
+/**
+ * Answer keys store multiple images in data['images']; older books only ever
+ * saved a single data['src']. Reads of either shape always go through this.
+ */
+export function getAnswerKeyImagePaths(element: BookElement | null | undefined): string[] {
+  const images = element?.data?.['images'];
+  if (Array.isArray(images) && images.length) {
+    return images.filter((path): path is string => typeof path === 'string' && !!path);
+  }
+  const legacySrc = element?.data?.['src'];
+  return typeof legacySrc === 'string' && legacySrc ? [legacySrc] : [];
+}
+
 export interface TracingPoint {
   id: string;
   x: number;

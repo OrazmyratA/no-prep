@@ -209,6 +209,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readerThumbScrollFrame = 0;
   private pendingReaderThumbScrollTarget: HTMLElement | null = null;
   expandedElement: BookElement | null = null;
+  expandedAnswerKeyIndex = 0;
   videoFullscreen = false;
   private electronVideoFullscreenFallbackActive = false;
   private electronVideoFullscreenWasActive = false;
@@ -1073,6 +1074,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (element.type === 'video' || element.type === 'note' || element.type === 'answerKey') {
       if (!(await this.confirmStopSpeakingForInterruption())) return;
       this.stopGuideAudioAndReturnHome();
+      this.expandedAnswerKeyIndex = 0;
       this.expandedElement = element;
       return;
     }
@@ -1099,6 +1101,30 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   closeExpandedElement(): void {
     this.videoController.closeExpandedElement();
+  }
+
+  getExpandedAnswerKeyImages(): string[] {
+    return this.expandedElement ? this.mediaController.getAnswerKeyImages(this.expandedElement) : [];
+  }
+
+  getExpandedAnswerKeyImageUrl(): string {
+    const images = this.getExpandedAnswerKeyImages();
+    const path = images[this.expandedAnswerKeyIndex];
+    return path ? this.mediaController.getAnswerKeyImageUrl(path) : '';
+  }
+
+  showPreviousAnswerKeyImage(event?: MouseEvent): void {
+    event?.stopPropagation();
+    const total = this.getExpandedAnswerKeyImages().length;
+    if (total < 2) return;
+    this.expandedAnswerKeyIndex = (this.expandedAnswerKeyIndex - 1 + total) % total;
+  }
+
+  showNextAnswerKeyImage(event?: MouseEvent): void {
+    event?.stopPropagation();
+    const total = this.getExpandedAnswerKeyImages().length;
+    if (total < 2) return;
+    this.expandedAnswerKeyIndex = (this.expandedAnswerKeyIndex + 1) % total;
   }
 
   async toggleExpandedVideoFullscreen(event?: Event): Promise<void> {
@@ -2357,7 +2383,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.pdfUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
+    // Replacing a PDF in the creator reuses the same on-disk path (assets/source.pdf), so
+    // this URL is otherwise identical before and after — Angular's ngOnChanges on
+    // <app-pdf-page-canvas> wouldn't even see sourceUrl change, let alone refetch it.
+    const baseUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
+    const version = encodeURIComponent(this.book.updatedAt || '');
+    this.pdfUrl = version ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${version}` : baseUrl;
     this.forceUiRefresh();
   }
 

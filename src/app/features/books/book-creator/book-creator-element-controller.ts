@@ -83,9 +83,9 @@ export class BookCreatorElementController {
   }
 
   async replaceElementAsset(element: BookElement): Promise<void> {
-    if (!this.creator.book || (element.type !== 'image' && element.type !== 'video' && element.type !== 'answerKey')) return;
+    if (!this.creator.book || (element.type !== 'image' && element.type !== 'video')) return;
 
-    const isImage = element.type === 'image' || element.type === 'answerKey';
+    const isImage = element.type === 'image';
     const asset = await this.creator.bookLibrary.addAsset(
       this.creator.book.id,
       isImage ? 'images' : 'videos',

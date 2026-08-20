@@ -3,7 +3,7 @@
 }
 
 .creator-toolbar {
-  width: min(100%, 1360px);
+  width: 100%;
   margin: 0 auto;
   position: sticky;
   top: 0;

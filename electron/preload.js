@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   replaceBookMainPdf: (input) => ipcRenderer.invoke('books:replace-main-pdf', input ?? {}),
   addBookWorkbookFromPdf: (input) => ipcRenderer.invoke('books:add-workbook-from-pdf', input ?? {}),
   replaceBookWorkbookPdf: (input) => ipcRenderer.invoke('books:replace-workbook-pdf', input ?? {}),
+  insertBookPdfPages: (input) => ipcRenderer.invoke('books:insert-pdf-pages', input ?? {}),
   importBookFolder: () => ipcRenderer.invoke('books:import-folder'),
   exportBookToDesktop: (input) => ipcRenderer.invoke('books:export-to-desktop', input ?? {}),
   copyBook: (input) => ipcRenderer.invoke('books:copy', input ?? {}),

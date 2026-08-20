@@ -334,6 +334,10 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
 
 
 
+
+
+
+
   'creatorDeleteWorkbookPage': {
     en: 'Delete this workbook page',
     tk: 'Bu iş depder sahypasyny öçür',

@@ -3,6 +3,7 @@ import { showAppNotification } from '../../../core/notification';
 
 export class BookCreatorPageImportController {
   private draggedPageIndex: number | null = null;
+  private draggedWorkbookPageIndex: number | null = null;
 
   constructor(private readonly creator: any) {}
 
@@ -44,6 +45,42 @@ export class BookCreatorPageImportController {
       this.creator.selectedPageIndex--;
     } else if (sourceIndex > this.creator.selectedPageIndex && targetIndex <= this.creator.selectedPageIndex) {
       this.creator.selectedPageIndex++;
+    }
+    this.creator.refreshSelectedPageRender();
+  }
+
+  onWorkbookPageDragStart(index: number, event: DragEvent): void {
+    this.draggedWorkbookPageIndex = index;
+    event.dataTransfer?.setData('text/plain', String(index));
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onWorkbookPageDrop(workbook: BookWorkbook, targetIndex: number, event: DragEvent): void {
+    event.preventDefault();
+    const sourceIndex = this.draggedWorkbookPageIndex ?? Number(event.dataTransfer?.getData('text/plain'));
+    this.draggedWorkbookPageIndex = null;
+    if (
+      !Number.isInteger(sourceIndex)
+      || sourceIndex < 0
+      || sourceIndex >= workbook.pages.length
+      || sourceIndex === targetIndex
+    ) {
+      return;
+    }
+
+    this.creator.captureHistory();
+    const [page] = workbook.pages.splice(sourceIndex, 1);
+    workbook.pages.splice(targetIndex, 0, page);
+    if (this.creator.activeWorkbookId === workbook.id) {
+      if (this.creator.selectedWorkbookPageIndex === sourceIndex) {
+        this.creator.selectedWorkbookPageIndex = targetIndex;
+      } else if (sourceIndex < this.creator.selectedWorkbookPageIndex && targetIndex >= this.creator.selectedWorkbookPageIndex) {
+        this.creator.selectedWorkbookPageIndex--;
+      } else if (sourceIndex > this.creator.selectedWorkbookPageIndex && targetIndex <= this.creator.selectedWorkbookPageIndex) {
+        this.creator.selectedWorkbookPageIndex++;
+      }
     }
     this.creator.refreshSelectedPageRender();
   }
@@ -179,6 +216,78 @@ export class BookCreatorPageImportController {
     this.creator.selectedWorkbookPageIndex = 0;
     this.creator.linkingMainPageId = null;
     this.creator.pageJumpValue = '1';
+    this.creator.markBookClean();
+    this.creator.clearHistory();
+    this.creator.refreshSelectedPageRender();
+  }
+
+  // The editor canvas shows an "Upload PDF" starter button on any empty blank page.
+  // If the book/workbook already has real PDF content, treat that click as inserting
+  // the chosen PDF's pages at this blank page's spot instead of replacing everything —
+  // this is how a teacher adds a second PDF between existing pages without a separate button.
+  async handleStarterPdfUpload(): Promise<void> {
+    const page = this.creator.selectedPage;
+    if (!page || !this.creator.book) return;
+
+    if (this.creator.activePageSource === 'workbook') {
+      const workbook: BookWorkbook | null = this.creator.primaryWorkbook;
+      const hasPdfPages = !!workbook && workbook.pages.some((item: { type: string }) => item.type === 'pdf');
+      if (!hasPdfPages) {
+        await this.uploadWorkbookPdf();
+        return;
+      }
+      await this.insertPdfPages('workbook', page.id, workbook!.id, true);
+      return;
+    }
+
+    const hasPdfPages = this.creator.book.pages.some((item: { type: string }) => item.type === 'pdf');
+    if (!hasPdfPages) {
+      await this.uploadStudentPdf();
+      return;
+    }
+    await this.insertPdfPages('main', page.id, undefined, true);
+  }
+
+  private async insertPdfPages(
+    target: 'main' | 'workbook',
+    afterPageId: string,
+    workbookId?: string,
+    removeAnchorIfBlank = false
+  ): Promise<void> {
+    if (!this.creator.book) return;
+    if (this.creator.hasUnsavedChanges() && !(await this.creator.saveBeforeBookFileUpload())) return;
+    const result = await this.creator.bookLibrary.insertPdfPages(this.creator.book.id, target, afterPageId, workbookId);
+    if (!result) return;
+    this.creator.book = result.book;
+
+    if (removeAnchorIfBlank) {
+      const pages: Array<{ id: string; type: string; elements?: unknown[] }> = target === 'workbook'
+        ? ((this.creator.book.workbooks ?? []).find((item: BookWorkbook) => item.id === workbookId)?.pages ?? [])
+        : this.creator.book.pages;
+      const anchorIndex = pages.findIndex((item) => item.id === afterPageId);
+      if (anchorIndex >= 0 && pages[anchorIndex].type === 'blank' && !pages[anchorIndex].elements?.length) {
+        pages.splice(anchorIndex, 1);
+      }
+    }
+
+    const firstInsertedId = result.insertedPageIds[0];
+
+    if (target === 'workbook') {
+      const workbook = (this.creator.book.workbooks ?? []).find((item: BookWorkbook) => item.id === workbookId);
+      const index = workbook?.pages.findIndex((page: { id: string }) => page.id === firstInsertedId) ?? -1;
+      this.creator.activePageSource = 'workbook';
+      this.creator.activeWorkbookId = workbook?.id ?? null;
+      this.creator.selectedWorkbookPageIndex = index >= 0 ? index : 0;
+      this.creator.pageJumpValue = String(this.creator.selectedWorkbookPageIndex + 1);
+    } else {
+      const index = this.creator.book.pages.findIndex((page: { id: string }) => page.id === firstInsertedId);
+      this.creator.activePageSource = 'main';
+      this.creator.activeWorkbookId = null;
+      this.creator.selectedPageIndex = index >= 0 ? index : 0;
+      this.creator.pageJumpValue = String(this.creator.selectedPageIndex + 1);
+    }
+
+    this.creator.linkingMainPageId = null;
     this.creator.markBookClean();
     this.creator.clearHistory();
     this.creator.refreshSelectedPageRender();

@@ -86,8 +86,12 @@
       class="page-thumb a4-thumb"
       role="button"
       tabindex="0"
+      draggable="true"
       [class.selected]="creator.activePageSource === 'workbook' && creator.activeWorkbookId === creator.primaryWorkbook?.id && item.index === creator.selectedWorkbookPageIndex"
       [class.workbook-linked]="creator.primaryWorkbook ? creator.isWorkbookPageLinked(creator.primaryWorkbook.id, item.page.id) : false"
+      (dragstart)="creator.onWorkbookPageDragStart(item.index, $event)"
+      (dragover)="creator.onPageDragOver($event)"
+      (drop)="creator.primaryWorkbook && creator.onWorkbookPageDrop(creator.primaryWorkbook, item.index, $event)"
       (click)="creator.primaryWorkbook && creator.selectWorkbookPage(creator.primaryWorkbook, item.index, $event)"
       (keydown.enter)="creator.primaryWorkbook && creator.selectWorkbookPage(creator.primaryWorkbook, item.index, $event)"
       (keydown.space)="creator.primaryWorkbook && creator.selectWorkbookPage(creator.primaryWorkbook, item.index, $event)">

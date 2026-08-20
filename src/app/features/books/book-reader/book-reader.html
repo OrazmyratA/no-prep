@@ -83,7 +83,35 @@
     [attr.alt]="'readerTeacherOwl' | translate">
 
   <div class="reader-popover-backdrop" [class.video-fullscreen]="videoFullscreen" *ngIf="expandedElement" (click)="closeExpandedElement()">
-    <div class="reader-popover" [class.video-fullscreen]="videoFullscreen" (click)="$event.stopPropagation()">
+    <div class="answer-key-shell" *ngIf="expandedElement.type === 'answerKey'" (click)="$event.stopPropagation()">
+      <div class="answer-key-row">
+        <button
+          type="button"
+          class="answer-key-nav answer-key-nav-prev"
+          *ngIf="getExpandedAnswerKeyImages().length > 1"
+          (click)="showPreviousAnswerKeyImage($event)"
+          aria-label="Previous image">&#8249;</button>
+        <div class="reader-popover answer-key-popover">
+          <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>
+          <div class="expanded-answer-key">
+            <ng-container *ngIf="getExpandedAnswerKeyImages().length; else answerKeyUnavailable">
+              <img [src]="getExpandedAnswerKeyImageUrl()" alt="Answer key">
+            </ng-container>
+            <ng-template #answerKeyUnavailable>
+              <div class="answer-key-unavailable">Answer image unavailable.</div>
+            </ng-template>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="answer-key-nav answer-key-nav-next"
+          *ngIf="getExpandedAnswerKeyImages().length > 1"
+          (click)="showNextAnswerKeyImage($event)"
+          aria-label="Next image">&#8250;</button>
+      </div>
+      <div class="answer-key-counter" *ngIf="getExpandedAnswerKeyImages().length > 1">{{ expandedAnswerKeyIndex + 1 }} / {{ getExpandedAnswerKeyImages().length }}</div>
+    </div>
+    <div class="reader-popover" [class.video-fullscreen]="videoFullscreen" *ngIf="expandedElement.type !== 'answerKey'" (click)="$event.stopPropagation()">
       <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>
       <div
         #expandedVideoFrame
@@ -141,12 +169,6 @@
       </div>
       <div class="expanded-note" *ngIf="expandedElement.type === 'note'">
         {{ getElementText(expandedElement) }}
-      </div>
-      <div class="expanded-answer-key" *ngIf="expandedElement.type === 'answerKey'">
-        <img *ngIf="expandedElement.data['src']; else answerKeyUnavailable" [src]="getElementAssetUrl(expandedElement)" alt="Answer key">
-        <ng-template #answerKeyUnavailable>
-          <div class="answer-key-unavailable">Answer image unavailable.</div>
-        </ng-template>
       </div>
     </div>
   </div>

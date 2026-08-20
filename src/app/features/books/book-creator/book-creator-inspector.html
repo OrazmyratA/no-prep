@@ -227,7 +227,7 @@
       <button
         type="button"
         class="mini-icon-btn"
-        *ngIf="element.type === 'image' || element.type === 'video' || element.type === 'answerKey'"
+        *ngIf="element.type === 'image' || element.type === 'video'"
         (click)="creator.replaceElementAsset(element)"
         [title]="'replaceLabel' | translate"
         [attr.aria-label]="'replaceLabel' | translate">
@@ -555,8 +555,14 @@
     <div class="image-settings-panel" *ngIf="element.type === 'image'">
       <app-image-uploader (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
     </div>
-    <div class="image-settings-panel" *ngIf="element.type === 'answerKey'">
-      <app-image-uploader [contextKey]="element.id" (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
+    <div class="image-settings-panel answer-key-settings" *ngIf="element.type === 'answerKey'">
+      <div class="answer-key-gallery" *ngIf="creator.getAnswerKeyImages(element).length">
+        <div class="answer-key-thumb" *ngFor="let imagePath of creator.getAnswerKeyImages(element); let i = index; trackBy: creator.trackByIndex">
+          <img [src]="creator.getAnswerKeyImageUrl(imagePath)" alt="">
+          <button type="button" class="answer-key-thumb-remove" (click)="creator.removeAnswerKeyImage(element, i)" title="Remove image" aria-label="Remove image">&times;</button>
+        </div>
+      </div>
+      <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" (imageSelected)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
     </div>
     <div class="speaking-ai-settings" *ngIf="element.type === 'speakingAi'">
       <label>

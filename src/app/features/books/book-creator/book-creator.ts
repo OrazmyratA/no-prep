@@ -486,6 +486,14 @@ Tomorrow I will help my mom.`;
     this.pageImportController.onPageDrop(targetIndex, event);
   }
 
+  onWorkbookPageDragStart(index: number, event: DragEvent): void {
+    this.pageImportController.onWorkbookPageDragStart(index, event);
+  }
+
+  onWorkbookPageDrop(workbook: BookWorkbook, targetIndex: number, event: DragEvent): void {
+    this.pageImportController.onWorkbookPageDrop(workbook, targetIndex, event);
+  }
+
   addBlankPage(afterIndex = this.selectedPageIndex): void {
     this.pageImportController.addBlankPage(afterIndex);
   }
@@ -508,6 +516,10 @@ Tomorrow I will help my mom.`;
 
   addWorkbookBlankPageAfterIndex(workbook: BookWorkbook, index: number, event?: Event): void {
     this.pageImportController.addWorkbookBlankPageAfterIndex(workbook, index, event);
+  }
+
+  async handleStarterPdfUpload(): Promise<void> {
+    await this.pageImportController.handleStarterPdfUpload();
   }
 
   duplicateSelectedPage(): void {
@@ -915,6 +927,22 @@ Tomorrow I will help my mom.`;
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
     await this.mediaController.onBookImageSelected(blob, element);
+  }
+
+  getAnswerKeyImages(element: BookElement): string[] {
+    return this.mediaController.getAnswerKeyImages(element);
+  }
+
+  async addAnswerKeyImage(blob: Blob | null, element: BookElement): Promise<void> {
+    await this.mediaController.addAnswerKeyImage(blob, element);
+  }
+
+  removeAnswerKeyImage(element: BookElement, index: number): void {
+    this.mediaController.removeAnswerKeyImage(element, index);
+  }
+
+  getAnswerKeyImageUrl(path: string): string {
+    return this.mediaController.getAnswerKeyImageUrl(path);
   }
 
   async uploadVideoElement(element: BookElement): Promise<void> {
@@ -2474,7 +2502,12 @@ Tomorrow I will help my mom.`;
       this.updateCreatorCanvasWidth();
       return;
     }
-    this.selectedPdfUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
+    // Replacing a PDF reuses the same on-disk path (assets/source.pdf), so this URL is
+    // otherwise identical before and after — Angular's ngOnChanges on <app-pdf-page-canvas>
+    // wouldn't even see sourceUrl change, let alone refetch it. The version suffix forces both.
+    const baseUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
+    const version = encodeURIComponent(this.book.updatedAt || '');
+    this.selectedPdfUrl = version ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${version}` : baseUrl;
     const renderKey = `${this.selectedPdfUrl}|${page.pdfPage || 1}|${this.getPageRotation(page)}`;
     // <app-pdf-page-canvas> only re-renders (and re-reports its measured pageSize) when its
     // sourceUrl/pageNumber/rotation inputs actually change (see its ngOnChanges). Resetting

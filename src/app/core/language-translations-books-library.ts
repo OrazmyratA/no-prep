@@ -409,6 +409,51 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
 
 
 
+  'bookLibChoosePdfToInsert': {
+    en: 'Choose PDF to insert',
+    tk: 'Goşmak üçin PDF saýlaň',
+    ru: 'Выберите PDF для вставки',
+    cn: '选择要插入的 PDF',
+    cde: 'PDF zum Einfügen auswählen',
+    es: 'Elegir PDF para insertar',
+    fr: 'Choisir le PDF à insérer',
+    kr: '삽입할 PDF 선택',
+    sa: 'اختر ملف PDF لإدراجه',
+  },
+
+
+
+
+  'bookLibPdfPagesInserted': {
+    en: 'PDF pages inserted.',
+    tk: 'PDF sahypalary goşuldy.',
+    ru: 'Страницы PDF вставлены.',
+    cn: 'PDF 页面已插入。',
+    cde: 'PDF-Seiten eingefügt.',
+    es: 'Páginas del PDF insertadas.',
+    fr: 'Pages du PDF insérées.',
+    kr: 'PDF 페이지가 삽입되었습니다.',
+    sa: 'تم إدراج صفحات PDF.',
+  },
+
+
+
+
+  'bookLibCouldNotInsertPdf': {
+    en: 'Could not insert this PDF.',
+    tk: 'Bu PDF-i goşup bolmady.',
+    ru: 'Не удалось вставить этот PDF.',
+    cn: '无法插入此 PDF。',
+    cde: 'Dieses PDF konnte nicht eingefügt werden.',
+    es: 'No se pudo insertar este PDF.',
+    fr: 'Impossible d’insérer ce PDF.',
+    kr: '이 PDF를 삽입할 수 없습니다.',
+    sa: 'تعذر إدراج ملف PDF هذا.',
+  },
+
+
+
+
   'bookLibCouldNotLoadAnnotations': {
     en: 'Could not load reader annotations.',
     tk: 'Okyjynyň bellikleri ýüklenip bilmedi.',

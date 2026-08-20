@@ -1,7 +1,8 @@
 import { SafeResourceUrl } from '@angular/platform-browser';
 import {
   BookElement,
-  BookPage
+  BookPage,
+  getAnswerKeyImagePaths
 } from '../../../core/book.model';
 import {
   getYouTubeEmbedUrlString,
@@ -19,6 +20,15 @@ export class BookReaderMediaController {
       return src;
     }
     return src ? this.reader.getCachedAssetUrl(src) : '';
+  }
+
+  getAnswerKeyImages(element: BookElement): string[] {
+    return getAnswerKeyImagePaths(element);
+  }
+
+  getAnswerKeyImageUrl(path: string): string {
+    if (!this.reader.book || !path) return '';
+    return isExternalUrl(path) ? path : this.reader.getCachedAssetUrl(path);
   }
 
   getElementMediaUrl(element: BookElement): string {
@@ -62,6 +72,13 @@ export class BookReaderMediaController {
   getPagePdfUrl(page: BookPage): string {
     if (!this.reader.book || page.type !== 'pdf') return '';
     const sourcePdf = page.sourcePdf || this.reader.activeWorkbook?.sourcePdf || this.reader.book.sourcePdf || '';
-    return sourcePdf ? this.reader.getCachedAssetUrl(sourcePdf) : '';
+    if (!sourcePdf) return '';
+    const baseUrl = this.reader.getCachedAssetUrl(sourcePdf);
+    if (!baseUrl) return '';
+    // Replacing a PDF in the creator reuses the same on-disk path (assets/source.pdf),
+    // so without a cache-busting suffix Chromium's network cache and pdf.js would both
+    // keep serving whatever bytes they fetched for that URL on a previous visit.
+    const version = encodeURIComponent(this.reader.book.updatedAt || '');
+    return version ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${version}` : baseUrl;
   }
 }

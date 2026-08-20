@@ -401,6 +401,104 @@ function registerBookCreateIpc({
       return operationError('WORKBOOK_REPLACE_FAILED', error?.message || 'Could not replace this workbook PDF.');
     }
   });
+
+  // Unlike books:replace-main-pdf / books:replace-workbook-pdf (which wipe out the
+  // existing PDF pages), this inserts a second PDF's pages alongside the current ones,
+  // right after a chosen page — so uploading another PDF no longer makes the first one
+  // disappear. Each insert gets its own unique file under assets/inserts/<id>/ instead of
+  // reusing the fixed assets/source.pdf path, since multiple different PDFs now coexist.
+  ipcMain.handle('books:insert-pdf-pages', async (_event, input) => {
+    const operationId = createId('create');
+    try {
+      const registryItem = await findBook(String(input?.bookId ?? ''));
+      if (!registryItem) {
+        return operationError('BOOK_NOT_FOUND', 'Book not found.');
+      }
+
+      sendBookProgress(makeBookProgress(operationId, 'create', 'Choose PDF to insert'));
+      const selected = await dialog.showOpenDialog(getMainWindow(), {
+        title: 'Choose PDF to insert',
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
+        properties: ['openFile']
+      });
+
+      if (selected.canceled || !selected.filePaths?.[0]) {
+        sendBookProgress(null);
+        return operationError('CANCELLED');
+      }
+
+      const sourcePdf = selected.filePaths[0];
+      sendBookProgress(makeBookProgress(operationId, 'create', 'Checking PDF'));
+      const pdfInfo = await getPdfInfo(sourcePdf);
+      if (pdfInfo.encrypted) {
+        sendBookProgress(null);
+        return operationError('PROTECTED_PDF', 'This PDF is protected. Please use an unlocked PDF.');
+      }
+
+      const sourceStat = await fsp.stat(sourcePdf);
+      sendBookProgress(makeBookProgress(operationId, 'create', 'Checking disk space', 0, sourceStat.size));
+      await ensureEnoughSpace(registryItem.folderPath, sourceStat.size);
+      sendBookProgress(makeBookProgress(operationId, 'create', 'Waiting for confirmation', 0, sourceStat.size));
+      if (!(await confirmBookFileOperation('Insert PDF pages', sourceStat.size, registryItem.folderPath))) {
+        sendBookProgress(null);
+        return operationError('CANCELLED');
+      }
+
+      const now = new Date().toISOString();
+      const book = await readBookJson(registryItem.folderPath);
+
+      const isWorkbook = String(input?.target || 'main') === 'workbook';
+      let workbook = null;
+      let targetPages;
+      if (isWorkbook) {
+        book.workbooks = Array.isArray(book.workbooks) ? book.workbooks : [];
+        workbook = book.workbooks.find((item) => item.id === String(input?.workbookId ?? ''));
+        if (!workbook) {
+          sendBookProgress(null);
+          return operationError('WORKBOOK_NOT_FOUND', 'Workbook not found.');
+        }
+        workbook.pages = Array.isArray(workbook.pages) ? workbook.pages : [];
+        targetPages = workbook.pages;
+      } else {
+        book.pages = Array.isArray(book.pages) ? book.pages : [];
+        targetPages = book.pages;
+      }
+
+      const insertId = createId('insert');
+      const relativePdfPath = path.posix.join('assets', 'inserts', insertId, 'source.pdf');
+      const destination = path.join(registryItem.folderPath, relativePdfPath);
+      const operation = {
+        operationId,
+        type: 'create',
+        phase: 'Copying PDF',
+        transferredBytes: 0,
+        totalBytes: sourceStat.size
+      };
+      sendBookProgress(operation);
+      await copyFileWithProgress(sourcePdf, destination, operation);
+
+      const newPages = createPdfPages(pdfInfo.pageCount, relativePdfPath, isWorkbook ? 'workbook-page' : 'page');
+      const afterPageId = String(input?.afterPageId ?? '');
+      const afterIndex = afterPageId ? targetPages.findIndex((page) => page?.id === afterPageId) : -1;
+      const insertAt = afterIndex >= 0 ? afterIndex + 1 : targetPages.length;
+      targetPages.splice(insertAt, 0, ...newPages);
+
+      if (workbook) {
+        workbook.updatedAt = now;
+      }
+      book.updatedAt = now;
+      await validateBookData(book, registryItem.folderPath, book.title || 'Book');
+      await writeBookJson(registryItem.folderPath, book);
+      const sizeBytes = await getDirectorySize(registryItem.folderPath);
+      await upsertRegistryItem(makeRegistryItem(book, registryItem.folderPath, sizeBytes));
+      sendBookProgress(null);
+      return operationResult({ book, insertedPageIds: newPages.map((page) => page.id) });
+    } catch (error) {
+      sendBookProgress(null);
+      console.error('books:insert-pdf-pages error:', error);
+      return operationError('PDF_INSERT_FAILED', error?.message || 'Could not insert this PDF.');
+    }
+  });
 }
 
 module.exports = { registerBookCreateIpc };

@@ -107,7 +107,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
         disableAutoFetch: false,
         disableStream: false,
         disableRange: false
-      });
+      }, this.sourceUrl);
     } catch (urlError) {
       if (token !== this.renderToken) return;
       console.debug('PDF URL render failed, retrying with fetched bytes', urlError);
@@ -154,8 +154,8 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     }
   }
 
-  private async renderSinglePage(token: number, source: Record<string, unknown>): Promise<void> {
-    const doc = await this.getDocument(source);
+  private async renderSinglePage(token: number, source: Record<string, unknown>, cacheKeyHint?: string): Promise<void> {
+    const doc = await this.getDocument(source, cacheKeyHint);
     const safePageNumber = Math.min(Math.max(1, this.pageNumber || 1), doc.numPages);
     const page = await doc.getPage(safePageNumber);
     if (token !== this.renderToken) return;
@@ -207,10 +207,13 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     return ((Math.round(normalized / 90) * 90) % 360 + 360) % 360;
   }
 
-  private getDocument(source: Record<string, unknown>): Promise<PdfDocumentProxy> {
-    const key = typeof source['url'] === 'string'
-      ? String(source['url'])
-      : `data:${this.sourceUrl}`;
+  private getDocument(source: Record<string, unknown>, cacheKeyHint?: string): Promise<PdfDocumentProxy> {
+    // Prefer the caller-supplied key (the pre-resolution sourceUrl, which carries a
+    // cache-busting version for reused paths like assets/source.pdf) over source['url']
+    // itself — the latter is the resolved file:// URL, which stays identical across a
+    // PDF replace and would otherwise keep this cache serving the old document forever.
+    const key = cacheKeyHint
+      || (typeof source['url'] === 'string' ? String(source['url']) : `data:${this.sourceUrl}`);
     const cached = PdfPageCanvasComponent.documentCache.get(key);
     if (cached) {
       PdfPageCanvasComponent.documentCache.delete(key);

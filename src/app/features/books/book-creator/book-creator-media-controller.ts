@@ -1,7 +1,8 @@
 import {
   BookElement,
   BookPage,
-  BookWorkbook
+  BookWorkbook,
+  getAnswerKeyImagePaths
 } from '../../../core/book.model';
 
 export class BookCreatorMediaController {
@@ -26,26 +27,57 @@ export class BookCreatorMediaController {
 
   addAnswerKey(): void {
     this.creator.captureHistory();
-    this.creator.addElement('answerKey', { src: '', label: 'Answer key' }, 0.08, 0.08);
+    this.creator.addElement('answerKey', { images: [], label: 'Answer key' }, 0.08, 0.08);
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
-    if (!this.creator.book || (element.type !== 'image' && element.type !== 'answerKey')) return;
+    if (!this.creator.book || element.type !== 'image') return;
     this.creator.captureHistory();
 
     if (!blob) {
       element.data['src'] = '';
-      element.data['label'] = element.type === 'answerKey' ? 'Answer key' : 'Image';
+      element.data['label'] = 'Image';
       this.creator.refreshElementAssetChange();
       return;
     }
 
     const dataUrl = await this.creator.blobToDataUrl(blob);
-    const prefix = element.type === 'answerKey' ? 'answer-key' : 'image';
-    const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, prefix);
+    const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, 'image');
     if (!saved) return;
     element.data['src'] = saved.relativePath;
     element.data['label'] = saved.fileName;
+    this.creator.refreshElementAssetChange();
+  }
+
+  getAnswerKeyImages(element: BookElement): string[] {
+    return getAnswerKeyImagePaths(element);
+  }
+
+  async addAnswerKeyImage(blob: Blob | null, element: BookElement): Promise<void> {
+    if (!this.creator.book || element.type !== 'answerKey' || !blob) return;
+    this.creator.captureHistory();
+
+    const dataUrl = await this.creator.blobToDataUrl(blob);
+    const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, 'answer-key');
+    if (!saved) return;
+
+    // Normalize legacy single-src books onto the images array the first time a
+    // second image is added, so old and new answer keys share one storage shape.
+    const images = getAnswerKeyImagePaths(element);
+    element.data['images'] = [...images, saved.relativePath];
+    delete element.data['src'];
+    element.data['label'] = 'Answer key';
+    this.creator.refreshElementAssetChange();
+  }
+
+  removeAnswerKeyImage(element: BookElement, index: number): void {
+    if (element.type !== 'answerKey') return;
+    const images = getAnswerKeyImagePaths(element);
+    if (index < 0 || index >= images.length) return;
+    this.creator.captureHistory();
+    images.splice(index, 1);
+    element.data['images'] = images;
+    delete element.data['src'];
     this.creator.refreshElementAssetChange();
   }
 
@@ -77,10 +109,23 @@ export class BookCreatorMediaController {
     return src ? this.getCachedAssetUrl(src) : '';
   }
 
+  getAnswerKeyImageUrl(path: string): string {
+    if (!this.creator.book || !path) return '';
+    return this.isExternalUrl(path) ? path : this.getCachedAssetUrl(path);
+  }
+
   getPagePdfUrl(page: BookPage, workbook?: BookWorkbook | null): string {
     if (!this.creator.book) return '';
     const sourcePdf = page.sourcePdf || workbook?.sourcePdf || this.creator.book.sourcePdf || '';
-    return sourcePdf ? this.getCachedAssetUrl(sourcePdf) : '';
+    if (!sourcePdf) return '';
+    const baseUrl = this.getCachedAssetUrl(sourcePdf);
+    if (!baseUrl) return '';
+    // Replacing a PDF reuses the same on-disk path (assets/source.pdf), so the URL
+    // string never changes on its own — Chromium's network cache and pdf.js would
+    // both keep serving the old bytes for it. Tying a cache-busting query param to
+    // updatedAt forces a real refetch whenever the book (and thus the PDF) changes.
+    const version = encodeURIComponent(this.creator.book.updatedAt || '');
+    return version ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${version}` : baseUrl;
   }
 
   getCachedAssetUrl(relativePath: string): string {
