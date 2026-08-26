@@ -110,6 +110,12 @@
           aria-label="Next image">&#8250;</button>
       </div>
       <div class="answer-key-counter" *ngIf="getExpandedAnswerKeyImages().length > 1">{{ expandedAnswerKeyIndex + 1 }} / {{ getExpandedAnswerKeyImages().length }}</div>
+      <audio
+        class="answer-key-audio-player"
+        *ngIf="getExpandedAnswerKeyAudioUrl()"
+        [src]="getExpandedAnswerKeyAudioUrl()"
+        controls
+        (click)="$event.stopPropagation()"></audio>
     </div>
     <div class="reader-popover" [class.video-fullscreen]="videoFullscreen" *ngIf="expandedElement.type !== 'answerKey'" (click)="$event.stopPropagation()">
       <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>

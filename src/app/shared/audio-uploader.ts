@@ -30,6 +30,7 @@ const NativeAudioRecorder = registerPlugin<NativeAudioRecorderPlugin>('NativeAud
 })
 export class AudioUploaderComponent implements OnChanges, OnDestroy {
   @Input() initialAudio: Blob | null = null;
+  @Input() contextKey = '';
   @Output() audioSelected = new EventEmitter<Blob | null>();
 
   audioBlob: Blob | null = null;
@@ -41,6 +42,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   isRecording = false;
   isStartingRecording = false;
   recordingPermission = false;
+  private activeMediaStream: MediaStream | null = null;
 
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
 
@@ -56,14 +58,26 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     } else if (this.initialAudio) {
       this.setAudioBlob(this.initialAudio);
     }
+
+    // Same as image-uploader's contextKey: switching to a different target (e.g. a
+    // different answer-key image) must clear out whatever was just recorded/previewed
+    // here, otherwise it visually lingers as if it belonged to the new target too.
+    const contextChange = changes['contextKey'];
+    if (contextChange && !contextChange.firstChange) {
+      this.resetPreview();
+    }
   }
 
   ngOnDestroy() {
     if (this.audioUrl) {
       URL.revokeObjectURL(this.audioUrl);
     }
-    if (this.platform.isAndroid() && this.isRecording) {
-      NativeAudioRecorder.cancel().catch(() => undefined);
+    if (this.isRecording) {
+      if (this.platform.isAndroid()) {
+        NativeAudioRecorder.cancel().catch(() => undefined);
+      } else {
+        this.cancelWebRecording();
+      }
     }
   }
 
@@ -115,6 +129,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    this.activeMediaStream = stream;
     this.mediaRecorder = new MediaRecorder(stream);
     this.chunks = [];
     this.mediaRecorder.ondataavailable = e => this.chunks.push(e.data);
@@ -123,6 +138,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
       this.zone.run(() => {
         this.setAudioBlob(blob);
         stream.getTracks().forEach(track => track.stop());
+        this.activeMediaStream = null;
         this.cdr.detectChanges();
       });
     };
@@ -212,6 +228,41 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
       return String((error as { message?: unknown }).message ?? '');
     }
     return String(error ?? '');
+  }
+
+  private resetPreview() {
+    if (this.isRecording) {
+      if (this.platform.isAndroid()) {
+        NativeAudioRecorder.cancel().catch(() => undefined);
+      } else {
+        this.cancelWebRecording();
+      }
+      this.isRecording = false;
+    }
+    if (this.audioUrl) {
+      URL.revokeObjectURL(this.audioUrl);
+    }
+    this.audioBlob = null;
+    this.audioUrl = null;
+    if (this.fileInput) {
+      this.fileInput.nativeElement.value = '';
+    }
+  }
+
+  // Unlike stopRecording(), this must NOT finalize/emit the in-progress clip — it's used
+  // when the target this recording was for (e.g. an answer-key image) is going away.
+  private cancelWebRecording() {
+    if (this.mediaRecorder) {
+      this.mediaRecorder.ondataavailable = null;
+      this.mediaRecorder.onstop = null;
+      if (this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder.stop();
+      }
+      this.mediaRecorder = null;
+    }
+    this.activeMediaStream?.getTracks().forEach(track => track.stop());
+    this.activeMediaStream = null;
+    this.chunks = [];
   }
 
   private setAudioBlob(blob: Blob | null) {

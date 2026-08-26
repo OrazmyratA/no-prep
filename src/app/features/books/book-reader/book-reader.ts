@@ -150,7 +150,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   textColor = '#111827';
   tracingColor = '#2563eb';
   tracingWidth = 3;
-  readonly annotationColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ffffff'];
+  readonly annotationColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ec4899', '#ffffff'];
   get penColors() { return this.annotationColors; }
   get highlighterColors() { return this.annotationColors; }
   get textColors() { return this.annotationColors; }
@@ -608,6 +608,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectTextColor(color: string): void {
     this.navigationController.selectTextColor(color);
+  }
+
+  updateColorFromWheel(event: Event, target: 'pen' | 'highlighter' | 'tracing' | 'text'): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (target === 'pen') this.penColor = value;
+    else if (target === 'highlighter') this.highlighterColor = value;
+    else if (target === 'tracing') this.tracingColor = value;
+    else this.selectTextColor(value);
   }
 
   startPageJump(): void {
@@ -1125,6 +1133,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const total = this.getExpandedAnswerKeyImages().length;
     if (total < 2) return;
     this.expandedAnswerKeyIndex = (this.expandedAnswerKeyIndex + 1) % total;
+  }
+
+  getExpandedAnswerKeyAudioUrl(): string {
+    return this.expandedElement
+      ? this.mediaController.getAnswerKeyImageAudioUrl(this.expandedElement, this.expandedAnswerKeyIndex)
+      : '';
   }
 
   async toggleExpandedVideoFullscreen(event?: Event): Promise<void> {

@@ -226,20 +226,29 @@ export class BookCreatorPageImportController {
   // the chosen PDF's pages at this blank page's spot instead of replacing everything —
   // this is how a teacher adds a second PDF between existing pages without a separate button.
   async handleStarterPdfUpload(): Promise<void> {
-    const page = this.creator.selectedPage;
-    if (!page || !this.creator.book) return;
+    if (!this.creator.book) return;
 
     if (this.creator.activePageSource === 'workbook') {
       const workbook: BookWorkbook | null = this.creator.primaryWorkbook;
-      const hasPdfPages = !!workbook && workbook.pages.some((item: { type: string }) => item.type === 'pdf');
-      if (!hasPdfPages) {
+      if (!workbook) {
+        // No workbook exists yet, so there's no page for shouldShowPageStarter() to anchor
+        // on — selectedPage is null and the old top-of-function `if (!page) return;` guard
+        // silently swallowed the click here. Create the workbook from the picked PDF instead.
+        await this.addWorkbookFromPdf();
+        return;
+      }
+      const page = this.creator.selectedPage;
+      const hasPdfPages = workbook.pages.some((item: { type: string }) => item.type === 'pdf');
+      if (!hasPdfPages || !page) {
         await this.uploadWorkbookPdf();
         return;
       }
-      await this.insertPdfPages('workbook', page.id, workbook!.id, true);
+      await this.insertPdfPages('workbook', page.id, workbook.id, true);
       return;
     }
 
+    const page = this.creator.selectedPage;
+    if (!page) return;
     const hasPdfPages = this.creator.book.pages.some((item: { type: string }) => item.type === 'pdf');
     if (!hasPdfPages) {
       await this.uploadStudentPdf();

@@ -4,8 +4,13 @@
   class="rp-fab"
   [class.rp-fab-positioned]="fabPosition"
   [class.rp-fab-dragging]="dragging"
+  [class.lb-timer-bg-active]="timerBgIndicatorVisible"
+  [class.lb-timer-bg-urgent]="timerBgIndicatorVisible && timerBgUrgent"
+  [class.lb-timer-bg-done]="timerBgIndicatorVisible && timerBgDone"
+  [class.lb-timer-bg-paused]="timerBgIndicatorVisible && timerBgPaused"
   [style.left.px]="fabPosition?.left"
   [style.top.px]="fabPosition?.top"
+  [style.--lb-timer-bg-progress]="timerBgProgress"
   (pointerdown)="onFabPointerDown($event)"
   (pointermove)="onFabPointerMove($event)"
   (pointerup)="onFabPointerUp($event)"
@@ -13,6 +18,7 @@
   (click)="onFabClick()"
   [attr.title]="'randomPickerTrigger' | translate"
   [attr.aria-label]="'randomPickerTrigger' | translate">
+  <span class="lb-timer-bg-ring" *ngIf="timerBgIndicatorVisible" aria-hidden="true"></span>
   <img src="assets/images/randomize.png" alt="" aria-hidden="true" draggable="false">
 </button>
 
@@ -55,8 +61,7 @@
           <h2 class="rp-title lb-header-title">{{ selectedTopicName }}</h2>
         </div>
         <div class="lb-header-actions">
-          <app-leaderboard-hammer (hit)="onHammerHit($event)"></app-leaderboard-hammer>
-
+          <!-- Group 1: mode — picking Individual/Team first decides everything else below. -->
           <button
             type="button"
             class="lb-header-btn lb-icon-btn lb-icon-btn-img"
@@ -77,7 +82,29 @@
             [attr.aria-label]="'leaderboardModeTeam' | translate">
             <img src="assets/images/teamwork.png" alt="" aria-hidden="true">
           </button>
+          <button
+            *ngIf="mode === 'team'"
+            type="button"
+            class="lb-header-btn lb-icon-btn"
+            (click)="openTeamSetup()"
+            [attr.title]="'leaderboardTeamManage' | translate"
+            [attr.aria-label]="'leaderboardTeamManage' | translate">
+            <span aria-hidden="true">✏️</span>
+          </button>
 
+          <span class="lb-header-divider" aria-hidden="true"></span>
+
+          <!-- Group 2: layout + class-engagement tools. -->
+          <button
+            *ngIf="mode !== 'team'"
+            type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img lb-grid-btn"
+            (click)="cycleGridColumns()"
+            [attr.title]="'leaderboardGridColumns' | translate"
+            [attr.aria-label]="'leaderboardGridColumns' | translate">
+            <img src="assets/images/grid.png" alt="" aria-hidden="true">
+            <span class="lb-grid-count-badge" aria-hidden="true">{{ gridColumns }}</span>
+          </button>
           <button
             type="button"
             class="lb-header-btn lb-icon-btn lb-icon-btn-img"
@@ -88,26 +115,35 @@
             [attr.aria-label]="'leaderboardWheelToggle' | translate">
             <img src="assets/images/fortune-wheel.png" alt="" aria-hidden="true">
           </button>
-
           <button
-            type="button"
-            class="lb-header-btn lb-icon-btn lb-icon-btn-img lb-grid-btn"
-            (click)="cycleGridColumns()"
-            [attr.title]="'leaderboardGridColumns' | translate"
-            [attr.aria-label]="'leaderboardGridColumns' | translate">
-            <img src="assets/images/grid.png" alt="" aria-hidden="true">
-            <span class="lb-grid-count-badge" aria-hidden="true">{{ gridColumns }}</span>
-          </button>
-
-          <button
-            *ngIf="mode === 'team'"
             type="button"
             class="lb-header-btn lb-icon-btn"
-            (click)="openTeamSetup()"
-            [attr.title]="'leaderboardTeamManage' | translate"
-            [attr.aria-label]="'leaderboardTeamManage' | translate">
-            <span aria-hidden="true">✏️</span>
+            [class.active]="showTimer"
+            [attr.aria-pressed]="showTimer"
+            (click)="toggleTimer()"
+            [attr.title]="'leaderboardTimerToggle' | translate"
+            [attr.aria-label]="'leaderboardTimerToggle' | translate">
+            <span aria-hidden="true">⏱️</span>
           </button>
+
+          <span class="lb-header-divider" aria-hidden="true"></span>
+
+          <!-- Group 3: scoring actions. -->
+          <app-leaderboard-hammer (hit)="onHammerHit($event)"></app-leaderboard-hammer>
+          <button
+            type="button"
+            class="lb-header-btn lb-icon-btn lb-icon-btn-img lb-undo-btn"
+            [disabled]="undoStack.length === 0"
+            (click)="undoLastAction()"
+            [attr.title]="'leaderboardUndo' | translate"
+            [attr.aria-label]="'leaderboardUndo' | translate">
+            <img src="assets/images/book/undo.png" alt="" aria-hidden="true">
+            <span *ngIf="undoStack.length > 0" class="lb-undo-count-badge" aria-hidden="true">{{ undoStack.length }}</span>
+          </button>
+
+          <span class="lb-header-divider" aria-hidden="true"></span>
+
+          <!-- Group 4: session/admin. -->
           <button
             type="button"
             class="lb-header-btn lb-icon-btn lb-icon-btn-img"
@@ -146,23 +182,51 @@
       </ng-container>
 
       <ng-template #lbSplit>
-        <div class="lb-split" [class.lb-split-wheel-open]="showWheel">
+        <div class="lb-split" [class.lb-split-wheel-open]="drawerOpen">
           <app-leaderboard-ranking-list
             class="lb-split-list"
             [columnBuckets]="activeColumns"
+            [columnLabels]="columnLabels"
+            [lockColumnMembership]="mode === 'team' && !rankingApplied"
             [rankByItemId]="rankByItemId"
             [rankingApplied]="rankingApplied"
             [rankedUpItemIds]="rankedUpItemIds"
             [hammerHitItemId]="hammerHitItemId"
+            [openControlsItemId]="openControlsItemId"
             (starClick)="onStarClick($event)"
             (addStudent)="addStudent()"
             (toggleAbsent)="toggleAbsent($event)"
             (columnsChange)="onColumnsChange($event)"
-            (dragActiveChange)="onDragActiveChange($event)">
+            (dragActiveChange)="onDragActiveChange($event)"
+            (toggleControls)="toggleRowControls($event)"
+            (closeControls)="closeRowControls()"
+            (incrementPoints)="onStepperIncrement($event)"
+            (decrementPoints)="onStepperDecrement($event)"
+            (setPoints)="onStepperSetPoints($event)">
           </app-leaderboard-ranking-list>
 
-          <div class="lb-split-wheel-wrap" [class.open]="showWheel">
+          <div class="lb-split-wheel-wrap" [class.open]="drawerOpen">
+            <app-leaderboard-timer
+              *ngIf="showTimer"
+              [phase]="timerPhase"
+              [hours]="timerHours"
+              [minutes]="timerMinutes"
+              [seconds]="timerSeconds"
+              [remainingSeconds]="timerRemainingSeconds"
+              [totalSeconds]="timerTotalSeconds"
+              [muted]="timerMuted"
+              [paused]="timerPaused"
+              (hoursChange)="setTimerHours($event)"
+              (minutesChange)="setTimerMinutes($event)"
+              (secondsChange)="setTimerSeconds($event)"
+              (start)="startTimer()"
+              (reset)="resetTimer()"
+              (toggleMute)="toggleTimerMute()"
+              (togglePause)="togglePauseTimer()">
+            </app-leaderboard-timer>
+
             <app-leaderboard-wheel
+              *ngIf="showWheel"
               class="lb-split-wheel"
               [entries]="wheelEntries"
               (landed)="onWheelLanded($event)">
@@ -171,16 +235,16 @@
             <button
               type="button"
               class="lb-wheel-reset-btn"
-              *ngIf="!showReveal"
+              *ngIf="showWheel && !showReveal"
               (click)="resetWheelPool()"
               [attr.title]="'leaderboardWheelReset' | translate"
               [attr.aria-label]="'leaderboardWheelReset' | translate">
-              <span aria-hidden="true">🔁</span> {{ 'leaderboardWheelReset' | translate }}
+              <img src="assets/images/book/reset.png" alt="" aria-hidden="true">
             </button>
 
             <div
               class="rp-reveal-overlay"
-              *ngIf="showReveal && selectedEntry"
+              *ngIf="showWheel && showReveal && selectedEntry"
               [class.visible]="revealVisible"
               [style.--team-color]="selectedEntry.color || null">
               <div class="rp-reveal-card" [class.rp-reveal-card-team-colored]="!!selectedEntry.color">

@@ -227,7 +227,8 @@
     padding-inline: 0.3rem;
   }
 
-  .color-dot {
+  .color-dot,
+  .color-wheel-dot {
     width: 1rem;
     height: 1rem;
   }

@@ -31,6 +31,49 @@
   gap: 0.25rem;
 }
 
+/* Past 4 columns (team mode with a big roster), letting columns keep shrinking to fit would make
+   them unreadably narrow — and since the wrap clips overflow-x by default, anything past that
+   point would just silently disappear instead of being reachable. Switch to fixed-width columns
+   the teacher can scroll through sideways instead. */
+.lb-columns-wrap.lb-columns-scroll {
+  overflow-x: auto;
+}
+
+.lb-columns-wrap.lb-columns-scroll .lb-list-rows {
+  flex: 0 0 220px;
+}
+
+/* ===== Team mode column header — labels which team a column is, since columns are now grouped
+   by team membership (see columnLabels/chunkByTeam in random-picker.ts) instead of an even split. */
+.lb-column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  margin-bottom: 0.15rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--team-color) 16%, white);
+  border: 1px solid color-mix(in srgb, var(--team-color) 35%, white);
+}
+
+.lb-column-header::before {
+  content: '';
+  flex-shrink: 0;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 9999px;
+  background: var(--team-color);
+}
+
+.lb-column-header-name {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lb-list-empty {
   text-align: center;
   color: #6b7280;

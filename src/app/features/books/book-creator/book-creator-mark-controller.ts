@@ -186,7 +186,7 @@ export class BookCreatorMarkController {
       width: 0.18,
       height: 0.06,
       value: '',
-      color: '#111827'
+      color: String(this.creator.creatorTextColor || '#111827')
     };
     this.creator.cdr.detectChanges();
     window.setTimeout(() => {

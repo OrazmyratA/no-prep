@@ -1,5 +1,4 @@
 import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Item } from '../core/db.model';
 import { Team } from './leaderboard-team.model';
 import { ThemeService } from '../core/theme';
@@ -19,9 +18,14 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
   @Output() done = new EventEmitter<Team[]>();
   @Output() cancelled = new EventEmitter<void>();
 
-  readonly unassignedListId = 'lb-team-unassigned';
   unassigned: Item[] = [];
   workingTeams: Team[] = [];
+
+  // The "armed" team — tap a team to arm it, then tap students to send them there. Tapping a
+  // student already in the armed team sends them back to unassigned instead (toggle). This
+  // replaces drag-and-drop entirely: two taps per student beats a drag gesture per student once
+  // a class has more than a handful of names.
+  selectedTeamId: number | null = null;
 
   private nextLocalTeamId = 1;
   private readonly avatarUrls = new Map<number, string>();
@@ -59,16 +63,8 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
     return this.workingTeams.length >= 2 && this.workingTeams.every(t => t.memberItemIds.length >= 1);
   }
 
-  get teamDropListIds(): string[] {
-    return this.workingTeams.map(t => this.teamListId(t));
-  }
-
-  teamListId(team: Team): string {
-    return `lb-team-${team.id}`;
-  }
-
-  connectedListsFor(currentId: string): string[] {
-    return [this.unassignedListId, ...this.teamDropListIds].filter(id => id !== currentId);
+  get selectedTeam(): Team | null {
+    return this.workingTeams.find(t => t.id === this.selectedTeamId) ?? null;
   }
 
   membersOf(team: Team): Item[] {
@@ -95,6 +91,8 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
       memberItemIds: []
     };
     this.workingTeams = [...this.workingTeams, team];
+    // Freshly created is the obvious next thing to populate — arm it immediately.
+    this.selectedTeamId = team.id;
     this.emitChange();
     this.cdr.detectChanges();
   }
@@ -118,19 +116,29 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
       if (!confirmed) return;
     }
     this.workingTeams = this.workingTeams.filter(t => t.id !== team.id);
+    if (this.selectedTeamId === team.id) this.selectedTeamId = null;
     this.recomputeUnassigned();
     this.emitChange();
     this.cdr.detectChanges();
   }
 
-  drop(event: CdkDragDrop<Item[]>) {
-    if (event.previousContainer === event.container) {
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+  selectTeam(team: Team) {
+    this.selectedTeamId = this.selectedTeamId === team.id ? null : team.id;
+    this.cdr.detectChanges();
+  }
+
+  // currentTeam is null when the student is tapped from the unassigned list.
+  onChipClick(student: Item, currentTeam: Team | null) {
+    const target = this.selectedTeam;
+    if (!target || student.id == null) return;
+    if (currentTeam?.id === target.id) {
+      // Tapping a student already in the armed team sends them back to unassigned.
+      target.memberItemIds = target.memberItemIds.filter(id => id !== student.id);
     } else {
-      transferArrayItem(event.previousContainer.data, event.container.data, event.previousIndex, event.currentIndex);
-      this.applyContainerData(event.previousContainer.id, event.previousContainer.data);
+      if (currentTeam) currentTeam.memberItemIds = currentTeam.memberItemIds.filter(id => id !== student.id);
+      target.memberItemIds = [...target.memberItemIds, student.id];
     }
-    this.applyContainerData(event.container.id, event.container.data);
+    this.recomputeUnassigned();
     this.emitChange();
     this.cdr.detectChanges();
   }
@@ -142,17 +150,6 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
 
   cancel() {
     this.cancelled.emit();
-  }
-
-  private applyContainerData(containerId: string, items: Item[]) {
-    if (containerId === this.unassignedListId) {
-      this.unassigned = [...items];
-      return;
-    }
-    const match = /^lb-team-(\d+)$/.exec(containerId);
-    if (!match) return;
-    const team = this.workingTeams.find(t => t.id === Number(match[1]));
-    if (team) team.memberItemIds = items.filter(item => item.id != null).map(item => item.id!);
   }
 
   private recomputeUnassigned() {

@@ -88,6 +88,11 @@
           (click)="creator.creatorPenColor = color"
           [title]="color">
         </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="creator.creatorPenColor" (input)="creator.updateCreatorColorFromWheel($event, 'pen')" aria-label="Custom draw color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="creator.creatorPenColor"></span>
+        </label>
         <label class="pen-size" title="Draw size">
           <input type="range" min="2" max="18" step="1" [(ngModel)]="creator.creatorPenWidth" aria-label="Draw size">
         </label>
@@ -106,6 +111,11 @@
           (click)="creator.creatorHighlighterColor = color"
           [title]="color">
         </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="creator.creatorHighlighterColor" (input)="creator.updateCreatorColorFromWheel($event, 'highlighter')" aria-label="Custom highlighter color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="creator.creatorHighlighterColor"></span>
+        </label>
         <label class="pen-size" title="Highlighter size">
           <input type="range" min="16" max="48" step="2" [(ngModel)]="creator.creatorHighlighterWidth" aria-label="Highlighter size">
         </label>
@@ -113,6 +123,23 @@
       <button type="button" class="icon-tool-btn" [class.active]="creator.creatorTextMode" (click)="creator.addTextMark()" title="Text" aria-label="Text">
         <span aria-hidden="true">T</span>
       </button>
+      <div class="pen-controls creator-pen-controls text-color-controls" *ngIf="creator.creatorTextMode || creator.activeCreatorTextInput">
+        <button
+          *ngFor="let color of creator.creatorTextColors"
+          type="button"
+          class="color-dot"
+          [class.selected]="color === creator.creatorTextColor"
+          [class.light-dot]="color === '#ffffff'"
+          [style.background]="color"
+          (click)="creator.selectCreatorTextColor(color)"
+          [title]="color">
+        </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="creator.creatorTextColor" (input)="creator.updateCreatorColorFromWheel($event, 'text')" aria-label="Custom text color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="creator.creatorTextColor"></span>
+        </label>
+      </div>
     </div>
     <div class="toolbar-group insert-group">
       <button type="button" class="icon-tool-btn" (click)="creator.addImage()" [title]="'image' | translate" [attr.aria-label]="'creatorAddImage' | translate">

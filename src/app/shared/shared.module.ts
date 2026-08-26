@@ -22,6 +22,7 @@ import { LeaderboardHammerComponent } from './leaderboard-hammer';
 import { LeaderboardRankingListComponent } from './leaderboard-ranking-list';
 import { LeaderboardWheelComponent } from './leaderboard-wheel';
 import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
+import { LeaderboardTimerComponent } from './leaderboard-timer';
 
 @NgModule({
   declarations: [
@@ -43,6 +44,7 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
     LeaderboardRankingListComponent,
     LeaderboardWheelComponent,
     LeaderboardTeamSetupComponent,
+    LeaderboardTimerComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -67,7 +69,8 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
     LeaderboardHammerComponent,
     LeaderboardRankingListComponent,
     LeaderboardWheelComponent,
-    LeaderboardTeamSetupComponent
+    LeaderboardTeamSetupComponent,
+    LeaderboardTimerComponent
   ]
 })
 export class SharedModule { }

@@ -39,6 +39,16 @@
                 "output": "assets/pdfjs"
               },
               {
+                "glob": "*.wasm",
+                "input": "node_modules/pdfjs-dist/wasm",
+                "output": "assets/pdfjs/wasm"
+              },
+              {
+                "glob": "*_nowasm_fallback.js",
+                "input": "node_modules/pdfjs-dist/wasm",
+                "output": "assets/pdfjs/wasm"
+              },
+              {
                 "glob": "soundtouch-processor.js",
                 "input": "node_modules/@soundtouchjs/audio-worklet/.dist",
                 "output": "assets/soundtouch"

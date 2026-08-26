@@ -70,6 +70,8 @@ export class AnagramComponent implements OnInit, OnDestroy {
   private currentItemAudioUrl: string | null = null;
   private advanceTimer: number | null = null;
   private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private pendingPlacementTileIds = new Set<string>();
+  private pendingTargetIndexes = new Set<number>();
   private destroyed = false;
 
   constructor(
@@ -133,6 +135,11 @@ export class AnagramComponent implements OnInit, OnDestroy {
     }
 
     this.stopCurrentItemAudio();
+    // Any in-flight placement animation belongs to the word being left — its deferred
+    // callback must not mutate the arrays we're about to replace below.
+    this.clearFeedbackTimers();
+    this.pendingPlacementTileIds.clear();
+    this.pendingTargetIndexes.clear();
     this.currentItem = this.items[index];
     this.isMediaFlipped = false;
     this.originalWord = this.currentItem.text!;
@@ -351,9 +358,15 @@ export class AnagramComponent implements OnInit, OnDestroy {
   }
 
   selectLetterByClick(tile: LetterTile, tileIndex: number) {
+    // A previous click on this same tile is still mid-flight (300ms fly animation) — ignore the repeat.
+    if (this.pendingPlacementTileIds.has(tile.id)) {
+      return;
+    }
+
     this.keyboardSelectedSourceIndex = Math.max(0, tileIndex);
-    // Find the first empty target slot
-    const targetIndex = this.targetLetters.findIndex(slot => slot === null);
+    // Find the first empty target slot, skipping ones already claimed by an in-flight click —
+    // otherwise two fast clicks can both resolve to the same slot before either one lands.
+    const targetIndex = this.targetLetters.findIndex((slot, i) => slot === null && !this.pendingTargetIndexes.has(i));
 
     if (targetIndex === -1) {
       this.playSound(this.buzzSound, 0.3);
@@ -369,13 +382,22 @@ export class AnagramComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.pendingPlacementTileIds.add(tile.id);
+    this.pendingTargetIndexes.add(targetIndex);
     this.triggerFlyAnimation(tile.id);
     this.playSound(this.flipSound, 0.3);
 
     this.setFeedbackTimeout(() => {
-      this.sourceLetters.splice(tileIndex, 1);
+      // Re-locate the tile by reference rather than trusting the index captured at click
+      // time — an earlier pending click may have spliced sourceLetters in the meantime.
+      const liveIndex = this.sourceLetters.indexOf(tile);
+      if (liveIndex !== -1) {
+        this.sourceLetters.splice(liveIndex, 1);
+      }
       this.targetLetters[targetIndex] = tile;
       this.animatingTiles.delete(tile.id);
+      this.pendingPlacementTileIds.delete(tile.id);
+      this.pendingTargetIndexes.delete(targetIndex);
       this.normalizeKeyboardSourceSelection();
       this.cdr.detectChanges();
 

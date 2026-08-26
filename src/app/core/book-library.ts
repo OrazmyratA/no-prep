@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import { BehaviorSubject } from 'rxjs';
@@ -69,7 +69,8 @@ export class BookLibraryService {
   constructor(
     private platform: PlatformService,
     private languageService: LanguageService,
-    private platformFile: PlatformFileService
+    private platformFile: PlatformFileService,
+    private ngZone: NgZone
   ) {
     this.connectProgressEvents();
     void this.refresh();
@@ -264,7 +265,12 @@ export class BookLibraryService {
       }
       const pageCount = await this.getPdfPageCount(picked.dataUrl);
       const sourcePdf = picked.relativePath || 'student-book/source.pdf';
-      const preservedPages = (book.pages || []).filter((page) => page.type !== 'pdf');
+      // Drop empty blank pages (the starter placeholder that hosts the "Upload PDF" button
+      // on a brand-new book) so uploading doesn't leave a page with nothing on it ahead of
+      // the PDF content. A blank page the teacher actually put something on is kept.
+      const preservedPages = (book.pages || []).filter((page) =>
+        page.type !== 'pdf' && !(page.type === 'blank' && !page.elements?.length)
+      );
       book.sourcePdf = sourcePdf;
       book.pages = [...preservedPages, ...this.createPdfPages(sourcePdf, pageCount)];
       book.updatedAt = new Date().toISOString();
@@ -1522,22 +1528,30 @@ export class BookLibraryService {
     });
   }
 
-  private async invoke<T>(method: string, input?: unknown): Promise<BookOperationResult<T>> {
-    if (!this.isDesktopAvailable && method !== 'getBookRegistry') {
-      return { ok: false, error: 'ELECTRON_REQUIRED' };
-    }
-
-    try {
-      const api = window?.electronAPI;
-      const fn = api?.[method];
-      if (typeof fn !== 'function') {
-        return { ok: false, error: 'FEATURE_UNAVAILABLE' };
+  // Every Electron book operation (asset uploads, PDF replace/insert, recordings, ...) goes
+  // through here via ipcRenderer.invoke, which zone.js doesn't patch. Left unwrapped, the
+  // promise settles outside Angular's zone, so callers' state mutations after `await
+  // bookLibrary.xyz(...)` never trigger change detection — the UI silently doesn't update
+  // until an unrelated zone-patched event (e.g. a click) forces a tick. Running the whole
+  // call inside ngZone.run() keeps every `await`/`.then()` chained onto it inside the zone.
+  private invoke<T>(method: string, input?: unknown): Promise<BookOperationResult<T>> {
+    return this.ngZone.run(async () => {
+      if (!this.isDesktopAvailable && method !== 'getBookRegistry') {
+        return { ok: false, error: 'ELECTRON_REQUIRED' };
       }
-      return await fn(input ?? {});
-    } catch (error) {
-      console.debug(`Book API ${method} failed`, error);
-      return { ok: false, error: 'UNKNOWN' };
-    }
+
+      try {
+        const api = window?.electronAPI;
+        const fn = api?.[method];
+        if (typeof fn !== 'function') {
+          return { ok: false, error: 'FEATURE_UNAVAILABLE' };
+        }
+        return await fn(input ?? {});
+      } catch (error) {
+        console.debug(`Book API ${method} failed`, error);
+        return { ok: false, error: 'UNKNOWN' };
+      }
+    });
   }
 
   private connectProgressEvents(): void {
@@ -1546,8 +1560,10 @@ export class BookLibraryService {
       return;
     }
 
+    // Same zone-escape issue as invoke() — this is an Electron IPC event listener, not a
+    // zone-patched API, so progress-bar updates would silently not repaint without this.
     api.onBookOperationProgress((progress: BookOperationProgress | null) => {
-      this.progressSubject.next(progress);
+      this.ngZone.run(() => this.progressSubject.next(progress));
     });
   }
 

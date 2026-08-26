@@ -301,6 +301,9 @@
 
 /* ─── Quiz overlay (matches spin-wheel style) ─────────────────── */
 .quiz-overlay {
+  /* Must beat .squid-buttons (z-index: 60) — otherwise that bottom bar sits
+     on top of the quiz options instead of under them, hiding the overlay. */
+  z-index: 100;
   background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(8px);
   opacity: 0;

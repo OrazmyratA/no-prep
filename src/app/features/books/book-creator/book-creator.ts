@@ -121,10 +121,12 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   creatorPenWidth = 6;
   creatorHighlighterColor = '#fde047';
   creatorHighlighterWidth = 18;
-  readonly creatorMarkColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ffffff'];
+  readonly creatorMarkColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ec4899', '#ffffff'];
   get creatorPenColors() { return this.creatorMarkColors; }
   get creatorHighlighterColors() { return this.creatorMarkColors; }
+  get creatorTextColors() { return this.creatorMarkColors; }
   creatorTextMode = false;
+  creatorTextColor = '#111827';
   activeCreatorTextInput: { x: number; y: number; width: number; height: number; value: string; color: string } | null = null;
   pageJumpValue = '1';
   activePageSource: 'main' | 'workbook' = 'main';
@@ -945,6 +947,38 @@ Tomorrow I will help my mom.`;
     return this.mediaController.getAnswerKeyImageUrl(path);
   }
 
+  onAnswerKeyImageDragStart(index: number, event: DragEvent): void {
+    this.mediaController.onAnswerKeyImageDragStart(index, event);
+  }
+
+  onAnswerKeyImageDragOver(event: DragEvent): void {
+    this.mediaController.onAnswerKeyImageDragOver(event);
+  }
+
+  onAnswerKeyImageDrop(element: BookElement, targetIndex: number, event: DragEvent): void {
+    this.mediaController.onAnswerKeyImageDrop(element, targetIndex, event);
+  }
+
+  getSelectedAnswerKeyImageIndex(element: BookElement): number {
+    return this.mediaController.getSelectedAnswerKeyImageIndex(element);
+  }
+
+  selectAnswerKeyImage(element: BookElement, index: number): void {
+    this.mediaController.selectAnswerKeyImage(element, index);
+  }
+
+  getAnswerKeyImageAudio(element: BookElement, imageIndex: number): string {
+    return this.mediaController.getAnswerKeyImageAudio(element, imageIndex);
+  }
+
+  async setAnswerKeyImageAudio(blob: Blob | null, element: BookElement, imageIndex: number): Promise<void> {
+    await this.mediaController.setAnswerKeyImageAudio(blob, element, imageIndex);
+  }
+
+  getAnswerKeyImageAudioUrl(element: BookElement, imageIndex: number): string {
+    return this.mediaController.getAnswerKeyImageAudioUrl(element, imageIndex);
+  }
+
   async uploadVideoElement(element: BookElement): Promise<void> {
     await this.mediaController.uploadVideoElement(element);
   }
@@ -1757,6 +1791,35 @@ Tomorrow I will help my mom.`;
       element.data['imageDataUrl'] = this.createTextImageDataUrl(String(element.data['text'] || ''), value || '#111827');
     }
     this.markBookDirty();
+  }
+
+  defaultMarkColor(element: BookElement): string {
+    return element.type === 'highlighter' ? '#fde047' : element.type === 'text' ? '#111827' : '#2563eb';
+  }
+
+  // Preset swatch click on an already-placed ink/highlighter/text element — a single
+  // discrete change, so one captureHistory() call is enough (unlike the wheel input's
+  // continuous drag, which needs the begin/commit pairing around updateMarkColor instead).
+  selectExistingMarkColor(element: BookElement, color: string): void {
+    this.captureHistory();
+    this.updateMarkColor(element, color);
+  }
+
+  // The color a NEW text mark starts with (mirrors creatorPenColor/creatorHighlighterColor for
+  // the pen/highlighter tools) — editing an already-placed text's color is done via updateMarkColor
+  // in the inspector instead, same as ink/highlighter elements.
+  selectCreatorTextColor(color: string): void {
+    this.creatorTextColor = color;
+    if (this.activeCreatorTextInput) {
+      this.activeCreatorTextInput.color = color;
+    }
+  }
+
+  updateCreatorColorFromWheel(event: Event, target: 'pen' | 'highlighter' | 'text'): void {
+    const value = (event.target as HTMLInputElement).value;
+    if (target === 'pen') this.creatorPenColor = value;
+    else if (target === 'highlighter') this.creatorHighlighterColor = value;
+    else this.selectCreatorTextColor(value);
   }
 
   getElementPolylinePoints(element: BookElement): string {

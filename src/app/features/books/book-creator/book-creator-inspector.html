@@ -317,14 +317,30 @@
           (ngModelChange)="creator.updateTextMarkText(element, $event)"
           (blur)="creator.commitHistoryCapture()">
       </label>
-      <label>
+      <label class="mark-color-label">
         Color
-        <input
-          type="color"
-          [ngModel]="element.data['color'] || (element.type === 'highlighter' ? '#fde047' : element.type === 'text' ? '#111827' : '#2563eb')"
-          (focus)="creator.beginHistoryCapture()"
-          (ngModelChange)="creator.updateMarkColor(element, $event)"
-          (blur)="creator.commitHistoryCapture()">
+        <div class="pen-controls mark-color-controls">
+          <button
+            *ngFor="let color of creator.creatorMarkColors"
+            type="button"
+            class="color-dot"
+            [class.selected]="color === (element.data['color'] || creator.defaultMarkColor(element))"
+            [class.light-dot]="color === '#ffffff'"
+            [style.background]="color"
+            (click)="creator.selectExistingMarkColor(element, color)"
+            [title]="color">
+          </button>
+          <label class="color-wheel-dot" title="Custom color">
+            <input
+              type="color"
+              [ngModel]="element.data['color'] || creator.defaultMarkColor(element)"
+              (focus)="creator.beginHistoryCapture()"
+              (ngModelChange)="creator.updateMarkColor(element, $event)"
+              (blur)="creator.commitHistoryCapture()">
+            <span class="color-wheel-ring"></span>
+            <span class="color-wheel-fill" [style.background]="element.data['color'] || creator.defaultMarkColor(element)"></span>
+          </label>
+        </div>
       </label>
     </div>
     <div class="text-task-settings" *ngIf="element.type === 'textTask'">
@@ -557,12 +573,43 @@
     </div>
     <div class="image-settings-panel answer-key-settings" *ngIf="element.type === 'answerKey'">
       <div class="answer-key-gallery" *ngIf="creator.getAnswerKeyImages(element).length">
-        <div class="answer-key-thumb" *ngFor="let imagePath of creator.getAnswerKeyImages(element); let i = index; trackBy: creator.trackByIndex">
+        <div
+          class="answer-key-thumb"
+          *ngFor="let imagePath of creator.getAnswerKeyImages(element); let i = index; trackBy: creator.trackByIndex"
+          [class.answer-key-thumb-selected]="creator.getSelectedAnswerKeyImageIndex(element) === i"
+          draggable="true"
+          (dragstart)="creator.onAnswerKeyImageDragStart(i, $event)"
+          (dragover)="creator.onAnswerKeyImageDragOver($event)"
+          (drop)="creator.onAnswerKeyImageDrop(element, i, $event)"
+          (click)="creator.selectAnswerKeyImage(element, i)"
+          title="Select to attach its audio below">
           <img [src]="creator.getAnswerKeyImageUrl(imagePath)" alt="">
-          <button type="button" class="answer-key-thumb-remove" (click)="creator.removeAnswerKeyImage(element, i)" title="Remove image" aria-label="Remove image">&times;</button>
+          <span
+            *ngIf="creator.getAnswerKeyImageAudio(element, i)"
+            class="answer-key-thumb-audio-badge"
+            title="Has audio">🔊</span>
+          <button type="button" class="answer-key-thumb-remove" (click)="$event.stopPropagation(); creator.removeAnswerKeyImage(element, i)" title="Remove image" aria-label="Remove image">&times;</button>
         </div>
       </div>
       <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" (imageSelected)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
+
+      <div class="answer-key-audio-section" *ngIf="creator.getAnswerKeyImages(element).length as imageCount">
+        <div class="answer-key-audio-label">
+          Audio for image {{ creator.getSelectedAnswerKeyImageIndex(element) + 1 }} of {{ imageCount }}
+        </div>
+        <div class="answer-key-audio" *ngIf="creator.getAnswerKeyImageAudio(element, creator.getSelectedAnswerKeyImageIndex(element))">
+          <audio [src]="creator.getAnswerKeyImageAudioUrl(element, creator.getSelectedAnswerKeyImageIndex(element))" controls></audio>
+          <button
+            type="button"
+            class="answer-key-audio-remove"
+            (click)="creator.setAnswerKeyImageAudio(null, element, creator.getSelectedAnswerKeyImageIndex(element))"
+            title="Remove recording"
+            aria-label="Remove recording">&times;</button>
+        </div>
+        <app-audio-uploader
+          [contextKey]="element.id + ':' + creator.getSelectedAnswerKeyImageIndex(element)"
+          (audioSelected)="creator.setAnswerKeyImageAudio($event, element, creator.getSelectedAnswerKeyImageIndex(element))"></app-audio-uploader>
+      </div>
     </div>
     <div class="speaking-ai-settings" *ngIf="element.type === 'speakingAi'">
       <label>

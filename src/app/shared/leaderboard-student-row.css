@@ -164,6 +164,34 @@
   white-space: nowrap;
 }
 
+/* ===== Hot streak: consecutive correct answers with no hammer hit in between (see
+   streakHotThreshold/isHotStreak) — a small flame badge plus a warm glow on the row itself, both
+   purely additive to whatever else is already going on (medals, team color, baseline badge). ===== */
+.lb-row-streak-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(249, 115, 22, 0.14);
+  color: #ea580c;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  animation: lbStreakFlicker 1.6s ease-in-out infinite;
+}
+
+@keyframes lbStreakFlicker {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+:host.lb-row-hot-streak {
+  border-color: #fdba74;
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25), 0 4px 14px rgba(249, 115, 22, 0.22);
+}
+
 /* ===== Flying above another row during the FLIP reorder animation ===== */
 :host.lb-row-flying {
   box-shadow: 0 20px 40px rgba(250, 204, 21, 0.5), 0 6px 16px rgba(15, 23, 42, 0.3);
@@ -200,4 +228,189 @@
   68%  { transform: translateY(-6px) scale(0.94, 1.08); }
   84%  { transform: translateY(2px) scale(1.03, 0.97); }
   100% { transform: translateY(0) scale(1, 1); }
+}
+
+/* ===== Point/absent controls — an inline panel inside the row's own rectangle, not a floating
+   popover. The CSS-grid "0fr -> 1fr" trick gives a smooth height expand/collapse with no JS
+   measurement: the wrap is always in the DOM (so the transition has something to animate
+   between), and its single child is clipped by overflow:hidden while collapsed. ===== */
+:host.lb-row-controls-open {
+  border-color: #c7d2fe;
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.18);
+}
+
+.lb-row-controls-wrap {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lb-row-controls-wrap.lb-row-controls-open {
+  grid-template-rows: 1fr;
+}
+
+.lb-row-controls {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+  cursor: default;
+}
+
+.lb-row-controls-wrap.lb-row-controls-open .lb-row-controls {
+  padding-top: 0.65rem;
+  margin-top: 0.15rem;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.lb-row-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lb-row-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.lb-row-toggle-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.7rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #fca5a5;
+  transition: background 200ms ease;
+}
+
+.lb-row-toggle-thumb {
+  position: absolute;
+  top: 0.14rem;
+  left: 0.14rem;
+  width: 1.22rem;
+  height: 1.22rem;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Cross when absent (unchecked), tick when present (checked) — no label text needed alongside. */
+.lb-row-toggle-thumb-icon {
+  font-size: 0.65rem;
+  font-weight: 900;
+  line-height: 1;
+  color: #ef4444;
+}
+
+.lb-row-toggle-input:checked ~ .lb-row-toggle-track {
+  background: #4ade80;
+}
+
+.lb-row-toggle-input:checked ~ .lb-row-toggle-track .lb-row-toggle-thumb {
+  transform: translateX(1.2rem);
+}
+
+.lb-row-toggle-input:checked ~ .lb-row-toggle-track .lb-row-toggle-thumb-icon {
+  color: #22c55e;
+}
+
+.lb-row-toggle-input:focus-visible ~ .lb-row-toggle-track {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+}
+
+.lb-row-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lb-row-stepper-btn {
+  flex-shrink: 0;
+  width: 2.15rem;
+  height: 2.15rem;
+  border: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.35);
+  transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 150ms ease;
+}
+
+.lb-row-stepper-btn:hover {
+  transform: scale(1.1);
+}
+
+.lb-row-stepper-btn:active {
+  transform: scale(0.92);
+}
+
+.lb-row-stepper-minus {
+  background: linear-gradient(135deg, #f87171, #ef4444);
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.35);
+}
+
+.lb-row-stepper-value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.lb-row-stepper-input {
+  width: 100%;
+  padding: 0.4rem 0.2rem;
+  border: 2px solid #e0e7ff;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1f2937;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  /* Hide the native number-input spinner — the round +/- buttons already do that job, bigger
+     and more tap-friendly. */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.lb-row-stepper-input::-webkit-outer-spin-button,
+.lb-row-stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.lb-row-stepper-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.lb-row-stepper-total {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #9ca3af;
+  white-space: nowrap;
 }

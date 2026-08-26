@@ -24,16 +24,24 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   @ViewChildren('row') rowComponents?: QueryList<LeaderboardRow>;
 
   @Input() columnBuckets: LeaderboardEntry[][] = [[]];
+  @Input() columnLabels: { name: string; color?: string; isUnassigned?: boolean }[] | null = null;
+  @Input() lockColumnMembership = false;
   @Input() rankByItemId: Map<number, number> = new Map();
   @Input() rankingApplied = false;
   @Input() rankedUpItemIds: number[] = [];
   @Input() hammerHitItemId: number | null = null;
+  @Input() openControlsItemId: number | null = null;
 
   @Output() starClick = new EventEmitter<number>();
   @Output() addStudent = new EventEmitter<void>();
   @Output() toggleAbsent = new EventEmitter<number>();
   @Output() columnsChange = new EventEmitter<number[][]>();
   @Output() dragActiveChange = new EventEmitter<boolean>();
+  @Output() toggleControls = new EventEmitter<number>();
+  @Output() closeControls = new EventEmitter<void>();
+  @Output() incrementPoints = new EventEmitter<number>();
+  @Output() decrementPoints = new EventEmitter<number>();
+  @Output() setPoints = new EventEmitter<{ itemId: number; value: number }>();
 
   private confettiInstance: ConfettiInstance | null = null;
   private readonly confettiColors = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', '#f97316'];
@@ -120,6 +128,10 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   }
 
   connectedColumnIds(index: number): string[] {
+    // Team mode: a column IS a team, and reassigning someone's team belongs in Team Setup, not a
+    // drag here — returning no connections means CDK still allows reordering within the column,
+    // just never a cross-column transfer.
+    if (this.lockColumnMembership) return [];
     return this.columnBuckets
       .map((_, i) => this.columnListId(i))
       .filter(id => id !== this.columnListId(index));
@@ -131,6 +143,13 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
 
   get hasAnyEntries(): boolean {
     return this.columnBuckets.some(col => col.length > 0);
+  }
+
+  // A row's own click stops propagation before it reaches here (see leaderboard-student-row.ts's
+  // onRowClick), so this only ever fires for a genuine "elsewhere" click — safe to unconditionally
+  // close whatever popover is open.
+  onBackgroundClick() {
+    this.closeControls.emit();
   }
 
   onDragStarted() {

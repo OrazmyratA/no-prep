@@ -2,10 +2,14 @@ import {
   BookElement,
   BookPage,
   BookWorkbook,
+  getAnswerKeyImageAudioPath,
   getAnswerKeyImagePaths
 } from '../../../core/book.model';
 
 export class BookCreatorMediaController {
+  private draggedAnswerKeyImageIndex: number | null = null;
+  private selectedAnswerKeyImageIndex = new Map<string, number>();
+
   constructor(private readonly creator: any) {}
 
   async addImage(): Promise<void> {
@@ -64,9 +68,16 @@ export class BookCreatorMediaController {
     // Normalize legacy single-src books onto the images array the first time a
     // second image is added, so old and new answer keys share one storage shape.
     const images = getAnswerKeyImagePaths(element);
+    const audios = this.readImageAudios(element, images.length);
+    audios.push(null); // the new image starts with no audio attached
+
     element.data['images'] = [...images, saved.relativePath];
+    element.data['imageAudios'] = audios;
     delete element.data['src'];
     element.data['label'] = 'Answer key';
+    // Deliberately leave the selected image alone — jumping the audio panel to the
+    // image just added made whichever image you'd been working on (and its audio)
+    // look like it had vanished, when it was only the panel's focus that moved.
     this.creator.refreshElementAssetChange();
   }
 
@@ -75,10 +86,114 @@ export class BookCreatorMediaController {
     const images = getAnswerKeyImagePaths(element);
     if (index < 0 || index >= images.length) return;
     this.creator.captureHistory();
+
+    const audios = this.readImageAudios(element, images.length);
     images.splice(index, 1);
+    audios.splice(index, 1);
     element.data['images'] = images;
+    element.data['imageAudios'] = audios;
     delete element.data['src'];
     this.creator.refreshElementAssetChange();
+  }
+
+  onAnswerKeyImageDragStart(index: number, event: DragEvent): void {
+    this.draggedAnswerKeyImageIndex = index;
+    event.dataTransfer?.setData('text/plain', String(index));
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onAnswerKeyImageDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  onAnswerKeyImageDrop(element: BookElement, targetIndex: number, event: DragEvent): void {
+    event.preventDefault();
+    if (element.type !== 'answerKey') return;
+    const sourceIndex = this.draggedAnswerKeyImageIndex ?? Number(event.dataTransfer?.getData('text/plain'));
+    this.draggedAnswerKeyImageIndex = null;
+    const images = getAnswerKeyImagePaths(element);
+    if (
+      !Number.isInteger(sourceIndex)
+      || sourceIndex < 0
+      || sourceIndex >= images.length
+      || sourceIndex === targetIndex
+    ) {
+      return;
+    }
+
+    this.creator.captureHistory();
+    const [path] = images.splice(sourceIndex, 1);
+    images.splice(targetIndex, 0, path);
+    element.data['images'] = images;
+
+    const audios = this.readImageAudios(element, images.length);
+    const [audio] = audios.splice(sourceIndex, 1);
+    audios.splice(targetIndex, 0, audio);
+    element.data['imageAudios'] = audios;
+
+    this.creator.refreshElementAssetChange();
+  }
+
+  /** Which image's audio the inspector is currently showing/editing, clamped to the current image list. */
+  getSelectedAnswerKeyImageIndex(element: BookElement): number {
+    const images = getAnswerKeyImagePaths(element);
+    if (!images.length) return 0;
+    const stored = this.selectedAnswerKeyImageIndex.get(element.id) ?? 0;
+    return Math.min(Math.max(stored, 0), images.length - 1);
+  }
+
+  selectAnswerKeyImage(element: BookElement, index: number): void {
+    this.selectedAnswerKeyImageIndex.set(element.id, index);
+  }
+
+  getAnswerKeyImageAudio(element: BookElement, imageIndex: number): string {
+    return getAnswerKeyImageAudioPath(element, imageIndex);
+  }
+
+  // One recording per image, keyed by position in data['images'] (data['imageAudios']),
+  // saved as a book asset file the same way the single shared clip used to be. Passing
+  // blob === null (the uploader's own "x remove" control) clears just that image's clip.
+  async setAnswerKeyImageAudio(blob: Blob | null, element: BookElement, imageIndex: number): Promise<void> {
+    if (!this.creator.book || element.type !== 'answerKey') return;
+    const images = getAnswerKeyImagePaths(element);
+    if (imageIndex < 0 || imageIndex >= images.length) return;
+    this.creator.captureHistory();
+
+    const audios = this.readImageAudios(element, images.length);
+
+    if (!blob) {
+      audios[imageIndex] = null;
+    } else {
+      const dataUrl = await this.creator.blobToDataUrl(blob);
+      const saved = await this.creator.bookLibrary.saveAudioRecording(this.creator.book.id, dataUrl);
+      if (!saved) return;
+      audios[imageIndex] = saved.relativePath;
+    }
+
+    element.data['imageAudios'] = audios;
+    // Once audio is edited directly on an image, the old single shared clip (only ever
+    // implied for image 0) is fully superseded — drop it so clearing image 0's audio here
+    // can't silently fall back to resurrecting it.
+    delete element.data['audio'];
+    this.creator.refreshElementAssetChange();
+  }
+
+  getAnswerKeyImageAudioUrl(element: BookElement, imageIndex: number): string {
+    const path = getAnswerKeyImageAudioPath(element, imageIndex);
+    if (!this.creator.book || !path) return '';
+    return this.isExternalUrl(path) ? path : this.getCachedAssetUrl(path);
+  }
+
+  private readImageAudios(element: BookElement, expectedLength: number): (string | null)[] {
+    const raw = element.data['imageAudios'];
+    const audios: (string | null)[] = Array.isArray(raw) ? [...raw] : [];
+    while (audios.length < expectedLength) audios.push(null);
+    return audios;
   }
 
   async uploadVideoElement(element: BookElement): Promise<void> {

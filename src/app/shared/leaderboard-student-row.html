@@ -15,9 +15,60 @@
 <div class="lb-row-score">
   <app-leaderboard-star-rating [points]="entry.points" [absent]="!!entry.absent" (starClick)="onStarClick()"></app-leaderboard-star-rating>
   <span
+    *ngIf="isHotStreak"
+    class="lb-row-streak-badge"
+    [attr.title]="'leaderboardStreak' | translate">
+    <span aria-hidden="true">🔥</span>{{ entry.streak }}
+  </span>
+  <span
     *ngIf="entry.baselinePoints != null"
     class="lb-row-baseline"
     [attr.title]="'leaderboardSessionBaselineHint' | translate">
     {{ entry.baselinePoints > 0 ? '+' : '' }}{{ entry.baselinePoints }}
   </span>
+</div>
+
+<div class="lb-row-controls-wrap" [class.lb-row-controls-open]="controlsOpen">
+  <div class="lb-row-controls" (click)="$event.stopPropagation()">
+    <label class="lb-row-toggle">
+      <input
+        type="checkbox"
+        class="lb-row-toggle-input"
+        [checked]="!entry.absent"
+        (click)="$event.stopPropagation()"
+        (change)="onAbsentToggleClick()"
+        [attr.aria-label]="(entry.absent ? 'leaderboardMarkPresent' : 'leaderboardMarkAbsent') | translate">
+      <span class="lb-row-toggle-track" aria-hidden="true">
+        <span class="lb-row-toggle-thumb">
+          <span class="lb-row-toggle-thumb-icon">{{ entry.absent ? '✗' : '✓' }}</span>
+        </span>
+      </span>
+    </label>
+
+    <div class="lb-row-stepper">
+      <button
+        type="button"
+        class="lb-row-stepper-btn lb-row-stepper-minus"
+        (click)="onDecrementClick()"
+        [attr.aria-label]="'leaderboardRemovePoint' | translate">&minus;</button>
+
+      <div class="lb-row-stepper-value">
+        <input
+          type="number"
+          class="lb-row-stepper-input"
+          [value]="entry.points"
+          (change)="onPointsInputChange(pointsInput.value)"
+          #pointsInput>
+        <span *ngIf="entireTotal != null" class="lb-row-stepper-total">
+          {{ 'leaderboardEntireTotal' | translate }} {{ entireTotal }}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        class="lb-row-stepper-btn lb-row-stepper-plus"
+        (click)="onIncrementClick()"
+        [attr.aria-label]="'leaderboardAddPoint' | translate">+</button>
+    </div>
+  </div>
 </div>

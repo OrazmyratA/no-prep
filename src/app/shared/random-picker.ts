@@ -9,6 +9,7 @@ import { LicenseService } from '../core/license';
 import { ConfirmationService } from './confirmation';
 import { LeaderboardEntry } from './leaderboard.model';
 import { Team } from './leaderboard-team.model';
+import { TimerPhase } from './leaderboard-timer';
 
 const ACTIVE_TOPIC_STORAGE_KEY = 'leaderboardActiveTopicId';
 
@@ -40,9 +41,34 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   rankedUpItemIds: number[] = [];
   hammerHitItemId: number | null = null;
 
-  // Wheel is a slide-in-from-right drawer, off by default; the ranking list expands to use
-  // the freed-up width while it's hidden.
+  // Which row's Absent/point-control popover is open, if any — only one at a time. Set by
+  // toggleRowControls() (a row's own click), cleared by closeRowControls() (a click elsewhere,
+  // via the ranking-list's background click) or on topic load.
+  openControlsItemId: number | null = null;
+
+  // Wheel and timer share the same slide-in-from-right drawer, off by default (ranking list
+  // expands to use the freed-up width while it's hidden) — mutually exclusive, opening one
+  // closes the other (see toggleWheel/toggleTimer).
   showWheel = false;
+  showTimer = false;
+
+  // The countdown itself lives here rather than on app-leaderboard-timer (a plain presentational
+  // child of the overlay panel, which *ngIf="overlayOpen" destroys whenever the teacher closes the
+  // leaderboard window) — RandomPickerComponent is mounted once at the app root (see app.html) and
+  // never destroyed, so keeping the interval/sounds here is what lets a countdown survive the
+  // teacher closing the overlay or switching away to the wheel. The FAB (rp-fab, always visible
+  // regardless of overlayOpen) reflects this state as a live ring + glow — see timerBgIndicatorVisible.
+  timerPhase: TimerPhase = 'setup';
+  timerHours = 0;
+  timerMinutes = 1;
+  timerSeconds = 0;
+  timerRemainingSeconds = 0;
+  timerTotalSeconds = 0;
+  timerMuted = false;
+  timerPaused = false;
+  private timerIntervalId: ReturnType<typeof setInterval> | null = null;
+  private timerTickSound: HTMLAudioElement | null = null;
+  private timerUrgentSound: HTMLAudioElement | null = null;
 
   // Teacher-controlled column count for the ranking list, cycled 1/2/3 by the grid.png header
   // button. Forced to 1 while the wheel is open (not enough width for multiple columns).
@@ -101,6 +127,18 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // locked out of scoring and the wheel (enforced in awardPoint/deductPoint/wheelEntries below).
   private absentItemIds = new Set<number>();
 
+  // Consecutive correct-answer awards per student, with no hammer hit in between — a hit resets
+  // its own student straight to 0 (see awardPoint/deductPoint). Read via getCachedEntry() so the
+  // row can render a flame badge once it crosses the "hot" threshold (see streakHotThreshold).
+  private streaks = new Map<number, number>();
+  readonly streakHotThreshold = 3;
+
+  // Last few point/absent-changing actions, most-recent last, so the teacher can walk back
+  // several accidental taps in a row rather than just the very last one. Each undo() call pops
+  // exactly one entry. Cleared on topic switch — undo history belongs to the current class list.
+  private readonly maxUndoDepth = 5;
+  undoStack: Array<{ itemId: number; scoreDelta: number; prevStreak: number; prevAbsent?: boolean }> = [];
+
   // Roster ids in teacher-entry order (roster is already `order`-sorted by db.ts), captured once
   // per loadTopic — the list's default/reset state, and what toggleRanking() restores on a second tap.
   private initialOrder: number[] = [];
@@ -147,6 +185,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.buzzSound.load();
     this.achieveSound = new Audio('assets/sound/achieve.mp3');
     this.achieveSound.load();
+    this.timerTickSound = new Audio('assets/sound/timer.mp3');
+    this.timerTickSound.loop = true;
+    this.timerTickSound.load();
+    this.timerUrgentSound = new Audio('assets/sound/10sec.mp3');
+    this.timerUrgentSound.load();
 
     this.loadFabPosition();
 
@@ -163,6 +206,9 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.clearPendingTimers();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     [this.collectSound, this.hammerSound, this.powerUpSound, this.buzzSound, this.achieveSound].forEach(s => s?.pause());
+    this.stopTimerInterval();
+    this.timerTickSound?.pause();
+    this.timerUrgentSound?.pause();
   }
 
   get selectedTopicName(): string {
@@ -184,13 +230,14 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     const points = this.scores.get(item.id!) ?? 0;
     const absent = this.absentItemIds.has(item.id!);
     const baselinePoints = this.baselinePoints.get(item.id!);
+    const streak = this.streaks.get(item.id!) ?? 0;
     const cached = this.entryCache.get(item.id!);
     if (cached && cached.text === (item.text ?? '') && cached.image === item.image
         && cached.points === points && cached.color === color && cached.absent === absent
-        && cached.baselinePoints === baselinePoints) {
+        && cached.baselinePoints === baselinePoints && cached.streak === streak) {
       return cached;
     }
-    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent, baselinePoints };
+    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent, baselinePoints, streak };
     this.entryCache.set(item.id!, entry);
     return entry;
   }
@@ -207,14 +254,59 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     return this.allActiveEntries;
   }
 
-  // The current mode's column buckets, resolved to entries. The wheel drawer forces a single
-  // flattened column at render time without discarding the teacher's stored bucket arrangement —
-  // it reappears exactly as left once the wheel closes.
+  // True whenever the right-hand drawer (wheel or timer) is taking up width — the ranking list
+  // forces itself to a single column at render time without discarding the teacher's stored
+  // bucket arrangement, which reappears exactly as left once the drawer closes.
+  get drawerOpen(): boolean {
+    return this.showWheel || this.showTimer;
+  }
+
+  // Drives the FAB's live mini ring + glow — true any time a countdown is running or has just
+  // finished, full stop. The FAB sits outside the overlay entirely (see app.html/random-picker.html),
+  // so this is the one place that's always on screen to reflect a background timer.
+  get timerBgIndicatorVisible(): boolean {
+    return this.timerPhase === 'running' || this.timerPhase === 'finished';
+  }
+
+  get timerBgUrgent(): boolean {
+    return this.timerPhase === 'running' && this.timerRemainingSeconds > 0 && this.timerRemainingSeconds <= 10;
+  }
+
+  get timerBgDone(): boolean {
+    return this.timerPhase === 'finished';
+  }
+
+  // A paused countdown isn't actually advancing — freezes the FAB's pulsing glow instead of
+  // letting it keep beating over a number that isn't counting down (see .lb-timer-bg-paused).
+  get timerBgPaused(): boolean {
+    return this.timerPhase === 'running' && this.timerPaused;
+  }
+
+  get timerBgProgress(): number {
+    if (this.timerPhase === 'finished') return 1;
+    if (this.timerTotalSeconds <= 0) return 0;
+    return this.timerRemainingSeconds / this.timerTotalSeconds;
+  }
+
+  // The current mode's column buckets, resolved to entries.
   get activeColumns(): LeaderboardEntry[][] {
     const buckets = this.mode === 'team' ? this.columnsTeam : this.columnsIndividual;
     const byId = new Map(this.allActiveEntries.map(e => [e.itemId, e]));
     const entryBuckets = buckets.map(col => col.map(id => byId.get(id)).filter((e): e is LeaderboardEntry => !!e));
-    return this.showWheel ? [entryBuckets.flat()] : entryBuckets;
+    return this.drawerOpen ? [entryBuckets.flat()] : entryBuckets;
+  }
+
+  // One label per activeColumns entry, team mode only — lets the ranking-list show which team
+  // each column is. Built the same way chunkByTeam() builds columnsTeam (this.teams in order,
+  // plus a trailing "unassigned" marker under the exact same condition) so the two always line up
+  // 1:1 by index, including for an empty team's otherwise-unlabelable column. Suppressed while
+  // ranked, since a ranked column is a flat individual-style split, not one team per column.
+  get columnLabels(): { name: string; color?: string; isUnassigned?: boolean }[] | null {
+    if (this.mode !== 'team' || this.drawerOpen || this.rankingAppliedTeam) return null;
+    const labels = this.teams.map(t => ({ name: t.name, color: t.color }));
+    const assigned = new Set(this.teams.flatMap(t => t.memberItemIds));
+    const hasUnassigned = this.allActiveEntries.some(e => !assigned.has(e.itemId));
+    return hasUnassigned ? [...labels, { name: '', isUnassigned: true }] : labels;
   }
 
   // Column-major reading order (col0 top-to-bottom, then col1, ...) mapped to a 1-based rank —
@@ -242,6 +334,17 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     return Array.from({ length: columns }, (_, i) => order.slice(i * size, (i + 1) * size));
   }
 
+  // One column per team (in team order), each keeping its members' relative order from `order` —
+  // teammates render adjacent to each other instead of interleaved by individual score. Anyone not
+  // on any team (mid-setup, or before teams exist at all) lands in a trailing column so nobody
+  // silently disappears from the list.
+  private chunkByTeam(order: number[]): number[][] {
+    const buckets = this.teams.map(team => order.filter(id => team.memberItemIds.includes(id)));
+    const assigned = new Set(this.teams.flatMap(t => t.memberItemIds));
+    const unassigned = order.filter(id => !assigned.has(id));
+    return unassigned.length ? [...buckets, unassigned] : buckets;
+  }
+
   private flattenColumns(buckets: number[][]): number[] {
     return buckets.flat();
   }
@@ -249,6 +352,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // The ranking.png button toggles between "score-ranked, medals on" and "teacher-entered order,
   // plain numbers" — it never leaves the list in some third, partially-sorted state.
   toggleRanking() {
+    // Ranking acts on the list, which is hidden behind whichever other view (team setup, wheel,
+    // timer) currently occupies the same space — so tapping it always brings the list to front.
+    this.showTeamSetup = false;
+    this.showWheel = false;
+    this.showTimer = false;
     this.rankingApplied ? this.revertToInitialOrder() : this.applyScoreRanking();
   }
 
@@ -257,8 +365,12 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     const after = [...this.allActiveEntries]
       .sort((a, b) => b.points - a.points || a.text.localeCompare(b.text))
       .map(e => e.itemId);
-    const buckets = this.chunkIntoColumns(after, this.gridColumns);
 
+    // Ranked view is a flat, individual-style split across the whole roster even in team mode —
+    // each row keeps its own team color (LeaderboardEntry.color), it just isn't grouped into
+    // team columns while ranked. Toggling ranking off (revertToInitialOrder) is what brings the
+    // team-grouped columns back.
+    const buckets = this.chunkIntoColumns(after, this.gridColumns);
     if (this.mode === 'team') { this.columnsTeam = buckets; this.rankingAppliedTeam = true; }
     else { this.columnsIndividual = buckets; this.rankingAppliedIndividual = true; }
 
@@ -270,9 +382,13 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // Reverting is an administrative reset, not a scoring event — no confetti/power-up/flip-sound,
   // just the list snapping back to how the teacher entered it.
   private revertToInitialOrder() {
-    const buckets = this.chunkIntoColumns(this.initialOrder, this.gridColumns);
-    if (this.mode === 'team') { this.columnsTeam = buckets; this.rankingAppliedTeam = false; }
-    else { this.columnsIndividual = buckets; this.rankingAppliedIndividual = false; }
+    if (this.mode === 'team') {
+      this.columnsTeam = this.chunkByTeam(this.initialOrder);
+      this.rankingAppliedTeam = false;
+    } else {
+      this.columnsIndividual = this.chunkIntoColumns(this.initialOrder, this.gridColumns);
+      this.rankingAppliedIndividual = false;
+    }
     this.rankedUpItemIds = [];
     this.cdr.detectChanges();
   }
@@ -282,7 +398,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // awardPoint/deductPoint/wheelEntries). Toggling OFF leaves them wherever they ended up — no
   // attempt to restore their old spot. Never touches other columns' membership.
   toggleAbsent(itemId: number) {
-    const nowAbsent = !this.absentItemIds.has(itemId);
+    const wasAbsent = this.absentItemIds.has(itemId);
+    const nowAbsent = !wasAbsent;
     if (nowAbsent) {
       this.absentItemIds.add(itemId);
       this.columnsIndividual = this.moveToEndOfOwnColumn(this.columnsIndividual, itemId);
@@ -290,11 +407,83 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     } else {
       this.absentItemIds.delete(itemId);
     }
+    this.pushUndo({ itemId, scoreDelta: 0, prevStreak: this.streaks.get(itemId) ?? 0, prevAbsent: wasAbsent });
+    // Flipping the toggle is a complete, deliberate action on its own — close the controls panel
+    // right after instead of leaving it sitting open waiting for a second click elsewhere.
+    if (this.openControlsItemId === itemId) this.openControlsItemId = null;
     this.cdr.detectChanges();
   }
 
   private moveToEndOfOwnColumn(buckets: number[][], itemId: number): number[][] {
     return buckets.map(col => col.includes(itemId) ? [...col.filter(id => id !== itemId), itemId] : col);
+  }
+
+  // ===== Row popover: Absent toggle + point stepper =====
+  // A row's own click toggles just that row's popover; a click anywhere else in the list closes
+  // whatever's open (leaderboard-ranking-list.ts's background click, since rows stop their own
+  // click from bubbling that far).
+
+  toggleRowControls(itemId: number) {
+    this.openControlsItemId = this.openControlsItemId === itemId ? null : itemId;
+    this.cdr.detectChanges();
+  }
+
+  closeRowControls() {
+    if (this.openControlsItemId == null) return;
+    this.openControlsItemId = null;
+    this.cdr.detectChanges();
+  }
+
+  // The stepper's +/- buttons are just alternate triggers for the exact same action as tapping
+  // the star or dropping the hammer — same sound, same visual feedback, one shared code path.
+  async onStepperIncrement(itemId: number) {
+    await this.onStarClick(itemId);
+  }
+
+  async onStepperDecrement(itemId: number) {
+    await this.onHammerHit(itemId);
+  }
+
+  // Direct-entry ("type the exact value") has no ±1 precedent to reuse, so it computes its own
+  // delta and applies the same score-changed feedback awardPoint/deductPoint use. Doesn't touch
+  // streak either way — typing an exact total is an administrative correction, not a correct/
+  // wrong answer event.
+  async onStepperSetPoints(event: { itemId: number; value: number }) {
+    if (this.selectedTopicId == null || this.absentItemIds.has(event.itemId)) return;
+    const current = this.scores.get(event.itemId) ?? 0;
+    const delta = event.value - current;
+    if (delta === 0) return;
+    const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, event.itemId, delta);
+    if (this.destroyed) return;
+    this.scores.set(event.itemId, total);
+    this.pushUndo({ itemId: event.itemId, scoreDelta: delta, prevStreak: this.streaks.get(event.itemId) ?? 0 });
+    if (delta > 0) this.finishAward(current, total);
+    else this.playSound(this.hammerSound, 0.6);
+    this.cdr.detectChanges();
+  }
+
+  // Pops and reverts the single most recent point/absent-changing action (star/hammer/stepper/
+  // absent toggle all funnel through pushUndo). Callable repeatedly to walk further back through
+  // the last few actions, not just the last one.
+  async undoLastAction() {
+    const entry = this.undoStack.pop();
+    if (!entry) return;
+    if (entry.scoreDelta !== 0 && this.selectedTopicId != null) {
+      const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, entry.itemId, -entry.scoreDelta);
+      if (this.destroyed) return;
+      this.scores.set(entry.itemId, total);
+    }
+    this.streaks.set(entry.itemId, entry.prevStreak);
+    if (entry.prevAbsent !== undefined) {
+      if (entry.prevAbsent) this.absentItemIds.add(entry.itemId);
+      else this.absentItemIds.delete(entry.itemId);
+    }
+    this.cdr.detectChanges();
+  }
+
+  private pushUndo(entry: { itemId: number; scoreDelta: number; prevStreak: number; prevAbsent?: boolean }) {
+    this.undoStack.push(entry);
+    if (this.undoStack.length > this.maxUndoDepth) this.undoStack.shift();
   }
 
   // Wheel spins over whatever hasn't gone yet this round; falls back to the full pool
@@ -402,18 +591,25 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.teams = [];
     this.wheelOrder = this.computeInterleavedWheelOrder();
     this.absentItemIds = new Set();
+    this.streaks = new Map();
+    this.undoStack = [];
     this.entryCache.clear();
     // items is already `order`-sorted by db.ts — this is exactly the teacher's entry order, and
     // the list's default render state (plain numbers, no medals) until toggleRanking() is tapped.
     this.initialOrder = items.filter(i => i.id != null).map(i => i.id!);
     this.columnsIndividual = [[...this.initialOrder]];
-    this.columnsTeam = [[...this.initialOrder]];
+    this.columnsTeam = this.chunkByTeam(this.initialOrder);
     this.rankingAppliedIndividual = false;
     this.rankingAppliedTeam = false;
     this.mode = 'individual';
     this.showTeamSetup = false;
     this.showWheel = false;
+    this.showTimer = false;
+    // A background countdown belongs to the class list it was started for — a new list stops it
+    // outright.
+    this.resetTimer();
     this.gridColumns = 1;
+    this.openControlsItemId = null;
     this.selectedTopicId = topicId;
     this.loadingTopic = false;
     this.saveCachedTopicId(topicId);
@@ -421,23 +617,155 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   }
 
   toggleWheel() {
+    // Wheel/timer act on the same drawer, which team setup currently occupies if it's open —
+    // tapping the wheel is a clear "leave team setup" signal, same as tapping the ranking list.
+    this.showTeamSetup = false;
     this.showWheel = !this.showWheel;
+    if (this.showWheel) this.showTimer = false;
     this.cdr.detectChanges();
+  }
+
+  // Timer lives in the same drawer as the wheel (see drawerOpen) — opening one closes the
+  // other. Closing it (either via this button, switching to the wheel, or closing the whole
+  // overlay) only hides/destroys the *view* — the countdown itself is owned by this component
+  // (see timerPhase and friends above), not by app-leaderboard-timer, so it keeps running
+  // regardless.
+  toggleTimer() {
+    this.showTeamSetup = false;
+    this.showTimer = !this.showTimer;
+    if (this.showTimer) this.showWheel = false;
+    this.cdr.detectChanges();
+  }
+
+  setTimerHours(value: string) {
+    this.timerHours = Math.max(0, Math.min(23, Math.floor(Number(value)) || 0));
+    this.cdr.detectChanges();
+  }
+
+  setTimerMinutes(value: string) {
+    this.timerMinutes = Math.max(0, Math.min(99, Math.floor(Number(value)) || 0));
+    this.cdr.detectChanges();
+  }
+
+  setTimerSeconds(value: string) {
+    this.timerSeconds = Math.max(0, Math.min(59, Math.floor(Number(value)) || 0));
+    this.cdr.detectChanges();
+  }
+
+  startTimer() {
+    if (this.timerHours * 3600 + this.timerMinutes * 60 + this.timerSeconds <= 0) return;
+    this.timerTotalSeconds = this.timerHours * 3600 + this.timerMinutes * 60 + this.timerSeconds;
+    this.timerRemainingSeconds = this.timerTotalSeconds;
+    this.timerPhase = 'running';
+    this.timerPaused = false;
+    this.beginTicking();
+    this.cdr.detectChanges();
+  }
+
+  // Cancels a running (or paused) countdown back to the entry screen with sounds/interval fully
+  // stopped (finishing naturally instead goes through finishTimer()'s own brief auto-revert).
+  resetTimer() {
+    this.stopTimerInterval();
+    this.timerTickSound?.pause();
+    this.timerUrgentSound?.pause();
+    this.timerPhase = 'setup';
+    this.timerPaused = false;
+    this.cdr.detectChanges();
+  }
+
+  togglePauseTimer() {
+    if (this.timerPhase !== 'running') return;
+    this.timerPaused = !this.timerPaused;
+    if (this.timerPaused) {
+      this.stopTimerInterval();
+      this.timerTickSound?.pause();
+      this.timerUrgentSound?.pause();
+    } else {
+      this.beginTicking();
+    }
+    this.cdr.detectChanges();
+  }
+
+  toggleTimerMute() {
+    this.timerMuted = !this.timerMuted;
+    if (this.timerMuted) {
+      this.timerTickSound?.pause();
+      this.timerUrgentSound?.pause();
+    } else if (this.timerPhase === 'running' && !this.timerPaused) {
+      // Resume whichever cue fits the time actually left, rather than always the ticking sound.
+      if (this.timerRemainingSeconds <= 10) this.playTimerSound(this.timerUrgentSound);
+      else this.playTimerSound(this.timerTickSound);
+    }
+    this.cdr.detectChanges();
+  }
+
+  // Shared by startTimer() and resuming from a pause — both just want the interval running again
+  // and whichever sound cue fits the time actually left.
+  private beginTicking() {
+    this.timerIntervalId = setInterval(() => this.tickTimer(), 1000);
+    if (this.timerRemainingSeconds <= 10) this.playTimerSound(this.timerUrgentSound);
+    else this.playTimerSound(this.timerTickSound);
+  }
+
+  private playTimerSound(sound: HTMLAudioElement | null) {
+    if (this.timerMuted) return;
+    this.playSound(sound);
+  }
+
+  private tickTimer() {
+    this.timerRemainingSeconds--;
+    if (this.timerRemainingSeconds === 10) {
+      this.timerTickSound?.pause();
+      this.playTimerSound(this.timerUrgentSound);
+    }
+    if (this.timerRemainingSeconds <= 0) {
+      this.finishTimer();
+      return;
+    }
+    this.cdr.detectChanges();
+  }
+
+  private finishTimer() {
+    this.stopTimerInterval();
+    this.timerPhase = 'finished';
+    this.cdr.detectChanges();
+    // Briefly pulses the ring/FAB green (see .lb-timer-done / timerBgDone) then drops straight
+    // back to the setup screen on its own — no icon/status text/button needed, and no click
+    // required before the teacher can queue the next timer.
+    this.setGameTimeout(() => {
+      this.timerPhase = 'setup';
+      this.cdr.detectChanges();
+    }, 1600);
+  }
+
+  private stopTimerInterval() {
+    if (this.timerIntervalId != null) {
+      clearInterval(this.timerIntervalId);
+      this.timerIntervalId = null;
+    }
   }
 
   // Changing the column count necessarily changes the number of buckets, so it re-splits the
   // current flattened reading order evenly across the new count. Doesn't touch rankingApplied —
-  // this is a layout action, not a re-ranking or a manual-arrangement action.
+  // this is a layout action, not a re-ranking or a manual-arrangement action. Also brings the list
+  // to front (closing team setup/wheel/timer) so the new layout is actually visible right away.
+  // Team mode ignores this entirely — its columns are always one-per-team (see chunkByTeam), not a
+  // manual count (the header button is hidden in team mode too, see random-picker.html).
   cycleGridColumns() {
+    if (this.mode === 'team') return;
+    this.showTeamSetup = false;
+    this.showWheel = false;
+    this.showTimer = false;
     this.gridColumns = this.gridColumns >= 3 ? 1 : this.gridColumns + 1;
     this.columnsIndividual = this.chunkIntoColumns(this.flattenColumns(this.columnsIndividual), this.gridColumns);
-    this.columnsTeam = this.chunkIntoColumns(this.flattenColumns(this.columnsTeam), this.gridColumns);
     this.cdr.detectChanges();
   }
 
-  // Long-press drag reorder (within or between columns). A manual drag turns rankingApplied off
-  // for the current mode — the list is no longer "sorted by score," so medals revert to plain
-  // numbers, matching the same rule toggleRanking() enforces.
+  // Long-press drag reorder — within a column only in team mode (cross-column dragging is locked
+  // there, see lockColumnMembership on the ranking-list, since a column IS a team and reassigning
+  // teams belongs in Team Setup, not a drag). Individual mode still allows free cross-column
+  // moves. A manual reorder turns rankingApplied off for the current mode either way — the list
+  // is no longer "sorted by score," so medals revert to plain numbers, matching toggleRanking().
   onColumnsChange(newBuckets: number[][]) {
     if (this.mode === 'team') { this.columnsTeam = newBuckets; this.rankingAppliedTeam = false; }
     else { this.columnsIndividual = newBuckets; this.rankingAppliedIndividual = false; }
@@ -475,6 +803,9 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   onTeamsSetupDone(teams: Team[]) {
     this.teams = teams;
+    // Re-groups columnsTeam's existing flattened reading order (teacher order, or score order if
+    // rankingAppliedTeam was on) under the new team membership — preserves order, not just membership.
+    this.columnsTeam = this.chunkByTeam(this.flattenColumns(this.columnsTeam));
     this.showTeamSetup = false;
     this.mode = 'team';
     // Team composition just changed — the wheel's spread-out-by-team order was computed against
@@ -538,9 +869,12 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   private async awardPoint(itemId: number) {
     if (this.selectedTopicId == null || this.absentItemIds.has(itemId)) return;
     const beforePoints = this.scores.get(itemId) ?? 0;
+    const prevStreak = this.streaks.get(itemId) ?? 0;
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, 1);
     if (this.destroyed) return;
     this.scores.set(itemId, total);
+    this.streaks.set(itemId, prevStreak + 1);
+    this.pushUndo({ itemId, scoreDelta: 1, prevStreak });
     this.finishAward(beforePoints, total);
   }
 
@@ -556,9 +890,12 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private async deductPoint(itemId: number) {
     if (this.selectedTopicId == null || this.absentItemIds.has(itemId)) return;
+    const prevStreak = this.streaks.get(itemId) ?? 0;
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, -1);
     if (this.destroyed) return;
     this.scores.set(itemId, total);
+    this.streaks.set(itemId, 0);
+    this.pushUndo({ itemId, scoreDelta: -1, prevStreak });
     this.finishHammerHit(itemId);
   }
 

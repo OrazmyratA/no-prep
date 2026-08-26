@@ -51,6 +51,26 @@ export function getAnswerKeyImagePaths(element: BookElement | null | undefined):
   return typeof legacySrc === 'string' && legacySrc ? [legacySrc] : [];
 }
 
+/** Answer keys optionally hold one recorded/uploaded audio clip in data['audio']. */
+export function getAnswerKeyAudioPath(element: BookElement | null | undefined): string {
+  const audio = element?.data?.['audio'];
+  return typeof audio === 'string' && audio ? audio : '';
+}
+
+/**
+ * Per-image audio for an answer key, indexed the same as getAnswerKeyImagePaths().
+ * Older books only ever had one shared clip in data['audio'] with no notion of
+ * which image it belonged to — that clip is treated as belonging to the first
+ * image only, and only until the image list is edited (see setAnswerKeyImageAudio).
+ */
+export function getAnswerKeyImageAudioPath(element: BookElement | null | undefined, imageIndex: number): string {
+  const audios = element?.data?.['imageAudios'];
+  if (Array.isArray(audios) && typeof audios[imageIndex] === 'string' && audios[imageIndex]) {
+    return audios[imageIndex];
+  }
+  return imageIndex === 0 ? getAnswerKeyAudioPath(element) : '';
+}
+
 export interface TracingPoint {
   id: string;
   x: number;

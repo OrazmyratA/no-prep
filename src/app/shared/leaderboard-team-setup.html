@@ -1,48 +1,61 @@
 <div class="team-setup-panel">
   <h2 class="team-setup-title">{{ 'leaderboardTeamSetupTitle' | translate }}</h2>
 
+  <p class="team-setup-instruction" [class.team-setup-instruction-armed]="selectedTeam">
+    <ng-container *ngIf="!selectedTeam">{{ 'leaderboardTeamPickTeamHint' | translate }}</ng-container>
+    <ng-container *ngIf="selectedTeam">
+      {{ 'leaderboardTeamPickStudentsHint' | translate }} <strong>{{ selectedTeam.name }}</strong>
+    </ng-container>
+  </p>
+
   <div class="team-setup-body">
-    <div
-      cdkDropList
-      [id]="unassignedListId"
-      [cdkDropListData]="unassigned"
-      [cdkDropListConnectedTo]="connectedListsFor(unassignedListId)"
-      (cdkDropListDropped)="drop($event)"
-      class="team-unassigned-list">
+    <div class="team-unassigned-list">
       <h3 class="team-column-title">{{ 'leaderboardTeamSetupUnassigned' | translate }}</h3>
       <div class="team-chip-list">
-        <div *ngFor="let student of unassigned; trackBy: trackByItemId" cdkDrag class="team-chip">
+        <button
+          *ngFor="let student of unassigned; trackBy: trackByItemId"
+          type="button"
+          class="team-chip"
+          [class.team-chip-armed]="selectedTeam"
+          (click)="onChipClick(student, null)">
           <span class="team-chip-avatar">
             <img *ngIf="avatarUrl(student)" [src]="avatarUrl(student)" [alt]="student.text">
             <span *ngIf="!avatarUrl(student)" class="team-chip-avatar-initial">{{ initial(student) }}</span>
           </span>
           <span class="team-chip-name">{{ student.text }}</span>
-        </div>
+        </button>
         <p *ngIf="!unassigned.length" class="team-empty-hint">{{ 'leaderboardTeamAllAssigned' | translate }}</p>
       </div>
     </div>
 
     <div class="team-columns">
-      <div *ngFor="let team of workingTeams; trackBy: trackByTeamId" class="team-column" [style.--team-color]="team.color">
+      <div
+        *ngFor="let team of workingTeams; trackBy: trackByTeamId"
+        class="team-column"
+        [class.team-column-selected]="selectedTeamId === team.id"
+        [style.--team-color]="team.color"
+        (click)="selectTeam(team)">
         <header class="team-column-header">
+          <span class="team-column-select-check" *ngIf="selectedTeamId === team.id" aria-hidden="true">✓</span>
           <input
             type="text"
             #nameInput
             class="team-name-input"
             [value]="team.name"
+            (click)="$event.stopPropagation()"
             (change)="renameTeam(team, nameInput.value)"
             [placeholder]="'leaderboardTeamNamePlaceholder' | translate">
           <button
             type="button"
             class="team-delete-btn"
-            (click)="deleteTeam(team)"
+            (click)="$event.stopPropagation(); deleteTeam(team)"
             [attr.aria-label]="'leaderboardTeamDelete' | translate"
             [attr.title]="'leaderboardTeamDelete' | translate">
             🗑
           </button>
         </header>
 
-        <div class="team-swatch-row">
+        <div class="team-swatch-row" (click)="$event.stopPropagation()">
           <button
             *ngFor="let c of themeService.colorThemes"
             type="button"
@@ -54,25 +67,21 @@
           </button>
         </div>
 
-        <div
-          cdkDropList
-          [id]="teamListId(team)"
-          [cdkDropListData]="membersOf(team)"
-          [cdkDropListConnectedTo]="connectedListsFor(teamListId(team))"
-          (cdkDropListDropped)="drop($event)"
-          class="team-member-list">
-          <div
+        <div class="team-member-list">
+          <button
             *ngFor="let student of membersOf(team); trackBy: trackByItemId"
-            cdkDrag
+            type="button"
             class="team-chip"
-            [style.borderColor]="team.color">
+            [class.team-chip-armed]="selectedTeam"
+            [style.borderColor]="team.color"
+            (click)="$event.stopPropagation(); onChipClick(student, team)">
             <span class="team-chip-avatar">
               <img *ngIf="avatarUrl(student)" [src]="avatarUrl(student)" [alt]="student.text">
               <span *ngIf="!avatarUrl(student)" class="team-chip-avatar-initial" [style.background]="team.color">{{ initial(student) }}</span>
             </span>
             <span class="team-chip-name">{{ student.text }}</span>
-          </div>
-          <p *ngIf="!membersOf(team).length" class="team-empty-hint">{{ 'leaderboardTeamDropHint' | translate }}</p>
+          </button>
+          <p *ngIf="!membersOf(team).length" class="team-empty-hint">{{ 'leaderboardTeamTapHint' | translate }}</p>
         </div>
       </div>
 

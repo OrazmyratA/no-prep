@@ -199,7 +199,15 @@ function registerBookCreateIpc({
         : sanitizeName(path.basename(sourcePdf, path.extname(sourcePdf)), 'Student Book');
       book.sourcePdf = relativePdfPath;
       book.cover = await generateFirstPageCover(destination, registryItem.folderPath);
-      const preservedPages = (book.pages || []).filter((page) => page?.type !== 'pdf');
+      // Drop empty blank pages (the starter placeholder that hosts the "Upload PDF" button
+      // on a brand-new book) so uploading doesn't leave a page with nothing on it sitting
+      // between the progress map and the PDF content. A blank page the teacher actually put
+      // something on is kept, same as insertPdfPages' removeAnchorIfBlank check does.
+      const preservedPages = (book.pages || []).filter((page) => {
+        if (page?.type === 'pdf') return false;
+        if (page?.type === 'blank' && !page.elements?.length) return false;
+        return true;
+      });
       if (!preservedPages.some((page) => page?.type === 'progressMap')) {
         preservedPages.unshift(createProgressMapPage());
       }

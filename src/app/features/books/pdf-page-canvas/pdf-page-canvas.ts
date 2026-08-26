@@ -38,6 +38,14 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
 
   private static readonly maxCachedDocuments = 6;
   private static documentCache = new Map<string, Promise<PdfDocumentProxy>>();
+  // pdf.js 6.x moved its JBIG2/JPEG2000 image decoders out to a separate
+  // wasm module (with a JS fallback) that it fetches lazily and on demand.
+  // Without this, decoding those images throws internally, which pdf.js
+  // swallows per-image rather than failing the whole page — so a scanned
+  // page using JBIG2 (the common case for scanned textbook pages) silently
+  // renders blank instead of erroring. See angular.json for the matching
+  // asset copy of node_modules/pdfjs-dist/wasm into assets/pdfjs/wasm.
+  private static readonly wasmUrl = 'assets/pdfjs/wasm/';
 
   loading = false;
   error = '';
@@ -106,7 +114,8 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
         disableWorker: false,
         disableAutoFetch: false,
         disableStream: false,
-        disableRange: false
+        disableRange: false,
+        wasmUrl: PdfPageCanvasComponent.wasmUrl
       }, this.sourceUrl);
     } catch (urlError) {
       if (token !== this.renderToken) return;
@@ -120,7 +129,8 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
         if (token !== this.renderToken) return;
         await this.renderSinglePage(token, {
           data,
-          disableWorker: false
+          disableWorker: false,
+          wasmUrl: PdfPageCanvasComponent.wasmUrl
         });
       } catch (fetchError) {
         if (token !== this.renderToken) return;

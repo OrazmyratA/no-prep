@@ -758,18 +758,21 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const maxWidth = width * 0.82;
-    let fontSize = 104;
+    const maxWidth = width * 0.9;
+    const maxHeight = height * 0.88;
+    const minFontSize = 10;
+    let fontSize = height;
     let lines: string[] = [];
-    do {
+    for (; fontSize >= minFontSize; fontSize -= 2) {
       ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
       lines = this.wrapText(ctx, text, maxWidth);
       const widestLine = Math.max(...lines.map(line => ctx.measureText(line).width));
-      if (lines.length <= 3 && widestLine <= maxWidth) {
+      const totalHeight = lines.length * fontSize * 1.18;
+      if (widestLine <= maxWidth && totalHeight <= maxHeight) {
         break;
       }
-      fontSize -= 6;
-    } while (fontSize > 34);
+    }
+    fontSize = Math.max(fontSize, minFontSize);
 
     ctx.fillStyle = isTransparent ? '#111827' : '#fff';
     ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
@@ -808,7 +811,7 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       }
     }
     lines.push(currentLine);
-    return lines.slice(0, 3);
+    return lines;
   }
 
   private releaseCameraAfterNativeReturn() {

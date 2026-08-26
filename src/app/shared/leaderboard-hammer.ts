@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, OnDestroy, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output } from '@angular/core';
 
 @Component({
   selector: 'app-leaderboard-hammer',
@@ -23,6 +23,7 @@ export class LeaderboardHammerComponent implements OnDestroy {
   private homeTop = 0;
   private dragMoved = false;
   private hoveredRowEl: HTMLElement | null = null;
+  private documentListenersAttached = false;
 
   // document.elementFromPoint() forces a synchronous layout — calling it on every raw
   // pointermove (which can fire far more often than 60/sec) was the source of the drag freeze
@@ -30,10 +31,19 @@ export class LeaderboardHammerComponent implements OnDestroy {
   private hoverRafId: number | null = null;
   private pendingHoverPoint: { x: number; y: number } | null = null;
 
+  constructor(private cdr: ChangeDetectorRef) {}
+
   ngOnDestroy() {
     if (this.hoverRafId != null) cancelAnimationFrame(this.hoverRafId);
+    this.detachDocumentListeners();
   }
 
+  // Only pointerdown is template-bound — move/up/cancel are attached to document instead (see
+  // attachDocumentListeners) rather than relying on this small circular handle keeping
+  // setPointerCapture. Capture occasionally didn't take effect on the very first drag right
+  // after a big re-render (e.g. switching to a new class list), silently dropping every
+  // subsequent pointermove for that gesture — the hammer just sat still until the next attempt.
+  // Document listeners see the pointer regardless of capture state, so that race can't happen.
   onPointerDown(event: PointerEvent) {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     const handle = event.currentTarget as HTMLElement;
@@ -44,10 +54,10 @@ export class LeaderboardHammerComponent implements OnDestroy {
     this.homeLeft = rect.left;
     this.homeTop = rect.top;
     this.dragMoved = false;
-    handle.setPointerCapture(event.pointerId);
+    this.attachDocumentListeners();
   }
 
-  onPointerMove(event: PointerEvent) {
+  private readonly onDocumentPointerMove = (event: PointerEvent) => {
     if (this.dragPointerId !== event.pointerId) return;
     const dx = event.clientX - this.dragStartClientX;
     const dy = event.clientY - this.dragStartClientY;
@@ -57,12 +67,11 @@ export class LeaderboardHammerComponent implements OnDestroy {
     this.dragLeft = this.homeLeft + dx;
     this.dragTop = this.homeTop + dy;
     this.scheduleHoverCheck(event.clientX, event.clientY);
-  }
+    this.cdr.detectChanges();
+  };
 
-  onPointerUp(event: PointerEvent) {
+  private readonly onDocumentPointerUp = (event: PointerEvent) => {
     if (this.dragPointerId !== event.pointerId) return;
-    const handle = event.currentTarget as HTMLElement;
-    if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId);
     this.dragPointerId = null;
     this.dragging = false;
     this.cancelHoverCheck();
@@ -74,9 +83,11 @@ export class LeaderboardHammerComponent implements OnDestroy {
     this.dragLeft = null;
     this.dragTop = null;
     this.dragMoved = false;
-  }
+    this.detachDocumentListeners();
+    this.cdr.detectChanges();
+  };
 
-  onPointerCancel(event: PointerEvent) {
+  private readonly onDocumentPointerCancel = (event: PointerEvent) => {
     if (this.dragPointerId !== event.pointerId) return;
     this.dragPointerId = null;
     this.dragging = false;
@@ -84,6 +95,24 @@ export class LeaderboardHammerComponent implements OnDestroy {
     this.clearHover();
     this.dragLeft = null;
     this.dragTop = null;
+    this.detachDocumentListeners();
+    this.cdr.detectChanges();
+  };
+
+  private attachDocumentListeners() {
+    if (this.documentListenersAttached) return;
+    document.addEventListener('pointermove', this.onDocumentPointerMove);
+    document.addEventListener('pointerup', this.onDocumentPointerUp);
+    document.addEventListener('pointercancel', this.onDocumentPointerCancel);
+    this.documentListenersAttached = true;
+  }
+
+  private detachDocumentListeners() {
+    if (!this.documentListenersAttached) return;
+    document.removeEventListener('pointermove', this.onDocumentPointerMove);
+    document.removeEventListener('pointerup', this.onDocumentPointerUp);
+    document.removeEventListener('pointercancel', this.onDocumentPointerCancel);
+    this.documentListenersAttached = false;
   }
 
   private scheduleHoverCheck(clientX: number, clientY: number) {

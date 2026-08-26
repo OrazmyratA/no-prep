@@ -2,6 +2,7 @@ import { SafeResourceUrl } from '@angular/platform-browser';
 import {
   BookElement,
   BookPage,
+  getAnswerKeyImageAudioPath,
   getAnswerKeyImagePaths
 } from '../../../core/book.model';
 import {
@@ -29,6 +30,12 @@ export class BookReaderMediaController {
   getAnswerKeyImageUrl(path: string): string {
     if (!this.reader.book || !path) return '';
     return isExternalUrl(path) ? path : this.reader.getCachedAssetUrl(path);
+  }
+
+  getAnswerKeyImageAudioUrl(element: BookElement, imageIndex: number): string {
+    const path = getAnswerKeyImageAudioPath(element, imageIndex);
+    if (!this.reader.book || !path) return '';
+    return isExternalUrl(path) ? path : this.reader.getCachedAssetFileUrl(path);
   }
 
   getElementMediaUrl(element: BookElement): string {

@@ -90,6 +90,11 @@
           (click)="reader.penColor = color"
           [title]="'readerPenColor' | translate: {color: color}">
         </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="reader.penColor" (input)="reader.updateColorFromWheel($event, 'pen')" aria-label="Custom draw color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="reader.penColor"></span>
+        </label>
         <label class="pen-size" [title]="'readerPenSize' | translate">
           <input type="range" min="2" max="18" step="1" [(ngModel)]="reader.penWidth" [attr.aria-label]="'readerPenSize' | translate">
         </label>
@@ -114,6 +119,11 @@
           (click)="reader.highlighterColor = color"
           [title]="color">
         </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="reader.highlighterColor" (input)="reader.updateColorFromWheel($event, 'highlighter')" aria-label="Custom highlighter color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="reader.highlighterColor"></span>
+        </label>
         <label class="pen-size" title="Highlighter size">
           <input type="range" min="16" max="48" step="2" [(ngModel)]="reader.highlighterWidth" aria-label="Highlighter size">
         </label>
@@ -129,6 +139,11 @@
           (click)="reader.tracingColor = color"
           [title]="color">
         </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="reader.tracingColor" (input)="reader.updateColorFromWheel($event, 'tracing')" aria-label="Custom tracing color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="reader.tracingColor"></span>
+        </label>
         <label class="pen-size" title="Tracing line thickness">
           <input type="range" min="2" max="10" step="1" [(ngModel)]="reader.tracingWidth" aria-label="Tracing line thickness">
         </label>
@@ -157,6 +172,11 @@
           (click)="reader.selectTextColor(color)"
           [title]="'readerTextColor' | translate: {color: color}">
         </button>
+        <label class="color-wheel-dot" title="Custom color">
+          <input type="color" [value]="reader.textColor" (input)="reader.updateColorFromWheel($event, 'text')" aria-label="Custom text color">
+          <span class="color-wheel-ring"></span>
+          <span class="color-wheel-fill" [style.background]="reader.textColor"></span>
+        </label>
       </div>
     </div>
 

@@ -1,4 +1,4 @@
-<div class="lb-columns-wrap">
+<div class="lb-columns-wrap" [class.lb-columns-scroll]="columnBuckets.length > 4" (click)="onBackgroundClick()">
   <div
     class="lb-list-rows"
     *ngFor="let column of columnBuckets; let colIndex = index; trackBy: trackByColumnIndex"
@@ -7,6 +7,14 @@
     [cdkDropListData]="column"
     [cdkDropListConnectedTo]="connectedColumnIds(colIndex)"
     (cdkDropListDropped)="onColumnDrop($event)">
+    <div
+      class="lb-column-header"
+      *ngIf="columnLabels"
+      [style.--team-color]="columnLabels[colIndex]?.color || '#94a3b8'">
+      <span class="lb-column-header-name">
+        {{ columnLabels[colIndex]?.isUnassigned ? ('leaderboardTeamSetupUnassigned' | translate) : columnLabels[colIndex]?.name }}
+      </span>
+    </div>
     <ng-container *ngFor="let entry of column; trackBy: trackByItemId">
       <app-leaderboard-student-row
         #row
@@ -19,8 +27,13 @@
         [showMedals]="rankingApplied"
         [rankedUp]="isRankedUp(entry.itemId)"
         [hammerHit]="hammerHitItemId === entry.itemId"
+        [controlsOpen]="openControlsItemId === entry.itemId"
         (starClick)="starClick.emit($event)"
-        (toggleAbsent)="toggleAbsent.emit($event)">
+        (toggleAbsent)="toggleAbsent.emit($event)"
+        (toggleControls)="toggleControls.emit($event)"
+        (incrementPoints)="incrementPoints.emit($event)"
+        (decrementPoints)="decrementPoints.emit($event)"
+        (setPoints)="setPoints.emit($event)">
       </app-leaderboard-student-row>
     </ng-container>
 

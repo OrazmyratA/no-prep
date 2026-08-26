@@ -1,0 +1,124 @@
+<div
+  class="lb-timer"
+  [class.lb-timer-urgent]="lastTenSeconds"
+  [class.lb-timer-done]="phase === 'finished'"
+  [class.lb-timer-paused]="phase === 'running' && paused">
+  <ng-container *ngIf="phase === 'setup'">
+    <h3 class="lb-timer-title">{{ 'leaderboardTimerSetupTitle' | translate }}</h3>
+    <div class="lb-timer-inputs">
+      <label class="lb-timer-field">
+        <input
+          type="number"
+          min="0"
+          max="23"
+          [value]="hours"
+          (change)="hoursChange.emit(hoursInput.value)"
+          #hoursInput>
+        <span>{{ 'leaderboardTimerHours' | translate }}</span>
+      </label>
+      <span class="lb-timer-colon">:</span>
+      <label class="lb-timer-field">
+        <input
+          type="number"
+          min="0"
+          max="99"
+          [value]="minutes"
+          (change)="minutesChange.emit(minutesInput.value)"
+          #minutesInput>
+        <span>{{ 'leaderboardTimerMinutes' | translate }}</span>
+      </label>
+      <span class="lb-timer-colon">:</span>
+      <label class="lb-timer-field">
+        <input
+          type="number"
+          min="0"
+          max="59"
+          [value]="seconds"
+          (change)="secondsChange.emit(secondsInput.value)"
+          #secondsInput>
+        <span>{{ 'leaderboardTimerSeconds' | translate }}</span>
+      </label>
+    </div>
+    <div class="lb-timer-controls">
+      <button
+        type="button"
+        class="lb-timer-icon-btn lb-timer-play-btn"
+        [disabled]="!canStart"
+        (click)="start.emit()"
+        [attr.title]="'leaderboardTimerStart' | translate"
+        [attr.aria-label]="'leaderboardTimerStart' | translate">
+        <img src="assets/images/book/play.png" alt="">
+      </button>
+      <button
+        type="button"
+        class="lb-timer-icon-btn lb-timer-mute-btn"
+        (click)="toggleMute.emit()"
+        [attr.title]="(muted ? 'leaderboardTimerUnmute' : 'leaderboardTimerMute') | translate"
+        [attr.aria-label]="(muted ? 'leaderboardTimerUnmute' : 'leaderboardTimerMute') | translate">
+        <span aria-hidden="true">{{ muted ? '🔇' : '🔊' }}</span>
+      </button>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="phase === 'running' || phase === 'finished'">
+    <div class="lb-timer-ring-wrap">
+      <div class="lb-timer-glow" aria-hidden="true"></div>
+      <svg class="lb-timer-ring" viewBox="0 0 220 220" aria-hidden="true">
+        <defs>
+          <linearGradient id="lbTimerGradNormal" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#818cf8"/>
+            <stop offset="100%" stop-color="#c084fc"/>
+          </linearGradient>
+          <linearGradient id="lbTimerGradUrgent" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fb923c"/>
+            <stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+          <linearGradient id="lbTimerGradDone" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#34d399"/>
+            <stop offset="100%" stop-color="#22c55e"/>
+          </linearGradient>
+        </defs>
+        <circle class="lb-timer-ring-track" cx="110" cy="110" [attr.r]="ringRadius"></circle>
+        <circle
+          class="lb-timer-ring-progress"
+          cx="110" cy="110" [attr.r]="ringRadius"
+          [attr.stroke-dasharray]="ringCircumference"
+          [attr.stroke-dashoffset]="ringDashOffset"
+          [attr.stroke]="phase === 'finished' ? 'url(#lbTimerGradDone)' : (lastTenSeconds ? 'url(#lbTimerGradUrgent)' : 'url(#lbTimerGradNormal)')">
+        </circle>
+      </svg>
+      <div class="lb-timer-ring-center">
+        <div class="lb-timer-display" *ngIf="phase === 'running'">{{ displayTime }}</div>
+      </div>
+    </div>
+    <!-- Finishing briefly pulses the ring green (see .lb-timer-done) then the parent auto-reverts
+         phase back to 'setup' on its own — no extra icon/status text needed to tell the teacher
+         it's done, and no click needed to get back to setting a new timer. -->
+    <div class="lb-timer-controls" *ngIf="phase === 'running'">
+      <button
+        type="button"
+        class="lb-timer-icon-btn lb-timer-play-btn"
+        (click)="togglePause.emit()"
+        [attr.title]="(paused ? 'leaderboardTimerResume' : 'leaderboardTimerPause') | translate"
+        [attr.aria-label]="(paused ? 'leaderboardTimerResume' : 'leaderboardTimerPause') | translate">
+        <img [src]="paused ? 'assets/images/book/play.png' : 'assets/images/book/pause.png'" alt="">
+      </button>
+      <button
+        type="button"
+        class="lb-timer-icon-btn lb-timer-mute-btn"
+        (click)="toggleMute.emit()"
+        [attr.title]="(muted ? 'leaderboardTimerUnmute' : 'leaderboardTimerMute') | translate"
+        [attr.aria-label]="(muted ? 'leaderboardTimerUnmute' : 'leaderboardTimerMute') | translate">
+        <span aria-hidden="true">{{ muted ? '🔇' : '🔊' }}</span>
+      </button>
+      <button
+        type="button"
+        class="lb-timer-icon-btn lb-timer-reset-btn"
+        (click)="reset.emit()"
+        [attr.title]="'leaderboardTimerReset' | translate"
+        [attr.aria-label]="'leaderboardTimerReset' | translate">
+        <img src="assets/images/book/reset.png" alt="">
+      </button>
+    </div>
+  </ng-container>
+</div>
