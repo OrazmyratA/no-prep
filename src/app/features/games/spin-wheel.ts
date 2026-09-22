@@ -5,6 +5,8 @@ import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
+import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 
 @Component({
   selector: 'app-spin-wheel',
@@ -46,7 +48,11 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   private destroyed = false;
   private imageUrls = new Map<number, string>();
   quizOverlayVisible = false;
-  useTextOnWheel = false;
+  aitOrder: AitType[] = [...AIT_DEFAULT_ORDER];
+  isFlipped = false;
+  private activeAudio: HTMLAudioElement | null = null;
+  private activeAudioUrl: string | null = null;
+  private audioIconImg: HTMLImageElement | null = null;
   // New: quiz state
   showQuiz = false;
   selectedItem: Item | null = null;
@@ -81,6 +87,28 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
 
   ) {}
 
+  // 1st pick: what shows on the wheel and the quiz card front. Last pick (when 2-3 are
+  // chosen): what the answer options show. With exactly 3 picked, the middle one shows on
+  // the flip side of the quiz card.
+  get aitQuestionType(): AitType {
+    return this.aitOrder[0] ?? 'image';
+  }
+
+  get aitBackType(): AitType | null {
+    return this.aitOrder.length === 3 ? this.aitOrder[1] : null;
+  }
+
+  // Last pick is the options type, even with just 1 picked - unchecking OK/Oops with a
+  // single type still builds a quiz, its options are just the same content type as the
+  // question (e.g. find the matching image among decoy images).
+  get aitOptionsType(): AitType {
+    return this.aitOrder[this.aitOrder.length - 1] ?? this.aitQuestionType;
+  }
+
+  get hasFlipBack(): boolean {
+    return this.aitBackType !== null;
+  }
+
 async ngOnInit() {
   const idParam =
     this.route.snapshot.paramMap.get('id') ??
@@ -89,7 +117,7 @@ async ngOnInit() {
 
   // Read the checkbox setting from query parameters (synchronous)
   const queryParams = this.route.snapshot.queryParams;
-  this.useTextOnWheel = queryParams['textOnWheel'] === 'true';
+  this.aitOrder = parseAitOrder(queryParams['ait']);
   this.forceSimpleMode = queryParams['simpleMode'] !== 'false';
 
   try {
@@ -100,6 +128,7 @@ async ngOnInit() {
         this.loadImageForItem(item);
       }
     });
+    this.loadAudioIcon();
     // Preload sounds
     this.spinSound = new Audio('assets/sound/wheel.mp3');
     this.spinSound.load();
@@ -174,6 +203,7 @@ private resizeCanvas() {
     }
     this.clearVictoryTimeout();
     if (this.confirmTimerId !== null) { clearTimeout(this.confirmTimerId); this.confirmTimerId = null; }
+    this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.images.clear();
     this.imageLoadQueue.clear();
@@ -253,7 +283,7 @@ drawWheel(): boolean {
     ctx.translate(x, y);
     ctx.rotate(tangentAngle);
 
-    if (this.useTextOnWheel) {
+    if (this.aitQuestionType === 'text') {
       let displayText = item.text || '?';
 
       // Define maximum characters per line
@@ -282,6 +312,18 @@ drawWheel(): boolean {
         ctx.fillText(line2, 0, 12);
       } else {
         ctx.fillText(displayText, 0, 0);
+      }
+    } else if (this.aitQuestionType === 'audio') {
+      // Every segment shows the same speaker glyph (sound has no per-segment visual) -
+      // the actual item is only revealed once the wheel lands and the quiz card plays it.
+      if (this.audioIconImg) {
+        ctx.drawImage(this.audioIconImg, -this.imageSize / 2, -this.imageSize / 2, this.imageSize, this.imageSize);
+      } else {
+        ctx.font = `${Math.round(this.imageSize * 0.7)}px Arial`;
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🔊', 0, 0);
       }
     } else {
       if (item.image && item.id && this.images.has(item.id)) {
@@ -331,6 +373,50 @@ drawWheel(): boolean {
       this.cdr.detectChanges();
     };
     img.src = url;
+  }
+
+  private loadAudioIcon() {
+    const img = new Image();
+    img.onload = () => {
+      if (this.destroyed) return;
+      this.audioIconImg = img;
+      this.drawWheel();
+    };
+    img.src = 'assets/images/book/audio.png';
+  }
+
+  // Stops on click to avoid also toggling the flip-card behind it.
+  onAudioFaceClick(event: Event, item: Item | null | undefined) {
+    event.stopPropagation();
+    if (item?.audio) this.playTrackedAudio(item.audio);
+  }
+
+  private playTrackedAudio(blob: Blob) {
+    this.stopActiveAudio();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this.activeAudio = audio;
+    this.activeAudioUrl = url;
+    audio.play().catch(e => console.debug('Audio play error:', e));
+    audio.onended = () => this.stopActiveAudio();
+  }
+
+  private stopActiveAudio() {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio.onended = null;
+      this.activeAudio = null;
+    }
+    if (this.activeAudioUrl) {
+      URL.revokeObjectURL(this.activeAudioUrl);
+      this.activeAudioUrl = null;
+    }
+  }
+
+  toggleCardFlip() {
+    if (!this.hasFlipBack) return;
+    this.isFlipped = !this.isFlipped;
+    this.cdr.detectChanges();
   }
 
   private playSound(sound: HTMLAudioElement | null, volume = 1.0) {
@@ -406,35 +492,16 @@ spin() {
     } else {
       this.spinFrameId = null;
       this.spinning = false;
-      // Show quiz or not
-if (!this.forceSimpleMode && landedItem.text && landedItem.text.trim() !== '') {
-  const canShowQuiz = this.buildQuizOptions();
-  if (canShowQuiz) {
-    this.setGameTimeout(() => {
-      this.simpleConfirmMode = false;
-      this.keyboardSelectedOptionIndex = 0;
-      this.showQuiz = true;
-      this.quizOverlayVisible = true;
-      this.cdr.detectChanges();
-    }, 1000);
-  } else {
-    this.setGameTimeout(() => {
-      this.simpleConfirmMode = true;
-      this.keyboardSelectedOptionIndex = 0;
-      this.showQuiz = true;
-      this.quizOverlayVisible = true;
-      this.cdr.detectChanges();
-    }, 1000);
-  }
-} else {
-  this.setGameTimeout(() => {
-    this.simpleConfirmMode = true;
-    this.keyboardSelectedOptionIndex = 0;
-    this.showQuiz = true;
-    this.quizOverlayVisible = true;
-    this.cdr.detectChanges();
-  }, 1000);
-}
+      // Show quiz (answer options) or the simple OK/Oops confirm, depending on the setting.
+      const canShowQuiz = !this.forceSimpleMode && this.buildQuizOptions();
+      this.setGameTimeout(() => {
+        this.simpleConfirmMode = !canShowQuiz;
+        this.isFlipped = false;
+        this.keyboardSelectedOptionIndex = 0;
+        this.showQuiz = true;
+        this.quizOverlayVisible = true;
+        this.cdr.detectChanges();
+      }, 1000);
     }
   };
   this.spinFrameId = requestAnimationFrame(animate);
@@ -451,53 +518,23 @@ private eliminateSilently(item: Item) {
 
 private buildQuizOptions(): boolean {
   if (!this.selectedItem) return false;
+  const optionsType = this.aitOptionsType;
+  if (!itemHasAitContent(this.selectedItem, optionsType)) return false;
 
-  const needImage = this.useTextOnWheel;   // true → quiz shows images (reverse mode)
-  const needText = !this.useTextOnWheel;   // true → quiz shows text (normal mode)
+  // --- Filter candidates that actually have the content type the options need
+  const candidates = this.items.filter(item =>
+    item.id !== this.selectedItem!.id && itemHasAitContent(item, optionsType)
+  );
 
-  // --- Key for the selected item (for deduplication)
-  let selectedKey = '';
-  if (needImage && this.selectedItem.image) {
-    selectedKey = `${this.selectedItem.image.size}|${this.selectedItem.image.type}`;
-  } else if (needText && this.selectedItem.text) {
-    selectedKey = this.selectedItem.text.trim().toLowerCase();
-  } else {
-    selectedKey = `id_${this.selectedItem.id}`;
-  }
-
-  // --- Store selected text for reverse mode filtering
-  const selectedText = this.selectedItem.text?.trim().toLowerCase() || '';
-
-  // --- Filter candidates
-  let candidates = this.items.filter(item => {
-    if (item.id === this.selectedItem!.id) return false;
-    // Must have the required content type
-    if (needImage && !item.image) return false;
-    if (needText && !item.text) return false;
-
-    // In reverse mode (quiz shows images), exclude any candidate whose text matches the question text
-    if (needImage && item.text && item.text.trim().toLowerCase() === selectedText) {
-      return false;
-    }
-    return true;
-  });
-
-  // --- Deduplicate candidates by content (text or image)
+  // --- Deduplicate candidates by that content (and never let one repeat the correct answer's content)
+  const selectedKey = aitContentKey(this.selectedItem, optionsType);
   const uniqueCandidates: Item[] = [];
-  const seen = new Set<string>();
+  const seen = new Set<string>([selectedKey]);
   for (const cand of candidates) {
-    let key = '';
-    if (needImage && cand.image) {
-      key = `${cand.image.size}|${cand.image.type}`;
-    } else if (needText && cand.text) {
-      key = cand.text.trim().toLowerCase();
-    }
-    // Also skip if this candidate’s content equals the selected item’s content (extra safety)
-    if (key === selectedKey) continue;
-    if (!seen.has(key)) {
-      seen.add(key);
-      uniqueCandidates.push(cand);
-    }
+    const key = aitContentKey(cand, optionsType);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueCandidates.push(cand);
   }
 
   // --- Shuffle unique candidates
@@ -506,15 +543,8 @@ private buildQuizOptions(): boolean {
     [uniqueCandidates[i], uniqueCandidates[j]] = [uniqueCandidates[j], uniqueCandidates[i]];
   }
 
-  // --- Select distractors
-  let distractors: Item[] = [];
-  if (uniqueCandidates.length >= 2) {
-    distractors = uniqueCandidates.slice(0, 2);
-  } else if (uniqueCandidates.length === 1) {
-    distractors = [uniqueCandidates[0]];
-  } else {
-    return false; // no valid distractors
-  }
+  const distractors = uniqueCandidates.slice(0, Math.min(2, uniqueCandidates.length));
+  if (!distractors.length) return false; // no valid distractors
 
   // --- Build and shuffle options
   let options = [this.selectedItem, ...distractors];
@@ -554,6 +584,8 @@ onQuizAnswer(selected: Item) {
       if (idx !== -1) this.currentItems.splice(idx, 1);
       this.showQuiz = false;
       this.quizOverlayVisible = false;
+      this.isFlipped = false;
+      this.stopActiveAudio();
       this.selectedItem = null;
       this.fadeOutOptionIds.clear();
       this.quizAnswerLocked = false;
@@ -694,6 +726,8 @@ onQuizAnswer(selected: Item) {
       this.showQuiz = false;
       this.quizOverlayVisible = false;
       this.simpleConfirmMode = false;
+      this.isFlipped = false;
+      this.stopActiveAudio();
       this.selectedItem = null;
       this.drawWheel();
       this.queueVictoryIfDone();
@@ -707,6 +741,8 @@ onQuizAnswer(selected: Item) {
     this.showQuiz = false;
     this.quizOverlayVisible = false;
     this.simpleConfirmMode = false;
+    this.isFlipped = false;
+    this.stopActiveAudio();
     this.selectedItem = null;
     this.cdr.detectChanges();
   }
@@ -746,6 +782,8 @@ onQuizAnswer(selected: Item) {
     this.fadeOutOptionIds.clear();
     this.quizAnswerLocked = false;
     this.eliminationLong = false;
+    this.isFlipped = false;
+    this.stopActiveAudio();
     this.drawWheel();
     this.cdr.detectChanges();
   }

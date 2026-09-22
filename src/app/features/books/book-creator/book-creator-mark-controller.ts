@@ -103,6 +103,11 @@ export class BookCreatorMarkController {
     const maxY = this.creator.clamp(Math.max(...points.map((point) => point.y)) + pad, 0, 1);
     const width = Math.max(0.002, maxX - minX);
     const height = Math.max(0.002, maxY - minY);
+    // strokePx is the intended thickness in on-screen pixels at the current zoom. Recorded
+    // as a fraction of the page's current width (strokeWidthRatio) so the rendered thickness
+    // stays visually the same size relative to the page at any future zoom level.
+    const pageRect = this.creator.editorCanvas?.nativeElement?.getBoundingClientRect();
+    const strokeWidthRatio = pageRect?.width ? strokePx / pageRect.width : undefined;
     return {
       id: this.creator.createId(kind),
       type: kind,
@@ -114,12 +119,21 @@ export class BookCreatorMarkController {
         color,
         label: kind === 'highlighter' ? 'Highlighter' : 'Draw',
         strokePx,
+        strokeWidthRatio,
         points: points.map((point) => ({
           x: this.creator.clamp((point.x - minX) / width, 0, 1),
           y: this.creator.clamp((point.y - minY) / height, 0, 1)
         }))
       }
     };
+  }
+
+  getStrokeWidthPx(element: BookElement): number {
+    const fallback = Number(element.data?.['strokePx']) || (element.type === 'highlighter' ? 18 : 6);
+    const ratio = Number(element.data?.['strokeWidthRatio']);
+    if (!Number.isFinite(ratio) || ratio <= 0) return fallback;
+    const rect = this.creator.editorCanvas?.nativeElement?.getBoundingClientRect();
+    return rect?.width ? ratio * rect.width : fallback;
   }
 
   redrawCreatorLiveInk(): void {

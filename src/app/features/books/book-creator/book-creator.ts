@@ -158,6 +158,13 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   placingCircleTask = false;
   placingMatchTask = false;
   placingTracingTask = false;
+  pendingMarkerPlacement: {
+    type: BookElementType;
+    data: Record<string, unknown>;
+    width: number;
+    height: number;
+    onPlaced?: (element: BookElement) => void;
+  } | null = null;
   tracingPlacementElementId: string | null = null;
   activeTracingPartId: string | null = null;
   tracingPreviewPoint: { x: number; y: number } | null = null;
@@ -557,22 +564,21 @@ Tomorrow I will help my mom.`;
   }
 
   addFocus(): void {
-    this.captureHistory();
-    this.addElement('focus', {}, 0.28, 0.16);
-    const page = this.selectedPage;
-    if (!page?.elements.length) return;
-    const focusElement = page.elements.pop();
-    if (!focusElement) return;
-    const lastFocusIndex = page.elements.reduce(
-      (lastIndex, element, index) => (element.type === 'focus' ? index : lastIndex),
-      -1
-    );
-    page.elements.splice(lastFocusIndex + 1, 0, focusElement);
+    this.armMarkerPlacement('focus', {}, 0.28, 0.16, () => {
+      const page = this.selectedPage;
+      if (!page?.elements.length) return;
+      const focusElement = page.elements.pop();
+      if (!focusElement) return;
+      const lastFocusIndex = page.elements.reduce(
+        (lastIndex, element, index) => (element.type === 'focus' ? index : lastIndex),
+        -1
+      );
+      page.elements.splice(lastFocusIndex + 1, 0, focusElement);
+    });
   }
 
   addNote(): void {
-    this.captureHistory();
-    this.addElement('note', { content: 'Note' }, 0.08, 0.08);
+    this.armMarkerPlacement('note', { content: 'Note' }, 0.08, 0.08);
   }
 
   setCreatorZoom(value: number): void {
@@ -585,6 +591,7 @@ Tomorrow I will help my mom.`;
       this.creatorHighlighterMode = false;
       this.creatorTextMode = false;
       this.clearTaskPlacementModes();
+      this.pendingMarkerPlacement = null;
     }
   }
 
@@ -594,6 +601,7 @@ Tomorrow I will help my mom.`;
       this.creatorDrawMode = false;
       this.creatorTextMode = false;
       this.clearTaskPlacementModes();
+      this.pendingMarkerPlacement = null;
     }
   }
 
@@ -603,6 +611,7 @@ Tomorrow I will help my mom.`;
       this.creatorDrawMode = false;
       this.creatorHighlighterMode = false;
       this.clearTaskPlacementModes();
+      this.pendingMarkerPlacement = null;
     } else {
       this.activeCreatorTextInput = null;
     }
@@ -644,8 +653,7 @@ Tomorrow I will help my mom.`;
   }
 
   addSpeakingAi(): void {
-    this.captureHistory();
-    this.addElement('speakingAi', {
+    this.armMarkerPlacement('speakingAi', {
       label: 'AI Speaking',
       language: 'en',
       prompt: this.speakingPromptExample
@@ -757,6 +765,7 @@ Tomorrow I will help my mom.`;
     this.creatorHighlighterMode = false;
     this.creatorTextMode = false;
     this.activeCreatorTextInput = null;
+    this.pendingMarkerPlacement = null;
   }
 
   private clearTaskPlacementModes(): void {
@@ -772,7 +781,8 @@ Tomorrow I will help my mom.`;
       || this.placingCircleTask
       || this.placingMatchTask
       || this.placingTracingTask
-      || this.placingGuidePin;
+      || this.placingGuidePin
+      || !!this.pendingMarkerPlacement;
   }
 
   @HostListener('document:keydown.escape', ['$event'])
@@ -856,6 +866,7 @@ Tomorrow I will help my mom.`;
     this.clearCreatorMarkModes();
     this.taskPlacementController.finishTaskPlacement();
     this.placingGuidePin = false;
+    this.pendingMarkerPlacement = null;
 
     if (!hadSurfaceTool) {
       this.selectedElementId = null;
@@ -923,8 +934,7 @@ Tomorrow I will help my mom.`;
   }
 
   addGuideDot(): void {
-    this.captureHistory();
-    this.addElement('guideDot', { text: '', audioFiles: [], guideTracks: [] }, 0.08, 0.08);
+    this.armMarkerPlacement('guideDot', { text: '', audioFiles: [], guideTracks: [] }, 0.08, 0.08);
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
@@ -1266,6 +1276,10 @@ Tomorrow I will help my mom.`;
 
   onCanvasPointerDown(event: PointerEvent): void {
     if (!event.isPrimary) return;
+    if (this.pendingMarkerPlacement) {
+      this.placePendingMarker(event);
+      return;
+    }
     if (this.creatorDrawMode || this.creatorHighlighterMode) {
       this.startCreatorInk(event, this.creatorHighlighterMode ? 'highlighter' : 'ink');
       return;
@@ -1779,6 +1793,19 @@ Tomorrow I will help my mom.`;
     this.resizeElementFromCenter(element, element.width || 0.08, this.normalizeElementPercent(value) / 100);
   }
 
+  getTextMarkSizePercent(element: BookElement): number {
+    return this.roundElementPercent((element.height || 0.045) * 100);
+  }
+
+  updateTextMarkSizePercent(element: BookElement, value: string | number): void {
+    const newHeight = this.normalizeElementPercent(value) / 100;
+    const currentHeight = element.height || 0.045;
+    const currentWidth = element.width || 0.16;
+    const scale = currentHeight > 0 ? newHeight / currentHeight : 1;
+    const newWidth = this.clamp(currentWidth * scale, 0.02, 1);
+    this.resizeElementFromCenter(element, newWidth, newHeight);
+  }
+
   updateTextMarkText(element: BookElement, value: string): void {
     element.data['text'] = value;
     element.data['imageDataUrl'] = this.createTextImageDataUrl(value, String(element.data['color'] || '#111827'));
@@ -1820,6 +1847,10 @@ Tomorrow I will help my mom.`;
     if (target === 'pen') this.creatorPenColor = value;
     else if (target === 'highlighter') this.creatorHighlighterColor = value;
     else this.selectCreatorTextColor(value);
+  }
+
+  getStrokeWidthPx(element: BookElement): number {
+    return this.markController.getStrokeWidthPx(element);
   }
 
   getElementPolylinePoints(element: BookElement): string {
@@ -2303,22 +2334,64 @@ Tomorrow I will help my mom.`;
     type: BookElementType,
     data: Record<string, unknown>,
     width: number,
-    height: number
-  ): void {
+    height: number,
+    centerX?: number,
+    centerY?: number
+  ): BookElement | null {
     const page = this.selectedPage;
-    if (!page) return;
+    if (!page) return null;
 
+    const x = centerX !== undefined ? this.clamp(centerX - width / 2, 0, 1 - width) : Math.max(0, (1 - width) / 2);
+    const y = centerY !== undefined ? this.clamp(centerY - height / 2, 0, 1 - height) : Math.max(0, (1 - height) / 2);
     const element: BookElement = {
       id: this.createId(type),
       type,
-      x: Math.max(0, (1 - width) / 2),
-      y: Math.max(0, (1 - height) / 2),
+      x,
+      y,
       width,
       height,
       data
     };
     page.elements.push(element);
     this.selectedElementId = element.id;
+    return element;
+  }
+
+  // Arms "click to place" mode for a marker-style tool (image, video, focus, etc.) instead
+  // of dropping it dead-center — mirrors the click-to-place task tools (matching, text task, ...).
+  armMarkerPlacement(
+    type: BookElementType,
+    data: Record<string, unknown>,
+    width: number,
+    height: number,
+    onPlaced?: (element: BookElement) => void
+  ): void {
+    if (this.pendingMarkerPlacement?.type === type) {
+      this.pendingMarkerPlacement = null;
+      return;
+    }
+    this.clearCreatorMarkModes();
+    this.clearTaskPlacementModes();
+    this.placingGuidePin = false;
+    this.selectedElementId = null;
+    this.pendingMarkerPlacement = { type, data, width, height, onPlaced };
+  }
+
+  placePendingMarker(event: PointerEvent): void {
+    const pending = this.pendingMarkerPlacement;
+    const rect = this.editorCanvas?.nativeElement.getBoundingClientRect();
+    if (!pending || !rect?.width || !rect.height) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.pendingMarkerPlacement = null;
+    this.captureHistory();
+    const centerX = this.clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const centerY = this.clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    const element = this.addElement(pending.type, pending.data, pending.width, pending.height, centerX, centerY);
+    if (element) {
+      pending.onPlaced?.(element);
+    }
+    this.lastTaskDrawAt = Date.now();
   }
 
   private captureHistory(): void {

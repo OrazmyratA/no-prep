@@ -49,6 +49,7 @@
     <!-- Left team side -->
     <div class="team-side left" [class.single-team]="singleTeamMode" [class.frozen]="isLeftFrozen()">
       <div class="team-header">
+        <div *ngIf="!singleTeamMode" class="team-name-label">{{ 'team' | translate }} 1</div>
         <h2><span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge team-score-keyboard-hint">A</span><span class="score">{{ teams.left.score }}</span></h2>
       </div>
       <div class="sentence-area" [class.correct]="correctTeam === 'left'">
@@ -103,6 +104,7 @@
     <!-- Right team side -->
     <div *ngIf="!singleTeamMode" class="team-side right" [class.frozen]="isRightFrozen()">
       <div class="team-header">
+        <div class="team-name-label">{{ 'team' | translate }} 2</div>
         <h2><span class="score">{{ teams.right.score }}</span><span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge team-score-keyboard-hint">L</span></h2>
       </div>
       <div class="sentence-area" [class.correct]="correctTeam === 'right'">
@@ -143,7 +145,7 @@
 
   <app-game-finish-overlay
     *ngIf="gameFinished"
-    [title]="(winner === 'left' ? ('teamSentenceLeftTeam' | translate) : ('teamSentenceRightTeam' | translate)) + ' ' + ('teamSentenceWins' | translate)"
+    [title]="finishTitle"
     [message]="('teamSentenceFinalScore' | translate) + ': ' + teams.left.score + ' - ' + teams.right.score"
     (playAgain)="resetGame()"
     (activities)="goToActivities()">

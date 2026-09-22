@@ -6,7 +6,10 @@ import { Item, Topic } from '../core/db.model';
 import { LeaderboardStateService } from '../core/leaderboard-state';
 import { LanguageService } from '../core/language';
 import { LicenseService } from '../core/license';
+import { showAppNotification } from '../core/notification';
+import { PlatformFileService } from '../core/platform-file';
 import { ConfirmationService } from './confirmation';
+import { renderLeaderboardImage } from './leaderboard-share-image';
 import { LeaderboardEntry } from './leaderboard.model';
 import { Team } from './leaderboard-team.model';
 import { TimerPhase } from './leaderboard-timer';
@@ -82,7 +85,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // Teams are a session-only grouping (no DB table, reset on topic change or app restart) used
   // purely to tint students by color and drive the wheel — scoring itself is fully unified with
   // individual mode: every student's points are always their own persisted LeaderboardScore row.
-  // A wheel "Correct" in team mode just fans that same DB-backed award out to every teammate.
+  // A wheel "Correct" in team mode credits only the student the wheel actually landed on, same
+  // as individual mode — never the rest of their team.
   mode: 'individual' | 'team' = 'individual';
   teams: Team[] = [];
   showTeamSetup = false;
@@ -127,17 +131,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // locked out of scoring and the wheel (enforced in awardPoint/deductPoint/wheelEntries below).
   private absentItemIds = new Set<number>();
 
-  // Consecutive correct-answer awards per student, with no hammer hit in between — a hit resets
-  // its own student straight to 0 (see awardPoint/deductPoint). Read via getCachedEntry() so the
-  // row can render a flame badge once it crosses the "hot" threshold (see streakHotThreshold).
-  private streaks = new Map<number, number>();
-  readonly streakHotThreshold = 3;
-
   // Last few point/absent-changing actions, most-recent last, so the teacher can walk back
   // several accidental taps in a row rather than just the very last one. Each undo() call pops
   // exactly one entry. Cleared on topic switch — undo history belongs to the current class list.
   private readonly maxUndoDepth = 5;
-  undoStack: Array<{ itemId: number; scoreDelta: number; prevStreak: number; prevAbsent?: boolean }> = [];
+  undoStack: Array<{ itemId: number; scoreDelta: number; prevAbsent?: boolean }> = [];
 
   // Roster ids in teacher-entry order (roster is already `order`-sorted by db.ts), captured once
   // per loadTopic — the list's default/reset state, and what toggleRanking() restores on a second tap.
@@ -163,7 +161,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     private leaderboardState: LeaderboardStateService,
     private confirmationService: ConfirmationService,
     private langService: LanguageService,
-    private licenseService: LicenseService
+    private licenseService: LicenseService,
+    private platformFile: PlatformFileService
   ) {}
 
   async ngOnInit() {
@@ -171,8 +170,9 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
       this.topics = topics;
       this.cdr.detectChanges();
     });
-    this.topicPickedSubscription = this.leaderboardState.topicSelected$.subscribe(topicId => {
-      void this.onTopicPicked(topicId);
+    this.topicPickedSubscription = this.leaderboardState.topicSelected$.subscribe(result => {
+      if (result.source !== 'leaderboard-roster') return;
+      void this.onTopicPicked(result.topicId);
     });
 
     this.collectSound = new Audio('assets/sound/collect.mp3');
@@ -230,14 +230,13 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     const points = this.scores.get(item.id!) ?? 0;
     const absent = this.absentItemIds.has(item.id!);
     const baselinePoints = this.baselinePoints.get(item.id!);
-    const streak = this.streaks.get(item.id!) ?? 0;
     const cached = this.entryCache.get(item.id!);
     if (cached && cached.text === (item.text ?? '') && cached.image === item.image
         && cached.points === points && cached.color === color && cached.absent === absent
-        && cached.baselinePoints === baselinePoints && cached.streak === streak) {
+        && cached.baselinePoints === baselinePoints) {
       return cached;
     }
-    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent, baselinePoints, streak };
+    const entry: LeaderboardEntry = { itemId: item.id!, text: item.text ?? '', image: item.image, points, color, absent, baselinePoints };
     this.entryCache.set(item.id!, entry);
     return entry;
   }
@@ -288,34 +287,141 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     return this.timerRemainingSeconds / this.timerTotalSeconds;
   }
 
-  // The current mode's column buckets, resolved to entries.
-  get activeColumns(): LeaderboardEntry[][] {
+  // activeColumns / columnLabels both derive from this — a single builder guarantees the two stay
+  // aligned 1:1 by index (see the mismatch risk called out below) instead of two separately
+  // recomputed pieces of logic drifting apart.
+  //
+  // Absent students are pulled out of whatever column they're actually sitting in (their normal
+  // individual column, or their team's column) into one shared trailing column, regardless of
+  // mode — dimmed rows scattered through the middle of a column were distracting and sometimes
+  // sat right where a name would otherwise be. Their real column/team membership in
+  // columnsIndividual/columnsTeam is untouched; this is purely a display-time filter.
+  // Cache keyed by a cheap signature of everything that determines which student sits in which
+  // column/position — NOT the entries' own live data (points etc.), which is refreshed in place
+  // on every call regardless (see below). Without this, buildDisplayColumns() would hand out
+  // brand-new array instances on every single change-detection pass (including the timer's
+  // once-a-second tick), and leaderboard-ranking-list.html's [cdkDropListData] is bound directly
+  // to those arrays — if that reference gets swapped out from under CDK mid-drag (finger still
+  // down when an unrelated tick fires), the drop's moveItemInArray/transferArrayItem mutates an
+  // array Angular has already orphaned, so the drag visually completes wherever it was released
+  // but the student never actually lands in that column/row. Keeping the same array instances
+  // across structurally-unchanged renders closes that race.
+  private displayColumnsSignature: string | null = null;
+  private displayColumnsResult: {
+    columns: LeaderboardEntry[][];
+    labels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
+  } | null = null;
+
+  private buildDisplayColumns(): {
+    columns: LeaderboardEntry[][];
+    labels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
+  } {
     const buckets = this.mode === 'team' ? this.columnsTeam : this.columnsIndividual;
+    const signature = this.displayColumnsSignatureFor(buckets);
     const byId = new Map(this.allActiveEntries.map(e => [e.itemId, e]));
-    const entryBuckets = buckets.map(col => col.map(id => byId.get(id)).filter((e): e is LeaderboardEntry => !!e));
-    return this.drawerOpen ? [entryBuckets.flat()] : entryBuckets;
+    if (this.displayColumnsResult && this.displayColumnsSignature === signature) {
+      // Structure (who's in which column) hasn't changed, but a student's own data (points,
+      // absent flag, baseline) may have — refresh each slot's entry object in place rather than
+      // rebuilding the arrays, so the outer column array references CDK is tracking stay put.
+      this.refreshDisplayColumnsContent(this.displayColumnsResult.columns, byId);
+      return this.displayColumnsResult;
+    }
+    const result = this.computeDisplayColumns(buckets, byId);
+    this.displayColumnsSignature = signature;
+    this.displayColumnsResult = result;
+    return result;
   }
 
-  // One label per activeColumns entry, team mode only — lets the ranking-list show which team
-  // each column is. Built the same way chunkByTeam() builds columnsTeam (this.teams in order,
-  // plus a trailing "unassigned" marker under the exact same condition) so the two always line up
-  // 1:1 by index, including for an empty team's otherwise-unlabelable column. Suppressed while
-  // ranked, since a ranked column is a flat individual-style split, not one team per column.
-  get columnLabels(): { name: string; color?: string; isUnassigned?: boolean }[] | null {
-    if (this.mode !== 'team' || this.drawerOpen || this.rankingAppliedTeam) return null;
-    const labels = this.teams.map(t => ({ name: t.name, color: t.color }));
-    const assigned = new Set(this.teams.flatMap(t => t.memberItemIds));
-    const hasUnassigned = this.allActiveEntries.some(e => !assigned.has(e.itemId));
-    return hasUnassigned ? [...labels, { name: '', isUnassigned: true }] : labels;
+  private refreshDisplayColumnsContent(columns: LeaderboardEntry[][], byId: Map<number, LeaderboardEntry>) {
+    for (const column of columns) {
+      for (let i = 0; i < column.length; i++) {
+        const fresh = byId.get(column[i].itemId);
+        if (fresh && fresh !== column[i]) column[i] = fresh;
+      }
+    }
+  }
+
+  private displayColumnsSignatureFor(buckets: number[][]): string {
+    const bucketsKey = buckets.map(col => col.join(',')).join('|');
+    const absentKey = Array.from(this.absentItemIds).sort((a, b) => a - b).join(',');
+    const teamsKey = this.teams.map(t => `${t.id}:${t.name}:${t.color}`).join(',');
+    return `${this.mode}|${bucketsKey}|${absentKey}|${teamsKey}|${this.drawerOpen}|${this.rankingAppliedTeam}`;
+  }
+
+  private computeDisplayColumns(buckets: number[][], byId: Map<number, LeaderboardEntry>): {
+    columns: LeaderboardEntry[][];
+    labels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
+  } {
+    const entryBuckets = buckets.map(col => col.map(id => byId.get(id)).filter((e): e is LeaderboardEntry => !!e));
+
+    // Ranked-flat team view (see applyScoreRanking) isn't grouped by team, so it gets no labels,
+    // same as individual mode — matches the drawer-open, single-column case too.
+    const showTeamLabels = this.mode === 'team' && !this.rankingAppliedTeam && !this.drawerOpen;
+    let mergedColumns: LeaderboardEntry[][];
+    let labels: ({ name: string; color?: string; isUnassigned?: boolean } | null)[];
+
+    if (this.drawerOpen) {
+      mergedColumns = [entryBuckets.flat()];
+      labels = [null];
+    } else if (showTeamLabels) {
+      mergedColumns = entryBuckets;
+      labels = this.teams.map(t => ({ name: t.name, color: t.color }));
+      // chunkByTeam() appends exactly one trailing bucket when entryBuckets has more entries than
+      // teams — mirror that off the actual bucket count instead of re-deriving the condition, so
+      // this can never drift out of sync with what's actually in entryBuckets.
+      if (entryBuckets.length > this.teams.length) labels.push({ name: '', isUnassigned: true });
+    } else {
+      mergedColumns = entryBuckets;
+      labels = entryBuckets.map(() => null);
+    }
+
+    const present = mergedColumns.map(col => col.filter(e => !e.absent));
+    const absent = mergedColumns.flat().filter(e => e.absent);
+    if (!absent.length) return { columns: present, labels };
+    return { columns: [...present, absent], labels: [...labels, { name: '', isAbsent: true }] };
+  }
+
+  get activeColumns(): LeaderboardEntry[][] {
+    return this.buildDisplayColumns().columns;
+  }
+
+  // One label per activeColumns entry (team name, "Unassigned", "Absent", or null for an
+  // unlabeled column) — null wholesale when nothing in the current view needs a header at all
+  // (plain individual mode with nobody absent), matching the original no-headers look.
+  get columnLabels(): ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[] | null {
+    const { labels } = this.buildDisplayColumns();
+    return labels.some(label => label != null) ? labels : null;
   }
 
   // Column-major reading order (col0 top-to-bottom, then col1, ...) mapped to a 1-based rank —
   // drives both the row number and, gated by rankingApplied, which three rows show medals.
+  //
+  // While rankingApplied, activeColumns is already sorted by score descending (applyScoreRanking
+  // chunks the sorted list into columns, and column-major traversal over that reproduces the same
+  // global order), so students tied on points get the SAME rank instead of being spread across
+  // consecutive positions — dense ranking (1, 1, 2, ...), the rank only advancing when the score
+  // actually changes. Same algorithm as reveal-game.ts's showWinnerNotification() team ranking.
+  // Outside rankingApplied the numbers are just teacher-entered list position, not a real
+  // ranking (medals are hidden then anyway), so ties don't apply — every row gets its own number.
   get rankByItemId(): Map<number, number> {
     const map = new Map<number, number>();
-    let rank = 1;
+    if (!this.rankingApplied) {
+      let position = 1;
+      for (const column of this.activeColumns) {
+        for (const entry of column) map.set(entry.itemId, position++);
+      }
+      return map;
+    }
+    let rank = 0;
+    let previousPoints: number | null = null;
     for (const column of this.activeColumns) {
-      for (const entry of column) map.set(entry.itemId, rank++);
+      for (const entry of column) {
+        if (previousPoints === null || entry.points !== previousPoints) {
+          rank++;
+          previousPoints = entry.points;
+        }
+        map.set(entry.itemId, rank);
+      }
     }
     return map;
   }
@@ -407,7 +513,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     } else {
       this.absentItemIds.delete(itemId);
     }
-    this.pushUndo({ itemId, scoreDelta: 0, prevStreak: this.streaks.get(itemId) ?? 0, prevAbsent: wasAbsent });
+    this.pushUndo({ itemId, scoreDelta: 0, prevAbsent: wasAbsent });
     // Flipping the toggle is a complete, deliberate action on its own — close the controls panel
     // right after instead of leaving it sitting open waiting for a second click elsewhere.
     if (this.openControlsItemId === itemId) this.openControlsItemId = null;
@@ -445,9 +551,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   }
 
   // Direct-entry ("type the exact value") has no ±1 precedent to reuse, so it computes its own
-  // delta and applies the same score-changed feedback awardPoint/deductPoint use. Doesn't touch
-  // streak either way — typing an exact total is an administrative correction, not a correct/
-  // wrong answer event.
+  // delta and applies the same score-changed feedback awardPoint/deductPoint use.
   async onStepperSetPoints(event: { itemId: number; value: number }) {
     if (this.selectedTopicId == null || this.absentItemIds.has(event.itemId)) return;
     const current = this.scores.get(event.itemId) ?? 0;
@@ -456,7 +560,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, event.itemId, delta);
     if (this.destroyed) return;
     this.scores.set(event.itemId, total);
-    this.pushUndo({ itemId: event.itemId, scoreDelta: delta, prevStreak: this.streaks.get(event.itemId) ?? 0 });
+    this.pushUndo({ itemId: event.itemId, scoreDelta: delta });
     if (delta > 0) this.finishAward(current, total);
     else this.playSound(this.hammerSound, 0.6);
     this.cdr.detectChanges();
@@ -473,7 +577,6 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
       if (this.destroyed) return;
       this.scores.set(entry.itemId, total);
     }
-    this.streaks.set(entry.itemId, entry.prevStreak);
     if (entry.prevAbsent !== undefined) {
       if (entry.prevAbsent) this.absentItemIds.add(entry.itemId);
       else this.absentItemIds.delete(entry.itemId);
@@ -481,7 +584,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  private pushUndo(entry: { itemId: number; scoreDelta: number; prevStreak: number; prevAbsent?: boolean }) {
+  private pushUndo(entry: { itemId: number; scoreDelta: number; prevAbsent?: boolean }) {
     this.undoStack.push(entry);
     if (this.undoStack.length > this.maxUndoDepth) this.undoStack.shift();
   }
@@ -538,7 +641,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // ===== Class list selection round-trip =====
 
   chooseList() {
-    this.leaderboardState.beginTopicSelection(this.router.url);
+    this.leaderboardState.beginTopicSelection(this.router.url, 'leaderboard-roster');
     this.overlayOpen = false;
     this.cdr.detectChanges();
     this.router.navigate(['/topics']);
@@ -554,7 +657,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.selectedTopicId == null) return;
-    this.leaderboardState.beginTopicSelection(this.router.url);
+    this.leaderboardState.beginTopicSelection(this.router.url, 'leaderboard-roster');
     this.overlayOpen = false;
     this.cdr.detectChanges();
     this.router.navigate(['/topics', this.selectedTopicId, 'edit']);
@@ -591,9 +694,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.teams = [];
     this.wheelOrder = this.computeInterleavedWheelOrder();
     this.absentItemIds = new Set();
-    this.streaks = new Map();
     this.undoStack = [];
     this.entryCache.clear();
+    this.displayColumnsSignature = null;
+    this.displayColumnsResult = null;
     // items is already `order`-sorted by db.ts — this is exactly the teacher's entry order, and
     // the list's default render state (plain numbers, no medals) until toggleRanking() is tapped.
     this.initialOrder = items.filter(i => i.id != null).map(i => i.id!);
@@ -838,6 +942,33 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // it: starting stashes each student's current total (baselinePoints, persisted on the DB row —
   // see db.ts) and zeroes their visible score; ending adds the session's points back onto that
   // stash and clears it. A toggle, same shape as toggleRanking() — one button, two states.
+  sharingResults = false;
+
+  // Renders the whole class as one ranked list (absent students at the bottom) and hands it to
+  // PlatformFileService, which downloads it in a browser/Electron, saves to Downloads on Android,
+  // and opens the share sheet on other native platforms.
+  async shareResults() {
+    if (this.sharingResults || !this.roster.length) return;
+    this.sharingResults = true;
+    this.cdr.detectChanges();
+    try {
+      const blob = await renderLeaderboardImage(this.allActiveEntries, this.selectedTopicName, {
+        title: this.langService.translate('leaderboardShareTitle'),
+        absent: this.langService.translate('leaderboardAbsent')
+      });
+      const date = new Date().toISOString().slice(0, 10);
+      const name = `${this.selectedTopicName || 'class'}-results-${date}.png`;
+      await this.platformFile.saveBlobToDownloads(blob, name);
+      showAppNotification(this.langService.translate('leaderboardShareDone'), 'success');
+    } catch (error) {
+      console.error('Failed to share leaderboard results', error);
+      showAppNotification(this.langService.translate('leaderboardShareFailed'), 'error');
+    } finally {
+      this.sharingResults = false;
+      if (!this.destroyed) this.cdr.detectChanges();
+    }
+  }
+
   async toggleScoreSession() {
     if (this.selectedTopicId == null) return;
     if (this.sessionActive) {
@@ -858,9 +989,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   // ===== Scoring =====
   // Every student's score is always their own persisted LeaderboardScore row, in both modes —
-  // team mode's only difference is that a wheel "Correct" fans an award out to every teammate
-  // (see awardPointForTeamOrSelf). Manual star/hammer clicks always affect just the one student.
-  // Reordering never happens here — only toggleRanking() (the ranking.png button) does.
+  // a wheel "Correct" and a manual star/hammer click always affect just the one student, team
+  // mode included. Reordering never happens here — only toggleRanking() (the ranking.png button) does.
 
   async onStarClick(itemId: number) {
     await this.awardPoint(itemId);
@@ -869,12 +999,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   private async awardPoint(itemId: number) {
     if (this.selectedTopicId == null || this.absentItemIds.has(itemId)) return;
     const beforePoints = this.scores.get(itemId) ?? 0;
-    const prevStreak = this.streaks.get(itemId) ?? 0;
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, 1);
     if (this.destroyed) return;
     this.scores.set(itemId, total);
-    this.streaks.set(itemId, prevStreak + 1);
-    this.pushUndo({ itemId, scoreDelta: 1, prevStreak });
+    this.pushUndo({ itemId, scoreDelta: 1 });
     this.finishAward(beforePoints, total);
   }
 
@@ -890,12 +1018,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private async deductPoint(itemId: number) {
     if (this.selectedTopicId == null || this.absentItemIds.has(itemId)) return;
-    const prevStreak = this.streaks.get(itemId) ?? 0;
     const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, -1);
     if (this.destroyed) return;
     this.scores.set(itemId, total);
-    this.streaks.set(itemId, 0);
-    this.pushUndo({ itemId, scoreDelta: -1, prevStreak });
+    this.pushUndo({ itemId, scoreDelta: -1 });
     this.finishHammerHit(itemId);
   }
 
@@ -955,23 +1081,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     const itemId = this.selectedEntry.itemId;
     this.markWheelUsed(itemId);
     this.hideReveal(() => {
-      void this.awardPointForTeamOrSelf(itemId);
+      void this.awardPoint(itemId);
     });
-  }
-
-  // In team mode, a correct answer credits every teammate's own persisted score (each from
-  // their own current value, not forced to match) — a sequential loop of the same DB-backed
-  // awardPoint() call used everywhere else, matching db.ts's no-bulk-method convention.
-  private async awardPointForTeamOrSelf(itemId: number) {
-    if (this.mode === 'team') {
-      const team = this.teams.find(t => t.memberItemIds.includes(itemId));
-      const memberIds = team ? team.memberItemIds : [itemId];
-      for (const memberId of memberIds) {
-        await this.awardPoint(memberId);
-      }
-    } else {
-      await this.awardPoint(itemId);
-    }
   }
 
   confirmOops() {

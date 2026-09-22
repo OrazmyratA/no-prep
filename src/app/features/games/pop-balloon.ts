@@ -7,6 +7,8 @@ import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
+import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
+import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 
 type RPSChoice = 'rock' | 'paper' | 'scissors';
 
@@ -53,6 +55,7 @@ interface PopTeam {
   quizOverlayVisible: boolean;
   quizClosing: boolean;
   simpleConfirmMode: boolean;
+  isFlipped: boolean;
   selectedBalloonIndex: number | null;
   selectedItem: Item | null;
   quizOptions: Item[];
@@ -77,7 +80,8 @@ interface PopReward {
 export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   giftRisingComplete = false;
   topicId!: number;
-  reverseMode = false;
+  aitOrder: AitType[] = [...AIT_DEFAULT_ORDER];
+  disableRps = false;
   items: Item[] = [];
   balloons: Balloon[] = [];
   teams: PopTeam[] = [];
@@ -131,6 +135,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private cashSound: HTMLAudioElement | null = null;
   private powerUpSound: HTMLAudioElement | null = null;
   private layoutSubscription?: Subscription;
+  private activeAudio: HTMLAudioElement | null = null;
+  private activeAudioUrl: string | null = null;
 
   // RPS phase (2-team mode only)
   readonly rpsChoiceList: readonly RPSChoice[] = ['rock', 'paper', 'scissors'];
@@ -163,6 +169,24 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     private resizeService: ResizeService
   ) {}
 
+  // 1st pick: the balloon-pop question face. Last pick (when 2-3 are chosen): what the
+  // answer options show. With exactly 3 picked, the middle one shows on the flip side.
+  get aitQuestionType(): AitType {
+    return this.aitOrder[0] ?? 'image';
+  }
+
+  get aitBackType(): AitType | null {
+    return this.aitOrder.length === 3 ? this.aitOrder[1] : null;
+  }
+
+  get aitOptionsType(): AitType {
+    return this.aitOrder[this.aitOrder.length - 1] ?? this.aitQuestionType;
+  }
+
+  get hasFlipBack(): boolean {
+    return this.aitBackType !== null;
+  }
+
   async ngOnInit() {
     const idParam =
       this.route.snapshot.paramMap.get('id') ??
@@ -173,9 +197,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     const rawTeamCount = Number(params['teamCount'] ?? 1);
     this.teamCount = Math.min(4, Math.max(1, Number.isFinite(rawTeamCount) ? rawTeamCount : 1));
     this.teamMode = this.teamCount > 1;
-    this.syncKeyboardShortcuts();
-    this.reverseMode = params['reverseMode'] === 'true';
+    this.aitOrder = parseAitOrder(params['ait']);
     this.forceSimpleMode = params['simpleMode'] !== 'false';
+    this.disableRps = params['disableRps'] === 'true';
+    this.syncKeyboardShortcuts();
     const rawGiftTopicId = Number(params['giftTopicId']);
     this.giftTopicId = Number.isFinite(rawGiftTopicId) && rawGiftTopicId > 0 ? rawGiftTopicId : null;
     this.initGame();
@@ -215,7 +240,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     } finally {
       this.loading = false;
       this.setGameTimeout(() => this.queueGiftLift(), 100);
-      if (this.teamCount === 2) {
+      if (this.teamCount === 2 && !this.disableRps) {
         this.setGameTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
       }
       this.cdr.detectChanges();
@@ -266,6 +291,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearPendingTimers();
     this.cancelStringTracking();
     this.layoutSubscription?.unsubscribe();
+    this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
     [this.popSound, this.rewardSound, this.correctSound, this.buzzSound, this.cashSound, this.powerUpSound].forEach(s => s?.pause());
@@ -295,6 +321,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       quizOverlayVisible: false,
       quizClosing: false,
       simpleConfirmMode: false,
+      isFlipped: false,
       selectedBalloonIndex: null,
       selectedItem: null,
       quizOptions: [],
@@ -325,6 +352,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       quizOverlayVisible: false,
       quizClosing: false,
       simpleConfirmMode: false,
+      isFlipped: false,
       selectedBalloonIndex: null,
       selectedItem: null,
       quizOptions: [],
@@ -485,7 +513,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     const balloon = team?.balloons[index];
     if (!team || !balloon || team.completed) return;
     if (balloon.popped || !this.gameActive || team.showQuiz || team.quizAnswerLocked) return;
-    if (this.teamCount === 2 && this.teamMode && this.rpsWinnerTeamId !== teamId) return;
+    if (this.teamCount === 2 && this.teamMode && !this.disableRps && this.rpsWinnerTeamId !== teamId) return;
 
     this.keyboardSelectedTeamIndex = Math.max(0, this.teams.findIndex(t => t.id === team.id));
     team.keyboardSelectedBalloonIndex = index;
@@ -500,24 +528,14 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!team || !balloon) return false;
 
     const item = balloon.item;
-    const hasText = !!item.text?.trim();
     let options: Item[] = [];
     let simpleMode = this.forceSimpleMode;
 
     if (!this.forceSimpleMode) {
-      if (this.reverseMode) {
-        if (!hasText) {
-          simpleMode = true;
-        } else {
-          options = this.buildReverseQuizOptions(item);
-          if (!options.length) simpleMode = true;
-        }
-      } else if (!hasText) {
-        simpleMode = true;
-      } else {
-        options = this.buildQuizOptions(item);
-        if (!options.length) return false;
-      }
+      options = this.buildQuizOptionsFor(item);
+      // No valid distractors for this item - fall back to a simple confirm instead of
+      // silently insta-popping, so the round still asks for a click either way.
+      if (!options.length) simpleMode = true;
     }
 
     this.prepareBalloonFocus(index, teamId);
@@ -526,6 +544,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.quizOptions = options;
     team.keyboardSelectedOptionIndex = 0;
     team.simpleConfirmMode = simpleMode;
+    team.isFlipped = false;
     team.showQuiz = true;
     team.quizClosing = false;
     team.quizAnswerLocked = false;
@@ -568,46 +587,23 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     balloon.focusScale = scale.toFixed(3);
   }
 
-  private buildReverseQuizOptions(selectedItem: Item): Item[] {
-    if (!selectedItem.image) return [];
+  private buildQuizOptionsFor(selectedItem: Item): Item[] {
+    const optionsType = this.aitOptionsType;
+    if (!itemHasAitContent(selectedItem, optionsType)) return [];
 
+    const candidates = this.items.filter(item =>
+      item.id !== selectedItem.id && itemHasAitContent(item, optionsType)
+    );
+
+    // Deduplicate by that content (and never let one repeat the correct answer's own content)
+    const selectedKey = aitContentKey(selectedItem, optionsType);
     const uniqueCandidates: Item[] = [];
-    const seenIds = new Set<number | undefined>([selectedItem.id]);
-    for (const item of this.items) {
-      if (!item.image || seenIds.has(item.id)) continue;
-      seenIds.add(item.id);
-      uniqueCandidates.push(item);
-    }
-
-    for (let i = uniqueCandidates.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [uniqueCandidates[i], uniqueCandidates[j]] = [uniqueCandidates[j], uniqueCandidates[i]];
-    }
-
-    const distractors = uniqueCandidates.slice(0, Math.min(2, uniqueCandidates.length));
-    if (!distractors.length) return [];
-
-    const options = [selectedItem, ...distractors];
-    for (let i = options.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [options[i], options[j]] = [options[j], options[i]];
-    }
-    return options;
-  }
-
-  private buildQuizOptions(selectedItem: Item): Item[] {
-    const selectedText = selectedItem.text?.trim().toLowerCase();
-    if (!selectedText) return [];
-
-    const uniqueCandidates: Item[] = [];
-    const seen = new Set<string>([selectedText]);
-    for (const item of this.items) {
-      const text = item.text?.trim();
-      if (!text || item.id === selectedItem.id) continue;
-      const key = text.toLowerCase();
+    const seen = new Set<string>([selectedKey]);
+    for (const cand of candidates) {
+      const key = aitContentKey(cand, optionsType);
       if (seen.has(key)) continue;
       seen.add(key);
-      uniqueCandidates.push(item);
+      uniqueCandidates.push(cand);
     }
 
     for (let i = uniqueCandidates.length - 1; i > 0; i--) {
@@ -646,7 +642,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         this.setGameTimeout(() => {
           this.closeBalloonQuiz(team);
           this.cdr.detectChanges();
-          if (this.teamCount === 2 && this.teamMode) {
+          if (this.teamCount === 2 && this.teamMode && !this.disableRps) {
             this.rpsWinnerTeamId = null;
             this.startRpsPhase();
           }
@@ -705,13 +701,15 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       // In a 3+ team race, the first team to finish shouldn't freeze everyone
       // else's board — only end the round once every team has finished (or
       // immediately for solo play / 2-team head-to-head, which is a duel).
-      const isDuelOrSolo = !this.teamMode || (this.teamCount === 2 && this.teamMode);
+      // When RPS is disabled for 2 teams, they play simultaneously like a
+      // 3-4 team race, so it also waits for every team to finish.
+      const isDuelOrSolo = !this.teamMode || (this.teamCount === 2 && this.teamMode && !this.disableRps);
       const allTeamsDone = this.teams.every(t => t.completed);
       if (isDuelOrSolo || allTeamsDone) {
         this.gameActive = false;
         this.dropGiftAndRevealReward(team.id);
       }
-    } else if (this.teamCount === 2 && this.teamMode) {
+    } else if (this.teamCount === 2 && this.teamMode && !this.disableRps) {
       this.rpsWinnerTeamId = null;
       const t = setTimeout(() => {
         this.rpsMiscTimers = this.rpsMiscTimers.filter(x => x !== t);
@@ -741,6 +739,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.quizOverlayVisible = false;
     team.quizClosing = false;
     team.simpleConfirmMode = false;
+    team.isFlipped = false;
     team.selectedBalloonIndex = null;
     team.selectedItem = null;
     team.quizOptions = [];
@@ -748,6 +747,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     team.fadeOutOptionIds.clear();
     team.showCenterPopEffect = false;
     team.keyboardSelectedOptionIndex = 0;
+    this.stopActiveAudio();
   }
 
   private async loadGiftRewardItems(): Promise<void> {
@@ -812,7 +812,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.teamMode) {
       shortcuts.push({
         key: teamKeyboardShortcutLabel(this.teamCount),
-        action: this.teamCount === 2 ? 'Select or RPS team' : 'Select team'
+        action: this.teamCount === 2 && !this.disableRps ? 'Select or RPS team' : 'Select team'
       });
     }
 
@@ -821,6 +821,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       { key: '1-9 / 0', action: 'Pop numbered balloon' },
       { key: '← ↑ ↓ →', action: 'Move balloon or answer highlight' },
       { key: 'Enter', action: 'Pop highlighted balloon or choose answer' },
+      { key: 'Space', action: 'Play question audio' },
+      { key: 'F', action: 'Flip question card' },
       { key: 'O', action: 'OK in confirm mode' },
       { key: 'X / Esc', action: 'Oops in confirm mode' },
       { key: 'R', action: 'Start over' }
@@ -921,6 +923,18 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleQuizKey(event: KeyboardEvent, team: PopTeam) {
+    const key = event.key.toLowerCase();
+    if (key === 'f') {
+      event.preventDefault();
+      this.toggleFlip(team);
+      return;
+    }
+    if (event.key === ' ') {
+      event.preventDefault();
+      this.playCurrentFaceAudio(team);
+      return;
+    }
+
     if (team.simpleConfirmMode) {
       this.handleSimpleConfirmKey(event, team);
       return;
@@ -1068,7 +1082,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     this.setGameTimeout(() => {
       this.closeBalloonQuiz(team);
       this.cdr.detectChanges();
-      if (this.teamCount === 2 && this.teamMode) {
+      if (this.teamCount === 2 && this.teamMode && !this.disableRps) {
         this.rpsWinnerTeamId = null;
         this.startRpsPhase();
       }
@@ -1079,6 +1093,46 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     if (sound) {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
+    }
+  }
+
+  toggleFlip(team: PopTeam) {
+    if (!this.hasFlipBack) return;
+    team.isFlipped = !team.isFlipped;
+    this.cdr.detectChanges();
+  }
+
+  // Stops on click to avoid also toggling the flip-card behind it.
+  onAudioFaceClick(event: Event, item: Item | null | undefined) {
+    event.stopPropagation();
+    if (item?.audio) this.playTrackedAudio(item.audio);
+  }
+
+  private playCurrentFaceAudio(team: PopTeam) {
+    const type = team.isFlipped && this.aitBackType ? this.aitBackType : this.aitQuestionType;
+    if (type !== 'audio' || !team.selectedItem?.audio) return;
+    this.playTrackedAudio(team.selectedItem.audio);
+  }
+
+  private playTrackedAudio(blob: Blob) {
+    this.stopActiveAudio();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this.activeAudio = audio;
+    this.activeAudioUrl = url;
+    audio.play().catch(e => console.debug('Audio play error:', e));
+    audio.onended = () => this.stopActiveAudio();
+  }
+
+  private stopActiveAudio() {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio.onended = null;
+      this.activeAudio = null;
+    }
+    if (this.activeAudioUrl) {
+      URL.revokeObjectURL(this.activeAudioUrl);
+      this.activeAudioUrl = null;
     }
   }
 
@@ -1439,7 +1493,7 @@ private dropGiftAndRevealReward(teamId = 0) {
     this.resetGameState();
     this.queueGiftLift();
     this.giftRisingComplete = false;
-    if (this.teamCount === 2) {
+    if (this.teamCount === 2 && !this.disableRps) {
       this.setGameTimeout(() => { this.startRpsPhase(); this.cdr.detectChanges(); }, 300);
     }
   }

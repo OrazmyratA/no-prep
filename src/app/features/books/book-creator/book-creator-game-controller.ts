@@ -5,8 +5,7 @@ export class BookCreatorGameController {
   constructor(private readonly creator: any) {}
 
   addGameMarker(): void {
-    this.creator.captureHistory();
-    this.creator.addElement('game', {
+    this.creator.armMarkerPlacement('game', {
       label: 'Game',
       gameId: 'anagram',
       topicId: null,

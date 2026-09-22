@@ -4,7 +4,7 @@
       #editorCanvas
       class="editor-canvas"
       [class.screenshotting]="creator.creatorScreenshotting"
-      [class.mark-mode-active]="creator.creatorDrawMode || creator.creatorHighlighterMode"
+      [class.mark-mode-active]="creator.creatorDrawMode || creator.creatorHighlighterMode || !!creator.pendingMarkerPlacement"
       [class.surface-tool-active]="creator.isCreatorSurfaceToolActive()"
       [style.width.px]="creator.creatorCanvasWidthPx"
       [style.aspect-ratio]="creator.getSelectedPageAspectRatio()"
@@ -12,7 +12,7 @@
       (wheel)="creator.onEditorWheel($event)"
       (click)="creator.onCanvasBackgroundClick($event)"
       appSwipe
-      [swipeDisabled]="!!creator.placingMatchTask || !!creator.placingTextTask || !!creator.placingChoiceTask || !!creator.placingCircleTask || !!creator.placingTracingTask || creator.creatorDrawMode || creator.creatorHighlighterMode || creator.creatorTextMode || creator.isDragging"
+      [swipeDisabled]="!!creator.placingMatchTask || !!creator.placingTextTask || !!creator.placingChoiceTask || !!creator.placingCircleTask || !!creator.placingTracingTask || creator.creatorDrawMode || creator.creatorHighlighterMode || creator.creatorTextMode || creator.isDragging || !!creator.pendingMarkerPlacement"
       (swipeLeft)="creator.selectPage(creator.activePageIndex + 1)"
       (swipeRight)="creator.selectPage(creator.activePageIndex - 1)"
       (pointerdown)="creator.onCanvasPointerDown($event)">
@@ -113,13 +113,13 @@
         <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
       </span>
       <svg *ngIf="element.type === 'ink' && element.data['points']; else creatorInkFallback" class="creator-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-        <polyline [attr.points]="creator.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+        <polyline [attr.points]="creator.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="creator.getStrokeWidthPx(element)" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
       </svg>
       <ng-template #creatorInkFallback>
         <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
       </ng-template>
       <svg *ngIf="element.type === 'highlighter' && element.data['points']; else creatorHighlighterFallback" class="creator-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-        <polyline [attr.points]="creator.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+        <polyline [attr.points]="creator.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="creator.getStrokeWidthPx(element)" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
       </svg>
       <ng-template #creatorHighlighterFallback>
         <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>

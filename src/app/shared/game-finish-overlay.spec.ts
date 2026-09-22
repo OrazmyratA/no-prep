@@ -51,7 +51,7 @@ describe('GameFinishOverlayComponent', () => {
     expect(host.querySelector('.game-finish-title')?.textContent?.trim()).toBe('You did it!');
   });
 
-  it('starts with a celebration burst and repeats every three seconds until closed', () => {
+  it('starts with a celebration burst and stops repeating before confetti piles up', () => {
     expect(confettiService.create).toHaveBeenCalled();
     expect(confettiLauncher).toHaveBeenCalledTimes(3);
     const firstBurst = confettiLauncher.mock.calls[0][0] as any;
@@ -67,9 +67,17 @@ describe('GameFinishOverlayComponent', () => {
     vi.advanceTimersByTime(2000);
 
     expect(confettiLauncher).toHaveBeenCalledTimes(4);
+
+    vi.advanceTimersByTime(6000);
+
+    expect(confettiLauncher).toHaveBeenCalledTimes(6);
+
+    vi.advanceTimersByTime(30000);
+
+    expect(confettiLauncher).toHaveBeenCalledTimes(6);
   });
 
-  it('keeps the full celebration running even when reduced motion is enabled', async () => {
+  it('keeps the full opening celebration even when reduced motion is enabled', async () => {
     fixture.destroy();
     confettiService.create.mockClear();
     confettiLauncher.mockClear();
@@ -89,6 +97,16 @@ describe('GameFinishOverlayComponent', () => {
     vi.advanceTimersByTime(3000);
 
     expect(confettiLauncher).toHaveBeenCalledTimes(4);
+  });
+
+  it('resets confetti when the window loses focus', () => {
+    component.onWindowBlur();
+
+    expect(confettiLauncher.reset).toHaveBeenCalled();
+
+    vi.advanceTimersByTime(30000);
+
+    expect(confettiLauncher).toHaveBeenCalledTimes(3);
   });
 
   it('resets confetti before emitting play again', () => {

@@ -53,7 +53,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   };
   gameActive = false;
   gameFinished = false;
-  winner: 'left' | 'right' | null = null;
+  winner: 'left' | 'right' | 'draw' | null = null;
   loading = true;
   private destroyed = false;
   private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -579,7 +579,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
         if (this.remainingItems().length === 0) {
           this.gameActive = false;
           this.gameFinished = true;
-          this.winner = this.singleTeamMode || this.teams.left.score >= this.teams.right.score ? 'left' : 'right';
+          this.winner = this.resolveWinner();
           this.playSound(this.winSound);
         } else {
           this.pickNextCardItem();
@@ -603,6 +603,21 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       sound.currentTime = 0;
       sound.play().catch(e => console.debug('Sound error:', e));
     }
+  }
+
+  private resolveWinner(): 'left' | 'right' | 'draw' {
+    if (this.singleTeamMode) return 'left';
+    if (this.teams.left.score > this.teams.right.score) return 'left';
+    if (this.teams.right.score > this.teams.left.score) return 'right';
+    return 'draw';
+  }
+
+  get finishTitle(): string {
+    if (this.winner === 'draw') {
+      return this.langService.translate('teamSentenceDraw');
+    }
+    const teamKey = this.winner === 'right' ? 'teamSentenceRightTeam' : 'teamSentenceLeftTeam';
+    return `${this.langService.translate(teamKey)} ${this.langService.translate('teamSentenceWins')}`;
   }
 
   onCardClick() {

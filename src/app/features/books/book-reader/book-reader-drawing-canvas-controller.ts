@@ -149,7 +149,13 @@ export class BookReaderDrawingCanvasController {
     if (stroke.points.length < 1) return;
     context.save();
     context.beginPath();
-    context.lineWidth = stroke.width * (window.devicePixelRatio || 1);
+    // widthRatio (fraction of the page's on-screen width at draw time) keeps the stroke's
+    // visual thickness tied to the page's current size, so it doesn't grow relative to the
+    // artwork when the page is later zoomed out. Strokes saved before this field existed
+    // fall back to a fixed device-pixel width (the old, zoom-dependent behavior).
+    context.lineWidth = stroke.widthRatio
+      ? stroke.widthRatio * canvas.width
+      : stroke.width * (window.devicePixelRatio || 1);
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.strokeStyle = stroke.color;

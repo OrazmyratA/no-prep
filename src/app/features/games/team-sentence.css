@@ -282,6 +282,16 @@
   width: 50%;
   margin-left: 25%;
 }
+.team-name-label {
+  color: white;
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  margin-top: 3px;
+}
+
 .team-header h2 {
   position: relative;
   margin: 0;

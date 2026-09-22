@@ -9,18 +9,36 @@
    (random-picker.ts's gridColumns/columnBuckets) — each column is an independently-sized flex
    item (a contiguous chunk of the reading order, or whatever the teacher dragged into it), not a
    CSS-Grid cell, so dragging a student out of one column never reshuffles another. 1 column
-   renders full-width (same as the old plain single-column layout); anything that doesn't fit
-   scrolls vertically, never horizontally. */
+   renders full-width (same as the old plain single-column layout). overflow-x is always auto (not
+   hidden) so that once columns hit their min-width floor and can't shrink any further — many
+   teams, or the fixed-width absent column below — the rest scrolls into view sideways instead of
+   silently clipping off-screen; it stays invisible in the common case since auto only shows a
+   scrollbar when something actually overflows. */
 .lb-columns-wrap {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   gap: 0.6rem;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   min-height: 0;
   height: 100%;
   padding: 0.15rem;
+}
+
+/* Wraps only the real (non-absent) columns. min-width:100% is the load-bearing part: a flex
+   item's percentage width resolves against its flex container's content box, so this track is
+   pinned to at least the full visible row width no matter how few columns/students it holds —
+   the absent column (fixed-width sibling, see .lb-list-rows-absent) can then never be absorbed
+   into that same width and always spills past it, guaranteeing the horizontal scrollbar rather
+   than "fitting" flexbox naturally would otherwise produce when there's spare space. */
+.lb-main-columns-track {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  flex: 1 1 auto;
+  min-width: 100%;
 }
 
 .lb-list-rows {
@@ -29,18 +47,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-
-/* Past 4 columns (team mode with a big roster), letting columns keep shrinking to fit would make
-   them unreadably narrow — and since the wrap clips overflow-x by default, anything past that
-   point would just silently disappear instead of being reachable. Switch to fixed-width columns
-   the teacher can scroll through sideways instead. */
-.lb-columns-wrap.lb-columns-scroll {
-  overflow-x: auto;
-}
-
-.lb-columns-wrap.lb-columns-scroll .lb-list-rows {
-  flex: 0 0 220px;
 }
 
 /* ===== Team mode column header — labels which team a column is, since columns are now grouped
@@ -54,6 +60,23 @@
   border-radius: 9999px;
   background: color-mix(in srgb, var(--team-color) 16%, white);
   border: 1px solid color-mix(in srgb, var(--team-color) 35%, white);
+}
+
+/* ===== Absent column — everyone marked absent, wherever their real column/team, collected into
+   one trailing column instead of sitting dimmed in the middle of the active roster (see
+   buildDisplayColumns in random-picker.ts). Always scrollable, never squeezes the real columns
+   to make room for it (see .lb-main-columns-track above). Sized to roughly what one column would
+   be at 3-column layout — 100% here resolves against .lb-columns-wrap same as a real column's
+   flex-grow math does, minus the two 0.6rem gaps a 3-up row would have between its columns — so
+   student names get enough room to actually be readable instead of clipping at a flat 200px. */
+.lb-list-rows-absent {
+  flex: 0 0 clamp(220px, calc((100% - 1.2rem) / 3), 340px);
+  opacity: 0.75;
+}
+
+.lb-list-rows-absent .lb-column-header {
+  background: rgba(148, 163, 184, 0.16);
+  border-color: rgba(148, 163, 184, 0.4);
 }
 
 .lb-column-header::before {

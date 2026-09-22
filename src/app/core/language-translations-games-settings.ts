@@ -175,31 +175,136 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 
 
 
-'settingsSpinWheelTextOnWheel': {
-  en: 'Show text on wheel',
-  tk: 'Çarhda teksti görkez',
-  ru: 'Показывать текст на колесе',
-  cn: '在转盘上显示文本',
-  cde: 'Text auf dem Rad anzeigen',
-  es: 'Mostrar texto en la rueda',
-  fr: 'Afficher le texte sur la roue',
-  kr: '휠에 텍스트 표시',
-  sa: 'إظهار النص على العجلة',
+'settingsAitLabel': {
+  en: 'What to use',
+  tk: 'What to use',
+  ru: 'What to use',
+  cn: 'What to use',
+  cde: 'What to use',
+  es: 'What to use',
+  fr: 'What to use',
+  kr: 'What to use',
+  sa: 'What to use',
 },
 
+'aitTypeAudio': {
+  en: 'Audio',
+  tk: 'Audio',
+  ru: 'Audio',
+  cn: 'Audio',
+  cde: 'Audio',
+  es: 'Audio',
+  fr: 'Audio',
+  kr: 'Audio',
+  sa: 'Audio',
+},
 
+'aitTypeImage': {
+  en: 'Image',
+  tk: 'Image',
+  ru: 'Image',
+  cn: 'Image',
+  cde: 'Image',
+  es: 'Image',
+  fr: 'Image',
+  kr: 'Image',
+  sa: 'Image',
+},
 
+'aitTypeText': {
+  en: 'Text',
+  tk: 'Text',
+  ru: 'Text',
+  cn: 'Text',
+  cde: 'Text',
+  es: 'Text',
+  fr: 'Text',
+  kr: 'Text',
+  sa: 'Text',
+},
 
-'settingsSpinWheelTextOnWheelHint': {
-  en: 'When enabled, text is shown on the wheel segments instead of images.',
-  tk: 'Suratlaryň ýerine teksti görkez.',
-  ru: 'При включении на секторах колеса отображается текст вместо изображений.',
-  cn: '启用后，转盘扇区上显示文本而非图片。',
-  cde: 'Wenn aktiviert, wird Text auf den Radsegmenten anstelle von Bildern angezeigt.',
-  es: 'Cuando está habilitado, se muestra texto en los segmentos de la rueda en lugar de imágenes.',
-  fr: 'Lorsqu’activé, le texte s’affiche sur les segments de la roue au lieu des images.',
-  kr: '활성화하면 이미지 대신 휠 세그먼트에 텍스트가 표시됩니다.',
-  sa: 'عند التمكين، يتم عرض النص على أجزاء العجلة بدلاً من الصور.',
+'settingsSpinWheelAitHint': {
+  en: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  tk: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  ru: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cn: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cde: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  es: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  fr: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  kr: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  sa: 'Tap to pick, in order. Your 1st pick shows on the wheel and as the quiz question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+},
+
+'giftTopicPickerBannerHint': {
+  en: 'Pick a topic for the surprise gift',
+  tk: 'Pick a topic for the surprise gift',
+  ru: 'Pick a topic for the surprise gift',
+  cn: 'Pick a topic for the surprise gift',
+  cde: 'Pick a topic for the surprise gift',
+  es: 'Pick a topic for the surprise gift',
+  fr: 'Pick a topic for the surprise gift',
+  kr: 'Pick a topic for the surprise gift',
+  sa: 'Pick a topic for the surprise gift',
+},
+
+'settingsPopBalloonAitHint': {
+  en: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  tk: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  ru: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cn: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cde: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  es: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  fr: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  kr: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  sa: 'Tap to pick, in order. Your 1st pick is the balloon question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+},
+
+'settingsTestAbcAitHint': {
+  en: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  tk: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  ru: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cn: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cde: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  es: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  fr: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  kr: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  sa: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+},
+
+'settingsSquidGameAitHint': {
+  en: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  tk: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  ru: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cn: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cde: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  es: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  fr: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  kr: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  sa: 'Tap to pick, in order. Your 1st pick is the doll\'s question. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+},
+
+'settingsCupClashAitHint': {
+  en: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  tk: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  ru: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cn: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  cde: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  es: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  fr: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  kr: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+  sa: 'Tap to pick, in order. Your 1st pick is the question card. Add a 2nd for a flip-card hint, and a 3rd to turn it into the answer choices.',
+},
+
+'settingsMatchPairsAitHint': {
+  en: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  tk: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  ru: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  cn: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  cde: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  es: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  fr: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  kr: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
+  sa: 'Tap to pick 1 or 2 types. Pick 1 and both cards of a pair match on that type. Pick 2 and one card shows your 1st pick while its partner shows your 2nd.',
 },
 
 
@@ -290,6 +395,18 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Diamètre de la zone visible. Des valeurs plus petites rendent le jeu plus difficile.',
   kr: '보이는 영역의 지름입니다. 값이 작을수록 게임이 어려워집니다.',
   sa: 'قطر المنطقة المرئية. القيم الأصغر تجعل اللعبة أصعب.',
+},
+
+'settingsSpotlightPreviewLabel': {
+  en: 'Preview',
+  tk: 'Preview',
+  ru: 'Preview',
+  cn: 'Preview',
+  cde: 'Preview',
+  es: 'Preview',
+  fr: 'Preview',
+  kr: 'Preview',
+  sa: 'Preview',
 },
 
 
@@ -455,36 +572,6 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Quand activé, affiche les boutons OK / Oups ! à la place des réponses à choix multiples.',
   kr: '활성화하면 객관식 답변 대신 확인/앗! 버튼이 표시됩니다.',
   sa: 'عند التفعيل، تظهر أزرار موافق / أوبس! بدلاً من الإجابات المتعددة.',
-},
-
-
-
-
-'settingsTestAbcReverseMode': {
-  en: 'Reverse mode',
-  tk: 'Ters gurnaw',
-  ru: 'Обратный режим',
-  cn: '反向模式',
-  cde: 'Umgekehrter Modus',
-  es: 'Modo inverso',
-  fr: 'Mode inversé',
-  kr: '역방향 모드',
-  sa: 'الوضع العكسي',
-},
-
-
-
-
-'settingsTestAbcReverseModeHint': {
-  en: 'Show image as question, text as options (instead of text as question, images as options).',
-  tk: 'Sowal hökmünde surat görkez.',
-  ru: 'Показывать изображение как вопрос, текст как варианты (вместо текста как вопроса, изображений как вариантов).',
-  cn: '显示图片作为问题，文本作为选项（而不是文本作为问题，图片作为选项）。',
-  cde: 'Bild als Frage, Text als Optionen anzeigen (statt Text als Frage, Bilder als Optionen).',
-  es: 'Mostrar imagen como pregunta, texto como opciones (en lugar de texto como pregunta, imágenes como opciones).',
-  fr: 'Afficher l’image comme question, le texte comme options (au lieu du texte comme question, des images comme options).',
-  kr: '이미지를 질문으로, 텍스트를 옵션으로 표시합니다(텍스트를 질문으로, 이미지를 옵션으로 표시하는 대신).',
-  sa: 'إظهار الصورة كسؤال، والنص كخيارات (بدلاً من النص كسؤال، الصور كخيارات).',
 },
 
 
@@ -746,30 +833,6 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   sa: 'If a new line crosses an existing one, the board resets and students try again.',
 },
 
-'settingsMatchPairsMatchWithText': {
-  en: 'Match picture with its text',
-  tk: 'Match picture with its text',
-  ru: 'Match picture with its text',
-  cn: 'Match picture with its text',
-  cde: 'Match picture with its text',
-  es: 'Match picture with its text',
-  fr: 'Match picture with its text',
-  kr: 'Match picture with its text',
-  sa: 'Match picture with its text',
-},
-
-'settingsMatchPairsMatchWithTextHint': {
-  en: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  tk: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  ru: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  cn: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  cde: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  es: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  fr: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  kr: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-  sa: 'Pair each picture card with its text card instead of two identical pictures. Picture and text cards are shown in different colors. Items missing a picture or text are skipped.',
-},
-
 
 
 
@@ -937,6 +1000,36 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'settingsPopBalloonDisableRps': {
+  en: 'Skip Rock-Paper-Scissors',
+  tk: 'Skip Rock-Paper-Scissors',
+  ru: 'Skip Rock-Paper-Scissors',
+  cn: 'Skip Rock-Paper-Scissors',
+  cde: 'Skip Rock-Paper-Scissors',
+  es: 'Skip Rock-Paper-Scissors',
+  fr: 'Skip Rock-Paper-Scissors',
+  kr: 'Skip Rock-Paper-Scissors',
+  sa: 'Skip Rock-Paper-Scissors',
+},
+
+
+
+
+'settingsPopBalloonDisableRpsHint': {
+  en: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  tk: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  ru: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  cn: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  cde: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  es: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  fr: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  kr: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+  sa: 'Both teams pop balloons at the same time, like in 3-4 team games, instead of taking turns via Rock-Paper-Scissors.',
+},
+
+
+
+
 'settingsRpsReverseModeHint': {
   en: 'Show the word — pick the matching image',
   tk: 'Sözi görkeziň — degişli suraty saýlaň',
@@ -947,5 +1040,29 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Affiche le mot — choisissez l\'image correspondante',
   kr: '단어를 표시 — 맞는 이미지 선택',
   sa: 'يعرض الكلمة — اختر الصورة المطابقة',
+},
+
+'settingsWordSearchTeamCount': {
+  en: 'Number of teams',
+  tk: 'Topar sany',
+  ru: 'Количество команд',
+  cn: '队伍数量',
+  cde: 'Anzahl der Teams',
+  es: 'Número de equipos',
+  fr: 'Nombre d\'équipes',
+  kr: '팀 수',
+  sa: 'عدد الفرق',
+},
+
+'settingsWordSearchTeamCountHint': {
+  en: '1 team plays together. With 2 teams, the teams take turns finding words.',
+  tk: '1 topar bilelikde oýnaýar. 2 topar bolsa, toparlar nobatma-nobat söz tapýar.',
+  ru: '1 команда играет вместе. Если команд 2, они по очереди ищут слова.',
+  cn: '1 队一起玩。2 队时，两队轮流找单词。',
+  cde: '1 Team spielt gemeinsam. Bei 2 Teams suchen die Teams abwechselnd Wörter.',
+  es: '1 equipo juega junto. Con 2 equipos, se turnan para encontrar palabras.',
+  fr: '1 équipe joue ensemble. Avec 2 équipes, elles trouvent des mots à tour de rôle.',
+  kr: '1팀은 함께 플레이합니다. 2팀이면 번갈아 가며 단어를 찾습니다.',
+  sa: 'فريق واحد يلعب معًا. مع فريقين، يتناوب الفريقان على إيجاد الكلمات.',
 },
 };

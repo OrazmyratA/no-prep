@@ -230,19 +230,21 @@ export class BookCreatorGuidePreviewController {
     if (!this.creator.book) return;
     this.stopGuidePreview();
     const token = ++this.creator.previewToken;
-    const audio = new Audio(this.creator.bookLibrary.getAssetUrl(this.creator.book.id, track.src));
+    // Pitch shifting routes the element through Web Audio, which outputs silence for
+    // cross-origin media — so use the same file URL the reader plays from.
+    const audio = new Audio(this.creator.bookLibrary.getAssetFileUrl(this.creator.book.id, track.src));
     this.creator.activePreviewAudio = audio;
     this.creator.previewGuideTrackId = track.id;
     const semitones = track.pitchSemitones ?? 0;
-    if (semitones) {
-      void this.creator.guidePitch.connect(audio, semitones).then((cleanup: () => void) => {
-        if (this.creator.previewGuideTrackId === track.id) {
-          this.creator.previewPitchCleanup = cleanup;
-        } else {
-          cleanup();
-        }
-      });
-    }
+    const pitchReady = semitones
+      ? this.creator.guidePitch.connect(audio, semitones).then((cleanup: () => void) => {
+          if (token === this.creator.previewToken) {
+            this.creator.previewPitchCleanup = cleanup;
+          } else {
+            cleanup();
+          }
+        })
+      : Promise.resolve();
     this.creator.previewGuideElementId = element.id;
     this.creator.previewOwlImage = 'assets/gifs/owl-teaching.gif';
     this.creator.previewGuidePaused = false;
@@ -287,8 +289,11 @@ export class BookCreatorGuidePreviewController {
     audio.onerror = () => {
       if (token === this.creator.previewToken) this.creator.previewGuidePaused = true;
     };
-    void audio.play().catch(() => {
-      if (token === this.creator.previewToken) this.creator.previewGuidePaused = true;
+    void pitchReady.then(() => {
+      if (token !== this.creator.previewToken) return;
+      return audio.play().catch(() => {
+        if (token === this.creator.previewToken) this.creator.previewGuidePaused = true;
+      });
     });
   }
 

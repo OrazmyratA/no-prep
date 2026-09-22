@@ -52,7 +52,11 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
     topicId,
     text: item.text,
     image: item.image,
-    audio: item.audio,   
+    audio: item.audio,
+    audioSource: item.audioSource,
+    audioPitch: item.audioPitch,
+    audioSpeed: item.audioSpeed,
+    audioText: item.audioText,
     order: index,
     createdAt: now
   }));
@@ -73,10 +77,16 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
 
     for (let index = 0; index < items.length; index++) {
       const item = items[index];
+      const voice = {
+        audioSource: item.audioSource,
+        audioPitch: item.audioPitch,
+        audioSpeed: item.audioSpeed,
+        audioText: item.audioText
+      };
       if (item.id != null && existingIds.has(item.id)) {
-        await db.items.update(item.id, { text: item.text, image: item.image, audio: item.audio, order: index });
+        await db.items.update(item.id, { text: item.text, image: item.image, audio: item.audio, ...voice, order: index });
       } else {
-        await db.items.add({ topicId, text: item.text, image: item.image, audio: item.audio, order: index, createdAt: now });
+        await db.items.add({ topicId, text: item.text, image: item.image, audio: item.audio, ...voice, order: index, createdAt: now });
       }
     }
 
@@ -98,7 +108,11 @@ async duplicateTopic(topicId: number): Promise<number | null> {
   await this.addItems(newTopicId, items.map(item => ({
     text: item.text,
     image: item.image ?? undefined,
-    audio: item.audio ?? undefined   
+    audio: item.audio ?? undefined,
+    audioSource: item.audioSource,
+    audioPitch: item.audioPitch,
+    audioSpeed: item.audioSpeed,
+    audioText: item.audioText
   })));
   await this.refreshTopics();
   return newTopicId;

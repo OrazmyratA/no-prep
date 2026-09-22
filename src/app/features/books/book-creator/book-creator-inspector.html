@@ -235,6 +235,28 @@
       </button>
     </div>
     <div class="element-size-panel" *ngIf="!creator.isFixedCreatorMark(element)">
+      <ng-container *ngIf="element.type === 'text'; else nonTextSizeControls">
+        <label class="element-size-slider text-size-slider">
+          <span class="element-size-icon" aria-hidden="true">
+            <img src="assets/images/book/height.png" alt="">
+          </span>
+          <input
+            #textSizeSlider
+            type="range"
+            [min]="creator.minimumElementSizePercent"
+            max="100"
+            step="0.1"
+            [value]="creator.getTextMarkSizePercent(element)"
+            (focus)="creator.beginHistoryCapture()"
+            (pointerdown)="creator.beginHistoryCapture()"
+            (input)="creator.updateTextMarkSizePercent(element, textSizeSlider.value)"
+            (change)="creator.commitHistoryCapture()"
+            (blur)="creator.commitHistoryCapture()"
+            aria-label="Text size">
+          <small>{{ creator.getTextMarkSizePercent(element) }}%</small>
+        </label>
+      </ng-container>
+      <ng-template #nonTextSizeControls>
       <ng-container *ngIf="creator.isUniformSizeElement(element); else freeSizeControls">
         <label class="element-size-slider">
           <span class="element-size-icon square-size-icon" aria-hidden="true">
@@ -295,6 +317,7 @@
             aria-label="Element height">
           <small>{{ creator.getElementHeightPercent(element) }}%</small>
         </label>
+      </ng-template>
       </ng-template>
     </div>
     <label *ngIf="element.type === 'note'">

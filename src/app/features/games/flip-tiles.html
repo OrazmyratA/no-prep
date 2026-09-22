@@ -10,12 +10,21 @@
     <!-- Header with title and speaker button -->
     <div class="flip-header flex justify-between items-center">
       <h2 class="text-2xl md:text-4xl font-bold text-white text-center flex-1">{{ 'flipTilesTitle' | translate }}</h2>
-      <button (click)="activateSoundQuiz()" 
-              class="speaker-btn" 
-              [class.active]="soundQuizActive"
-              [disabled]="allAudioItemsMatched">
-        🔊
-      </button>
+      <div class="flip-header-actions">
+        <button type="button" (click)="toggleTextVisibility()"
+                class="text-toggle-btn"
+                [class.active]="hideTexts"
+                [attr.title]="(hideTexts ? 'flipTilesShowTexts' : 'flipTilesHideTexts') | translate"
+                [attr.aria-pressed]="hideTexts">
+          {{ hideTexts ? '🙈' : '👁' }}
+        </button>
+        <button (click)="activateSoundQuiz()"
+                class="speaker-btn"
+                [class.active]="soundQuizActive"
+                [disabled]="allAudioItemsMatched">
+          🔊
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -57,7 +66,15 @@
                 <div *ngIf="card.imageSrc" class="w-full h-3/4 flex items-center justify-center">
                   <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
                 </div>
-                <p *ngIf="card.item.text" class="text-center font-semibold mt-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
+                <p *ngIf="card.item.text && !isTextHidden(card)" class="text-center font-semibold mt-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
+                <button *ngIf="card.item.text && isTextHidden(card)" type="button" class="show-text-btn show-text-btn--card"
+                        [class.show-text-btn--centered]="!card.imageSrc"
+                        [style.fontSize.px]="cardTextSize * 1.6"
+                        [attr.title]="'flipTilesShow' | translate"
+                        [attr.aria-label]="'flipTilesShow' | translate"
+                        (click)="revealText($event, card)">
+                  🔍
+                </button>
                 <p *ngIf="!card.item.text && !card.item.image" class="text-center text-gray-400 text-sm">{{ 'flipTilesNoContent' | translate }}</p>
               </div>
             </div>
@@ -123,17 +140,32 @@
           <div class="fullscreen-image-area">
             <img [src]="fItem.imageSrc" alt="Enlarged item">
           </div>
-          <p *ngIf="fItem.item.text" class="fullscreen-text">{{ fItem.item.text }}</p>
+          <p *ngIf="fItem.item.text && !isTextHidden(fItem)" class="fullscreen-text">{{ fItem.item.text }}</p>
+          <button *ngIf="fItem.item.text && isTextHidden(fItem)" type="button" class="show-text-btn show-text-btn--bar"
+                  [attr.title]="'flipTilesShow' | translate"
+                  [attr.aria-label]="'flipTilesShow' | translate"
+                  (click)="revealText($event, fItem)">
+            🔍
+          </button>
         </ng-container>
 
         <ng-template #fullscreenTextSurface>
           <div class="fullscreen-text-surface">
-            <p
-              #fullscreenText
-              class="fullscreen-text-fit"
-              [style.fontSize.px]="fullscreenTextSize">
-              {{ fItem.item.text || ('flipTilesNoContent' | translate) }}
-            </p>
+            <button *ngIf="fItem.item.text && isTextHidden(fItem); else fullscreenTextBody"
+                    type="button" class="show-text-btn show-text-btn--fullscreen"
+                    [attr.title]="'flipTilesShow' | translate"
+                    [attr.aria-label]="'flipTilesShow' | translate"
+                    (click)="revealText($event, fItem)">
+              🔍
+            </button>
+            <ng-template #fullscreenTextBody>
+              <p
+                #fullscreenText
+                class="fullscreen-text-fit"
+                [style.fontSize.px]="fullscreenTextSize">
+                {{ fItem.item.text || ('flipTilesNoContent' | translate) }}
+              </p>
+            </ng-template>
           </div>
         </ng-template>
       </div>

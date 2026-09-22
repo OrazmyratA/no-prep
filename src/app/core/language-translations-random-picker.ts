@@ -86,6 +86,54 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   sa: 'Reset scores',
 },
 
+'leaderboardShare': {
+  en: 'Share results image',
+  tk: 'Share results image',
+  ru: 'Share results image',
+  cn: 'Share results image',
+  cde: 'Share results image',
+  es: 'Share results image',
+  fr: 'Share results image',
+  kr: 'Share results image',
+  sa: 'Share results image',
+},
+
+'leaderboardShareTitle': {
+  en: 'Class results',
+  tk: 'Class results',
+  ru: 'Class results',
+  cn: 'Class results',
+  cde: 'Class results',
+  es: 'Class results',
+  fr: 'Class results',
+  kr: 'Class results',
+  sa: 'Class results',
+},
+
+'leaderboardShareDone': {
+  en: 'Results image saved',
+  tk: 'Results image saved',
+  ru: 'Results image saved',
+  cn: 'Results image saved',
+  cde: 'Results image saved',
+  es: 'Results image saved',
+  fr: 'Results image saved',
+  kr: 'Results image saved',
+  sa: 'Results image saved',
+},
+
+'leaderboardShareFailed': {
+  en: 'Could not save the results image',
+  tk: 'Could not save the results image',
+  ru: 'Could not save the results image',
+  cn: 'Could not save the results image',
+  cde: 'Could not save the results image',
+  es: 'Could not save the results image',
+  fr: 'Could not save the results image',
+  kr: 'Could not save the results image',
+  sa: 'Could not save the results image',
+},
+
 'leaderboardUndo': {
   en: 'Undo last action',
   tk: 'Undo last action',
@@ -96,18 +144,6 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Undo last action',
   kr: 'Undo last action',
   sa: 'Undo last action',
-},
-
-'leaderboardStreak': {
-  en: 'Correct answer streak',
-  tk: 'Correct answer streak',
-  ru: 'Correct answer streak',
-  cn: 'Correct answer streak',
-  cde: 'Correct answer streak',
-  es: 'Correct answer streak',
-  fr: 'Correct answer streak',
-  kr: 'Correct answer streak',
-  sa: 'Correct answer streak',
 },
 
 'leaderboardResetConfirm': {

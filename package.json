@@ -1,6 +1,6 @@
 {
   "name": "no-prep",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "main": "electron/index.js",
   "author": "Orazmyrat Ashyrmyradov Artykmyradovich",
   "description": "No-Prep – classroom game platform",

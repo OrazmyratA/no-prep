@@ -34,6 +34,21 @@ export class BookReaderFocusController {
     this.reader.resetDrawingCanvas();
   }
 
+  // Cycles the expanded/zoomed focus area to the next or previous 'focus' element on the
+  // same page (in element order), so ArrowLeft/ArrowRight step through a page's focus spots
+  // instead of falling through to page-turn while one is expanded.
+  showAdjacentFocusElement(direction: 1 | -1): void {
+    const page = this.reader.expandedFocusPage as BookPage | null;
+    const current = this.reader.expandedFocusElement as BookElement | null;
+    if (!page || !current) return;
+    const focusElements = page.elements.filter(el => el.type === 'focus');
+    if (focusElements.length < 2) return;
+    const currentIndex = focusElements.findIndex(el => el.id === current.id);
+    if (currentIndex === -1) return;
+    const nextIndex = (currentIndex + direction + focusElements.length) % focusElements.length;
+    this.expandFocusElement(focusElements[nextIndex], page);
+  }
+
   isFocusCropActive(page: BookPage | null): boolean {
     return !!page && !!this.reader.expandedFocusElement && this.reader.expandedFocusPage?.id === page.id;
   }

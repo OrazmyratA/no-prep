@@ -5,6 +5,8 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { AitType } from '../../shared/ait-selector';
+import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 
 interface Cup {
   id: string;
@@ -44,12 +46,31 @@ export class CupClashComponent implements OnInit, OnDestroy {
   keyboardShortcuts: GameKeyboardShortcut[] = [
     { key: 'A / L', action: 'Choose red or blue in RPS' },
     { key: 'Space', action: 'Roll current team dice' },
+    { key: 'F', action: 'Flip question card' },
+    { key: 'P', action: 'Play question audio' },
+    { key: '1-9 / 0', action: 'Choose numbered answer' },
     { key: '← ↑ ↓ →', action: 'Move capture highlight' },
     { key: 'Enter', action: 'Capture highlighted cup' },
-    { key: '1-9 / 0', action: 'Reveal numbered item card' },
-    { key: 'B / N', action: 'Scroll item cards' },
+    { key: 'B / N', action: 'Scroll answers' },
     { key: 'R', action: 'Start over' }
   ];
+
+  // Quiz state (question card between the dice, answers along the bottom)
+  // 1 type picked: question and answers both use it. 2 picked: 1st is the question, last is
+  // the answers. 3 picked: 1st is the question, 2nd is the flip-card hint, last is the answers.
+  aitOrder: AitType[] = ['text', 'image'];
+  questionItem: Item | null = null;
+  questionFlipped = false;
+  quizSolved = false;
+  quizFailed = false;
+  selectedOptionId: number | null = null;
+  wrongOptionId: number | null = null;
+  optionItems: Item[] = [];
+  private questionPool: Item[] = [];
+  private questionQueue: Item[] = [];
+  private lastQuestionId: number | undefined;
+  private activeAudio: HTMLAudioElement | null = null;
+  private activeAudioUrl: string | null = null;
 
   // RPS state (who goes first)
   showRpsModal = false;
@@ -93,8 +114,6 @@ export class CupClashComponent implements OnInit, OnDestroy {
   itemsCanScrollLeft = false;
   itemsCanScrollRight = false;
   readonly itemScrollStep = 280;
-  flippedItems = new Set<number>();
-  keyboardSelectedItemIndex = 0;
   @ViewChild('itemsScroller', { static: false })
   set itemsScroller(ref: ElementRef<HTMLDivElement> | undefined) {
     this.itemsScrollerElement = ref?.nativeElement;
@@ -126,6 +145,26 @@ export class CupClashComponent implements OnInit, OnDestroy {
     private resizeService: ResizeService
   ) {}
 
+  get aitQuestionType(): AitType {
+    return this.aitOrder[0] ?? 'text';
+  }
+
+  get aitBackType(): AitType | null {
+    return this.aitOrder.length === 3 ? this.aitOrder[1] : null;
+  }
+
+  get aitOptionsType(): AitType {
+    return this.aitOrder[this.aitOrder.length - 1] ?? this.aitQuestionType;
+  }
+
+  get hasFlipBack(): boolean {
+    return this.aitBackType !== null;
+  }
+
+  get currentFaceType(): AitType {
+    return this.questionFlipped && this.aitBackType ? this.aitBackType : this.aitQuestionType;
+  }
+
 async ngOnInit() {
     this.destroyed = false;
     const idParam = this.route.snapshot.paramMap.get('id') ?? this.route.parent?.snapshot.paramMap.get('id');
@@ -138,11 +177,14 @@ async ngOnInit() {
 
     this.route.queryParams.subscribe(params => {
       const requested = Number(params['cupsPerTeam']);
-      if (!Number.isNaN(requested) && requested > 0 && requested !== this.cupsPerTeam) {
-        this.cupsPerTeam = requested;
-        if (this.items.length) {
-          this.startGame();
-        }
+      const requestedAit = parseAitOrder(params['ait'], ['text', 'image']);
+      const cupsChanged = !Number.isNaN(requested) && requested > 0 && requested !== this.cupsPerTeam;
+      const aitChanged = requestedAit.join(',') !== this.aitOrder.join(',');
+      if (cupsChanged) this.cupsPerTeam = requested;
+      if (aitChanged) this.aitOrder = requestedAit;
+      if ((cupsChanged || aitChanged) && this.items.length) {
+        if (aitChanged && !this.buildQuizPools()) return;
+        this.startGame();
       }
     });
 
@@ -154,6 +196,7 @@ async ngOnInit() {
         this.router.navigate(['/topics', this.topicId, 'activities']);
         return;
       }
+      if (!this.buildQuizPools()) return;
 
       // Preload sounds
       this.diceSound = new Audio('assets/sound/dice.mp3');
@@ -203,8 +246,135 @@ async ngOnInit() {
     [this.diceSound, this.captureSound, this.winSound, this.collectSound, this.cashSound, this.errorSound].forEach(s => s?.pause());
 
     this.clearDiceAnimationTimer();
+    this.stopActiveAudio();
     if (this.rpsResetTimer) clearTimeout(this.rpsResetTimer);
     this.clearRpsSpinTimers();
+  }
+
+  /** Splits items into question candidates and answer options; false if the topic can't support the quiz. */
+  private buildQuizPools(): boolean {
+    const questionType = this.aitQuestionType;
+    const optionsType = this.aitOptionsType;
+    const backType = this.aitBackType;
+    // A question item needs content for its own question/flip-back faces AND for the
+    // answers face (it also has to appear as one of the options), or it'd show up blank.
+    this.questionPool = this.items.filter(item =>
+      itemHasAitContent(item, questionType) &&
+      itemHasAitContent(item, optionsType) &&
+      (!backType || itemHasAitContent(item, backType))
+    );
+    this.optionItems = this.items.filter(item => itemHasAitContent(item, optionsType));
+
+    if (this.questionPool.length < 1 || this.optionItems.length < 2) {
+      showAppNotification(this.langService.translate('cupClashNeedMatchingItems'), 'error');
+      this.router.navigate(['/topics', this.topicId, 'activities']);
+      return false;
+    }
+    return true;
+  }
+
+  private resetQuiz() {
+    this.stopActiveAudio();
+    this.questionQueue = [];
+    this.questionItem = null;
+    this.questionFlipped = false;
+    this.quizSolved = false;
+    this.quizFailed = false;
+    this.selectedOptionId = null;
+    this.wrongOptionId = null;
+  }
+
+  /** Draws the next question, cycling through every item before repeating any. */
+  private presentQuestion() {
+    if (!this.questionQueue.length) {
+      this.questionQueue = [...this.questionPool];
+      for (let i = this.questionQueue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [this.questionQueue[i], this.questionQueue[j]] = [this.questionQueue[j], this.questionQueue[i]];
+      }
+      // Avoid asking the same item twice in a row across a refill
+      if (this.questionQueue.length > 1 && this.questionQueue[this.questionQueue.length - 1].id === this.lastQuestionId) {
+        this.questionQueue.unshift(this.questionQueue.pop()!);
+      }
+    }
+    this.stopActiveAudio();
+    this.questionItem = this.questionQueue.pop() ?? null;
+    this.lastQuestionId = this.questionItem?.id;
+    this.questionFlipped = false;
+    this.quizSolved = false;
+    this.quizFailed = false;
+    this.selectedOptionId = null;
+    this.wrongOptionId = null;
+  }
+
+  onOptionClick(option: Item) {
+    const question = this.questionItem;
+    if (!question || this.quizSolved || this.quizFailed || this.gameStatus !== 'running' || this.capturesRemaining <= 0) return;
+
+    const isCorrect = option.id === question.id;
+
+    if (isCorrect) {
+      this.playSound(this.collectSound);
+      this.quizSolved = true;
+      this.selectedOptionId = option.id ?? null;
+      this.wrongOptionId = null;
+      this.questionFlipped = true;
+      this.keyboardSelectedCaptureIndex = 0;
+    } else {
+      // Wrong answer forfeits the turn: reveal the card, then hand the dice to the other team
+      this.playSound(this.errorSound);
+      this.quizFailed = true;
+      this.wrongOptionId = option.id ?? null;
+      this.questionFlipped = true;
+      this.capturesRemaining = 0;
+      this.setGameTimeout(() => this.switchTurn(), 1800);
+    }
+    this.cdr.detectChanges();
+  }
+
+  get questionActive(): boolean {
+    return !!this.questionItem && this.gameStatus === 'running';
+  }
+
+  toggleQuestionFlip() {
+    if (!this.questionActive || !this.hasFlipBack) return;
+    this.stopActiveAudio();
+    this.playSound(this.captureSound);
+    this.questionFlipped = !this.questionFlipped;
+  }
+
+  playQuestionAudio(event?: Event) {
+    event?.stopPropagation();
+    if (this.currentFaceType === 'audio' && this.questionActive && this.questionItem?.audio) {
+      this.playTrackedAudio(this.questionItem.audio);
+    }
+  }
+
+  onOptionAudioClick(event: Event, item: Item) {
+    event.stopPropagation();
+    if (item.audio) this.playTrackedAudio(item.audio);
+  }
+
+  private playTrackedAudio(blob: Blob) {
+    this.stopActiveAudio();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this.activeAudio = audio;
+    this.activeAudioUrl = url;
+    audio.play().catch(e => console.debug('Audio play error:', e));
+    audio.onended = () => this.stopActiveAudio();
+  }
+
+  private stopActiveAudio() {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio.currentTime = 0;
+      this.activeAudio = null;
+    }
+    if (this.activeAudioUrl) {
+      URL.revokeObjectURL(this.activeAudioUrl);
+      this.activeAudioUrl = null;
+    }
   }
 
 
@@ -230,6 +400,7 @@ async ngOnInit() {
     this.capturesRemaining = 0;
     this.keyboardSelectedCaptureIndex = 0;
     this.missedTurn = false;
+    this.resetQuiz();
     this.gameStatus = 'running';
     this.winner = null;
     this.deferUpdateItemsScrollState();
@@ -407,6 +578,7 @@ async ngOnInit() {
     } else {
       this.diceValue = value;
       this.capturesRemaining = value;
+      this.presentQuestion();
       this.cdr.detectChanges();
     }
   }
@@ -444,6 +616,13 @@ async ngOnInit() {
     this.clearDiceAnimationTimer();
     this.capturesRemaining = 0;
     this.keyboardSelectedCaptureIndex = 0;
+    this.stopActiveAudio();
+    this.questionItem = null;
+    this.questionFlipped = false;
+    this.quizSolved = false;
+    this.quizFailed = false;
+    this.selectedOptionId = null;
+    this.wrongOptionId = null;
     this.cdr.detectChanges();
   }
 
@@ -612,21 +791,6 @@ async ngOnInit() {
     this.itemsCanScrollRight = scroller.scrollLeft < maxScroll - tolerance;
   }
 
-toggleItemFace(item: Item, index: number) {
-  this.keyboardSelectedItemIndex = index;
-  const key = this.getItemKey(item, index);
-  const isCurrentlyFlipped = this.flippedItems.has(key);
-  if (!isCurrentlyFlipped) {
-    // Playing sound only when flipping open (from back to front)
-    this.playSound(this.collectSound);
-  }
-  if (isCurrentlyFlipped) {
-    this.flippedItems.delete(key);
-  } else {
-    this.flippedItems.add(key);
-  }
-}
-
 private centerItemsScroll() {
   const scroller = this.itemsScrollerElement;
   if (!scroller) return;
@@ -671,14 +835,6 @@ private recalculateLayout() {
   this.cdr.detectChanges();
 }
 
-  isItemFlipped(item: Item, index: number): boolean {
-    return this.flippedItems.has(this.getItemKey(item, index));
-  }
-
-  private getItemKey(item: Item, index: number): number {
-    return item.id ?? item.order ?? index;
-  }
-
   private shuffleItems() {
     for (let i = this.items.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -687,10 +843,9 @@ private recalculateLayout() {
   }
 
 resetGame() {
-  this.startGame();
-  this.flippedItems.clear();
-  this.keyboardSelectedItemIndex = 0;
   this.shuffleItems();
+  this.buildQuizPools();
+  this.startGame();
   this.centerItemsScroll();
   this.updateItemsAlignment();
   this.cdr.detectChanges();
@@ -735,12 +890,11 @@ resetGame() {
 
     const digit = this.getKeyboardDigit(event);
     if (digit !== null) {
-      const itemIndex = digit === '0' ? 9 : Number(digit) - 1;
-      if (this.items[itemIndex]) {
+      const optionIndex = digit === '0' ? 9 : Number(digit) - 1;
+      if (this.optionItems[optionIndex]) {
         event.preventDefault();
-        this.keyboardSelectedItemIndex = itemIndex;
-        this.toggleItemFace(this.items[itemIndex], itemIndex);
-        this.scrollItemIntoView(itemIndex);
+        this.onOptionClick(this.optionItems[optionIndex]);
+        this.scrollItemIntoView(optionIndex);
         this.cdr.detectChanges();
       }
       return;
@@ -766,7 +920,13 @@ resetGame() {
         this.captureKeyboardSelectedCup();
         break;
       default:
-        if (key === 'b') {
+        if (key === 'f') {
+          event.preventDefault();
+          this.toggleQuestionFlip();
+        } else if (key === 'p') {
+          event.preventDefault();
+          this.playQuestionAudio();
+        } else if (key === 'b') {
           event.preventDefault();
           this.scrollItems('left');
         } else if (key === 'n') {
@@ -830,16 +990,12 @@ resetGame() {
   }
 
   isCupCapturable(cup: Cup): boolean {
-    return cup.team !== this.currentTurn && this.capturesRemaining > 0 && this.gameStatus === 'running';
+    return cup.team !== this.currentTurn && this.capturesRemaining > 0 && this.quizSolved && this.gameStatus === 'running';
   }
 
   isKeyboardCupSelected(cup: Cup): boolean {
     const selected = this.capturableCups[this.keyboardSelectedCaptureIndex];
     return !!selected && selected.id === cup.id && this.isCupCapturable(cup);
-  }
-
-  isKeyboardItemSelected(index: number): boolean {
-    return this.keyboardSelectedItemIndex === index;
   }
 
   itemKeyboardNumber(index: number): string | null {

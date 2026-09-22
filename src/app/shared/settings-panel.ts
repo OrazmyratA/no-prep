@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { DbService } from '../core/db';
 import { LanguageService, SupportedLanguage } from '../core/language';
 import { Topic } from '../core/db.model';
+import { AIT_DEFAULT_ORDER, AitType } from './ait-selector';
 
 interface SpellingRuleCategory {
   id: string;
@@ -18,7 +19,11 @@ interface SpellingRuleCategory {
 })
 export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
   @Input() gameId!: string;
+  // Lets a caller resume a settings panel after a round trip elsewhere (e.g. picking a
+  // gift topic from the full topics list) without losing whatever else was already set.
+  @Input() initialValue: Record<string, unknown> | null = null;
   @Output() settingsChange = new EventEmitter<any>();
+  @Output() chooseGiftTopic = new EventEmitter<void>();
   settingsForm!: FormGroup;
   giftTopics: Topic[] = [];
   expandedSpellingCategories: Record<string, boolean> = {};
@@ -307,6 +312,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private formSubscription?: Subscription;
+  private aitSyncSubscription?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -331,17 +337,23 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['gameId'] && !changes['gameId'].isFirstChange()) {
       this.createForm();
+      return;
+    }
+    if (changes['initialValue'] && !changes['initialValue'].isFirstChange() && this.settingsForm) {
+      this.applyInitialValue();
     }
   }
 
   ngOnDestroy() {
     this.formSubscription?.unsubscribe();
+    this.aitSyncSubscription?.unsubscribe();
     this.langSubscription?.unsubscribe();
     this.topicsSubscription?.unsubscribe();
   }
 
   private createForm() {
     this.formSubscription?.unsubscribe();
+    this.aitSyncSubscription?.unsubscribe();
     switch (this.gameId) {
       case 'reveal-game':
         this.settingsForm = this.fb.group({ timer: [25], gridSize: [14], teamCount: [1], simpleMode: [true] });
@@ -361,8 +373,15 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
           timerMinutes: [3]
         });
         break;
+      case 'word-search':
+        this.settingsForm = this.fb.group({
+          teamCount: [1],
+          enableTimer: [false],
+          timerMinutes: [3]
+        });
+        break;
       case 'cup-clash':
-        this.settingsForm = this.fb.group({ cupsPerTeam: [5] });
+        this.settingsForm = this.fb.group({ cupsPerTeam: [5], ait: [['text', 'image']] });
         break;
       case 'odd-one-out':
         this.settingsForm = this.fb.group({
@@ -372,7 +391,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         });
         break;
       case 'test-abc':
-        this.settingsForm = this.fb.group({ reverseMode: [false] });
+        this.settingsForm = this.fb.group({ ait: [['text', 'image']] });
         break;
       case 'ball-sort':
         this.settingsForm = this.fb.group({
@@ -391,11 +410,19 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         });
         break;
       case 'spin-wheel':
-        this.settingsForm = this.fb.group({ textOnWheel: [false], simpleMode: [true] });
+        this.settingsForm = this.fb.group({ ait: [[...AIT_DEFAULT_ORDER]], simpleMode: [AIT_DEFAULT_ORDER.length <= 1] });
+        this.wireAitSimpleModeDefault('ait', 'simpleMode');
         break;
       case 'pop-balloon':
         this.ensureGiftTopicSubscription();
-        this.settingsForm = this.fb.group({ teamCount: [1], reverseMode: [false], simpleMode: [true], giftTopicId: [null] });
+        this.settingsForm = this.fb.group({
+          teamCount: [1],
+          ait: [[...AIT_DEFAULT_ORDER]],
+          simpleMode: [AIT_DEFAULT_ORDER.length <= 1],
+          giftTopicId: [null],
+          disableRps: [false]
+        });
+        this.wireAitSimpleModeDefault('ait', 'simpleMode');
         break;
       case 'squid-game':
         this.settingsForm = this.fb.group({
@@ -405,9 +432,10 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
           timerMinutes: [3],
           dollMinTime: [4],
           dollMaxTime: [7],
-          reverseMode: [false],
-          simpleMode: [true]
+          ait: [[...AIT_DEFAULT_ORDER]],
+          simpleMode: [AIT_DEFAULT_ORDER.length <= 1]
         });
+        this.wireAitSimpleModeDefault('ait', 'simpleMode');
         break;
       case 'rock-paper-scissors':
         this.settingsForm = this.fb.group({
@@ -426,13 +454,48 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         this.settingsForm = this.fb.group({ pairCount: [6], noCrossing: [false] });
         break;
       case 'match-pairs':
-        this.settingsForm = this.fb.group({ matchWithText: [false] });
+        this.settingsForm = this.fb.group({ ait: [['image']] });
         break;
       default:
         this.settingsForm = this.fb.group({});
     }
+    this.applyInitialValue();
     this.emitCurrentSettings();
     this.formSubscription = this.settingsForm.valueChanges.subscribe(() => this.emitCurrentSettings());
+  }
+
+  // Patches a resumed snapshot back onto the freshly-built form. Values that were
+  // serialized to a comma string for the router (e.g. the AIT order) get split back into
+  // an array wherever the matching control actually holds an array, so app-ait-selector's
+  // writeValue() still receives what it expects.
+  private applyInitialValue() {
+    if (!this.initialValue) return;
+    const patch: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(this.initialValue)) {
+      const control = this.settingsForm.get(key);
+      if (!control) continue;
+      patch[key] = Array.isArray(control.value) && typeof value === 'string' ? value.split(',') : value;
+    }
+    this.settingsForm.patchValue(patch, { emitEvent: false });
+  }
+
+  // Keeps the OK/Oops (simple mode) default in sync with how many AIT types are picked:
+  // 1 type selected has nothing to build quiz options from, so simple mode defaults on;
+  // picking a 2nd or 3rd type defaults it back off. The teacher can still override it by
+  // hand afterwards - this only resets the default each time the selection count changes.
+  private wireAitSimpleModeDefault(aitControlName: string, simpleModeControlName: string) {
+    const aitControl = this.settingsForm.get(aitControlName);
+    const simpleModeControl = this.settingsForm.get(simpleModeControlName);
+    if (!aitControl || !simpleModeControl) return;
+
+    let previousLength = (aitControl.value as AitType[] | null)?.length ?? AIT_DEFAULT_ORDER.length;
+    this.aitSyncSubscription = aitControl.valueChanges.subscribe((value: AitType[] | null) => {
+      const length = value?.length ?? 1;
+      if (length !== previousLength) {
+        simpleModeControl.setValue(length <= 1);
+      }
+      previousLength = length;
+    });
   }
 
   private ensureGiftTopicSubscription() {
@@ -440,6 +503,12 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
     this.topicsSubscription = this.dbService.topics$.subscribe(topics => {
       this.giftTopics = topics.filter(topic => typeof topic.id === 'number');
     });
+  }
+
+  get selectedGiftTopicName(): string | null {
+    const giftTopicId = this.settingsForm?.get('giftTopicId')?.value;
+    if (giftTopicId == null) return null;
+    return this.giftTopics.find(topic => topic.id === giftTopicId)?.name ?? null;
   }
 
   get customRules(): FormArray {
@@ -487,7 +556,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
 
   private emitCurrentSettings() {
     if (this.gameId !== 'spelling-check') {
-      this.settingsChange.emit(this.settingsForm.value);
+      this.settingsChange.emit(this.serializeSettings(this.settingsForm.value));
       return;
     }
 
@@ -508,6 +577,16 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       omissionRules: JSON.stringify(selectedRules),
       customOmissions: JSON.stringify(customRules)
     });
+  }
+
+  // Router queryParams serializes arrays as repeated keys; games just want one
+  // comma-joined param (e.g. ait=image,text) that ActivatedRoute reads back with .get().
+  private serializeSettings(raw: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      result[key] = Array.isArray(value) ? value.join(',') : value;
+    }
+    return result;
   }
 
   private dollDragging: 'min' | 'max' | null = null;

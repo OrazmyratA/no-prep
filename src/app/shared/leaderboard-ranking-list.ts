@@ -24,7 +24,7 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   @ViewChildren('row') rowComponents?: QueryList<LeaderboardRow>;
 
   @Input() columnBuckets: LeaderboardEntry[][] = [[]];
-  @Input() columnLabels: { name: string; color?: string; isUnassigned?: boolean }[] | null = null;
+  @Input() columnLabels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[] | null = null;
   @Input() lockColumnMembership = false;
   @Input() rankByItemId: Map<number, number> = new Map();
   @Input() rankingApplied = false;
@@ -128,13 +128,33 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   }
 
   connectedColumnIds(index: number): string[] {
-    // Team mode: a column IS a team, and reassigning someone's team belongs in Team Setup, not a
-    // drag here — returning no connections means CDK still allows reordering within the column,
-    // just never a cross-column transfer.
-    if (this.lockColumnMembership) return [];
+    // The absent column is synthesized at display time (random-picker.ts's buildDisplayColumns
+    // filters real columns by entry.absent, it isn't one of the actual stored buckets) — dragging
+    // a student into it wouldn't actually mark them absent, and dragging out of it would silently
+    // turn that synthetic grouping into a real stored column. Never connect it to anything.
+    if (this.lockColumnMembership || this.isAbsentColumn(index)) return [];
     return this.columnBuckets
       .map((_, i) => this.columnListId(i))
-      .filter(id => id !== this.columnListId(index));
+      .filter((id, i) => id !== this.columnListId(index) && !this.isAbsentColumn(i));
+  }
+
+  isAbsentColumn(index: number): boolean {
+    return this.columnLabels?.[index]?.isAbsent === true;
+  }
+
+  // The absent column is always the trailing bucket buildDisplayColumns appends (see
+  // random-picker.ts) — never interleaved with the real columns — so everything before it is
+  // "main" and its own index is stable regardless of gridColumns/team-column count.
+  get hasAbsentColumn(): boolean {
+    return this.columnBuckets.length > 0 && this.isAbsentColumn(this.columnBuckets.length - 1);
+  }
+
+  get absentColumnIndex(): number {
+    return this.columnBuckets.length - 1;
+  }
+
+  get mainColumns(): LeaderboardEntry[][] {
+    return this.hasAbsentColumn ? this.columnBuckets.slice(0, -1) : this.columnBuckets;
   }
 
   trackByColumnIndex(index: number): number {
@@ -143,6 +163,13 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
 
   get hasAnyEntries(): boolean {
     return this.columnBuckets.some(col => col.length > 0);
+  }
+
+  // The "+ Add student" tile always belongs with the real list, never inside the synthetic
+  // trailing absent column.
+  get addStudentColumnIndex(): number {
+    const lastIndex = this.columnBuckets.length - 1;
+    return this.isAbsentColumn(lastIndex) ? Math.max(0, lastIndex - 1) : lastIndex;
   }
 
   // A row's own click stops propagation before it reaches here (see leaderboard-student-row.ts's

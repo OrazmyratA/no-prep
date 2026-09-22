@@ -74,7 +74,12 @@
       </div>
 
       <!-- Settings form -->
-      <app-settings-panel [gameId]="selectedGame.id" (settingsChange)="onSettingsChange($event)"></app-settings-panel>
+      <app-settings-panel
+        [gameId]="selectedGame.id"
+        [initialValue]="settings"
+        (settingsChange)="onSettingsChange($event)"
+        (chooseGiftTopic)="chooseGiftTopic()">
+      </app-settings-panel>
 
       <div class="flex space-x-3 mt-8">
         <button (click)="startGame()" 

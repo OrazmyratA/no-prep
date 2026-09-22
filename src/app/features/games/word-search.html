@@ -2,10 +2,30 @@
   <div class="word-search-frame">
     <header class="word-search-header">
       <h2>{{ 'wordSearchTitle' | translate }}</h2>
-      <div class="word-search-progress" aria-live="polite">
-        <span>{{ foundWordsCount }}/{{ words.length }}</span>
-        <div class="progress-track">
-          <div class="progress-fill" [style.width.%]="foundProgressPercent"></div>
+      <div class="word-search-header-tools">
+        <!-- Two teams: the text toggle lives up here since each half has its own list -->
+        <button
+          *ngIf="teamCount === 2"
+          type="button"
+          class="text-toggle-btn"
+          [class.active]="hideTexts"
+          [attr.title]="(hideTexts ? 'flipTilesShowTexts' : 'flipTilesHideTexts') | translate"
+          [attr.aria-pressed]="hideTexts"
+          (click)="toggleTextVisibility()">
+          {{ hideTexts ? '🙈' : '👁' }}
+        </button>
+        <div
+          *ngIf="enableTimer && timerRemaining !== null"
+          class="word-search-timer"
+          [class.word-search-timer-urgent]="timerRemaining <= 30">
+          <span aria-hidden="true">⏱</span>
+          <strong>{{ timerDisplay }}</strong>
+        </div>
+        <div *ngIf="teamCount === 1" class="word-search-progress" aria-live="polite">
+          <span>{{ foundCount(soloBoard) }}/{{ soloBoard?.words?.length ?? 0 }}</span>
+          <div class="progress-track">
+            <div class="progress-fill" [style.width.%]="progressPercent(soloBoard)"></div>
+          </div>
         </div>
       </div>
     </header>
@@ -21,51 +41,147 @@
       <div class="loading-spinner"></div>
     </div>
 
-    <main *ngIf="!loading && !gameFinished" class="word-search-layout">
-      <section class="word-list-panel">
-        <div class="word-list-heading">
-          <h3 class="word-list-title">{{ 'wordSearchWordsToFind' | translate }}</h3>
-          <span>{{ words.length }}</span>
-        </div>
+    <main *ngIf="!loading && !gameFinished" class="word-search-layout" [class.word-search-split]="teamCount === 2">
+      <!-- One team: card list on the left, grid on the right -->
+      <ng-container *ngIf="teamCount === 1; else splitScreen">
+        <ng-container *ngFor="let board of boards; trackBy: trackByBoard">
+          <section class="word-list-panel">
+            <div class="word-list-heading">
+              <h3 class="word-list-title">{{ 'wordSearchWordsToFind' | translate }}</h3>
+              <div class="word-list-heading-actions">
+                <button
+                  type="button"
+                  class="text-toggle-btn"
+                  [class.active]="hideTexts"
+                  [attr.title]="(hideTexts ? 'flipTilesShowTexts' : 'flipTilesHideTexts') | translate"
+                  [attr.aria-pressed]="hideTexts"
+                  (click)="toggleTextVisibility()">
+                  {{ hideTexts ? '🙈' : '👁' }}
+                </button>
+                <span>{{ board.words.length }}</span>
+              </div>
+            </div>
 
-        <div class="word-list-scroll">
+            <div class="word-list-scroll">
+              <ng-container *ngTemplateOutlet="wordCards; context: { board: board }"></ng-container>
+            </div>
+          </section>
+
+          <section class="word-grid-panel">
+            <ng-container *ngTemplateOutlet="letterGrid; context: { board: board }"></ng-container>
+          </section>
+        </ng-container>
+      </ng-container>
+
+      <!-- Two teams: the screen splits in half. Each team has its own grid with the words
+           in different places, and its own cards underneath. -->
+      <ng-template #splitScreen>
+        <section
+          *ngFor="let board of boards; trackBy: trackByBoard"
+          class="team-half"
+          [class.team-half-second]="board.teamNumber === 2">
+          <div class="team-half-header">
+            <strong class="team-half-name">{{ 'team' | translate }} {{ board.teamNumber }}</strong>
+            <span class="team-half-score">{{ foundCount(board) }}/{{ board.words.length }}</span>
+            <div class="progress-track">
+              <div class="progress-fill" [style.width.%]="progressPercent(board)"></div>
+            </div>
+          </div>
+
+          <section class="word-grid-panel team-half-grid">
+            <ng-container *ngTemplateOutlet="letterGrid; context: { board: board }"></ng-container>
+          </section>
+
+          <section class="word-list-panel team-half-list">
+            <div class="word-list-scroll">
+              <ng-container *ngTemplateOutlet="wordCards; context: { board: board }"></ng-container>
+            </div>
+          </section>
+        </section>
+      </ng-template>
+    </main>
+
+    <!-- The letter grid for one board -->
+    <ng-template #letterGrid let-board="board">
+      <div class="grid-wrap" [attr.data-grid-size]="board.gridSize">
+        <div *ngFor="let row of board.grid; let r = index; trackBy: trackByGridRow" class="grid-row">
           <button
-            *ngFor="let word of words; let i = index; trackBy: trackByWordText"
+            *ngFor="let cell of row; let c = index; trackBy: trackByCell"
             type="button"
-            (click)="onWordClick(i)"
-            class="word-item"
-            [class.word-item-selected]="selectedWordIndex === i && !word.found"
-            [class.word-item-found]="word.found"
-            [style.--word-found-color]="word.found ? word.color : null">
-            <span *ngIf="keyboardHintsVisible && i < 10" class="word-number-badge">{{ i === 9 ? 0 : i + 1 }}</span>
-            <span [class.line-through]="word.found">{{ word.text }}</span>
+            (click)="onGridClick(board, r, c)"
+            class="grid-cell"
+            [class.grid-cell-found]="cell.isFound"
+            [style.--cell-found-color]="cell.isFound ? cell.color : null">
+            {{ cell.letter }}
           </button>
         </div>
-      </section>
+      </div>
+    </ng-template>
 
-      <section class="word-grid-panel">
-        <div class="grid-wrap">
-          <div *ngFor="let row of grid; let r = index; trackBy: trackByGridRow" class="grid-row">
-            <button
-              *ngFor="let cell of row; let c = index; trackBy: trackByCell"
-              type="button"
-              (click)="onGridClick(r, c)"
-              class="grid-cell"
-              [class.grid-cell-selected]="isCellSelected(r, c) && !cell.isFound"
-              [class.grid-cell-found]="cell.isFound"
-              [style.--cell-found-color]="cell.isFound ? getCellColor(r, c) : null">
-              {{ cell.letter }}
+    <!-- The flip cards for one board's words -->
+    <ng-template #wordCards let-board="board">
+      <div
+        *ngFor="let word of board.words; let i = index; trackBy: trackByWordText"
+        class="word-card"
+        [class.word-card-found]="word.found"
+        [class.keyboard-selected]="teamCount === 1 && keyboardFocusVisible && keyboardSelectedWordIndex === i"
+        [attr.data-word-index]="i"
+        [style.--word-found-color]="word.found ? word.color : null"
+        (click)="toggleCard(board, i)">
+        <!-- The card number only shows while the I key is on -->
+        <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ i + 1 }}</span>
+        <div class="word-card-inner" [class.flipped]="word.flipped || word.found">
+          <!-- Front: always face-down at first; a big speaker if the item has audio. It is the only
+               thing that plays the audio, and only while the card is face-down. -->
+          <div class="word-card-face word-card-front">
+            <button *ngIf="word.item?.audio" type="button" class="word-card-speaker word-card-speaker-big"
+                    aria-label="Play audio" (click)="playCardAudio($event, word)">
+              🔊
+            </button>
+          </div>
+          <!-- Back: the item's image with its text underneath -->
+          <div class="word-card-face word-card-back">
+            <div *ngIf="word.imageSrc" class="word-card-image">
+              <img [src]="word.imageSrc" alt="">
+            </div>
+            <p *ngIf="!isTextHidden(word)" class="word-card-text" [class.word-card-text-only]="!word.imageSrc">{{ word.text }}</p>
+            <button *ngIf="isTextHidden(word)" type="button" class="show-text-btn"
+                    [class.show-text-btn-centered]="!word.imageSrc"
+                    [attr.title]="'flipTilesShow' | translate"
+                    [attr.aria-label]="'flipTilesShow' | translate"
+                    (click)="revealText($event, word)">
+              🔍
             </button>
           </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </ng-template>
 
     <app-game-finish-overlay
       *ngIf="gameFinished"
-      [title]="'wordSearchAllWordsFound' | translate"
+      [title]="finishTitle"
+      [message]="finishMessage"
       (playAgain)="resetGame()"
       (activities)="onMenuAction('activity')">
+      <!-- Two teams: one coloured bar per team, like the reveal game's team results -->
+      <div *ngIf="finishResults.length" class="space-y-4 mt-6">
+        <div *ngFor="let result of finishResults; trackBy: trackByFinishResult" class="flex items-center gap-3">
+          <div class="w-12 text-center font-bold text-xl">{{ result.medal }}</div>
+          <div class="w-28 font-semibold text-left" [style.color]="result.color">{{ result.name }}</div>
+          <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+            <div *ngIf="result.found > 0"
+                 class="result-bar h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
+                 [style.width.%]="result.percent"
+                 [style.backgroundColor]="result.color">
+              {{ result.found }}/{{ result.total }}
+            </div>
+            <div *ngIf="result.found === 0"
+                 class="h-full flex items-center pl-3 text-gray-400 font-bold">
+              0/{{ result.total }}
+            </div>
+          </div>
+        </div>
+      </div>
     </app-game-finish-overlay>
 
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

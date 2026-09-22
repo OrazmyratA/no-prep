@@ -4,11 +4,9 @@
     <!-- Spin-Wheel Game Settings -->
     <div *ngSwitchCase="'spin-wheel'" class="space-y-4">
       <div>
-        <label class="flex items-center">
-          <input type="checkbox" formControlName="textOnWheel" class="mr-2">
-          {{ 'settingsSpinWheelTextOnWheel' | translate }}
-        </label>
-        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpinWheelTextOnWheelHint' | translate }}</p>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSpinWheelAitHint' | translate }}</p>
       </div>
       <div>
         <label class="flex items-center">
@@ -65,21 +63,14 @@
 
       <!-- Team count -->
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium">{{ 'settingsRevealTeamCount' | translate }}</label>
-          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
-            {{ settingsForm.get('teamCount')?.value }}
-          </span>
-        </div>
-        <input
-          type="range"
-          formControlName="teamCount"
-          min="1" max="6" step="1"
-          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
-        >
-        <div class="flex justify-between text-xs text-gray-400 mt-1">
-          <span>1</span>
-          <span>6</span>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsRevealTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2, 3, 4, 5, 6]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-sm font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ count }}
+            </span>
+          </label>
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsRevealTeamCountHint' | translate }}</p>
       </div>
@@ -130,11 +121,11 @@
         <input
           type="range"
           formControlName="speed"
-          min="1" max="15" step="1"
+          min="0.5" max="15" step="0.5"
           class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
         >
         <div class="flex justify-between text-xs text-gray-400 mt-1">
-          <span>⚡ 1s</span>
+          <span>⚡ 0.5s</span>
           <span>🐢 15s</span>
         </div>
       </div>
@@ -144,30 +135,28 @@
     <!-- Pop Balloon Settings -->
     <div *ngSwitchCase="'pop-balloon'" class="space-y-6">
       <div>
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium">{{ 'settingsRevealTeamCount' | translate }}</label>
-          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
-            {{ settingsForm.get('teamCount')?.value }}
-          </span>
-        </div>
-        <input
-          type="range"
-          formControlName="teamCount"
-          min="1" max="4" step="1"
-          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
-        >
-        <div class="flex justify-between text-xs text-gray-400 mt-1">
-          <span>1</span>
-          <span>4</span>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsRevealTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2, 3, 4]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-sm font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ count }}
+            </span>
+          </label>
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsRevealTeamCountHint' | translate }}</p>
       </div>
-      <div>
-        <label class="flex items-center">
-          <input type="checkbox" formControlName="reverseMode" class="mr-2">
-          {{ 'settingsTestAbcReverseMode' | translate }}
+      <div *ngIf="settingsForm.get('teamCount')?.value === 2">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="disableRps" class="h-4 w-4 accent-blue-600">
+          <span class="text-sm font-medium">{{ 'settingsPopBalloonDisableRps' | translate }}</span>
         </label>
-        <p class="text-xs text-gray-500 mt-1">{{ 'settingsReverseModeOkOopsHint' | translate }}</p>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsPopBalloonDisableRpsHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsPopBalloonAitHint' | translate }}</p>
       </div>
       <div>
         <label class="flex items-center">
@@ -178,12 +167,12 @@
       </div>
       <div>
         <label class="block text-sm font-medium mb-2">{{ 'settingsPopBalloonGiftTopic' | translate }}</label>
-        <select
-          formControlName="giftTopicId"
-          class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
-          <option [ngValue]="null">{{ 'settingsPopBalloonGiftDefault' | translate }}</option>
-          <option *ngFor="let topic of giftTopics" [ngValue]="topic.id">{{ topic.name }}</option>
-        </select>
+        <button type="button"
+                (click)="chooseGiftTopic.emit()"
+                class="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:border-blue-400 hover:bg-blue-50 transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+          <span class="truncate">{{ selectedGiftTopicName || ('settingsPopBalloonGiftDefault' | translate) }}</span>
+          <span aria-hidden="true" class="text-gray-400">🔍</span>
+        </button>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsPopBalloonGiftTopicHint' | translate }}</p>
       </div>
     </div>
@@ -197,11 +186,26 @@
             {{ settingsForm.get('spotlightSize')?.value }}
           </span>
         </div>
+
+        <!-- Live preview: the dot's width tracks the slider using the same proportion the
+             game itself uses (spotlightSize against its fixed 1200px reference width), so
+             what the teacher sees here is the actual relative spot size, not a guess. -->
+        <div class="relative w-full aspect-[3/1] rounded-lg overflow-hidden bg-gray-900 flex items-center justify-center">
+          <span class="absolute top-1.5 left-2 text-[0.65rem] font-semibold uppercase tracking-wide text-white/50">
+            {{ 'settingsSpotlightPreviewLabel' | translate }}
+          </span>
+          <div
+            class="absolute rounded-full"
+            style="aspect-ratio: 1 / 1; background: radial-gradient(circle, #fffbe8 0%, #ffdd8a 55%, rgba(255, 204, 92, 0) 100%); box-shadow: 0 0 18px 6px rgba(255, 204, 92, 0.55);"
+            [style.width.%]="(settingsForm.get('spotlightSize')?.value || 50) / 12">
+          </div>
+        </div>
+
         <input
           type="range"
           formControlName="spotlightSize"
           min="5" max="400" step="5"
-          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+          class="w-full h-2 rounded-full cursor-pointer accent-blue-600 mt-3"
         >
         <div class="flex justify-between text-xs text-gray-400 mt-1">
           <span>🔦 5</span>
@@ -262,9 +266,56 @@
 
       <!-- Enable Timer -->
       <div>
-        <label class="flex items-center gap-2">
+        <label class="flex items-center gap-2" [attr.title]="'settingsEnableTimer' | translate">
           <input type="checkbox" formControlName="enableTimer" class="h-4 w-4">
-          <span class="text-sm font-medium">{{ 'settingsEnableTimer' | translate }}</span>
+          <img src="assets/images/timer.png" alt="" class="w-6 h-6">
+          <span class="sr-only">{{ 'settingsEnableTimer' | translate }}</span>
+        </label>
+        <div *ngIf="settingsForm.get('enableTimer')?.value" class="mt-3">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium">{{ 'settingsTimerMinutes' | translate }}</label>
+            <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+              {{ settingsForm.get('timerMinutes')?.value }}m
+            </span>
+          </div>
+          <input
+            type="range"
+            formControlName="timerMinutes"
+            min="1" max="59" step="1"
+            class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+          >
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>1m</span>
+            <span>59m</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Word Search Settings -->
+    <div *ngSwitchCase="'word-search'" class="space-y-6">
+
+      <!-- Teams: 1 (everyone together) or 2 (teams take turns) -->
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsWordSearchTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-sm font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ count }}
+            </span>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsWordSearchTeamCountHint' | translate }}</p>
+      </div>
+
+      <!-- Enable Timer -->
+      <div>
+        <label class="flex items-center gap-2" [attr.title]="'settingsEnableTimer' | translate">
+          <input type="checkbox" formControlName="enableTimer" class="h-4 w-4">
+          <img src="assets/images/timer.png" alt="" class="w-6 h-6">
+          <span class="sr-only">{{ 'settingsEnableTimer' | translate }}</span>
         </label>
         <div *ngIf="settingsForm.get('enableTimer')?.value" class="mt-3">
           <div class="flex items-center justify-between mb-2">
@@ -308,6 +359,12 @@
           <span>30</span>
         </div>
       </div>
+
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsCupClashAitHint' | translate }}</p>
+      </div>
     </div>
 
     <!-- Odd One Out Settings -->
@@ -337,7 +394,10 @@
       <!-- Timer -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium">{{ 'settingsOddOneOutTimer' | translate }}</label>
+          <label class="text-sm font-medium flex items-center gap-1.5">
+            <img src="assets/images/timer.png" alt="" class="w-5 h-5">
+            {{ 'settingsOddOneOutTimer' | translate }}
+          </label>
           <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
             {{ settingsForm.get('timerSeconds')?.value }}s
           </span>
@@ -367,11 +427,9 @@
 
     <!-- Test ABC Settings -->
     <div *ngSwitchCase="'test-abc'">
-      <label class="flex items-center">
-        <input type="checkbox" formControlName="reverseMode" class="mr-2">
-        {{ 'settingsTestAbcReverseMode' | translate }}
-      </label>
-      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTestAbcReverseModeHint' | translate }}</p>
+      <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+      <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+      <p class="text-xs text-gray-500 mt-1">{{ 'settingsTestAbcAitHint' | translate }}</p>
     </div>
 
     <!-- Ball Sort Settings -->
@@ -449,21 +507,14 @@
       <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceSpeedHint' | translate }}</p>
 
       <div class="mt-4">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium">{{ 'settingsTeamSentenceTeamCount' | translate }}</label>
-          <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
-            {{ settingsForm.get('teamCount')?.value }}
-          </span>
-        </div>
-        <input
-          type="range"
-          formControlName="teamCount"
-          min="1" max="2" step="1"
-          class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
-        >
-        <div class="flex justify-between text-xs text-gray-400 mt-1">
-          <span>1</span>
-          <span>2</span>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsTeamSentenceTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-sm font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ count }}
+            </span>
+          </label>
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsTeamSentenceTeamCountHint' | translate }}</p>
       </div>
@@ -527,9 +578,10 @@
 
       <!-- Enable Timer -->
       <div>
-        <label class="flex items-center gap-2">
+        <label class="flex items-center gap-2" [attr.title]="'settingsEnableTimer' | translate">
           <input type="checkbox" formControlName="enableTimer" class="h-4 w-4">
-          <span class="text-sm font-medium">{{ 'settingsEnableTimer' | translate }}</span>
+          <img src="assets/images/timer.png" alt="" class="w-6 h-6">
+          <span class="sr-only">{{ 'settingsEnableTimer' | translate }}</span>
         </label>
         <div *ngIf="settingsForm.get('enableTimer')?.value" class="mt-3">
           <div class="flex items-center justify-between mb-2">
@@ -551,13 +603,11 @@
         </div>
       </div>
 
-      <!-- Reverse Mode -->
+      <!-- AIT -->
       <div>
-        <label class="flex items-center">
-          <input type="checkbox" formControlName="reverseMode" class="mr-2">
-          {{ 'settingsTestAbcReverseMode' | translate }}
-        </label>
-        <p class="text-xs text-gray-500 mt-1">{{ 'settingsTestAbcReverseModeHint' | translate }}</p>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSquidGameAitHint' | translate }}</p>
       </div>
 
       <!-- Simple Mode -->
@@ -720,13 +770,11 @@
     </div>
 
     <!-- Match Pairs Settings -->
-    <div *ngSwitchCase="'match-pairs'" class="space-y-6">
+    <div *ngSwitchCase="'match-pairs'" class="space-y-4">
       <div>
-        <label class="flex items-center">
-          <input type="checkbox" formControlName="matchWithText" class="mr-2">
-          {{ 'settingsMatchPairsMatchWithText' | translate }}
-        </label>
-        <p class="text-xs text-gray-500 mt-1">{{ 'settingsMatchPairsMatchWithTextHint' | translate }}</p>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="2"></app-ait-selector>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsMatchPairsAitHint' | translate }}</p>
       </div>
     </div>
 

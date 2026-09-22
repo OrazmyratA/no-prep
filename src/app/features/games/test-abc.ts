@@ -4,6 +4,8 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { AitType } from '../../shared/ait-selector';
+import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 
 interface Question {
   correctItem: Item;
@@ -26,7 +28,8 @@ export class TestAbcComponent implements OnInit, OnDestroy {
   answered = false;
   gameFinished = false;
   loading = true;
-  reverseMode = false; // false: word→image, true: image→word
+  // Default preserves the old reverseMode=false behavior: question=text, options=image.
+  aitOrder: AitType[] = ['text', 'image'];
   selectedOptionId: number | null = null;
   selectedCorrect = false;
   keyboardSelectedOptionIndex = 0;
@@ -62,13 +65,29 @@ export class TestAbcComponent implements OnInit, OnDestroy {
     private langService: LanguageService
   ) {}
 
+  // 1st pick: the question face (and the flip-card front, when a back is also picked).
+  // Last pick (when 2-3 are chosen): what the answer options show. With exactly 3 picked,
+  // the middle one shows on the flip side of the question card.
+  get aitQuestionType(): AitType {
+    return this.aitOrder[0] ?? 'text';
+  }
+
+  get aitBackType(): AitType | null {
+    return this.aitOrder.length === 3 ? this.aitOrder[1] : null;
+  }
+
+  get aitOptionsType(): AitType {
+    return this.aitOrder[this.aitOrder.length - 1] ?? this.aitQuestionType;
+  }
+
+  get hasFlipBack(): boolean {
+    return this.aitBackType !== null;
+  }
+
   async ngOnInit() {
     const idParam = this.route.snapshot.paramMap.get('id') ?? this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
-
-    this.route.queryParams.subscribe(params => {
-      this.reverseMode = params['reverseMode'] === 'true';
-    });
+    this.aitOrder = parseAitOrder(this.route.snapshot.queryParams['ait'], ['text', 'image']);
 
     try {
       let allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
@@ -79,32 +98,19 @@ export class TestAbcComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (this.reverseMode) {
-        // Reverse mode: question = image, options = text. Each correct item must have image AND text.
-        const itemsWithImageAndText = allItems.filter(item => item.image && item.text);
-        if (itemsWithImageAndText.length < 2) {
-          showAppNotification('Reverse mode requires at least 2 items that have both an image and text!', 'error');
-          this.router.navigate(['/topics', this.topicId, 'activities']);
-          return;
-        }
-        this.items = itemsWithImageAndText;
-      } else {
-        // Normal mode: question = text, options = images. Each correct item must have text.
-        const itemsWithText = allItems.filter(item => item.text);
-        if (itemsWithText.length < 2) {
-          showAppNotification('Normal mode requires at least 2 items with text!', 'error');
-          this.router.navigate(['/topics', this.topicId, 'activities']);
-          return;
-        }
-        // For options we need items with images. Ensure at least one distractor with image.
-        const itemsWithImages = allItems.filter(item => item.image);
-        if (itemsWithImages.length < 2) {
-          showAppNotification('Normal mode requires at least 2 items with images to be used as answer choices!', 'error');
-          this.router.navigate(['/topics', this.topicId, 'activities']);
-          return;
-        }
-        this.items = itemsWithText;
+      const questionType = this.aitQuestionType;
+      const optionsType = this.aitOptionsType;
+      // Each correct item needs both its own question content and its own options
+      // content, so it never shows up as a blank "?" when it's rendered as an option.
+      const eligibleItems = allItems.filter(item =>
+        itemHasAitContent(item, questionType) && itemHasAitContent(item, optionsType)
+      );
+      if (eligibleItems.length < 2) {
+        showAppNotification(this.langService.translate('testAbcNeedMatchingItems'), 'error');
+        this.router.navigate(['/topics', this.topicId, 'activities']);
+        return;
       }
+      this.items = eligibleItems;
 
       this.correctSound = new Audio('assets/sound/collect.mp3');
       this.correctSound.load();
@@ -115,7 +121,7 @@ export class TestAbcComponent implements OnInit, OnDestroy {
       this.captureSound = new Audio('assets/sound/capture.mp3');
       this.captureSound.load();
 
-      await this.buildQuestions();
+      this.buildQuestions();
     } catch (error) {
       console.error('Failed to load items', error);
     } finally {
@@ -133,13 +139,13 @@ export class TestAbcComponent implements OnInit, OnDestroy {
     [this.correctSound, this.buzzSound, this.winSound, this.captureSound].forEach(s => s?.pause());
   }
 
-  private async buildQuestions() {
+  private buildQuestions() {
     this.clearFeedbackTimers();
     this.stopActiveAudio();
     this.questions = [];
 
     for (const correct of this.items) {
-      const distractors = await this.getDistinctDistractors(correct);
+      const distractors = this.getDistinctDistractors(correct);
       if (distractors.length === 0) continue; // skip if no distractor
 
       let options = [correct, ...distractors];
@@ -152,7 +158,7 @@ export class TestAbcComponent implements OnInit, OnDestroy {
     }
 
     if (this.questions.length === 0) {
-      showAppNotification('Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.', 'error');
+      showAppNotification(this.langService.translate('testAbcInsufficientVariety'), 'error');
       this.router.navigate(['/topics', this.topicId, 'activities']);
       return;
     }
@@ -175,41 +181,19 @@ export class TestAbcComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-private async getDistinctDistractors(correct: Item): Promise<Item[]> {
-  const needImage = !this.reverseMode;   // normal mode: options are images
-  const needText = this.reverseMode;     // reverse mode: options are texts
+private getDistinctDistractors(correct: Item): Item[] {
+  const optionsType = this.aitOptionsType;
+  const candidates = this.items.filter(item => item.id !== correct.id);
 
-  let candidates = this.items.filter(item => {
-    if (item.id === correct.id) return false;
-    if (needImage && !item.image) return false;
-    if (needText && !item.text) return false;
-    return true;
-  });
-
-  // Exclude any candidate whose text equals the correct item's text
-  const correctTextNorm = (correct.text ?? '').trim().toLowerCase();
-  candidates = candidates.filter(cand => {
-    const candTextNorm = (cand.text ?? '').trim().toLowerCase();
-    return candTextNorm !== correctTextNorm;
-  });
-
-  // Deduplicate by text (since the word is what matters, not the image)
+  // Deduplicate by the options content (and never repeat the correct answer's own content)
+  const correctKey = aitContentKey(correct, optionsType);
   const uniqueCandidates: Item[] = [];
-  const seen = new Set<string>();
+  const seen = new Set<string>([correctKey]);
   for (const cand of candidates) {
-    let key = '';
-    if (cand.text) {
-      key = cand.text.trim().toLowerCase();
-    } else if (needImage && cand.image) {
-      // Fallback – should not happen because we filtered for text above
-      key = `${cand.image.size}|${cand.image.type}`;
-    } else {
-      continue;
-    }
-    if (!seen.has(key)) {
-      seen.add(key);
-      uniqueCandidates.push(cand);
-    }
+    const key = aitContentKey(cand, optionsType);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueCandidates.push(cand);
   }
 
   // Shuffle
@@ -221,12 +205,6 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
   // Take up to two distractors
   return uniqueCandidates.slice(0, 2);
 }
-
-  // Helper to get a blob key for comparison (used for deduplication)
-  private getBlobKey(blob?: Blob): string {
-    if (!blob) return '';
-    return `${blob.size}|${blob.type}`;
-  }
 
   onOptionClick(selectedItem: Item) {
     if (this.answeredQuestions.has(this.currentIndex) || this.gameFinished) return;
@@ -450,20 +428,25 @@ private async getDistinctDistractors(correct: Item): Promise<Item[]> {
   }
 
   toggleFlip() {
-    const currentItem = this.questions[this.currentIndex]?.correctItem;
-    if (currentItem?.audio) {
-      this.stopActiveAudio();
-      this.playSound(this.captureSound);
-      this.isFlipped = !this.isFlipped;
-    }
+    if (!this.hasFlipBack) return;
+    this.stopActiveAudio();
+    this.playSound(this.captureSound);
+    this.isFlipped = !this.isFlipped;
   }
 
-  playAudioAndStay(event: Event) {
+  // Stops on click to avoid also toggling the flip-card behind it.
+  onAudioFaceClick(event: Event, item: Item | null | undefined) {
     event.stopPropagation();
-    this.playCurrentQuestionAudio();
+    if (item?.audio) this.playTrackedAudio(item.audio);
+  }
+
+  // Whichever face is currently showing - front normally, back once flipped.
+  get currentFaceType(): AitType {
+    return this.isFlipped && this.aitBackType ? this.aitBackType : this.aitQuestionType;
   }
 
   private playCurrentQuestionAudio() {
+    if (this.currentFaceType !== 'audio') return;
     const currentItem = this.questions[this.currentIndex]?.correctItem;
     if (currentItem?.audio) {
       this.playTrackedAudio(currentItem.audio);

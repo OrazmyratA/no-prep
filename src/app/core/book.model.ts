@@ -234,6 +234,10 @@ export interface BookAnnotationStroke {
   kind?: 'pen' | 'highlighter';
   color: string;
   width: number;
+  // Width as a fraction of the page's on-screen width at draw time, so the stroke
+  // keeps the same visual thickness relative to the page at any zoom level.
+  // Absent on strokes saved before this field existed — those fall back to `width`.
+  widthRatio?: number;
   points: { x: number; y: number }[];
   createdAt: number;
 }

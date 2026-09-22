@@ -142,28 +142,28 @@
       </div>
     </div>
     <div class="toolbar-group insert-group">
-      <button type="button" class="icon-tool-btn" (click)="creator.addImage()" [title]="'image' | translate" [attr.aria-label]="'creatorAddImage' | translate">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'image'" (click)="creator.addImage()" [title]="'image' | translate" [attr.aria-label]="'creatorAddImage' | translate">
         <img src="assets/images/book/image.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addVideo()" [title]="'videoLabel' | translate" [attr.aria-label]="'creatorAddVideo' | translate">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'video'" (click)="creator.addVideo()" [title]="'videoLabel' | translate" [attr.aria-label]="'creatorAddVideo' | translate">
         <img src="assets/images/book/video.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addGameMarker()" [title]="'gameLabel' | translate" [attr.aria-label]="'creatorAddGame' | translate">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'game'" (click)="creator.addGameMarker()" [title]="'gameLabel' | translate" [attr.aria-label]="'creatorAddGame' | translate">
         <img src="assets/images/book/game.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addFocus()" [title]="'focusLabel' | translate" [attr.aria-label]="'creatorAddFocusArea' | translate">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'focus'" (click)="creator.addFocus()" [title]="'focusLabel' | translate" [attr.aria-label]="'creatorAddFocusArea' | translate">
         <img src="assets/images/book/focus.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addGuideDot()" [title]="'teacherGuideDotLabel' | translate" [attr.aria-label]="'creatorAddTeacherGuideDot' | translate">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'guideDot'" (click)="creator.addGuideDot()" [title]="'teacherGuideDotLabel' | translate" [attr.aria-label]="'creatorAddTeacherGuideDot' | translate">
         <img src="assets/images/book/teacher.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addNote()" [title]="'noteLabel' | translate" [attr.aria-label]="'creatorAddNote' | translate">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'note'" (click)="creator.addNote()" [title]="'noteLabel' | translate" [attr.aria-label]="'creatorAddNote' | translate">
         <img src="assets/images/book/note.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addAnswerKey()" title="Answer key" aria-label="Add answer key">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'answerKey'" (click)="creator.addAnswerKey()" title="Answer key" aria-label="Add answer key">
         <img src="assets/images/book/answer key.png" alt="">
       </button>
-      <button type="button" class="icon-tool-btn" (click)="creator.addSpeakingAi()" title="AI speaking" aria-label="Add AI speaking">
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'speakingAi'" (click)="creator.addSpeakingAi()" title="AI speaking" aria-label="Add AI speaking">
         <img src="assets/images/book/speaking.png" alt="">
       </button>
     </div>

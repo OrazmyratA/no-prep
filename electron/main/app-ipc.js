@@ -31,6 +31,21 @@ function registerAppIpc({
     return false;
   });
 
+  // Unlike open-external-url above, this isn't host-allowlisted: it's for links the
+  // teacher/app-owner typed into the app's own Quick Links feature (their own Drive folders,
+  // not remote/untrusted data), so any host is fine as long as the scheme is https.
+  ipcMain.handle('open-external-link', (_event, url) => {
+    try {
+      const parsed = new URL(String(url ?? ''));
+      if (parsed.protocol === 'https:') {
+        return shell.openExternal(parsed.href);
+      }
+    } catch {
+      // Ignore malformed URLs
+    }
+    return false;
+  });
+
   ipcMain.handle('app:toggle-fullscreen', () => {
     const mainWindow = getMainWindow();
     if (!mainWindow || mainWindow.isDestroyed()) {

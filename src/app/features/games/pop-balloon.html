@@ -110,17 +110,22 @@
            class="balloon-quiz-overlay"
            [class.visible]="team.quizOverlayVisible"
            [class.closing]="team.quizClosing">
-        <div class="balloon-question-card">
-          <!-- Reverse mode: show text as question -->
-          <div *ngIf="reverseMode" class="question-fallback">{{ team.selectedItem.text || '?' }}</div>
-          <!-- Normal mode: show image, fallback to text -->
-          <ng-container *ngIf="!reverseMode">
-            <img *ngIf="team.selectedItem.image"
-                 [src]="imageUrl(team.selectedItem.image, team.selectedItem.id!)"
-                 class="question-image"
-                 [alt]="team.selectedItem.text ?? 'question'">
-            <div *ngIf="!team.selectedItem.image" class="question-fallback">{{ team.selectedItem.text || '?' }}</div>
+        <div class="balloon-question-card"
+             [class.flip-enabled]="hasFlipBack"
+             (click)="hasFlipBack && toggleFlip(team)">
+          <ng-container *ngIf="hasFlipBack; else staticFace">
+            <div class="flip-card" [class.flipped]="team.isFlipped">
+              <div class="flip-card-front">
+                <ng-container *ngTemplateOutlet="aitContent; context: { type: aitQuestionType, item: team.selectedItem }"></ng-container>
+              </div>
+              <div class="flip-card-back">
+                <ng-container *ngTemplateOutlet="aitContent; context: { type: aitBackType, item: team.selectedItem }"></ng-container>
+              </div>
+            </div>
           </ng-container>
+          <ng-template #staticFace>
+            <ng-container *ngTemplateOutlet="aitContent; context: { type: aitQuestionType, item: team.selectedItem }"></ng-container>
+          </ng-template>
         </div>
 
         <!-- Simple OK / Oops mode -->
@@ -135,21 +140,21 @@
           </button>
         </div>
 
-        <!-- Multiple-choice: images in reverse mode, text in normal mode -->
-        <div *ngIf="!team.simpleConfirmMode" class="balloon-options" [class.balloon-image-options]="reverseMode">
+        <!-- Multiple-choice: driven by whichever AIT type was picked last -->
+        <div *ngIf="!team.simpleConfirmMode" class="balloon-options" [class.balloon-image-options]="aitOptionsType === 'image'">
           <button *ngFor="let opt of team.quizOptions; let optIndex = index; trackBy: trackByOptionId"
                   type="button"
                   class="quiz-option"
-                  [class.quiz-image-option]="reverseMode"
+                  [class.quiz-image-option]="aitOptionsType === 'image'"
                   [class.keyboard-selected]="isKeyboardOptionSelected(team, optIndex)"
                   [id]="quizOptionDomId(team.id, opt.id)"
                   [class.fade-out]="team.fadeOutOptionIds.has(opt.id!)"
                   (click)="onQuizAnswer(opt, team.id)">
             <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
-            <ng-container *ngIf="reverseMode && opt.image; else optText">
-              <img [src]="imageUrl(opt.image, opt.id!)" class="quiz-option-img" [alt]="opt.text ?? ''">
-            </ng-container>
-            <ng-template #optText>{{ opt.text || '?' }}</ng-template>
+            <img *ngIf="aitOptionsType === 'image' && opt.image" [src]="imageUrl(opt.image, opt.id!)" class="quiz-option-img" [alt]="opt.text ?? ''">
+            <span *ngIf="aitOptionsType === 'image' && !opt.image">?</span>
+            <span *ngIf="aitOptionsType === 'text'">{{ opt.text || '?' }}</span>
+            <span *ngIf="aitOptionsType === 'audio'" class="speaker-icon quiz-option-audio" [class.disabled]="!opt.audio" (click)="onAudioFaceClick($event, opt)">🔊</span>
           </button>
         </div>
       </div>
@@ -160,6 +165,18 @@
            aria-hidden="true">
     </section>
   </div>
+
+  <!-- Reusable AIT face content for the balloon question card and its flip side -->
+  <ng-template #aitContent let-type="type" let-item="item">
+    <div *ngIf="type === 'text'" class="question-fallback">{{ item?.text || '?' }}</div>
+    <ng-container *ngIf="type === 'image'">
+      <img *ngIf="item?.image" [src]="imageUrl(item.image, item.id!)" class="question-image" [alt]="item?.text ?? 'question'">
+      <div *ngIf="!item?.image" class="question-fallback">?</div>
+    </ng-container>
+    <button *ngIf="type === 'audio'" type="button" class="speaker-icon question-speaker-icon" [disabled]="!item?.audio" (click)="onAudioFaceClick($event, item)">
+      🔊
+    </button>
+  </ng-template>
 
   <!-- Victory Pop-up -->
   <app-game-finish-overlay

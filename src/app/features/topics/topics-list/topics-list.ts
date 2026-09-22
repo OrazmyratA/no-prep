@@ -16,6 +16,7 @@ import { ResizeService } from '../../../core/resize';
 import { BookLibraryService } from '../../../core/book-library';
 import { BookOperationProgress, BookRegistryItem, BookStorageLocation } from '../../../core/book.model';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
+import { DriveLink, DriveLinksService, isValidDriveLinkUrl } from '../../../core/drive-links';
 
 type LibraryCategory = 'topics' | 'books';
 type PendingBookStorageAction = 'create' | 'import' | null;
@@ -41,6 +42,12 @@ export class TopicsListComponent implements OnInit, AfterViewInit, OnDestroy {
   activeLibraryCategory: LibraryCategory = 'topics';
   topicCoverUrls: Record<number, string> = {};
   showBookStorageDialog = false;
+  showDriveLinksPanel = false;
+  driveLinks: DriveLink[] = [];
+  editingDriveLinkId: string | null = null;
+  driveLinkNameInput = '';
+  driveLinkUrlInput = '';
+  driveLinkUrlError = false;
   bookStorageLocation: BookStorageLocation | null = null;
   bookStorageBusy = false;
   private pendingBookStorageAction: PendingBookStorageAction = null;
@@ -100,7 +107,8 @@ onClickOutside(event: MouseEvent) {
     private ngZone: NgZone,
     public platform: PlatformService,
     public bookLibrary: BookLibraryService,
-    public leaderboardState: LeaderboardStateService
+    public leaderboardState: LeaderboardStateService,
+    private driveLinksService: DriveLinksService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
     this.bookProgress$ = this.bookLibrary.progress$;
@@ -320,6 +328,80 @@ async deleteTopic(id: number) {
 
   exportAllTopics() {
     this.importExport.exportAllTopics();
+  }
+
+  toggleDriveLinksPanel(): void {
+    this.showDriveLinksPanel = !this.showDriveLinksPanel;
+    if (this.showDriveLinksPanel) {
+      this.driveLinks = this.driveLinksService.getLinks();
+    } else {
+      this.cancelDriveLinkForm();
+    }
+  }
+
+  closeDriveLinksPanel(): void {
+    this.showDriveLinksPanel = false;
+    this.cancelDriveLinkForm();
+  }
+
+  async openDriveLink(link: DriveLink): Promise<void> {
+    const api = (window as any)?.electronAPI;
+    if (typeof api?.openExternalLink === 'function') {
+      const opened = await api.openExternalLink(link.url);
+      if (opened) return;
+    }
+    if (this.platform.isNative()) {
+      await Browser.open({ url: link.url });
+    } else {
+      window.open(link.url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  startAddDriveLink(): void {
+    this.editingDriveLinkId = 'new';
+    this.driveLinkNameInput = '';
+    this.driveLinkUrlInput = '';
+    this.driveLinkUrlError = false;
+  }
+
+  startEditDriveLink(link: DriveLink): void {
+    this.editingDriveLinkId = link.id;
+    this.driveLinkNameInput = link.name;
+    this.driveLinkUrlInput = link.url;
+    this.driveLinkUrlError = false;
+  }
+
+  cancelDriveLinkForm(): void {
+    this.editingDriveLinkId = null;
+    this.driveLinkNameInput = '';
+    this.driveLinkUrlInput = '';
+    this.driveLinkUrlError = false;
+  }
+
+  saveDriveLinkForm(): void {
+    const name = this.driveLinkNameInput.trim();
+    const url = this.driveLinkUrlInput.trim();
+    if (!name || !isValidDriveLinkUrl(url)) {
+      this.driveLinkUrlError = true;
+      return;
+    }
+    if (this.editingDriveLinkId && this.editingDriveLinkId !== 'new') {
+      this.driveLinksService.updateLink(this.editingDriveLinkId, name, url);
+    } else {
+      this.driveLinksService.addLink(name, url);
+    }
+    this.driveLinks = this.driveLinksService.getLinks();
+    this.cancelDriveLinkForm();
+  }
+
+  async removeDriveLink(link: DriveLink): Promise<void> {
+    const confirmed = await this.confirmationService.confirm(`Remove "${link.name}" from your Quick Links?`);
+    if (!confirmed) return;
+    this.driveLinksService.removeLink(link.id);
+    this.driveLinks = this.driveLinksService.getLinks();
+    if (this.editingDriveLinkId === link.id) {
+      this.cancelDriveLinkForm();
+    }
   }
 
   async copyBook(id: string) {

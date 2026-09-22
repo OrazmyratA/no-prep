@@ -96,6 +96,8 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
   private confettiInstance: ConfettiInstance | null = null;
   private confettiTimer: ReturnType<typeof setInterval> | null = null;
   private readonly confettiColors = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', '#f97316', '#ffffff'];
+  private readonly maxRepeatingConfettiBursts = 3;
+  private repeatingConfettiBursts = 0;
   private isDestroyed = false;
 
   constructor(
@@ -140,6 +142,18 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  @HostListener('window:blur')
+  onWindowBlur() {
+    this.stopConfetti();
+  }
+
+  @HostListener('document:visibilitychange')
+  onDocumentVisibilityChange() {
+    if (typeof document !== 'undefined' && document.hidden) {
+      this.stopConfetti();
+    }
+  }
+
   onPlayAgain() {
     this.stopConfetti();
     this.playAgain.emit();
@@ -156,6 +170,7 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
 
   private async startConfetti() {
     if (typeof window === 'undefined') return;
+    if (this.isDocumentHidden()) return;
 
     try {
       const confettiInstance = await this.createConfetti();
@@ -208,7 +223,17 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
 
   private scheduleConfetti() {
     this.clearConfettiTimer();
+    this.repeatingConfettiBursts = 0;
     this.confettiTimer = setInterval(() => {
+      if (this.isDocumentHidden()) {
+        this.stopConfetti();
+        return;
+      }
+      if (this.repeatingConfettiBursts >= this.maxRepeatingConfettiBursts) {
+        this.clearConfettiTimer();
+        return;
+      }
+      this.repeatingConfettiBursts++;
       this.fireRandomConfetti();
     }, 3000);
   }
@@ -245,6 +270,7 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
 
   private stopConfetti() {
     this.clearConfettiTimer();
+    this.repeatingConfettiBursts = 0;
     this.confettiInstance?.reset();
     this.confettiInstance = null;
   }
@@ -257,6 +283,10 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
 
   private randomBetween(min: number, max: number): number {
     return min + Math.random() * (max - min);
+  }
+
+  private isDocumentHidden(): boolean {
+    return typeof document !== 'undefined' && document.hidden;
   }
 
   private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {

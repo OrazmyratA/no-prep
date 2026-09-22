@@ -23,6 +23,7 @@ import { LeaderboardRankingListComponent } from './leaderboard-ranking-list';
 import { LeaderboardWheelComponent } from './leaderboard-wheel';
 import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
 import { LeaderboardTimerComponent } from './leaderboard-timer';
+import { AitSelectorComponent } from './ait-selector';
 
 @NgModule({
   declarations: [
@@ -45,6 +46,7 @@ import { LeaderboardTimerComponent } from './leaderboard-timer';
     LeaderboardWheelComponent,
     LeaderboardTeamSetupComponent,
     LeaderboardTimerComponent,
+    AitSelectorComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -70,7 +72,8 @@ import { LeaderboardTimerComponent } from './leaderboard-timer';
     LeaderboardRankingListComponent,
     LeaderboardWheelComponent,
     LeaderboardTeamSetupComponent,
-    LeaderboardTimerComponent
+    LeaderboardTimerComponent,
+    AitSelectorComponent
   ]
 })
 export class SharedModule { }

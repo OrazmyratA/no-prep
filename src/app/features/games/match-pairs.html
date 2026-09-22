@@ -1,4 +1,6 @@
 <div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-purple-900 to-indigo-800 p-4 flex flex-col game-container">
+  <div class="match-progress">{{ remainingPairs }} / {{ totalPairs }}</div>
+
   <app-game-keyboard-help
     class="match-keyboard-help"
     [shortcuts]="keyboardShortcuts"
@@ -49,23 +51,23 @@
             <div class="card-inner" [class.flipped]="card.flipped">
               <!-- Front (hidden) -->
               <div class="card-front"
-                   [class.card-front-image]="matchWithTextActive && card.kind === 'image'"
-                   [class.card-front-text]="matchWithTextActive && card.kind === 'text'">
-                {{ rowIndex * gridColumns + colIndex + 1 }}
+                   [class.card-front-image]="card.kind === 'image'"
+                   [class.card-front-text]="card.kind === 'text'"
+                   [class.card-front-audio]="card.kind === 'audio'">
+                <ng-container *ngIf="card.kind === 'audio'; else numberLabel">
+                  <button type="button"
+                          class="match-pairs-speaker"
+                          [style.fontSize.px]="cardIconSize"
+                          [disabled]="!card.item.audio"
+                          (click)="onAudioFaceClick($event, card.item)">
+                    🔊
+                  </button>
+                </ng-container>
+                <ng-template #numberLabel>{{ rowIndex * gridColumns + colIndex + 1 }}</ng-template>
               </div>
               <!-- Back (revealed) -->
               <div class="card-back">
-                <ng-container *ngIf="card.imageSrc; else textOnlyBack">
-                  <div class="flex items-center justify-center h-3/5">
-                    <img [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
-                  </div>
-                  <p *ngIf="card.item.text && card.kind !== 'image'" class="text-center mt-2 px-1" [style.fontSize.px]="cardTextSize">{{ card.item.text }}</p>
-                </ng-container>
-                <ng-template #textOnlyBack>
-                  <div class="flex items-center justify-center h-full px-2">
-                    <p class="text-center font-semibold leading-tight" [style.fontSize.px]="cardTextSize + 4">{{ card.item.text }}</p>
-                  </div>
-                </ng-template>
+                <ng-container *ngTemplateOutlet="cardBackContent; context: { card: card }"></ng-container>
               </div>
             </div>
           </div>
@@ -73,10 +75,23 @@
       </div>
     </div>
 
-    <!-- Game Info -->
-    <div class="match-info mt-4 text-white text-center">
-      <p>{{ 'matchPairsRemaining' | translate }}: {{ remainingPairs }} / {{ totalPairs }} {{ 'matchPairsPairs' | translate }}</p>
-    </div>
+    <ng-template #cardBackContent let-card="card">
+      <div *ngIf="card.kind === 'image'" class="flex items-center justify-center h-full w-full">
+        <img *ngIf="card.imageSrc" [src]="card.imageSrc" class="max-h-full max-w-full object-contain">
+      </div>
+      <div *ngIf="card.kind === 'text'" class="flex items-center justify-center h-full px-2">
+        <p class="text-center font-semibold leading-tight" [style.fontSize.px]="cardTextSize + 4">{{ card.item.text }}</p>
+      </div>
+      <div *ngIf="card.kind === 'audio'" class="flex items-center justify-center h-full">
+        <button type="button"
+                class="match-pairs-speaker"
+                [style.fontSize.px]="cardIconSize"
+                [disabled]="!card.item.audio"
+                (click)="onAudioFaceClick($event, card.item)">
+          🔊
+        </button>
+      </div>
+    </ng-template>
 
     <!-- Reset Button -->
     <div class="match-actions mt-4 flex justify-center">

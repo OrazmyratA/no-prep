@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { GAMES, GameConfig } from '../games.config';
 import { db } from '../../../core/db.model'; // Direct Dexie import
 import { ResizeService } from '../../../core/resize';
+import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import {
   ActivityAccessMode,
   filterGamesByActivityRestriction,
@@ -40,7 +41,8 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
     private router: Router,
     private resizeService: ResizeService,
     private cdr: ChangeDetectorRef,
-    private elementRef: ElementRef<HTMLElement>
+    private elementRef: ElementRef<HTMLElement>,
+    private leaderboardState: LeaderboardStateService
   ) {}
 
   async ngOnInit() {
@@ -52,6 +54,8 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
     );
     const topic = await db.topics.get(this.topicId);
     this.topicName = topic?.name || 'Topic';
+
+    this.restoreResumedSettings();
   }
 
   ngAfterViewInit() {
@@ -76,6 +80,9 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.selectedGame === game) {
       this.startGame();
     } else {
+      // Games can share control names (teamCount, simpleMode, ...) with unrelated
+      // meanings, so the previous game's settings must not carry over as initialValue.
+      this.settings = {};
       this.selectedGame = game;
       if (game.requiresSettings) {
         this.showSettings = true;
@@ -87,6 +94,68 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
 
   onSettingsChange(settings: any) {
     this.settings = settings;
+  }
+
+  // Hands off to the same full-page, searchable topic picker the leaderboard uses (via
+  // LeaderboardStateService's generic round trip) instead of a cramped <select> full of
+  // every topic in the app. The current game + in-progress settings ride along as query
+  // params on the return URL so they aren't lost while we're away picking.
+  chooseGiftTopic(): void {
+    if (!this.selectedGame) return;
+    const returnUrl = this.router.serializeUrl(
+      this.router.createUrlTree([], {
+        relativeTo: this.route,
+        queryParams: {
+          ...this.route.snapshot.queryParams,
+          resumeGame: this.selectedGame.id,
+          resumeSettings: JSON.stringify(this.settings)
+        }
+      })
+    );
+    this.leaderboardState.beginTopicSelection(returnUrl, 'gift-topic');
+    this.router.navigate(['/topics']);
+  }
+
+  private restoreResumedSettings(): void {
+    const query = this.route.snapshot.queryParamMap;
+    const resumeGameId = query.get('resumeGame');
+    // Set by LeaderboardStateService.completeTopicSelection() on the return URL, read here
+    // synchronously (no race) instead of via topicSelected$, which can fire before this
+    // component - recreated by this very navigation - has a subscription registered.
+    const pickedTopicId = query.get('pickedTopicId');
+    const pickedTopicSource = query.get('pickedTopicSource');
+    if (!resumeGameId && !pickedTopicId) return;
+
+    if (resumeGameId) {
+      const game = this.games.find(g => g.id === resumeGameId);
+      if (game) {
+        this.selectedGame = game;
+        this.showSettings = true;
+        const rawSettings = query.get('resumeSettings');
+        if (rawSettings) {
+          try {
+            this.settings = JSON.parse(rawSettings);
+          } catch {
+            this.settings = {};
+          }
+        }
+      }
+    }
+
+    if (pickedTopicSource === 'gift-topic' && pickedTopicId) {
+      const topicId = Number(pickedTopicId);
+      if (Number.isFinite(topicId)) {
+        this.settings = { ...this.settings, giftTopicId: topicId };
+      }
+    }
+
+    // Drop the resume/picked params so a refresh or back-navigation doesn't replay them.
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { resumeGame: null, resumeSettings: null, pickedTopicId: null, pickedTopicSource: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 
   startGame() {

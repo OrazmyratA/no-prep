@@ -13,6 +13,7 @@ interface FlipTileCard {
   flipped: boolean;
   matched: boolean;
   shake?: boolean;
+  textRevealed?: boolean;
   _flipBackTimeout?: any;
 }
 
@@ -43,6 +44,7 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'F', action: 'Toggle selected card fullscreen' },
     { key: '← / →', action: 'Previous or next fullscreen card' },
     { key: 'Esc', action: 'Close fullscreen' },
+    { key: 'H', action: 'Hide or show card texts' },
     { key: 'M', action: 'Random select' },
     { key: 'E / Del', action: 'Eliminate selected card' },
     { key: 'R', action: 'Shuffle and restart' }
@@ -52,6 +54,9 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   private activeAudioUrl: string | null = null;
   private keyboardNumberBuffer = '';
   private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Text visibility: when true, card texts are hidden until revealed per card
+  hideTexts = false;
 
   // Sound Quiz Mode state
   soundQuizActive = false;
@@ -242,6 +247,25 @@ private clearPendingTimers() {
   this.pendingTimers.clear();
 }
 
+toggleTextVisibility() {
+  this.hideTexts = !this.hideTexts;
+  this.cards.forEach(card => (card.textRevealed = false));
+  this.cdr.detectChanges();
+  this.scheduleFullscreenTextFit();
+}
+
+isTextHidden(card: FlipTileCard | null): boolean {
+  return this.hideTexts && !!card && !card.textRevealed;
+}
+
+revealText(event: Event, card: FlipTileCard) {
+  event.preventDefault();
+  event.stopPropagation();
+  card.textRevealed = true;
+  this.cdr.detectChanges();
+  this.scheduleFullscreenTextFit();
+}
+
   // ----- Sound Quiz Mode -----
  // ---------- Sound Quiz Mode ----------
 activateSoundQuiz() {
@@ -267,7 +291,10 @@ activateSoundQuiz() {
 
   // Reset all cards to face-down (only those not already matched)
   this.cards.forEach(card => {
-    if (!card.matched) card.flipped = false;
+    if (!card.matched) {
+      card.flipped = false;
+      card.textRevealed = false;
+    }
   });
 
   const randomIndex = Math.floor(Math.random() * unmatchedAudio.length);
@@ -323,6 +350,7 @@ flipCard(index: number) {
       this.flipSound.play().catch(e => console.debug);
     }
     card.flipped = !card.flipped;
+    if (!card.flipped) card.textRevealed = false;
     this.selectedIndex = index;
     this.cdr.detectChanges();
     return;
@@ -384,6 +412,7 @@ private wrongFlipWithFeedback(index: number, card: any) {
     // Close the card after a further short delay (so the shake can be seen)
     this.setGameTimeout(() => {
       card.flipped = false;
+      card.textRevealed = false;
       card._flipBackTimeout = null;
       this.cdr.detectChanges();
     }, 400);
@@ -594,6 +623,11 @@ private rebuildCards(items: Item[]) {
     }
 
     switch (event.key.toLowerCase()) {
+      case 'h':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.toggleTextVisibility();
+        break;
       case 'm':
         event.preventDefault();
         this.clearKeyboardNumberBuffer();

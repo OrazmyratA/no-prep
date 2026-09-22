@@ -1,0 +1,18 @@
+<div class="ait-selector" [class.disabled]="disabled">
+  <button
+    type="button"
+    *ngFor="let option of options"
+    class="ait-icon-btn"
+    [class.selected]="isSelected(option.type)"
+    [class.maxed-out]="isMaxedOut(option.type)"
+    [class.shake]="shakingType === option.type"
+    [disabled]="disabled"
+    (click)="toggle(option.type)"
+    [attr.aria-pressed]="isSelected(option.type)"
+    [attr.aria-label]="option.labelKey | translate"
+  >
+    <span *ngIf="isSelected(option.type)" class="ait-order-badge">{{ orderOf(option.type) }}</span>
+    <img [src]="option.icon" alt="" class="ait-icon-img">
+    <span class="ait-icon-label">{{ option.labelKey | translate }}</span>
+  </button>
+</div>

@@ -1,7 +1,7 @@
 <div class="topics-page min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
   <div class="topics-shell mx-auto w-full max-w-screen-xl">
     <div *ngIf="leaderboardState.isSelecting" class="leaderboard-picker-banner">
-      <span>{{ 'leaderboardPickerBannerHint' | translate }}</span>
+      <span>{{ (leaderboardState.activeSelectionSource === 'gift-topic' ? 'giftTopicPickerBannerHint' : 'leaderboardPickerBannerHint') | translate }}</span>
       <button type="button" (click)="leaderboardState.cancelTopicSelection()">{{ 'leaderboardPickerBannerCancel' | translate }}</button>
     </div>
     <!-- Header -->
@@ -65,6 +65,19 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
       </svg>
       {{ 'exportAll' | translate }}
+    </button>
+
+    <!-- Quick Links (Google Drive) -->
+    <button *ngIf="isTopicsCategory"
+            type="button"
+            (click)="toggleDriveLinksPanel()"
+            class="topics-action-btn drive-links-action bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            [attr.title]="'quickLinksButton' | translate"
+            [attr.aria-label]="'quickLinksButton' | translate">
+      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m4.656 1.5a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5"></path>
+      </svg>
+      {{ 'quickLinksButton' | translate }}
     </button>
 
     <!-- Create Book -->
@@ -190,6 +203,72 @@
             <span>{{ 'bookStorageOpenFolder' | translate }}</span>
           </button>
         </div>
+      </section>
+    </div>
+
+    <div *ngIf="showDriveLinksPanel" class="book-storage-backdrop" (click)="closeDriveLinksPanel()">
+      <section class="book-storage-dialog drive-links-dialog" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="'quickLinksButton' | translate">
+        <button type="button" class="book-storage-close" (click)="closeDriveLinksPanel()" aria-label="Close">x</button>
+        <div class="book-storage-heading">
+          <span class="book-storage-icon drive-links-icon">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m4.656 1.5a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5"></path>
+            </svg>
+          </span>
+          <div>
+            <h2>{{ 'quickLinksButton' | translate }}</h2>
+            <p>{{ 'quickLinksHint' | translate }}</p>
+          </div>
+        </div>
+
+        <ul class="drive-links-list" *ngIf="driveLinks.length">
+          <li *ngFor="let link of driveLinks" class="drive-links-item">
+            <ng-container *ngIf="editingDriveLinkId === link.id; else driveLinkRow">
+              <div class="drive-link-form">
+                <input type="text" [(ngModel)]="driveLinkNameInput" [placeholder]="'quickLinksNamePlaceholder' | translate" class="drive-link-input">
+                <input type="url" [(ngModel)]="driveLinkUrlInput" [placeholder]="'quickLinksUrlPlaceholder' | translate" class="drive-link-input" [class.invalid]="driveLinkUrlError">
+                <p class="drive-link-error" *ngIf="driveLinkUrlError">{{ 'quickLinksInvalidUrl' | translate }}</p>
+                <div class="drive-link-form-actions">
+                  <button type="button" class="drive-link-save" (click)="saveDriveLinkForm()">{{ 'save' | translate }}</button>
+                  <button type="button" class="drive-link-cancel" (click)="cancelDriveLinkForm()">{{ 'cancel' | translate }}</button>
+                </div>
+              </div>
+            </ng-container>
+            <ng-template #driveLinkRow>
+              <button type="button" class="drive-link-open" (click)="openDriveLink(link)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m4.656 1.5a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5"></path>
+                </svg>
+                <span class="drive-link-name">{{ link.name }}</span>
+              </button>
+              <button type="button" class="drive-link-edit" *ngIf="!link.isDefault" (click)="startEditDriveLink(link)" title="Rename" aria-label="Rename link">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+              </button>
+              <button type="button" class="drive-link-delete" (click)="removeDriveLink(link)" title="Remove" aria-label="Remove link">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+              </button>
+            </ng-template>
+          </li>
+        </ul>
+        <p class="drive-links-empty" *ngIf="!driveLinks.length && editingDriveLinkId !== 'new'">{{ 'quickLinksEmpty' | translate }}</p>
+
+        <div class="drive-link-form add-form" *ngIf="editingDriveLinkId === 'new'">
+          <input type="text" [(ngModel)]="driveLinkNameInput" [placeholder]="'quickLinksNamePlaceholder' | translate" class="drive-link-input">
+          <input type="url" [(ngModel)]="driveLinkUrlInput" [placeholder]="'quickLinksUrlPlaceholder' | translate" class="drive-link-input" [class.invalid]="driveLinkUrlError">
+          <p class="drive-link-error" *ngIf="driveLinkUrlError">{{ 'quickLinksInvalidUrl' | translate }}</p>
+          <div class="drive-link-form-actions">
+            <button type="button" class="drive-link-save" (click)="saveDriveLinkForm()">{{ 'save' | translate }}</button>
+            <button type="button" class="drive-link-cancel" (click)="cancelDriveLinkForm()">{{ 'cancel' | translate }}</button>
+          </div>
+        </div>
+
+        <button type="button" class="drive-links-add-btn" *ngIf="editingDriveLinkId !== 'new'" (click)="startAddDriveLink()">
+          + {{ 'quickLinksAddButton' | translate }}
+        </button>
       </section>
     </div>
 

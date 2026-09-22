@@ -15,12 +15,6 @@
 <div class="lb-row-score">
   <app-leaderboard-star-rating [points]="entry.points" [absent]="!!entry.absent" (starClick)="onStarClick()"></app-leaderboard-star-rating>
   <span
-    *ngIf="isHotStreak"
-    class="lb-row-streak-badge"
-    [attr.title]="'leaderboardStreak' | translate">
-    <span aria-hidden="true">🔥</span>{{ entry.streak }}
-  </span>
-  <span
     *ngIf="entry.baselinePoints != null"
     class="lb-row-baseline"
     [attr.title]="'leaderboardSessionBaselineHint' | translate">

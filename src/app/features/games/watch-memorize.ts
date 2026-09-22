@@ -297,9 +297,11 @@ private nextScrollItem() {
     this.phaseTransitionTimer = setTimeout(() => {
       this.scrollPhase = false;
       this.keyboardSelectedIndex = this.findNextKeyboardGridIndex(0, 1) ?? 0;
+      // calculateGridLayout() schedules its own text fit once it has measured the real
+      // card size - fitting here too would run against the stale default cardSize first
+      // and visibly resize the text a moment later when the real fit lands.
       this.calculateGridLayout();
       this.cdr.detectChanges();
-      this.scheduleRecallTextFit();
     }, 500);
     return;
   }
@@ -433,7 +435,7 @@ private runActiveAnimation() {
   private applySettings(params: Record<string, unknown>) {
     const rawSpeed = Number(params['speed']);
     if (Number.isFinite(rawSpeed)) {
-      this.speed = Math.max(1, rawSpeed);
+      this.speed = Math.max(0.5, rawSpeed);
     }
 
     const rawCount = Number(params['count']);
@@ -487,8 +489,10 @@ private runActiveAnimation() {
       }
       this.playSound(this.buzzSound, 0.4);
     }
+    // Selecting a card only changes its border/color (box-sizing: border-box keeps its
+    // outer size fixed), so no card's available text area actually changes here - no
+    // refit needed, and re-fitting on every click was visibly resizing/reflowing text.
     this.cdr.detectChanges();
-    this.scheduleRecallTextFit();
   }
 
   private scheduleRecallTextFit() {

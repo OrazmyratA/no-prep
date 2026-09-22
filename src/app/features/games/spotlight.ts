@@ -45,10 +45,31 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   private collectionTimer: any;
   private readonly collectDelay = 1000; // 1 second hold to collect
   private isNearItem = false;
+  // The spotlight follows the pointer, so clicking or tapping on the item's spot puts the
+  // pointer there and then rests it — which used to satisfy the 1-second hold and jump to
+  // the next item. A press cancels any pending collection and, for this long afterwards,
+  // the spot has to be moved onto the item again before the hold can start.
+  private ignoreProximityUntil = 0;
+  private static readonly PRESS_QUIET_MS = 1200;
 
   // Image handling
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
+  // spotlightSize is configured as a raw canvas-pixel count, but the canvas is re-sized to
+  // match its container on every layout-changed event (window resize, focus regain, tab
+  // visibility change, dynamic-viewport-height changes from a mobile browser's chrome
+  // showing/hiding, Electron display changes, connecting/disconnecting an external
+  // monitor or projector, ...). Without rescaling, that fixed pixel count ends up covering
+  // a different fraction of the picture whenever the canvas's own pixel dimensions change
+  // mid-game — the spot visibly shrinks or grows with no warning.
+  // spotlightSize is authored against this fixed reference width, so the radius is always
+  // recomputed live as canvas.width / SPOTLIGHT_REFERENCE_WIDTH. This used to instead
+  // snapshot whatever canvas.width happened to be the first time it was measured — but that
+  // snapshot could be taken before the layout had settled (e.g. before a projector was
+  // connected, or during a transient reflow right after regaining window focus), and once
+  // wrong it stayed wrong for the rest of the session, permanently over- or under-scaling
+  // the spot. A fixed constant has nothing to go stale.
+  private static readonly SPOTLIGHT_REFERENCE_WIDTH = 1200;
   private drawFrame: number | null = null;
   private layoutSubscription?: Subscription;
   private activeAudio: HTMLAudioElement | null = null;
@@ -103,6 +124,11 @@ export class SpotlightComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
       this.cdr.detectChanges();
+      // The canvas sits behind `*ngIf="!loading"`, so it didn't exist yet when
+      // ngAfterViewInit ran its own resizeCanvas() (that call returned early). Without
+      // sizing it here it stayed at the browser's default 300x150 backing store until some
+      // later resize/focus event, which shrank the spotlight to a fraction of its size.
+      this.resizeCanvas();
       // Initialize spotlight position to center
       this.clearStartTimer();
       this.startTimer = setTimeout(() => {
@@ -186,7 +212,7 @@ private loadItem(index: number) {
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    const radius = this.spotlightSize / 2;
+    const radius = this.spotlightRadius;
     const marginX = Math.max(radius, Math.min(rect.width * 0.12, 80));
     const marginY = Math.max(radius, Math.min(rect.height * 0.12, 80));
     const cssX = corner === 'center' ? rect.width / 2 : marginX;
@@ -210,6 +236,28 @@ private loadItem(index: number) {
     if (this.currentItem) {
       this.scheduleDraw();
     }
+  }
+
+  // The radius to actually draw/hit-test with, in the CURRENT canvas's pixel space —
+  // spotlightSize scaled against the fixed reference width so the spot keeps the same
+  // proportion to the picture regardless of the canvas's actual pixel dimensions.
+  private get spotlightRadius(): number {
+    const baseRadius = this.spotlightSize / 2;
+    const canvas = this.canvasRef?.nativeElement;
+    if (!canvas || !canvas.width) return baseRadius;
+    return baseRadius * (canvas.width / SpotlightComponent.SPOTLIGHT_REFERENCE_WIDTH);
+  }
+
+  // A mouse click or a tap on the game area. It only positions the spotlight; it must never
+  // count as "holding the spot on the item".
+  onCanvasPress() {
+    this.cancelPendingAdvance();
+    this.ignoreProximityUntil = performance.now() + SpotlightComponent.PRESS_QUIET_MS;
+  }
+
+  onTouchStart(event: TouchEvent) {
+    this.onCanvasPress();
+    this.onTouchMove(event);
   }
 
   onMouseMove(event: MouseEvent) {
@@ -337,7 +385,7 @@ private loadItem(index: number) {
 
     const width = canvas.width;
     const height = canvas.height;
-    const radius = this.spotlightSize / 2;
+    const radius = this.spotlightRadius;
 
     ctx.clearRect(0, 0, width, height);
     if (!this.revealAll) {
@@ -419,10 +467,12 @@ private loadItem(index: number) {
     const itemCenterY = rect.top + rect.height / 2 - canvasRect.top;
 
     const distance = Math.hypot(this.spotlightX - itemCenterX, this.spotlightY - itemCenterY);
-    const threshold = this.spotlightSize / 2;
+    const threshold = this.spotlightRadius;
 
     if (distance <= threshold) {
-      if (!this.isNearItem) {
+      // Right after a click/tap the spot just rests where it was pressed — don't start
+      // collecting until it has been moved again once the quiet period is over.
+      if (!this.isNearItem && performance.now() >= this.ignoreProximityUntil) {
         this.isNearItem = true;
         this.startCollectionTimer();
       }

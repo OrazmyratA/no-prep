@@ -27,14 +27,82 @@
         <rect x="8" y="8" width="8" height="8" rx="1"></rect>
       </svg>
     </button>
+    <button type="button" *ngIf="enableVoiceTools" (click)="toggleTextPanel()"
+            [attr.aria-label]="'textToSpeech' | translate"
+            [attr.title]="'textToSpeech' | translate"
+            [attr.aria-pressed]="textPanelOpen"
+            [class.bg-blue-100]="textPanelOpen"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 border-l border-gray-300">
+      <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H3v6h3l5 4V5zm4.5 3.5a5 5 0 010 7m2.5-9.5a9 9 0 010 12"></path>
+      </svg>
+    </button>
+  </div>
+  <div *ngIf="enableVoiceTools && !canGenerateVoice && textPanelOpen"
+       class="p-3 border-b border-gray-300 text-sm text-gray-600 text-center">
+    {{ 'textToSpeechDesktopOnly' | translate }}
+  </div>
+  <div *ngIf="enableVoiceTools && canGenerateVoice && textPanelOpen" class="p-3 border-b border-gray-300 flex flex-col gap-2">
+    <div class="flex gap-2">
+      <input type="text" [value]="voiceText"
+             (input)="voiceText = $any($event.target).value"
+             (keydown.enter)="$event.preventDefault(); generateVoice()"
+             [placeholder]="'voiceTextPlaceholder' | translate"
+             maxlength="500"
+             class="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-sm">
+      <select (change)="onVoiceLanguageChange($any($event.target).value)"
+              [attr.aria-label]="'voiceLanguage' | translate"
+              class="border border-gray-300 rounded px-1 py-1 text-sm bg-white">
+        <option *ngFor="let lang of voiceLanguages" [value]="lang.code" [selected]="lang.code === voiceLanguage">{{ lang.label }}</option>
+      </select>
+    </div>
+    <button type="button" (click)="generateVoice()"
+            [disabled]="isGenerating || !voiceText.trim()"
+            class="flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded bg-blue-500 text-white disabled:opacity-60">
+      <span *ngIf="isGenerating" class="audio-spinner" aria-hidden="true"></span>
+      {{ 'generateVoice' | translate }}
+    </button>
   </div>
   <div class="p-3">
     <div *ngIf="audioUrl; else noAudio" class="relative">
-      <audio [src]="audioUrl" controls class="w-full h-10"></audio>
+      <audio #player [src]="audioUrl" controls class="w-full h-10"></audio>
       <button type="button" (click)="removeAudio()"
               class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
               [attr.title]="'removeAudio' | translate">x</button>
     </div>
+    <details *ngIf="enableVoiceTools && audioUrl" class="mt-3 text-sm" [open]="voiceAdjusted">
+      <summary class="cursor-pointer select-none text-gray-700 font-medium">
+        {{ 'voiceAdjustments' | translate }}
+        <span *ngIf="isRendering" class="audio-spinner inline-block align-middle ml-1" aria-hidden="true"></span>
+      </summary>
+      <div class="mt-2 flex flex-col gap-2">
+        <label class="flex items-center gap-2">
+          <span class="w-14 shrink-0 text-gray-600">{{ 'voicePitch' | translate }}</span>
+          <span aria-hidden="true">♂</span>
+          <input type="range" class="flex-1 min-w-0" [min]="pitchMin" [max]="pitchMax" step="0.5"
+                 [value]="pitch" (input)="onPitchInput($event)"
+                 [attr.aria-label]="'voicePitch' | translate">
+          <span aria-hidden="true">♀</span>
+          <span class="w-10 text-right tabular-nums text-gray-600">{{ pitch > 0 ? '+' : '' }}{{ pitch }}</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <span class="w-14 shrink-0 text-gray-600">{{ 'voiceSpeed' | translate }}</span>
+          <input type="range" class="flex-1 min-w-0" [min]="speedMin" [max]="speedMax" step="0.05"
+                 [value]="speed" (input)="onSpeedInput($event)"
+                 [attr.aria-label]="'voiceSpeed' | translate">
+          <span class="w-10 text-right tabular-nums text-gray-600">{{ speed | number:'1.0-2' }}×</span>
+        </label>
+        <div class="flex items-center gap-2">
+          <button type="button" *ngFor="let preset of speedPresets" (click)="setSpeed(preset)"
+                  [class.bg-blue-500]="speed === preset" [class.text-white]="speed === preset"
+                  class="px-2 py-1 rounded border border-gray-300 text-xs">{{ preset }}×</button>
+          <button type="button" (click)="resetVoice()" [disabled]="!voiceAdjusted"
+                  class="ml-auto px-2 py-1 rounded border border-gray-300 text-xs disabled:opacity-50">
+            {{ 'resetVoice' | translate }}
+          </button>
+        </div>
+      </div>
+    </details>
     <ng-template #noAudio>
       <div class="text-center text-gray-400 text-sm py-2">
         {{ 'noAudioRecordOrUpload' | translate }}

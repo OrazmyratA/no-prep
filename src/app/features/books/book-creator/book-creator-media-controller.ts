@@ -14,14 +14,12 @@ export class BookCreatorMediaController {
 
   async addImage(): Promise<void> {
     if (!this.creator.book) return;
-    this.creator.captureHistory();
-    this.creator.addElement('image', { src: '', label: 'Image' }, 0.16, 0.12);
+    this.creator.armMarkerPlacement('image', { src: '', label: 'Image' }, 0.16, 0.12);
   }
 
   async addVideo(): Promise<void> {
     if (!this.creator.book) return;
-    this.creator.captureHistory();
-    this.creator.addElement('video', { src: '', label: 'Video' }, 0.12, 0.1);
+    this.creator.armMarkerPlacement('video', { src: '', label: 'Video' }, 0.12, 0.1);
   }
 
   addImageToCurrentPage(): void {
@@ -30,8 +28,7 @@ export class BookCreatorMediaController {
   }
 
   addAnswerKey(): void {
-    this.creator.captureHistory();
-    this.creator.addElement('answerKey', { images: [], label: 'Answer key' }, 0.08, 0.08);
+    this.creator.armMarkerPlacement('answerKey', { images: [], label: 'Answer key' }, 0.08, 0.08);
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {

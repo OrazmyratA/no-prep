@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   enterLicenseContent: (content) => ipcRenderer.invoke('enter-license-content', String(content ?? '')),
   runSecureFeature: (featureName, input) => ipcRenderer.invoke('run-secure-feature', String(featureName ?? ''), input ?? {}),
   openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', String(url ?? '')),
+  openExternalLink: (url) => ipcRenderer.invoke('open-external-link', String(url ?? '')),
   toggleAppFullscreen: () => ipcRenderer.invoke('app:toggle-fullscreen'),
   setAppFullscreen: (active) => ipcRenderer.invoke('app:set-fullscreen', !!active),
   isAppFullscreen: () => ipcRenderer.invoke('app:is-fullscreen'),

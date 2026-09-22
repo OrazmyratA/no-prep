@@ -156,6 +156,15 @@
           <button
             type="button"
             class="lb-header-btn lb-icon-btn"
+            [disabled]="sharingResults"
+            (click)="shareResults()"
+            [attr.title]="'leaderboardShare' | translate"
+            [attr.aria-label]="'leaderboardShare' | translate">
+            <span aria-hidden="true">📤</span>
+          </button>
+          <button
+            type="button"
+            class="lb-header-btn lb-icon-btn"
             (click)="resetScores()"
             [attr.title]="'leaderboardResetScores' | translate"
             [attr.aria-label]="'leaderboardResetScores' | translate">

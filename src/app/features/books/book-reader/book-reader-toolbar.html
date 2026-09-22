@@ -177,6 +177,9 @@
           <span class="color-wheel-ring"></span>
           <span class="color-wheel-fill" [style.background]="reader.textColor"></span>
         </label>
+        <label class="pen-size" title="Text size">
+          <input type="range" min="2" max="30" step="0.5" [ngModel]="reader.getTextSizePercent()" (ngModelChange)="reader.selectTextSize($event)" aria-label="Text size">
+        </label>
       </div>
     </div>
 

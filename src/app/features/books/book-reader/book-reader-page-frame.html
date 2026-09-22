@@ -8,7 +8,7 @@
   [class.focus-crop-page]="primary && reader.isFocusCropActive(page)"
   (click)="reader.onPageFrameClick($event)"
   appSwipe
-  [swipeDisabled]="reader.isInkModeActive() || reader.textMode"
+  [swipeDisabled]="reader.isReaderSurfaceToolActive()"
   (swipeLeft)="reader.nextPage()"
   (swipeRight)="reader.previousPage()"
   (pointerup)="reader.onPageFramePointerUp($event)"
@@ -218,13 +218,13 @@
         <img class="book-marker-icon" src="assets/images/book/note.png" [alt]="'bookMarkerNote' | translate">
       </span>
       <svg *ngIf="element.type === 'ink' && element.data['points']; else inkFallback" class="teacher-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-        <polyline [attr.points]="reader.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="element.data['strokePx'] || 6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+        <polyline [attr.points]="reader.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#2563eb'" [attr.stroke-width]="reader.getStrokeWidthPx(element, page)" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
       </svg>
       <ng-template #inkFallback>
         <span *ngIf="element.type === 'ink'" class="ink-mark" [style.background]="element.data['color'] || '#2563eb'"></span>
       </ng-template>
       <svg *ngIf="element.type === 'highlighter' && element.data['points']; else highlighterFallback" class="teacher-stroke-svg highlighter-stroke-svg" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true">
-        <polyline [attr.points]="reader.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="element.data['strokePx'] || 18" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
+        <polyline [attr.points]="reader.getElementPolylinePoints(element)" fill="none" [attr.stroke]="element.data['color'] || '#fde047'" [attr.stroke-width]="reader.getStrokeWidthPx(element, page)" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline>
       </svg>
       <ng-template #highlighterFallback>
         <span *ngIf="element.type === 'highlighter'" class="highlighter-mark" [style.background]="element.data['color'] || '#fde047'"></span>

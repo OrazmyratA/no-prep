@@ -14,7 +14,13 @@ export interface Item {
   topicId: number;
   text?: string;
   image?: Blob;
-  audio?: Blob;      
+  audio?: Blob;
+  // Voice-editing metadata. `audio` is always the final (pitch/speed applied) clip that games play;
+  // `audioSource` keeps the untouched original so pitch/speed can be re-adjusted later.
+  audioSource?: Blob;
+  audioPitch?: number;
+  audioSpeed?: number;
+  audioText?: string;
   order: number;
   createdAt: Date;
 }

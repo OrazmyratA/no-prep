@@ -101,9 +101,14 @@
                   <span>{{ 'record' | translate }}</span>
                 </button>
                 <div *ngIf="isAudioPanelOpen(item)" class="upload-card media-panel-open">
-                  <app-audio-uploader 
-                    [initialAudio]="item.get('audio')?.value" 
-                    (audioSelected)="onAudioSelected($event, i)">
+                  <app-audio-uploader
+                    [enableVoiceTools]="true"
+                    [initialAudio]="item.get('audio')?.value"
+                    [initialSource]="item.get('audioSource')?.value"
+                    [initialPitch]="item.get('audioPitch')?.value"
+                    [initialSpeed]="item.get('audioSpeed')?.value"
+                    [initialText]="item.get('audioText')?.value"
+                    (voiceChange)="onVoiceChange($event, i)">
                   </app-audio-uploader>
                 </div>
               </div>

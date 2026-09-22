@@ -480,36 +480,6 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
 
 
 
-'matchPairsRemaining': {
-  en: 'Remaining',
-  tk: 'Galdy',
-  ru: 'Осталось',
-  cn: '剩余',
-  cde: 'Übrig',
-  es: 'Restantes',
-  fr: 'Restants',
-  kr: '남은',
-  sa: 'المتبقي',
-},
-
-
-
-
-
-'matchPairsPairs': {
-  en: 'pairs',
-  tk: 'taý',
-  ru: 'пар',
-  cn: '对',
-  cde: 'Paare',
-  es: 'pares',
-  fr: 'paires',
-  kr: '쌍',
-  sa: 'أزواج',
-},
-
-
-
 
 
 'matchPairsShuffleRestart': {
@@ -543,6 +513,42 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
 
 
 
+
+'flipTilesShow': {
+  en: 'Show',
+  tk: 'Görkez',
+  ru: 'Показать',
+  cn: '显示',
+  cde: 'Anzeigen',
+  es: 'Mostrar',
+  fr: 'Afficher',
+  kr: '보기',
+  sa: 'إظهار',
+},
+
+'flipTilesShowTexts': {
+  en: 'Show texts',
+  tk: 'Tekstleri görkez',
+  ru: 'Показать тексты',
+  cn: '显示文字',
+  cde: 'Texte anzeigen',
+  es: 'Mostrar textos',
+  fr: 'Afficher les textes',
+  kr: '텍스트 보이기',
+  sa: 'إظهار النصوص',
+},
+
+'flipTilesHideTexts': {
+  en: 'Hide texts',
+  tk: 'Tekstleri gizle',
+  ru: 'Скрыть тексты',
+  cn: '隐藏文字',
+  cde: 'Texte ausblenden',
+  es: 'Ocultar textos',
+  fr: 'Masquer les textes',
+  kr: '텍스트 숨기기',
+  sa: 'إخفاء النصوص',
+},
 
 'flipTilesAllFlipped': {
   en: 'All cards are already flipped!',
@@ -1226,5 +1232,53 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Continue à regarder !',
   kr: '계속 봐요!',
   sa: 'استمر في المشاهدة!',
+},
+
+'wordSearchTimesUp': {
+  en: 'Time\'s up!',
+  tk: 'Wagt gutardy!',
+  ru: 'Время вышло!',
+  cn: '时间到！',
+  cde: 'Die Zeit ist um!',
+  es: '¡Se acabó el tiempo!',
+  fr: 'Temps écoulé !',
+  kr: '시간 종료!',
+  sa: 'انتهى الوقت!',
+},
+
+'wordSearchFoundOfTotal': {
+  en: 'Found {found} of {total} words',
+  tk: '{total} sözüň {found}-si tapyldy',
+  ru: 'Найдено слов: {found} из {total}',
+  cn: '找到 {found}/{total} 个单词',
+  cde: '{found} von {total} Wörtern gefunden',
+  es: 'Encontradas {found} de {total} palabras',
+  fr: '{found} mots trouvés sur {total}',
+  kr: '{total}개 중 {found}개 단어를 찾았습니다',
+  sa: 'تم العثور على {found} من {total} كلمات',
+},
+
+'wordSearchTeamWins': {
+  en: 'Team {number} wins!',
+  tk: '{number}-nji topar ýeňdi!',
+  ru: 'Команда {number} победила!',
+  cn: '第 {number} 队获胜！',
+  cde: 'Team {number} gewinnt!',
+  es: '¡El equipo {number} gana!',
+  fr: 'L\'équipe {number} gagne !',
+  kr: '{number}팀 승리!',
+  sa: 'فاز الفريق {number}!',
+},
+
+'wordSearchDraw': {
+  en: 'It\'s a draw!',
+  tk: 'Deňlik!',
+  ru: 'Ничья!',
+  cn: '平局！',
+  cde: 'Unentschieden!',
+  es: '¡Empate!',
+  fr: 'Égalité !',
+  kr: '무승부!',
+  sa: 'تعادل!',
 },
 };

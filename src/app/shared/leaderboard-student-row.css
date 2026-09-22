@@ -164,34 +164,6 @@
   white-space: nowrap;
 }
 
-/* ===== Hot streak: consecutive correct answers with no hammer hit in between (see
-   streakHotThreshold/isHotStreak) — a small flame badge plus a warm glow on the row itself, both
-   purely additive to whatever else is already going on (medals, team color, baseline badge). ===== */
-.lb-row-streak-badge {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.15rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 9999px;
-  background: rgba(249, 115, 22, 0.14);
-  color: #ea580c;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-  animation: lbStreakFlicker 1.6s ease-in-out infinite;
-}
-
-@keyframes lbStreakFlicker {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-}
-
-:host.lb-row-hot-streak {
-  border-color: #fdba74;
-  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.25), 0 4px 14px rgba(249, 115, 22, 0.22);
-}
-
 /* ===== Flying above another row during the FLIP reorder animation ===== */
 :host.lb-row-flying {
   box-shadow: 0 20px 40px rgba(250, 204, 21, 0.5), 0 6px 16px rgba(15, 23, 42, 0.3);

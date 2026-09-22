@@ -6,6 +6,8 @@ import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { showAppNotification } from '../../core/notification';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { AitType } from '../../shared/ait-selector';
+import { itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 
 interface Card {
   id: number;
@@ -15,7 +17,7 @@ interface Card {
   flipped: boolean;
   matched: boolean;
   shake?: boolean;
-  kind: 'image' | 'text' | 'both';
+  kind: AitType;
 }
 
 @Component({
@@ -31,8 +33,9 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   flippedCards: Card[] = [];
   gameFinished = false;
   isPeeking = false;
-  matchWithText = false;
-  matchWithTextActive = false;
+  // 1 type picked: both cards of a pair duplicate that type's content. 2 types picked:
+  // card A shows type[0], card B shows type[1] (e.g. an image card paired with its text).
+  aitOrder: AitType[] = ['image'];
   keyboardSelectedIndex = 0;
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
@@ -40,6 +43,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: '1 then 2', action: 'Flip card 12' },
     { key: '← ↑ ↓ →', action: 'Move card highlight' },
     { key: 'Enter', action: 'Flip highlighted card' },
+    { key: 'Space', action: 'Play highlighted card audio' },
     { key: 'P', action: 'Peek at cards' },
     { key: 'R', action: 'Shuffle and restart' }
   ];
@@ -48,6 +52,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   cardRows: Card[][] = [];
   boardHeight = 0;
   cardTextSize = 14;
+  cardIconSize = 32;
   gap = 8;
 
   // Dynamic card sizing
@@ -60,6 +65,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private rewardSound: HTMLAudioElement | null = null;
+  private activeAudio: HTMLAudioElement | null = null;
+  private activeAudioUrl: string | null = null;
   private cardImageUrls: string[] = [];
   private layoutSubscription?: Subscription;
   private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
@@ -80,14 +87,16 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.route.snapshot.paramMap.get('id') ??
       this.route.parent?.snapshot.paramMap.get('id');
     this.topicId = Number(idParam);
-    this.matchWithText = this.route.snapshot.queryParamMap.get('matchWithText') === 'true';
+    this.aitOrder = parseAitOrder(this.route.snapshot.queryParamMap.get('ait'), ['image']).slice(0, 2);
     this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
     if (this.items.length === 0) {
       showAppNotification(this.langService.translate('matchPairsNoItems'), 'error');
       this.router.navigate(['/topics', this.topicId, 'activities']);
       return;
     }
-    this.setupGame();
+    if (!this.setupGame()) {
+      return;
+    }
 
     this.flipSound = new Audio('assets/sound/flip.mp3');
     this.flipSound.volume = 0.4;
@@ -115,6 +124,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearPendingTimers();
     this.layoutSubscription?.unsubscribe();
     [this.flipSound, this.buzzSound, this.collectSound, this.rewardSound].forEach(sound => sound?.pause());
+    this.stopActiveAudio();
     this.cleanupCardImageUrls();
   }
 
@@ -185,6 +195,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.gridRows = best.rows;
     this.cardSize = best.size;
     this.cardTextSize = Math.max(9, Math.min(15, Math.floor(this.cardSize / 8)));
+    this.cardIconSize = Math.max(16, Math.min(64, Math.floor(this.cardSize * 0.4)));
     this.boardHeight = best.rows * this.cardSize + (best.rows - 1) * this.gap;
     this.rebuildCardRows();
     this.cdr.detectChanges();
@@ -230,55 +241,42 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pendingTimers.clear();
   }
 
-  private setupGame() {
+  // Returns false (and navigates away) when no item carries the content the selected AIT
+  // types need - the same "eligible items" filtering pattern the other AIT games use.
+  private setupGame(): boolean {
     this.clearPendingTimers();
     this.cleanupCardImageUrls();
+    this.stopActiveAudio();
 
-    const textEligibleItems = this.items.filter(item => item.image && item.text);
-    this.matchWithTextActive = this.matchWithText && textEligibleItems.length > 0;
-    const gameItems = this.matchWithTextActive ? textEligibleItems : this.items;
+    const types = this.aitOrder;
+    const eligibleItems = this.items.filter(item => types.every(type => itemHasAitContent(item, type)));
+    if (eligibleItems.length === 0) {
+      showAppNotification(this.langService.translate('matchPairsNoItems'), 'error');
+      this.router.navigate(['/topics', this.topicId, 'activities']);
+      return false;
+    }
 
     const pairs: Card[] = [];
-    gameItems.forEach((item, idx) => {
-      if (this.matchWithTextActive) {
-        pairs.push({
-          id: pairs.length,
-          pairId: idx,
-          item,
-          imageSrc: this.createCardImageUrl(item.image),
-          flipped: false,
-          matched: false,
-          kind: 'image'
-        });
-        pairs.push({
-          id: pairs.length,
-          pairId: idx,
-          item,
-          imageSrc: null,
-          flipped: false,
-          matched: false,
-          kind: 'text'
-        });
-      } else {
-        pairs.push({
-          id: pairs.length,
-          pairId: idx,
-          item,
-          imageSrc: this.createCardImageUrl(item.image),
-          flipped: false,
-          matched: false,
-          kind: 'both'
-        });
-        pairs.push({
-          id: pairs.length,
-          pairId: idx,
-          item,
-          imageSrc: this.createCardImageUrl(item.image),
-          flipped: false,
-          matched: false,
-          kind: 'both'
-        });
-      }
+    eligibleItems.forEach((item, idx) => {
+      const [kindA, kindB] = types.length === 2 ? types : [types[0], types[0]];
+      pairs.push({
+        id: pairs.length,
+        pairId: idx,
+        item,
+        imageSrc: kindA === 'image' ? this.createCardImageUrl(item.image) : null,
+        flipped: false,
+        matched: false,
+        kind: kindA
+      });
+      pairs.push({
+        id: pairs.length,
+        pairId: idx,
+        item,
+        imageSrc: kindB === 'image' ? this.createCardImageUrl(item.image) : null,
+        flipped: false,
+        matched: false,
+        kind: kindB
+      });
     });
 
     // Shuffle
@@ -294,6 +292,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.rebuildCardRows();
     this.calculateCardSize();
     this.cdr.detectChanges();
+    return true;
   }
 
   onCardClick(index: number) {
@@ -379,6 +378,34 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // Stops on click so it doesn't also bubble up to the card's flip/match click handler.
+  onAudioFaceClick(event: Event, item: Item | null | undefined) {
+    event.stopPropagation();
+    if (item?.audio) this.playTrackedAudio(item.audio);
+  }
+
+  private playTrackedAudio(blob: Blob) {
+    this.stopActiveAudio();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this.activeAudio = audio;
+    this.activeAudioUrl = url;
+    audio.play().catch(e => console.debug('Audio play error:', e));
+    audio.onended = () => this.stopActiveAudio();
+  }
+
+  private stopActiveAudio() {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio.currentTime = 0;
+      this.activeAudio = null;
+    }
+    if (this.activeAudioUrl) {
+      URL.revokeObjectURL(this.activeAudioUrl);
+      this.activeAudioUrl = null;
+    }
+  }
+
   resetGame() {
     this.setupGame();
   }
@@ -425,9 +452,23 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.clearKeyboardNumberBuffer();
         this.onCardClick(this.keyboardSelectedIndex);
         break;
+      case ' ':
+        event.preventDefault();
+        this.clearKeyboardNumberBuffer();
+        this.playHighlightedCardAudio();
+        break;
       default:
         this.handleLetterShortcut(event);
         break;
+    }
+  }
+
+  // Face-down audio cards show a speaker on the front too, so listening doesn't require
+  // spending a flip - this mirrors that from the keyboard, matched/flipped or not.
+  private playHighlightedCardAudio() {
+    const card = this.cards[this.keyboardSelectedIndex];
+    if (card && card.kind === 'audio' && card.item.audio) {
+      this.playTrackedAudio(card.item.audio);
     }
   }
 

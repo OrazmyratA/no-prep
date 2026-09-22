@@ -64,7 +64,7 @@ export class BookReaderAnnotationController {
       x: point.x,
       y: point.y,
       width: focusRect ? focusRect.width * 0.22 : 0.16,
-      height: focusRect ? focusRect.height * 0.12 : 0.045,
+      height: focusRect ? focusRect.height * 0.12 : this.reader.textSizeHeight,
       color: this.reader.textColor,
       value: ''
     };
@@ -158,6 +158,14 @@ export class BookReaderAnnotationController {
 
   getStrokePolylinePoints(stroke: BookAnnotationStroke): string {
     return stroke.points.map((point) => `${clamp(point.x, 0, 1)},${clamp(point.y, 0, 1)}`).join(' ');
+  }
+
+  getStrokeWidthPx(element: BookElement, page: BookPage | null): number {
+    const fallback = Number(element.data?.['strokePx']) || (element.type === 'highlighter' ? 18 : 6);
+    const ratio = Number(element.data?.['strokeWidthRatio']);
+    if (!Number.isFinite(ratio) || ratio <= 0 || !page) return fallback;
+    const rect = this.getPageContentRect(page.id);
+    return rect?.width ? ratio * rect.width : fallback;
   }
 
   getElementPolylinePoints(element: BookElement): string {
@@ -267,12 +275,15 @@ export class BookReaderAnnotationController {
     this.reader.drawing = true;
     this.reader.drawingStartedInInkMode = true;
     const point = this.drawingCanvasController.getCanvasPoint(event, canvas);
+    const width = this.reader.highlighterMode ? this.reader.highlighterWidth : this.reader.penWidth;
+    const rect = canvas.getBoundingClientRect();
     this.reader.activeStroke = {
       id: this.reader.createId('stroke'),
       pageId: page.id,
       kind: this.reader.highlighterMode ? 'highlighter' : 'pen',
       color: this.reader.highlighterMode ? this.reader.highlighterColor : this.reader.penColor,
-      width: this.reader.highlighterMode ? this.reader.highlighterWidth : this.reader.penWidth,
+      width,
+      widthRatio: rect.width ? width / rect.width : undefined,
       points: [point],
       createdAt: Date.now()
     };
@@ -386,7 +397,12 @@ export class BookReaderAnnotationController {
 
   getPagePointFromEvent(frame: HTMLElement | null, event: MouseEvent | PointerEvent): { x: number; y: number } | null {
     if (!frame) return null;
-    const rect = frame.getBoundingClientRect();
+    // Measure against .page-content, not the outer .page-frame: during an active focus-crop
+    // popup, .page-content is enlarged/shifted to show just the cropped region (see
+    // getFocusContentStyle), so its on-screen rect no longer matches the frame's. Using the
+    // frame's rect here placed text boxes away from the actual click point inside a crop.
+    const content = frame.querySelector<HTMLElement>('.page-content') ?? frame;
+    const rect = content.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     return {
       x: clamp((event.clientX - rect.left) / rect.width, 0, 1),

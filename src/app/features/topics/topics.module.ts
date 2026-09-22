@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { TopicsRoutingModule } from './topics-routing.module';
 import { TopicsListComponent } from './topics-list/topics-list';
@@ -13,6 +13,7 @@ import { TranslatePipe } from "../../shared/translate-pipe";
   declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent],
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     DragDropModule,
     SharedModule,

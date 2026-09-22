@@ -349,17 +349,27 @@
 
 /* Speaker icon styling */
 .speaker-icon {
+  border: none;
+  background: transparent;
+  padding: 0;
   font-size: 5rem;
   cursor: pointer;
   transition: transform 0.2s, filter 0.2s;
   filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3));
 }
-.speaker-icon:hover {
+.speaker-icon:hover:not(:disabled) {
   transform: scale(1.1);
   filter: drop-shadow(0 12px 20px rgba(0,0,0,0.4));
 }
-.speaker-icon:active {
+.speaker-icon:active:not(:disabled) {
   transform: scale(0.95);
+}
+.speaker-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.option-speaker-icon {
+  font-size: 3.4rem;
 }
 
 /* Responsive adjustments */

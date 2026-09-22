@@ -199,6 +199,38 @@
       </span>
     </button>
 
+    <!-- Question card between the dice -->
+    <div class="question-card"
+         [class.idle]="!questionActive"
+         [class.solved]="quizSolved"
+         (click)="hasFlipBack && toggleQuestionFlip()">
+      <div *ngIf="!questionActive" class="question-placeholder" aria-hidden="true">🎲</div>
+
+      <ng-container *ngIf="questionActive && questionItem as q">
+        <ng-container *ngIf="hasFlipBack; else staticQuestionFace">
+          <div class="flip-card" [class.flipped]="questionFlipped">
+            <div class="flip-card-front">
+              <ng-container *ngTemplateOutlet="questionContent; context: { type: aitQuestionType, $implicit: q }"></ng-container>
+            </div>
+            <div class="flip-card-back">
+              <ng-container *ngTemplateOutlet="questionContent; context: { type: aitBackType, $implicit: q }"></ng-container>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #staticQuestionFace>
+          <ng-container *ngTemplateOutlet="questionContent; context: { type: aitQuestionType, $implicit: q }"></ng-container>
+        </ng-template>
+      </ng-container>
+
+      <ng-template #questionContent let-q let-type="type">
+        <div *ngIf="type === 'text'" class="word-display">{{ q.text }}</div>
+        <div *ngIf="type === 'image'" class="image-display">
+          <img *ngIf="q.image" [src]="imageUrl(q.image, q.id!)" alt="question">
+        </div>
+        <div *ngIf="type === 'audio'" class="speaker-icon" (click)="playQuestionAudio($event)">🔊</div>
+      </ng-template>
+    </div>
+
     <button
       type="button"
       class="team-dice-control blue-dice-control"
@@ -234,29 +266,18 @@
          #itemsScroller
          (scroll)="onItemsScroll()"
          touch-action="pan-x">
-      <div *ngFor="let item of items; let idx = index; trackBy: trackByItem"
+      <div *ngFor="let opt of optionItems; let idx = index; trackBy: trackByItem"
            class="item-flip-scene"
-           role="button"
-           tabindex="0"
-           [attr.aria-pressed]="isItemFlipped(item, idx)"
-           [class.flipped]="isItemFlipped(item, idx)"
-           [class.keyboard-selected]="isKeyboardItemSelected(idx)"
-           (click)="toggleItemFace(item, idx)"
-           (keydown.enter)="toggleItemFace(item, idx)"
-           (keydown.space)="toggleItemFace(item, idx)">
+           [class.awaiting]="questionActive && !quizSolved"
+           [class.selected]="quizSolved && opt.id === selectedOptionId"
+           [class.disabled]="!questionActive || quizSolved || quizFailed"
+           [class.wrong]="opt.id === wrongOptionId"
+           (click)="onOptionClick(opt)">
           <span *ngIf="keyboardHintsVisible && itemKeyboardNumber(idx) as itemNumber" class="item-keyboard-number">{{ itemNumber }}</span>
-          <div class="item-card">
-            <div class="item-face front">
-              <img *ngIf="item.image" [src]="imageUrl(item.image, item.id!)" alt="item">
-              <span *ngIf="!item.image && item.text">{{ item.text }}</span>
-              <span *ngIf="!item.image && !item.text" class="muted">{{ 'cupClashNoPreview' | translate }}</span>
-            </div>
-            <div class="item-face back">
-              <div class="back-content">
-                <span class="back-icon">?</span>
-                <span class="back-label">{{ 'cupClashTapToReveal' | translate }}</span>
-              </div>
-            </div>
+          <div class="item-face">
+            <img *ngIf="aitOptionsType === 'image' && opt.image" [src]="imageUrl(opt.image, opt.id!)" alt="option">
+            <span *ngIf="aitOptionsType === 'text'">{{ opt.text }}</span>
+            <span *ngIf="aitOptionsType === 'audio'" class="speaker-icon item-speaker-icon" (click)="onOptionAudioClick($event, opt)">🔊</span>
           </div>
         </div>
       </div>

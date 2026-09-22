@@ -310,6 +310,44 @@ export class BookReaderNavigationController {
     }
   }
 
+  getTextSizePercent(): number {
+    const selected = this.reader.selectedText;
+    if (selected) {
+      const text = this.reader.getPageAnnotations(selected.pageId).texts
+        .find((item: { id: string }) => item.id === selected.textId);
+      if (text?.height) return Math.round(text.height * 1000) / 10;
+    }
+    if (this.reader.activeTextInput?.height) {
+      return Math.round(this.reader.activeTextInput.height * 1000) / 10;
+    }
+    return Math.round(this.reader.textSizeHeight * 1000) / 10;
+  }
+
+  selectTextSize(percent: number | string): void {
+    const newHeight = clamp(Number(percent) / 100, 0.02, 0.9);
+    this.reader.textSizeHeight = newHeight;
+
+    const scaleToNewHeight = (box: { width?: number; height?: number }) => {
+      const currentHeight = box.height || newHeight;
+      const currentWidth = box.width || 0.16;
+      const scale = currentHeight > 0 ? newHeight / currentHeight : 1;
+      box.width = clamp(currentWidth * scale, 0.03, 1);
+      box.height = newHeight;
+    };
+
+    if (this.reader.activeTextInput) {
+      scaleToNewHeight(this.reader.activeTextInput);
+    }
+    if (this.reader.selectedText) {
+      const text = this.reader.getPageAnnotations(this.reader.selectedText.pageId).texts
+        .find((item: { id: string }) => item.id === this.reader.selectedText?.textId);
+      if (text) {
+        scaleToNewHeight(text);
+        void this.reader.saveAnnotations();
+      }
+    }
+  }
+
   startPageJump(): void {
     this.reader.syncPageJumpValue();
   }

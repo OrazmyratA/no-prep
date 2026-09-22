@@ -86,7 +86,7 @@ export const GAMES: GameConfig[] = [
     nameKey: 'gameWordSearchName',
     descKey: 'gameWordSearchDesc',
     icon: '\u{1F50E}',
-    requiresSettings: false,
+    requiresSettings: true,
   },
   {
     id: 'line-trace-match',

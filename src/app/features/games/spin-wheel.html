@@ -50,16 +50,36 @@
       <div class="quiz-inner w-full max-w-5xl mx-auto p-4 text-center">
         <!-- Selected item with pop‑in animation -->
         <div class="flex justify-center mb-4">
-          <div class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in">
-            <img *ngIf="!useTextOnWheel && selectedItem.image" 
-                 [src]="imageUrl(selectedItem.image, selectedItem.id!)" 
-                 class="max-w-full max-h-full object-contain">
-            <div *ngIf="useTextOnWheel && selectedItem.text" 
-                 class="text-5xl font-bold text-gray-800 px-4 text-center break-words">{{ selectedItem.text }}</div>
-            <div *ngIf="!useTextOnWheel && !selectedItem.image && selectedItem.text" 
-                 class="text-5xl font-bold text-gray-800 px-4 text-center break-words">{{ selectedItem.text }}</div>
+          <div class="selected-item-container bg-white rounded-2xl flex items-center justify-center shadow-2xl pop-in"
+               [class.flip-enabled]="hasFlipBack"
+               (click)="toggleCardFlip()">
+            <ng-container *ngIf="hasFlipBack; else staticFace">
+              <div class="ait-flip-card" [class.flipped]="isFlipped">
+                <div class="ait-flip-face ait-flip-front">
+                  <ng-container *ngTemplateOutlet="aitContent; context: { type: aitQuestionType, item: selectedItem }"></ng-container>
+                </div>
+                <div class="ait-flip-face ait-flip-back">
+                  <ng-container *ngTemplateOutlet="aitContent; context: { type: aitBackType, item: selectedItem }"></ng-container>
+                </div>
+              </div>
+            </ng-container>
+            <ng-template #staticFace>
+              <ng-container *ngTemplateOutlet="aitContent; context: { type: aitQuestionType, item: selectedItem }"></ng-container>
+            </ng-template>
           </div>
         </div>
+
+        <ng-template #aitContent let-type="type" let-item="item">
+          <img *ngIf="type === 'image' && item?.image"
+               [src]="imageUrl(item.image, item.id!)"
+               class="max-w-full max-h-full object-contain">
+          <div *ngIf="type === 'image' && !item?.image" class="text-5xl font-bold text-gray-300 px-4 text-center">?</div>
+          <div *ngIf="type === 'text'" class="text-5xl font-bold text-gray-800 px-4 text-center break-words">{{ item?.text || '?' }}</div>
+          <button *ngIf="type === 'audio'" type="button" class="ait-audio-btn" [disabled]="!item?.audio"
+                  (click)="onAudioFaceClick($event, item)">
+            <span class="speaker-icon">🔊</span>
+          </button>
+        </ng-template>
 
         <!-- Simple OK / Oops mode (no text on items) -->
         <div *ngIf="simpleConfirmMode" class="flex justify-center gap-6 mt-4">
@@ -84,10 +104,16 @@
                   [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
                   class="quiz-option relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
             <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
-            <div *ngIf="!useTextOnWheel">{{ opt.text || '?' }}</div>
-            <div *ngIf="useTextOnWheel">
+            <div *ngIf="aitOptionsType === 'text'">{{ opt.text || '?' }}</div>
+            <div *ngIf="aitOptionsType === 'image'">
               <img *ngIf="opt.image" [src]="imageUrl(opt.image, opt.id!)" class="w-40 h-32 object-contain mx-auto mb-2">
               <span *ngIf="!opt.image">?</span>
+            </div>
+            <div *ngIf="aitOptionsType === 'audio'" class="flex flex-col items-center gap-1">
+              <span class="ait-option-audio-btn" [class.disabled]="!opt.audio"
+                    (click)="onAudioFaceClick($event, opt)">
+                <span class="speaker-icon text-3xl">🔊</span>
+              </span>
             </div>
           </button>
         </div>

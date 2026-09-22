@@ -21,8 +21,9 @@
     <canvas #spotlightCanvas
             class="spotlight-canvas"
             (mousemove)="onMouseMove($event)"
+            (mousedown)="onCanvasPress()"
             (touchmove)="onTouchMove($event)"
-            (touchstart)="onTouchMove($event)"></canvas>
+            (touchstart)="onTouchStart($event)"></canvas>
 
     <div *ngIf="currentItem"
          class="spotlight-pointer"

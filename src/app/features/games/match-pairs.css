@@ -5,9 +5,24 @@
   position: relative;
 }
 
-.match-keyboard-help {
+.match-progress {
   position: absolute;
   top: 1rem;
+  left: 1rem;
+  z-index: 90;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 12px 25px rgba(15, 23, 42, 0.2);
+}
+
+.match-keyboard-help {
+  position: absolute;
+  top: 4.35rem;
   left: 1rem;
   z-index: 90;
 }
@@ -99,6 +114,28 @@
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
+.card-front-audio {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+.match-pairs-speaker {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.15s;
+}
+
+.match-pairs-speaker:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.match-pairs-speaker:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .card-back {
   background: white;
   transform: rotateY(180deg);
@@ -137,8 +174,15 @@
     padding: 0.5rem !important;
   }
 
-  .match-keyboard-help {
+  .match-progress {
     top: 0.5rem;
+    left: 0.5rem;
+    font-size: 0.95rem;
+    padding: 0.4rem 0.75rem;
+  }
+
+  .match-keyboard-help {
+    top: 3.4rem;
     left: 0.5rem;
   }
 
@@ -147,7 +191,6 @@
     line-height: 1.1;
   }
 
-  .match-info,
   .match-actions {
     margin-top: 0.45rem !important;
   }

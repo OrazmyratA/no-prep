@@ -21,39 +21,37 @@
 
     <!-- Question area -->
  <div class="question-area">
-  <div class="question-card" (click)="toggleFlip()">
-    <!-- Flip container (only if item has audio, otherwise just show content) -->
-    <div *ngIf="questions[currentIndex]?.correctItem?.audio; else noAudioContent"
-         class="flip-card"
-         [class.flipped]="isFlipped">
-      <!-- Front side: speaker icon -->
-      <div class="flip-card-front">
-        <div class="speaker-icon" (click)="playAudioAndStay($event)">
-          🔊
+  <div class="question-card" (click)="hasFlipBack && toggleFlip()">
+    <!-- Flip card (only when a 2nd AIT type was picked for the flip-side hint) -->
+    <ng-container *ngIf="hasFlipBack; else staticFace">
+      <div class="flip-card" [class.flipped]="isFlipped">
+        <div class="flip-card-front">
+          <ng-container *ngTemplateOutlet="aitContent; context: { type: aitQuestionType, item: questions[currentIndex].correctItem }"></ng-container>
+        </div>
+        <div class="flip-card-back">
+          <ng-container *ngTemplateOutlet="aitContent; context: { type: aitBackType, item: questions[currentIndex].correctItem }"></ng-container>
         </div>
       </div>
-      <!-- Back side: actual question content -->
-      <div class="flip-card-back">
-        <ng-container *ngTemplateOutlet="questionContent"></ng-container>
-      </div>
-    </div>
-
-    <!-- No audio: just show content (no flip) -->
-    <ng-template #noAudioContent>
-      <ng-container *ngTemplateOutlet="questionContent"></ng-container>
+    </ng-container>
+    <ng-template #staticFace>
+      <ng-container *ngTemplateOutlet="aitContent; context: { type: aitQuestionType, item: questions[currentIndex].correctItem }"></ng-container>
     </ng-template>
 
     <!-- Reusable content template -->
-    <ng-template #questionContent>
-      <!-- Mode: word → image (question = text, options = images) -->
-      <div *ngIf="!reverseMode" class="question-text">
-        <div class="word-display">{{ questions[currentIndex].correctItem.text }}</div>
+    <ng-template #aitContent let-type="type" let-item="item">
+      <div *ngIf="type === 'text'" class="question-text">
+        <div class="word-display">{{ item?.text || '?' }}</div>
       </div>
-      <!-- Mode: image → word (question = image, options = text) -->
-      <div *ngIf="reverseMode" class="question-image">
+      <div *ngIf="type === 'image'" class="question-image">
         <div class="image-display">
-          <img [src]="imageUrl(questions[currentIndex].correctItem.image!, questions[currentIndex].correctItem.id!)" alt="question">
+          <img *ngIf="item?.image" [src]="imageUrl(item.image, item.id!)" alt="question">
+          <span *ngIf="!item?.image" class="word-display">?</span>
         </div>
+      </div>
+      <div *ngIf="type === 'audio'" class="question-audio">
+        <button type="button" class="speaker-icon" [disabled]="!item?.audio" (click)="onAudioFaceClick($event, item)">
+          🔊
+        </button>
       </div>
     </ng-template>
   </div>
@@ -70,14 +68,16 @@
            [attr.data-opt-id]="opt.id"
            (click)="onOptionClick(opt)">
         <span *ngIf="keyboardHintsVisible" class="option-number-badge">{{ optIndex + 1 }}</span>
-        <!-- In word→image mode, options are images -->
-        <div *ngIf="!reverseMode && opt.image" class="option-image">
-          <img [src]="imageUrl(opt.image, opt.id!)" alt="option">
+        <div *ngIf="aitOptionsType === 'image'" class="option-image">
+          <img *ngIf="opt.image" [src]="imageUrl(opt.image, opt.id!)" alt="option">
+          <span *ngIf="!opt.image" class="option-text">?</span>
         </div>
-        <!-- Fallback if image missing in this mode: show text -->
-        <div *ngIf="!reverseMode && !opt.image" class="option-text">{{ opt.text }}</div>
-        <!-- In image→word mode, options are texts -->
-        <div *ngIf="reverseMode" class="option-text">{{ opt.text }}</div>
+        <div *ngIf="aitOptionsType === 'text'" class="option-text">{{ opt.text || '?' }}</div>
+        <div *ngIf="aitOptionsType === 'audio'" class="option-audio">
+          <button type="button" class="speaker-icon option-speaker-icon" [disabled]="!opt.audio" (click)="onAudioFaceClick($event, opt)">
+            🔊
+          </button>
+        </div>
       </div>
     </div>
 

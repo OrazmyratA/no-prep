@@ -9,6 +9,7 @@ import { BookLibraryService } from '../../../core/book-library';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
+import { AudioVoiceChange } from '../../../shared/audio-uploader';
 
 @Component({
   selector: 'app-topic-form',
@@ -77,27 +78,50 @@ async loadTopic(id: number) {
     this.topicForm.patchValue({ name: topic.name });
     const items = await db.items.where('topicId').equals(id).sortBy('order');
     items.forEach((item: Item) => {
-    this.items.push(this.createItemFormGroup(item.id ?? null, item.text, item.image, item.audio));
+    this.items.push(this.createItemFormGroup(item.id ?? null, item.text, item.image, item.audio, {
+      audioSource: item.audioSource,
+      audioPitch: item.audioPitch,
+      audioSpeed: item.audioSpeed,
+      audioText: item.audioText
+    }));
     });
   }
 }
 
-onAudioSelected(blob: Blob | null, index: number) {
+onVoiceChange(change: AudioVoiceChange, index: number) {
   const item = this.items.at(index);
-  item.patchValue({ audio: blob });
-  if (blob) {
+  // With no clip left there is nothing to re-adjust, so the voice metadata goes too.
+  const hasAudio = !!change.audio;
+  item.patchValue({
+    audio: change.audio,
+    audioSource: hasAudio ? change.source : null,
+    audioPitch: hasAudio ? change.pitch : null,
+    audioSpeed: hasAudio ? change.speed : null,
+    audioText: hasAudio ? change.text : ''
+  });
+  if (hasAudio) {
     this.expandedAudioItems.add(item);
   } else {
     this.expandedAudioItems.delete(item);
   }
 }
 
-createItemFormGroup(id: number | null = null, text: string = '', image: Blob | null = null, audio: Blob | null = null): FormGroup {
+createItemFormGroup(
+  id: number | null = null,
+  text: string = '',
+  image: Blob | null = null,
+  audio: Blob | null = null,
+  voice: { audioSource?: Blob; audioPitch?: number; audioSpeed?: number; audioText?: string } = {}
+): FormGroup {
   return this.fb.group({
     id: [id],
     text: [text],
     image: [image],
-    audio: [audio]
+    audio: [audio],
+    audioSource: [voice.audioSource ?? null],
+    audioPitch: [voice.audioPitch ?? null],
+    audioSpeed: [voice.audioSpeed ?? null],
+    audioText: [voice.audioText ?? '']
   }, { validators: (group: AbstractControl) => {
       const g = group as FormGroup;
       return g.get('text')?.value || g.get('image')?.value || g.get('audio')?.value ? null : { atLeastOne: true };
@@ -188,7 +212,11 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         id: item.id ?? undefined,
         text: item.text,
         image: item.image,
-        audio: item.audio
+        audio: item.audio,
+        audioSource: item.audio ? item.audioSource ?? undefined : undefined,
+        audioPitch: item.audio ? item.audioPitch ?? undefined : undefined,
+        audioSpeed: item.audio ? item.audioSpeed ?? undefined : undefined,
+        audioText: item.audio ? item.audioText || undefined : undefined
       })));
 
       let savedTopicId = this.topicId || 0;

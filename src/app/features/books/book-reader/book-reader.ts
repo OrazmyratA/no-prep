@@ -148,6 +148,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   highlighterColor = '#fde047';
   highlighterWidth = 28;
   textColor = '#111827';
+  textSizeHeight = 0.045;
   tracingColor = '#2563eb';
   tracingWidth = 3;
   readonly annotationColors = ['#111827', '#ef4444', '#2563eb', '#16a34a', '#f59e0b', '#a855f7', '#ec4899', '#ffffff'];
@@ -595,7 +596,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isReaderSurfaceToolActive(): boolean {
-    return this.drawMode || this.highlighterMode || this.textMode;
+    return this.drawMode || this.highlighterMode || this.textMode || this.isTracingSessionActive();
+  }
+
+  isTracingSessionActive(): boolean {
+    return !!this.activeTracingSession && !this.activeTracingSession.completed;
   }
 
   addTemporaryText(): void {
@@ -608,6 +613,14 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   selectTextColor(color: string): void {
     this.navigationController.selectTextColor(color);
+  }
+
+  getTextSizePercent(): number {
+    return this.navigationController.getTextSizePercent();
+  }
+
+  selectTextSize(percent: number | string): void {
+    this.navigationController.selectTextSize(percent);
   }
 
   updateColorFromWheel(event: Event, target: 'pen' | 'highlighter' | 'tracing' | 'text'): void {
@@ -861,6 +874,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getElementPolylinePoints(element: BookElement): string {
     return this.annotationController.getElementPolylinePoints(element);
+  }
+
+  getStrokeWidthPx(element: BookElement, page: BookPage | null): number {
+    return this.annotationController.getStrokeWidthPx(element, page);
   }
 
   isTextInputForPage(page: BookPage | null): boolean {
@@ -1233,6 +1250,32 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.selectedText) return;
       event.preventDefault();
       this.deleteTextAnnotation(this.selectedText.pageId, this.selectedText.textId);
+      return;
+    }
+
+    if (this.expandedElement?.type === 'answerKey' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault();
+      if (event.key === 'ArrowLeft') {
+        this.showPreviousAnswerKeyImage();
+      } else {
+        this.showNextAnswerKeyImage();
+      }
+      return;
+    }
+
+    if (this.expandedElement?.type === 'video' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault();
+      // YouTube embeds have no seek control here, but the page still must not turn
+      // underneath the open video popup, so we still swallow the key.
+      if (!this.isYouTubeVideo(this.expandedElement)) {
+        this.skipExpandedVideo(event.key === 'ArrowLeft' ? -1 : 1);
+      }
+      return;
+    }
+
+    if (this.expandedFocusElement && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+      event.preventDefault();
+      this.focusController.showAdjacentFocusElement(event.key === 'ArrowLeft' ? -1 : 1);
       return;
     }
 

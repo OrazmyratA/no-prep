@@ -115,8 +115,8 @@
 }
 
 .item-image {
-  width: 600px;
-  height: 450px;
+  width: min(80vw, 1000px);
+  height: min(75vh, 750px); /* 4:3, scaled up from the old fixed 600x450 */
   background-color: rgba(0, 0, 0, 0.3);
   border-radius: 1rem;
   overflow: hidden;
@@ -126,7 +126,7 @@
 .item-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;   /* Crops to fill the box while preserving aspect ratio */
+  object-fit: contain;   /* Shows the whole image, uncropped, on every side */
 }
 
 .item-text {
@@ -154,17 +154,17 @@
   mix-blend-mode: normal;
 }
 
+/* A visible arrow cursor (the real one is hidden over the canvas). Its tip sits exactly on the
+   centre of the spot, so what you point at is what the spot is on. */
 .spotlight-pointer {
   position: absolute;
-  width: 32px;
-  height: 32px;
-  border: 2px solid rgba(255, 214, 118, 0.95);
-  border-radius: 999px;
+  width: 30px;
+  height: 30px;
   pointer-events: none;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 20px rgba(255, 214, 118, 0.6), 0 0 8px rgba(255, 214, 118, 0.4);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 L3 19 L7.6 14.8 L10.9 22 L14 20.6 L10.8 13.6 L17 13.4 Z' fill='white' stroke='black' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat 0 0 / contain;
+  transform: translate(-3.75px, -2.5px);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
   z-index: 30;
-  mix-blend-mode: lighten;
 }
 
 /* Navigation buttons */
@@ -267,9 +267,9 @@
   }
 
   .item-image {
-    width: 90vw;
-    height: calc(90vw * 0.75); /* maintain 4:3 aspect ratio (600x450 = 4:3) */
-    max-height: 52vh;
+    width: 94vw;
+    height: calc(94vw * 0.75); /* maintain 4:3 aspect ratio */
+    max-height: 62vh;
   }
 }
 
@@ -298,9 +298,9 @@
   }
 
   .item-image {
-    width: min(55vh, 80vw);
-    height: calc(min(55vh, 80vw) * 0.75);
-    max-height: 52vh;
+    width: min(80vh, 90vw);
+    height: calc(min(80vh, 90vw) * 0.75);
+    max-height: 65vh;
   }
   .item-text { font-size: 1.3rem; }
 }

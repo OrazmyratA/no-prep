@@ -628,6 +628,18 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
 },
 
+'cupClashNeedMatchingItems': {
+  en: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  tk: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  ru: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  cn: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  cde: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  es: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  fr: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  kr: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+  sa: 'Cup Clash needs at least 2 items with matching content for the picked types.',
+},
+
 
 
 
@@ -854,6 +866,30 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   sa: 'يلعب اختبار ABC يتطلب 3 عناصر على الأقل.',
 },
 
+'testAbcNeedMatchingItems': {
+  en: 'Need at least 2 items that have both the picked question and answer content.',
+  tk: 'Need at least 2 items that have both the picked question and answer content.',
+  ru: 'Need at least 2 items that have both the picked question and answer content.',
+  cn: 'Need at least 2 items that have both the picked question and answer content.',
+  cde: 'Need at least 2 items that have both the picked question and answer content.',
+  es: 'Need at least 2 items that have both the picked question and answer content.',
+  fr: 'Need at least 2 items that have both the picked question and answer content.',
+  kr: 'Need at least 2 items that have both the picked question and answer content.',
+  sa: 'Need at least 2 items that have both the picked question and answer content.',
+},
+
+'testAbcInsufficientVariety': {
+  en: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  tk: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  ru: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  cn: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  cde: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  es: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  fr: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  kr: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+  sa: 'Could not generate any questions due to insufficient distinct items. Please add more variety to your topic.',
+},
+
 
 
 
@@ -919,6 +955,20 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
 },
 
 
+
+
+
+'teamSentenceDraw': {
+  en: "It's a tie",
+  tk: 'De\u0148lik',
+  ru: '\u041d\u0438\u0447\u044c\u044f',
+  cn: '\u5e73\u5c40',
+  cde: 'Unentschieden',
+  es: 'Empate',
+  fr: 'Match nul',
+  kr: '\ubb34\uc2b9\ubd80',
+  sa: '\u062a\u0639\u0627\u062f\u0644',
+},
 
 
 

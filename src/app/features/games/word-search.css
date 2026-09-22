@@ -179,12 +179,15 @@
 }
 
 .word-list-scroll {
-  flex: 0 1 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.42rem;
-  max-height: min(62vh, 20rem);
-  padding: 0.1rem 0.18rem 0.12rem 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  /* 2 columns on a narrow panel, never more than 3 on a wide one. */
+  grid-template-columns: repeat(auto-fill, minmax(max(5rem, calc((100% - 1.3rem) / 3)), 1fr));
+  align-content: start;
+  gap: 0.6rem;
+  max-height: calc(100dvh - 9rem);
+  padding: 0.25rem 0.3rem 0.3rem 0.1rem;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -205,63 +208,325 @@
   border-radius: 999px;
 }
 
-.word-item {
+/* Word cards: always start face-down, flip to show the image with its text below. */
+.word-card {
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 1;
+  cursor: pointer;
+  perspective: 800px;
+  border-radius: 0.8rem;
+}
+
+.word-card-inner {
+  position: relative;
   width: 100%;
-  min-height: 2.55rem;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  text-align: left;
-  font-size: clamp(0.9rem, 1.7vw, 1.08rem);
-  font-weight: 800;
-  line-height: 1.12;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 120ms ease;
+  border-radius: 0.8rem;
+  box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.4);
+}
+
+.word-card-inner.flipped {
+  transform: rotateY(180deg);
+}
+
+.word-card-face {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  transition: transform 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 0.8rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-.word-number-badge {
-  flex: 0 0 auto;
-  display: inline-flex;
+.word-card-front {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+/* A flipped card's front face is turned away but can still be hit-tested, so without this a
+   click in the middle of a flipped card landed on its (invisible) speaker and played the audio. */
+.word-card-inner.flipped .word-card-front {
+  pointer-events: none;
+}
+
+.word-card-back {
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.3rem 0.3rem 0.35rem;
+  background: #ffffff;
+  color: #0f172a;
+  transform: rotateY(180deg);
+}
+
+.word-card-image {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.74);
-  color: #fefce8;
-  font-size: 0.82rem;
-  font-weight: 900;
+}
+
+.word-card-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* never crop the item image */
+}
+
+.word-card-text {
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(0.7rem, 1.5vw, 0.9rem);
+  font-weight: 800;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.word-card-text-only {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  font-size: clamp(0.85rem, 2vw, 1.15rem);
+  -webkit-line-clamp: unset;
+}
+
+.word-card-speaker {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  z-index: 2;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.32);
+  font-size: 0.85rem;
   line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 120ms ease;
 }
 
-.word-item:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.26);
-  transform: translateY(-1px);
+/* Front of the card: one big speaker, centred. */
+.word-card-speaker-big {
+  position: static;
+  width: 62%;
+  height: auto;
+  aspect-ratio: 1;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.22);
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  font-size: 30cqw;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.3);
 }
 
-.word-item-selected {
-  background: linear-gradient(135deg, #fde68a, #facc15);
-  color: #172554;
-  border-color: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 10px 22px rgba(250, 204, 21, 0.22);
+.word-card-speaker-big:hover {
+  background: rgba(255, 255, 255, 0.36);
 }
 
-.word-item-found {
+.word-card-speaker:hover {
+  transform: scale(1.1);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.word-list-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Hide / show every card's text (same idea as the flip-tiles eye button). */
+.text-toggle-btn {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: #6366f1;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.text-toggle-btn:hover {
+  transform: scale(1.06);
+  background: #4f46e5;
+}
+
+.text-toggle-btn.active {
+  background: #f59e0b;
+}
+
+/* Replaces a hidden card text until pressed. */
+.show-text-btn {
+  flex: 0 0 auto;
+  margin: 0.1rem auto 0;
+  padding: 0.1rem 0.7rem;
+  border: none;
+  border-radius: 999px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.show-text-btn:hover {
+  transform: scale(1.06);
+  background: #4f46e5;
+}
+
+.show-text-btn-centered {
+  margin: auto;
+  padding: 0.3rem 1rem;
+  font-size: 1.5rem;
+}
+
+.word-search-header-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+/* Two teams: the play area splits in half, one board per team. */
+.word-search-split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.team-half {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.5rem;
+  border: 2px solid rgba(96, 165, 250, 0.6);
+  border-radius: 22px;
+  background: rgba(59, 130, 246, 0.14);
+  box-shadow: 0 18px 44px rgba(4, 7, 24, 0.28);
+}
+
+.team-half-second {
+  border-color: rgba(251, 113, 133, 0.65);
+  background: rgba(244, 63, 94, 0.14);
+}
+
+.team-half-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.1rem 0.4rem;
+}
+
+.team-half-name {
+  padding: 0.2rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.7);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.team-half-second .team-half-name {
+  background: rgba(244, 63, 94, 0.7);
+}
+
+.team-half-score {
+  min-width: 3rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.team-half .progress-track {
+  flex: 1;
+}
+
+.team-half-grid {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+}
+
+/* The team's cards sit underneath its grid. */
+.word-search-split .team-half-list {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0.4rem;
+  border-radius: 16px;
+}
+
+.team-half-list .word-list-scroll {
+  grid-template-columns: repeat(auto-fill, minmax(3.9rem, 1fr));
+  gap: 0.4rem;
+  max-height: min(26dvh, 9.5rem);
+  padding: 0.15rem 0.25rem 0.2rem 0.1rem;
+}
+
+.word-search-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(130deg, rgba(79, 70, 229, 0.9), rgba(236, 72, 153, 0.8));
+  color: #fff;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 20px rgba(157, 63, 255, 0.35);
+}
+
+.word-search-timer strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.word-search-timer-urgent {
+  background: linear-gradient(130deg, #dc2626, #f97316);
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+  50% { transform: scale(1.06); }
+}
+
+.word-card-found .word-card-inner {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.75), 0 8px 18px -6px rgba(0, 0, 0, 0.4);
+}
+
+.word-card-found .word-card-back {
   background: var(--word-found-color, #22c55e);
   color: #06111f;
-  border-color: rgba(220, 252, 231, 0.72);
-  cursor: default;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), 0 8px 18px rgba(2, 6, 23, 0.18);
 }
 
-.line-through {
-  text-decoration: line-through;
-  opacity: 0.82;
+.word-card.keyboard-selected .word-card-inner {
+  box-shadow: 0 0 0 3px #facc15, 0 8px 18px -6px rgba(0, 0, 0, 0.4);
 }
 
 .word-grid-panel {
@@ -311,10 +576,17 @@
   transform: translateY(-1px);
 }
 
-.grid-cell-selected {
-  background: linear-gradient(180deg, #fde68a, #facc15);
-  color: #111827;
-  box-shadow: 0 0.16rem 0 rgba(146, 64, 14, 0.42);
+/* Each letter pops as it lights up during the letter-by-letter reveal. */
+@keyframes cell-pop {
+  0% { transform: scale(0.7); }
+  55% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .grid-cell-found {
+    animation: cell-pop 320ms ease-out;
+  }
 }
 
 .grid-cell-found {
@@ -478,19 +750,8 @@
     max-height: calc(100vh - 4.2rem);
   }
 
-  .word-item {
-    min-height: 2rem;
-    padding: 0.34rem 0.48rem;
-    border-radius: 11px;
-    font-size: clamp(0.82rem, 2vw, 0.96rem);
-    line-height: 1.08;
-    gap: 0.35rem;
-  }
-
-  .word-number-badge {
-    width: 1.18rem;
-    height: 1.18rem;
-    font-size: 0.68rem;
+  .word-list-scroll {
+    gap: 0.4rem;
   }
 
   .word-grid-panel {
@@ -511,4 +772,14 @@
     font-size: 0.68rem;
     box-shadow: 0 0.1rem 0 rgba(15, 23, 42, 0.16);
   }
+}
+
+/* The result bars grow in from the left, and never get too narrow for their "3/15" label. */
+.result-bar {
+  min-width: 4.2rem;
+  animation: result-bar-grow 700ms ease-out;
+}
+
+@keyframes result-bar-grow {
+  from { width: 0; }
 }

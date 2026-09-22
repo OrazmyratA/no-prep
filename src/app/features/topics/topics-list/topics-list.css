@@ -15,6 +15,9 @@
   color: white;
   font-weight: 700;
   box-shadow: 0 10px 22px rgba(99, 102, 241, 0.35);
+  position: sticky;
+  top: 0.75rem;
+  z-index: 30;
 }
 
 .leaderboard-picker-banner button {
@@ -552,6 +555,191 @@
 .book-storage-option:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+.drive-links-dialog {
+  width: min(100%, 520px);
+}
+
+.drive-links-icon {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.16);
+  color: #b45309;
+}
+
+.drive-links-list {
+  list-style: none;
+  margin: 1.15rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 15rem;
+  overflow-y: auto;
+}
+
+.drive-links-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 0.75rem;
+  background: rgba(248, 250, 252, 0.85);
+  padding: 0.3rem 0.4rem;
+}
+
+.drive-link-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0.5rem 0.4rem;
+  border-radius: 0.5rem;
+  color: #92400e;
+  text-align: left;
+}
+
+.drive-link-open:hover {
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.drive-link-open svg {
+  flex: 0 0 auto;
+  color: #d97706;
+}
+
+.drive-link-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.drive-link-edit,
+.drive-link-delete {
+  flex: 0 0 auto;
+  width: 2.1rem;
+  height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.drive-link-edit:hover {
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+}
+
+.drive-link-delete:hover {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.drive-links-empty {
+  margin: 1.15rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.drive-link-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.4rem;
+}
+
+.drive-link-form.add-form {
+  margin-top: 1.15rem;
+  border: 1px dashed rgba(217, 119, 6, 0.35);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+}
+
+.drive-link-input {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.drive-link-input:focus {
+  outline: none;
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.16);
+}
+
+.drive-link-input.invalid {
+  border-color: #dc2626;
+}
+
+.drive-link-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.82rem;
+}
+
+.drive-link-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.drive-link-save,
+.drive-link-cancel {
+  border: none;
+  border-radius: 9999px;
+  padding: 0.45rem 1.1rem;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.drive-link-save {
+  background: #d97706;
+  color: #ffffff;
+}
+
+.drive-link-save:hover {
+  background: #b45309;
+}
+
+.drive-link-cancel {
+  background: rgba(226, 232, 240, 0.85);
+  color: #334155;
+}
+
+.drive-link-cancel:hover {
+  background: rgba(203, 213, 225, 0.95);
+}
+
+.drive-links-add-btn {
+  margin-top: 1rem;
+  width: 100%;
+  border: 1px dashed rgba(217, 119, 6, 0.4);
+  border-radius: 0.75rem;
+  background: rgba(254, 243, 199, 0.4);
+  color: #b45309;
+  font-weight: 700;
+  padding: 0.65rem;
+  cursor: pointer;
+}
+
+.drive-links-add-btn:hover {
+  background: rgba(254, 243, 199, 0.75);
 }
 
 .language-menu {

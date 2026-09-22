@@ -3,10 +3,14 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
+import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
+import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 
 interface QuizOption {
+  id: number;
   text: string;
   imageSrc?: string | null;
+  audio?: Blob;
   state: 'idle' | 'correct' | 'wrong' | 'fade';
 }
 
@@ -20,9 +24,9 @@ interface Team {
 
 interface QuizState {
   team: Team;
+  item: Item;
   itemImageSrc: string | null;
   options: QuizOption[];
-  correctAnswer: string;
   locked: boolean;
 }
 
@@ -42,8 +46,11 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   timerMinutes = 3;
   dollMinTime = 4;
   dollMaxTime = 7;
-  reverseMode = false;
+  // 1 type picked: question and answers both use it. 2 picked: 1st is the question, last is
+  // the answers. 3 picked: 1st is the question, 2nd is the flip-card hint, last is the answers.
+  aitOrder: AitType[] = [...AIT_DEFAULT_ORDER];
   forceSimpleMode = true;
+  questionFlipped = false;
 
   // Game state
   teams: Team[] = [];
@@ -82,6 +89,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private revealRewardSound: HTMLAudioElement | null = null;
+  private activeAudio: HTMLAudioElement | null = null;
+  private activeAudioUrl: string | null = null;
 
   // Result
   resultVisible = false;
@@ -99,6 +108,26 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
+
+  get aitQuestionType(): AitType {
+    return this.aitOrder[0] ?? 'image';
+  }
+
+  get aitBackType(): AitType | null {
+    return this.aitOrder.length === 3 ? this.aitOrder[1] : null;
+  }
+
+  get aitOptionsType(): AitType {
+    return this.aitOrder[this.aitOrder.length - 1] ?? this.aitQuestionType;
+  }
+
+  get hasFlipBack(): boolean {
+    return this.aitBackType !== null;
+  }
+
+  get currentFaceType(): AitType {
+    return this.questionFlipped && this.aitBackType ? this.aitBackType : this.aitQuestionType;
+  }
 
   async ngOnInit() {
     const idParam = this.route.snapshot.paramMap.get('id') ??
@@ -124,14 +153,21 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     const dmax = Number(params['dollMaxTime']);
     if (Number.isFinite(dmax) && dmax >= 2 && dmax <= 20) this.dollMaxTime = dmax;
 
-    this.reverseMode = params['reverseMode'] === 'true';
+    this.aitOrder = parseAitOrder(params['ait'], [...AIT_DEFAULT_ORDER]);
     this.forceSimpleMode = params['simpleMode'] !== 'false';
 
     try {
       const allItems = await db.items.where('topicId').equals(this.topicId).sortBy('order');
-      // Text is optional — OK/Oops mode handles items without text.
-      // Caught teams are simply released if no image items exist at all.
-      this.quizItems = allItems.filter(item => item.image);
+      // An item needs content for the question face and the answers face (and the flip-back
+      // face, when a 3rd type was picked) — otherwise it'd show up blank as one of those.
+      const questionType = this.aitQuestionType;
+      const optionsType = this.aitOptionsType;
+      const backType = this.aitBackType;
+      this.quizItems = allItems.filter(item =>
+        itemHasAitContent(item, questionType) &&
+        itemHasAitContent(item, optionsType) &&
+        (!backType || itemHasAitContent(item, backType))
+      );
 
       this.bgMusic = new Audio('assets/sound/squid-game.mp3');
       this.bgMusic.loop = true;
@@ -166,6 +202,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   private setupGame() {
     this.clearAllTimers();
     this.stopAllAudio();
+    this.stopActiveAudio();
+    this.questionFlipped = false;
 
     this.teams = Array.from({ length: this.teamCount }, (_, i) => ({
       id: i + 1,
@@ -321,30 +359,17 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const correctAnswer = item.text?.trim() ?? '';
-    let itemImageSrc: string | null = null;
+    this.stopActiveAudio();
+    this.questionFlipped = false;
+    const itemImageSrc = item.image && item.id !== undefined ? this.getOrCreateImageUrl(item) : null;
 
-    if (item.image && item.id !== undefined) {
-      if (!this.quizImageUrls.has(item.id!)) {
-        const url = URL.createObjectURL(item.image);
-        this.quizImageUrls.set(item.id!, url);
-        this.objectUrls.push(url);
-      }
-      itemImageSrc = this.quizImageUrls.get(item.id!)!;
-    }
-
-    let options: ReturnType<typeof this.buildOptions> = null;
-    if (!this.forceSimpleMode && correctAnswer) {
-      options = this.reverseMode
-        ? this.buildImageOptions(item)
-        : this.buildOptions(correctAnswer);
-    }
-    this.simpleConfirmMode = this.forceSimpleMode || !correctAnswer || options === null;
+    const options = this.forceSimpleMode ? null : this.buildAitOptions(item, this.aitOptionsType);
+    this.simpleConfirmMode = this.forceSimpleMode || options === null;
     this.currentQuiz = {
       team,
+      item,
       itemImageSrc,
       options: options ?? [],
-      correctAnswer,
       locked: false
     };
     this.keyboardSelectedOptionIndex = 0;
@@ -363,7 +388,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.keyboardSelectedOptionIndex = Math.max(0, this.currentQuiz.options.indexOf(option));
     this.currentQuiz.locked = true;
 
-    const isCorrect = option.text === this.currentQuiz.correctAnswer;
+    const isCorrect = option.id === this.currentQuiz.item.id;
     const team = this.currentQuiz.team;
 
     if (isCorrect) {
@@ -424,6 +449,55 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     return !!this.currentQuiz && this.quizVisible && !this.currentQuiz.locked && this.keyboardSelectedOptionIndex === index;
   }
 
+  // Only meaningful when a 3rd AIT type was picked (hasFlipBack) - otherwise there is
+  // nothing on the back to reveal.
+  toggleQuestionFlip() {
+    if (!this.currentQuiz || this.currentQuiz.locked || !this.hasFlipBack) return;
+    this.stopActiveAudio();
+    this.questionFlipped = !this.questionFlipped;
+  }
+
+  // Stops on click so it doesn't also bubble up to the flip-card's own click handler.
+  onQuestionAudioClick(event: Event) {
+    event.stopPropagation();
+    if (this.currentFaceType === 'audio' && this.currentQuiz?.item.audio) {
+      this.playTrackedAudio(this.currentQuiz.item.audio);
+    }
+  }
+
+  playQuestionAudio() {
+    if (this.currentFaceType === 'audio' && this.currentQuiz?.item.audio) {
+      this.playTrackedAudio(this.currentQuiz.item.audio);
+    }
+  }
+
+  onOptionAudioClick(event: Event, option: QuizOption) {
+    event.stopPropagation();
+    if (option.audio) this.playTrackedAudio(option.audio);
+  }
+
+  private playTrackedAudio(blob: Blob) {
+    this.stopActiveAudio();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    this.activeAudio = audio;
+    this.activeAudioUrl = url;
+    audio.play().catch(e => console.debug('Audio play error:', e));
+    audio.onended = () => this.stopActiveAudio();
+  }
+
+  private stopActiveAudio() {
+    if (this.activeAudio) {
+      this.activeAudio.pause();
+      this.activeAudio.currentTime = 0;
+      this.activeAudio = null;
+    }
+    if (this.activeAudioUrl) {
+      URL.revokeObjectURL(this.activeAudioUrl);
+      this.activeAudioUrl = null;
+    }
+  }
+
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -462,6 +536,17 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   private handleQuizKey(event: KeyboardEvent) {
     if (!this.currentQuiz || this.currentQuiz.locked) return;
     const key = event.key.toLowerCase();
+
+    if (key === 'f') {
+      event.preventDefault();
+      this.toggleQuestionFlip();
+      return;
+    }
+    if (event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      this.playQuestionAudio();
+      return;
+    }
 
     if (this.simpleConfirmMode) {
       if (event.key === 'Enter' || key === 'o' || key === '1') {
@@ -519,6 +604,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   private buildKeyboardShortcuts(): GameKeyboardShortcut[] {
     return [
       { key: teamKeyboardShortcutLabel(this.teamCount), action: 'Move matching team' },
+      { key: 'F', action: 'Flip question card' },
+      { key: 'Space', action: 'Play question audio' },
       { key: 'O / X', action: 'OK or Oops in simple quiz' },
       { key: '1-4', action: 'Choose quiz answer' },
       { key: '← ↑ ↓ →', action: 'Move quiz answer highlight' },
@@ -575,40 +662,45 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     return this.quizItems[Math.floor(Math.random() * this.quizItems.length)];
   }
 
-  private buildImageOptions(selectedItem: Item): QuizOption[] | null {
-    if (!selectedItem.image || selectedItem.id === undefined) return null;
+  // Builds the answer choices for whichever AIT type is currently the "options" face -
+  // deduped by content identity (aitContentKey) so two items with the same picture/word
+  // don't both show up, and never repeating the correct item's own content.
+  private buildAitOptions(correctItem: Item, type: AitType): QuizOption[] | null {
+    const correctKey = aitContentKey(correctItem, type);
+    const seen = new Set<string>([correctKey]);
+    const distractors: Item[] = [];
+    for (const candidate of this.quizItems) {
+      if (candidate.id === correctItem.id || !itemHasAitContent(candidate, type)) continue;
+      const key = aitContentKey(candidate, type);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      distractors.push(candidate);
+    }
+    if (distractors.length < 2) return null; // not enough real distractors → fall back to OK/Oops
 
-    const candidates = this.quizItems.filter(i => i.image && i.id !== selectedItem.id);
-    if (candidates.length < 2) return null;
-
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    const distractors = shuffled.slice(0, 2);
-    const optionItems = [selectedItem, ...distractors].sort(() => Math.random() - 0.5);
-
-    return optionItems.map(item => {
-      let imgSrc: string | null = null;
-      if (item.image && item.id !== undefined) {
-        if (!this.quizImageUrls.has(item.id)) {
-          const url = URL.createObjectURL(item.image);
-          this.quizImageUrls.set(item.id, url);
-          this.objectUrls.push(url);
-        }
-        imgSrc = this.quizImageUrls.get(item.id) ?? null;
-      }
-      return { text: item.text ?? '', imageSrc: imgSrc, state: 'idle' as const };
-    });
+    const shuffled = [...distractors].sort(() => Math.random() - 0.5).slice(0, 2);
+    const optionItems = [correctItem, ...shuffled].sort(() => Math.random() - 0.5);
+    return optionItems.map(item => this.toQuizOption(item, type));
   }
 
-  private buildOptions(correct: string): QuizOption[] | null {
-    const unique = [...new Set(
-      this.quizItems
-        .map(i => i.text?.trim())
-        .filter((t): t is string => Boolean(t) && t !== correct)
-    )].sort(() => Math.random() - 0.5);
-    if (unique.length < 2) return null; // not enough real distractors → fall back to OK/Oops
-    return [correct, ...unique.slice(0, 2)]
-      .sort(() => Math.random() - 0.5)
-      .map(text => ({ text, state: 'idle' as const }));
+  private toQuizOption(item: Item, type: AitType): QuizOption {
+    return {
+      id: item.id!,
+      text: item.text ?? '',
+      imageSrc: type === 'image' ? this.getOrCreateImageUrl(item) : null,
+      audio: type === 'audio' ? item.audio : undefined,
+      state: 'idle'
+    };
+  }
+
+  private getOrCreateImageUrl(item: Item): string | null {
+    if (!item.image || item.id === undefined) return null;
+    if (!this.quizImageUrls.has(item.id)) {
+      const url = URL.createObjectURL(item.image);
+      this.quizImageUrls.set(item.id, url);
+      this.objectUrls.push(url);
+    }
+    return this.quizImageUrls.get(item.id) ?? null;
   }
 
   private startCountdown() {
@@ -663,6 +755,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.isDestroyed = true;
     this.clearAllTimers();
     this.stopAllAudio();
+    this.stopActiveAudio();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.quizImageUrls.clear();
     this.objectUrls = [];

@@ -13,7 +13,6 @@ import { LeaderboardEntry } from './leaderboard.model';
     '[class.lb-row-top]': 'isTopThree',
     '[class.lb-row-ranked-up]': 'rankedUp',
     '[class.lb-row-hammer-hit]': 'hammerHit',
-    '[class.lb-row-hot-streak]': 'isHotStreak',
     '[class.lb-row-team-colored]': '!!entry?.color',
     '[class.lb-row-absent]': '!!entry?.absent',
     '[class.lb-row-controls-open]': 'controlsOpen',
@@ -22,10 +21,6 @@ import { LeaderboardEntry } from './leaderboard.model';
   }
 })
 export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
-  // Mirrors RandomPickerComponent's own streakHotThreshold — kept as a plain constant here rather
-  // than threaded through as an @Input across two more component layers for one fixed number.
-  private readonly streakHotThreshold = 3;
-
   @Input() entry!: LeaderboardEntry;
   @Input() rank = 0;
   @Input() showMedals = false;
@@ -88,10 +83,6 @@ export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
   // just be a confusing duplicate of the first.
   get entireTotal(): number | null {
     return this.entry?.baselinePoints != null ? this.entry.baselinePoints + this.entry.points : null;
-  }
-
-  get isHotStreak(): boolean {
-    return (this.entry?.streak ?? 0) >= this.streakHotThreshold;
   }
 
   onRowClick(event: MouseEvent) {
