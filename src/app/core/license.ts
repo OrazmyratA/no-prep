@@ -22,8 +22,12 @@ export class LicenseService {
   private reopenSubject = new Subject<void>();
   public reopen$ = this.reopenSubject.asObservable();
 
+  // Resolves once the first license check has finished, so the startup splash can wait for it
+  // instead of revealing the app with a wrongly-locked (not-yet-checked) license state.
+  readonly ready: Promise<void>;
+
   constructor() {
-    this.checkStatus();
+    this.ready = this.checkStatus();
   }
 
   async checkStatus() {

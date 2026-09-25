@@ -166,6 +166,18 @@
         <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
       </div>
       <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsPopBalloonCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [0, 5, 8, 10, 15, 20]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="balloonCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-xs font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ count === 0 ? ('settingsPopBalloonCountAll' | translate) : count }}
+            </span>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsPopBalloonCountHint' | translate }}</p>
+      </div>
+      <div>
         <label class="block text-sm font-medium mb-2">{{ 'settingsPopBalloonGiftTopic' | translate }}</label>
         <button type="button"
                 (click)="chooseGiftTopic.emit()"

@@ -89,7 +89,7 @@
 
   <div *ngIf="!loading && gameStatus === 'running'" class="board-container">
     <!-- Red Zone -->
-    <div class="zone red-zone" [class.zone-miss]="missedTurn && currentTurn === 'blue'">
+    <div class="zone red-zone">
       <div class="zone-header">
         <div class="team-info">
           <span class="team-color red">{{ redCups.length }}</span>
@@ -118,7 +118,7 @@
     </div>
 
     <!-- Blue Zone -->
-    <div class="zone blue-zone" [class.zone-miss]="missedTurn && currentTurn === 'red'">
+    <div class="zone blue-zone">
       <div class="zone-header">
         <div class="team-info">
           <span class="team-color blue">{{ blueCups.length }}</span>
@@ -143,28 +143,6 @@
             </div>
           </ng-container>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Miss Turn overlay — not enough opponent cups -->
-  <div *ngIf="missedTurn" class="miss-overlay">
-    <div class="miss-card">
-      <span class="miss-icon-x">❌</span>
-      <div class="miss-compare">
-        <div class="miss-side">
-          <span class="miss-emoji">🎲</span>
-          <span class="miss-val miss-val-dice">{{ diceValue }}</span>
-        </div>
-        <span class="miss-gt">›</span>
-        <div class="miss-side">
-          <span class="miss-emoji">🥤</span>
-          <span class="miss-val miss-val-cups">{{ currentTurn === 'red' ? blueCups.length : redCups.length }}</span>
-        </div>
-      </div>
-      <p class="miss-label">{{ 'cupClashMissedTurn' | translate }}</p>
-      <div class="miss-bar-wrap">
-        <div class="miss-bar"></div>
       </div>
     </div>
   </div>

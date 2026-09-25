@@ -1,0 +1,5 @@
+<div *ngIf="label" class="game-countdown" [class.blocking]="blocking" role="status" aria-live="assertive">
+  <span class="game-countdown-label" [class.go]="label === 'go'" [attr.data-label]="label">
+    {{ label === 'go' ? ('gameCountdownGo' | translate) : label }}
+  </span>
+</div>

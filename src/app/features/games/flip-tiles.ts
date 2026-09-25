@@ -6,6 +6,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 interface FlipTileCard {
   item: Item;
@@ -47,11 +48,10 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'H', action: 'Hide or show card texts' },
     { key: 'M', action: 'Random select' },
     { key: 'E / Del', action: 'Eliminate selected card' },
-    { key: 'R', action: 'Shuffle and restart' }
+    { key: 'Shift + R', action: 'Shuffle and restart' }
   ];
   private cardImageUrls: string[] = [];
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private keyboardNumberBuffer = '';
   private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -83,7 +83,7 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('fullscreenText') fullscreenTextRef?: ElementRef<HTMLElement>;
   private resizeObserver: ResizeObserver | null = null;
   private layoutSubscription?: Subscription;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
   fullscreenTextSize = 48;
 
@@ -232,20 +232,12 @@ trackByCardItemId(_: number, card: FlipTileCard): number | string {
 }
 
 private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-  const timer = setTimeout(() => {
-    this.pendingTimers.delete(timer);
-    if (!this.destroyed) {
-      callback();
-    }
-  }, delay);
-  this.pendingTimers.add(timer);
-  return timer;
-}
+    return this.timers.set(callback, delay);
+  }
 
 private clearPendingTimers() {
-  this.pendingTimers.forEach(timer => clearTimeout(timer));
-  this.pendingTimers.clear();
-}
+    this.timers.clear();
+  }
 
 toggleTextVisibility() {
   this.hideTexts = !this.hideTexts;
@@ -312,28 +304,12 @@ private replayCurrentSound() {
 }
 
 private playTrackedAudio(blob: Blob | undefined) {
-  if (!blob) return;
-  this.stopActiveAudio();
-  const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
-  this.activeAudio = audio;
-  this.activeAudioUrl = url;
-  audio.play().catch(e => console.debug('Audio play error:', e));
-  audio.onended = () => this.stopActiveAudio();
-}
+    this.trackedAudio.play(blob);
+  }
 
 private stopActiveAudio() {
-  if (this.activeAudio) {
-    this.activeAudio.pause();
-    this.activeAudio.currentTime = 0;
-    this.activeAudio = null;
+    this.trackedAudio.stop();
   }
-
-  if (this.activeAudioUrl) {
-    URL.revokeObjectURL(this.activeAudioUrl);
-    this.activeAudioUrl = null;
-  }
-}
 
 flipCard(index: number) {
   const card = this.cards[index];
@@ -418,20 +394,6 @@ private wrongFlipWithFeedback(index: number, card: any) {
     }, 400);
   }, 1000); // Show the card for 1 second before feedback
 }
-
-  private flipCardWrong(index: number) {
-    const card = this.cards[index];
-    if (card.flipped) {
-      // Shake animation
-      const el = document.getElementById(`card-${index}`);
-      el?.classList.add('shake');
-      this.setGameTimeout(() => {
-        card.flipped = false;
-        el?.classList.remove('shake');
-        this.cdr.detectChanges();
-      }, 500);
-    }
-  }
 
   private playSound(sound: HTMLAudioElement | null) {
     if (sound) {
@@ -576,7 +538,7 @@ private rebuildCards(items: Item[]) {
       return;
     }
 
-    if (this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (isTypingTarget(event)) return;
 
     if (this.gameFinished) return;
 
@@ -649,7 +611,7 @@ private rebuildCards(items: Item[]) {
         this.eliminate();
         break;
       case 'r':
-        if (!this.soundQuizActive) {
+        if (event.shiftKey && !this.soundQuizActive) {
           event.preventDefault();
           this.clearKeyboardNumberBuffer();
           this.shuffleAndReset();
@@ -866,11 +828,6 @@ private rebuildCards(items: Item[]) {
 
   private isSpaceKey(event: KeyboardEvent): boolean {
     return event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space';
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private clearKeyboardNumberTimer() {

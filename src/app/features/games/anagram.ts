@@ -5,6 +5,7 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 interface LetterTile {
   id: string;
@@ -55,7 +56,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     { key: 'Backspace', action: 'Return last placed letter' },
     { key: 'B / N', action: 'Previous or next word' },
     { key: 'S', action: 'Shuffle' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   private objectUrls: string[] = [];
@@ -66,10 +67,9 @@ export class AnagramComponent implements OnInit, OnDestroy {
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private rewardSound: HTMLAudioElement | null = null;
-  private currentItemAudio: HTMLAudioElement | null = null;
-  private currentItemAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private advanceTimer: number | null = null;
-  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private pendingPlacementTileIds = new Set<string>();
   private pendingTargetIndexes = new Set<number>();
   private destroyed = false;
@@ -140,9 +140,11 @@ export class AnagramComponent implements OnInit, OnDestroy {
     this.clearFeedbackTimers();
     this.pendingPlacementTileIds.clear();
     this.pendingTargetIndexes.clear();
+    this.animatingTiles.clear();
     this.currentItem = this.items[index];
     this.isMediaFlipped = false;
-    this.originalWord = this.currentItem.text!;
+    // NFC so a letter typed with a separate accent (e.g. "a" + combining mark) is one tile, not two.
+    this.originalWord = this.currentItem.text!.normalize('NFC');
     this.buildDisplaySlots();
 
     const savedState = this.solvedWordState.get(index);
@@ -254,7 +256,20 @@ export class AnagramComponent implements OnInit, OnDestroy {
     this.playSound(this.flipSound, 0.2);
   }
 
+  // The last word was just solved and the 2s "well done" pause is still running. Navigating
+  // now would cancel that timer and the win screen would never show, so finish right away.
+  private finishIfLastWordJustSolved(): boolean {
+    if (this.advanceTimer === null || this.solvedWordIndexes.size < this.items.length) return false;
+    this.clearAdvanceTimer();
+    this.stopCurrentItemAudio();
+    this.gameFinished = true;
+    this.playSound(this.rewardSound, 0.75);
+    this.cdr.detectChanges();
+    return true;
+  }
+
   nextItem() {
+    if (this.finishIfLastWordJustSolved()) return;
     if (this.currentIndex < this.items.length - 1) {
       this.clearAdvanceTimer();
       this.currentIndex++;
@@ -263,6 +278,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
   }
 
   previousItem() {
+    if (this.finishIfLastWordJustSolved()) return;
     if (this.currentIndex > 0) {
       this.clearAdvanceTimer();
       this.currentIndex--;
@@ -279,30 +295,11 @@ export class AnagramComponent implements OnInit, OnDestroy {
   }
 
   playCurrentItemAudio() {
-    if (!this.currentItem?.audio) {
-      return;
-    }
-
-    this.stopCurrentItemAudio();
-    const url = URL.createObjectURL(this.currentItem.audio);
-    const audio = new Audio(url);
-    this.currentItemAudio = audio;
-    this.currentItemAudioUrl = url;
-    audio.play().catch(e => console.debug('Item audio error:', e));
-    audio.onended = () => this.stopCurrentItemAudio();
+    this.trackedAudio.play(this.currentItem?.audio);
   }
 
   private stopCurrentItemAudio() {
-    if (this.currentItemAudio) {
-      this.currentItemAudio.pause();
-      this.currentItemAudio.currentTime = 0;
-      this.currentItemAudio = null;
-    }
-
-    if (this.currentItemAudioUrl) {
-      URL.revokeObjectURL(this.currentItemAudioUrl);
-      this.currentItemAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   imageUrl(blob: Blob, itemId: number): string {
@@ -422,7 +419,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameFinished) {
@@ -476,7 +473,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
         } else if (key === 's') {
           event.preventDefault();
           this.shuffle();
-        } else if (key === 'r') {
+        } else if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -545,11 +542,6 @@ export class AnagramComponent implements OnInit, OnDestroy {
     return /^\d$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   private completeCurrentWord() {
     this.solvedWordIndexes.add(this.currentIndex);
     this.solvedWordState.set(this.currentIndex, {
@@ -595,18 +587,10 @@ export class AnagramComponent implements OnInit, OnDestroy {
   }
 
   private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.feedbackTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.feedbackTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearFeedbackTimers() {
-    this.feedbackTimers.forEach(timer => clearTimeout(timer));
-    this.feedbackTimers.clear();
+    this.timers.clear();
   }
 }

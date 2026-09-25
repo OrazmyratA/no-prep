@@ -8,7 +8,9 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: '#ffffff'
+      // Matches the startup splash in index.html, so the hand-off from the native splash to the
+      // web one isn't a white flash.
+      backgroundColor: '#eef2ff'
     }
   }
 };

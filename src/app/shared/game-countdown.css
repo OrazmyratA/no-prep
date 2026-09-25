@@ -1,0 +1,45 @@
+:host {
+  display: contents;
+}
+
+.game-countdown {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.game-countdown.blocking {
+  pointer-events: auto;
+}
+
+.game-countdown-label {
+  font-size: min(32vw, 42vh);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  -webkit-text-stroke: 0.02em #1e3a8a;
+  text-shadow: 0 0.04em 0.12em rgba(0, 0, 0, 0.5);
+  animation: game-countdown-pop 0.9s ease-out both;
+}
+
+.game-countdown-label.go {
+  font-size: min(20vw, 30vh);
+  color: #facc15;
+}
+
+@keyframes game-countdown-pop {
+  0% { transform: scale(2); opacity: 0; }
+  25% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-countdown-label {
+    animation: none;
+  }
+}

@@ -37,6 +37,9 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   @Input() textImageHeight = 360;
   @Input() compactSearchPanel = false;
   @Output() imageSelected = new EventEmitter<Blob | null>();
+  // Makes this uploader the target of Ctrl+V as soon as it appears, instead of only after the
+  // user clicks inside it. Set by parents that open the uploader from a click (e.g. the + card).
+  @Input() autoPasteTarget = false;
 
   private static activePasteTarget: ImageUploaderComponent | null = null;
 
@@ -93,6 +96,9 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnInit() {
+    if (this.autoPasteTarget) {
+      this.markAsPasteTarget();
+    }
     if (this.initialImage) {
       this.preview = URL.createObjectURL(this.initialImage);
       this.objectUrls.push(this.preview);
@@ -386,8 +392,13 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
 
+    // Now that this uploader can be armed without a click inside it, don't swallow a URL the
+    // user is pasting into some other text field (topic name, item text, ...).
+    const target = event.target as HTMLElement | null;
+    const pastingIntoOtherField = !!target?.closest?.('input, textarea, [contenteditable="true"]')
+      && !target.closest('app-image-uploader');
     const pastedText = event.clipboardData.getData('text/plain')?.trim();
-    if (pastedText && this.isHttpUrl(pastedText)) {
+    if (pastedText && this.isHttpUrl(pastedText) && !pastingIntoOtherField) {
       event.preventDefault();
       await this.importImageUrl(pastedText);
       return;

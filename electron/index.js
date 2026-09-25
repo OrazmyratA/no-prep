@@ -273,6 +273,10 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    // Stay hidden until the page has painted its first frame (the splash in index.html), so the
+    // teacher never sees an empty white window while the app loads. Same colour as the splash.
+    show: false,
+    backgroundColor: '#eef2ff',
     fullscreenable: true,
     webPreferences: {
       allowRunningInsecureContent: false,
@@ -282,6 +286,16 @@ function createWindow() {
       webSecurity: true,
       preload: preloadPath
     },
+  });
+
+  // Show on first paint; the timer is a safety net so a page that never paints can't leave the
+  // app running invisibly.
+  const showFallbackTimer = setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show();
+  }, 6000);
+  mainWindow.once('ready-to-show', () => {
+    clearTimeout(showFallbackTimer);
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
   });
 
   mainWindow.webContents.on('did-finish-load', () => {

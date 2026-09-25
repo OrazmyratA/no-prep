@@ -17,6 +17,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { isTypingTarget } from './game-utils';
 
 @Component({
   selector: 'app-watch-memorize',
@@ -36,6 +37,7 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
   gameFinished = false;
   showWinPopup = false;
   isPaused = false;
+  private manuallyPaused = false; // paused with P / a tap, as opposed to just by opening the menu
   loading = true;
   speed = 5; // seconds per item
   count = 3; // number of items to show
@@ -47,7 +49,7 @@ export class WatchMemorizeComponent implements OnInit, AfterViewInit, OnDestroy 
     { key: '1 then 2', action: 'Choose card 12' },
     { key: '← ↑ ↓ →', action: 'Move card highlight' },
     { key: 'Enter', action: 'Choose highlighted card' },
-    { key: 'R', action: 'Shuffle and restart' }
+    { key: 'Shift + R', action: 'Shuffle and restart' }
   ];
   private scrollTimer: any;
   private phaseTransitionTimer: any;
@@ -282,6 +284,7 @@ trackByItemId(index: number, item: Item): number | string {
     this.gameFinished = false;
     this.showWinPopup = false;
     this.isPaused = false;
+    this.manuallyPaused = false;
     this.activeAnimation = null;
     this.keyboardSelectedIndex = 0;
     this.selectedIndices.clear();
@@ -422,6 +425,7 @@ private runActiveAnimation() {
     } else {
       this.pauseGame();
     }
+    this.manuallyPaused = this.isPaused;
     this.cdr.detectChanges();
   }
 
@@ -573,7 +577,7 @@ private runActiveAnimation() {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.isKeyboardEventFromInteractiveElement(event) || this.loading || this.showWinPopup) return;
+    if (isTypingTarget(event) || this.loading || this.showWinPopup) return;
 
     const digit = this.getKeyboardDigit(event);
     if (digit !== null && !this.scrollPhase && !this.gameFinished) {
@@ -623,6 +627,7 @@ private runActiveAnimation() {
         this.togglePauseFromKeyboard();
         break;
       case 'r':
+        if (!event.shiftKey) break;
         event.preventDefault();
         this.clearKeyboardNumberBuffer();
         this.resetGame();
@@ -722,11 +727,6 @@ private runActiveAnimation() {
     return /^\d$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   private clearKeyboardNumberTimer() {
     if (!this.keyboardNumberTimer) return;
     clearTimeout(this.keyboardNumberTimer);
@@ -766,6 +766,7 @@ private runActiveAnimation() {
     } else if (action === 'startover') {
       this.resetGame();
     } else if (action === 'resume') {
+      this.manuallyPaused = false;
       this.resumeGame();
     }
   }
@@ -781,6 +782,7 @@ private runActiveAnimation() {
       return;
     }
 
-    this.resumeGame();
+    // Closing the menu only undoes the pause the menu itself caused, not one you set with P.
+    if (!this.manuallyPaused) this.resumeGame();
   }
 }

@@ -162,6 +162,17 @@
         <img src="assets/images/book/delete.png" alt="">
       </button>
       <div class="pen-controls text-color-controls" *ngIf="reader.textMode || reader.selectedText || reader.activeTextInput">
+        <!-- First in the group so it is visible without scrolling the toolbar; touch-only
+             screens have no Ctrl+D. -->
+        <button
+          *ngIf="reader.selectedText"
+          type="button"
+          class="tool-btn icon-reader-btn"
+          (click)="reader.duplicateSelectedText()"
+          [title]="'duplicateLabel' | translate"
+          [attr.aria-label]="'duplicateLabel' | translate">
+          <img src="assets/images/book/duplicate.png" alt="">
+        </button>
         <button
           *ngFor="let color of reader.textColors"
           type="button"
@@ -212,6 +223,17 @@
   <div class="reader-actions reader-toolbar-right">
     <button type="button" class="tool-btn icon-reader-btn" (click)="reader.edit()" [title]="'editTopic' | translate" [attr.aria-label]="'editTopic' | translate">
       <img src="assets/images/book/edit.png" alt="">
+    </button>
+    <button
+      type="button"
+      class="tool-btn icon-reader-btn"
+      data-shortcut-help-trigger
+      [class.active]="reader.shortcutHelpOpen"
+      (click)="reader.toggleShortcutHelp()"
+      title="Keyboard shortcuts (?)"
+      aria-label="Keyboard shortcuts"
+      [attr.aria-expanded]="reader.shortcutHelpOpen">
+      <img src="assets/images/info.png" alt="">
     </button>
   </div>
   <button

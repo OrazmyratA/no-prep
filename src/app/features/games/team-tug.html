@@ -60,6 +60,7 @@
               type="button"
               class="team-button"
               [class.about-to-win]="leftTeam.isAboutToWin"
+              [class.locked]="leftLocked"
               (pointerdown)="onTeamButtonPress($event, 'left', leftButtonOrder ? true : false)"
             >
               <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">A</span>
@@ -69,6 +70,7 @@
               type="button"
               class="team-button"
               [class.about-to-win]="leftTeam.isAboutToWin"
+              [class.locked]="leftLocked"
               (pointerdown)="onTeamButtonPress($event, 'left', leftButtonOrder ? false : true)"
             >
               <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">S</span>
@@ -91,6 +93,7 @@
               type="button"
               class="team-button"
               [class.about-to-win]="rightTeam.isAboutToWin"
+              [class.locked]="rightLocked"
               (pointerdown)="onTeamButtonPress($event, 'right', rightButtonOrder ? true : false)"
             >
               <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">K</span>
@@ -100,6 +103,7 @@
               type="button"
               class="team-button"
               [class.about-to-win]="rightTeam.isAboutToWin"
+              [class.locked]="rightLocked"
               (pointerdown)="onTeamButtonPress($event, 'right', rightButtonOrder ? false : true)"
             >
               <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">L</span>
@@ -129,6 +133,8 @@
 
 
 
+
+  <app-game-countdown [label]="countdown.label" [blocking]="countdown.active"></app-game-countdown>
 
   <!-- Sandwich Menu -->
   <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>

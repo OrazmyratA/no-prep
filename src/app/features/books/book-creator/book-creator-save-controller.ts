@@ -130,8 +130,9 @@ export class BookCreatorSaveController {
     while (this.creator.undoStack.length > this.maxHistoryEntries) {
       this.creator.undoStack.shift();
     }
-    while (this.getSnapshotBytes(this.creator.undoStack) > this.creator.maxUndoHistoryBytes && this.creator.undoStack.length > 1) {
-      this.creator.undoStack.shift();
+    let historyBytes = this.getSnapshotBytes(this.creator.undoStack);
+    while (historyBytes > this.creator.maxUndoHistoryBytes && this.creator.undoStack.length > 1) {
+      historyBytes -= this.creator.undoStack.shift()?.length ?? 0;
     }
     this.creator.redoStack = [];
   }

@@ -224,6 +224,17 @@
       <button type="button" class="icon-tool-btn save-tool-btn" [class.dirty]="creator.hasUnsavedChanges()" (click)="creator.save()" [title]="'save' | translate" [attr.aria-label]="'save' | translate">
         <img src="assets/images/book/save.png" alt="">
       </button>
+      <button
+        type="button"
+        class="icon-tool-btn"
+        data-shortcut-help-trigger
+        [class.active]="creator.shortcutHelpOpen"
+        (click)="creator.toggleShortcutHelp()"
+        title="Keyboard shortcuts (?)"
+        aria-label="Keyboard shortcuts"
+        [attr.aria-expanded]="creator.shortcutHelpOpen">
+        <img src="assets/images/info.png" alt="">
+      </button>
     </div>
   </div>
   <button

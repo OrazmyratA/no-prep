@@ -809,6 +809,8 @@
               step="0.5"
               [value]="creator.getGuideTrackPitch(track)"
               (input)="creator.setGuideTrackPitch(element, track, $event)"
+              (change)="creator.commitHistoryCapture()"
+              (blur)="creator.commitHistoryCapture()"
               aria-label="Voice pitch">
             <span class="guide-pitch-label">♀</span>
             <span class="guide-pitch-value shifted" *ngIf="creator.getGuideTrackPitch(track) !== 0">

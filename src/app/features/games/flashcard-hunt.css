@@ -581,19 +581,6 @@
   background: rgba(0, 0, 0, 0.45);
 }
 
-.hunt-countdown {
-  font-size: 13cqw;
-  font-weight: 900;
-  color: #fff;
-  -webkit-text-stroke: 0.4cqw #1e3a8a;
-  text-shadow: 0 0.6cqw 1.5cqw rgba(0, 0, 0, 0.5);
-  animation: countPop 0.7s ease-out;
-}
-
-.hunt-countdown[data-label='GO!'] {
-  color: #facc15;
-}
-
 @keyframes countPop {
   0% { transform: scale(2); opacity: 0; }
   30% { transform: scale(1); opacity: 1; }

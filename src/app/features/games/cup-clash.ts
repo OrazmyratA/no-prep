@@ -7,6 +7,7 @@ import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
+import { TrackedAudio, TimerBag } from './game-utils';
 
 interface Cup {
   id: string;
@@ -40,7 +41,6 @@ export class CupClashComponent implements OnInit, OnDestroy {
   capturesRemaining = 0;
   gameStatus: 'ready' | 'running' | 'finished' = 'ready';
   winner: 'red' | 'blue' | null = null;
-  missedTurn = false;
   keyboardSelectedCaptureIndex = 0;
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
@@ -52,7 +52,7 @@ export class CupClashComponent implements OnInit, OnDestroy {
     { key: '← ↑ ↓ →', action: 'Move capture highlight' },
     { key: 'Enter', action: 'Capture highlighted cup' },
     { key: 'B / N', action: 'Scroll answers' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   // Quiz state (question card between the dice, answers along the bottom)
@@ -69,8 +69,7 @@ export class CupClashComponent implements OnInit, OnDestroy {
   private questionPool: Item[] = [];
   private questionQueue: Item[] = [];
   private lastQuestionId: number | undefined;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
 
   // RPS state (who goes first)
   showRpsModal = false;
@@ -106,7 +105,7 @@ export class CupClashComponent implements OnInit, OnDestroy {
     5: [1, 3, 5, 7, 9],
     6: [1, 3, 4, 6, 7, 9],
   };
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
 
   // Scrollable items
@@ -356,25 +355,11 @@ async ngOnInit() {
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
 
@@ -399,7 +384,6 @@ async ngOnInit() {
     this.clearDiceAnimationTimer();
     this.capturesRemaining = 0;
     this.keyboardSelectedCaptureIndex = 0;
-    this.missedTurn = false;
     this.resetQuiz();
     this.gameStatus = 'running';
     this.winner = null;
@@ -484,7 +468,6 @@ async ngOnInit() {
     return (
       this.gameStatus === 'running' &&
       !this.showRpsModal &&
-      !this.missedTurn &&
       this.currentTurn === team &&
       !this.diceRolling &&
       this.diceValue === null
@@ -565,22 +548,12 @@ async ngOnInit() {
   rollDice(value: number) {
     if (this.gameStatus !== 'running') return;
     const opponentCount = this.currentTurn === 'red' ? this.blueCups.length : this.redCups.length;
-    if (value > opponentCount) {
-      this.diceValue = value;
-      this.capturesRemaining = 0;
-      this.missedTurn = true;
-      this.playSound(this.errorSound);
-      this.cdr.detectChanges();
-      this.setGameTimeout(() => {
-        this.missedTurn = false;
-        this.switchTurn();
-      }, 2800);
-    } else {
-      this.diceValue = value;
-      this.capturesRemaining = value;
-      this.presentQuestion();
-      this.cdr.detectChanges();
-    }
+    // A roll bigger than the cups left just captures what is left. (It used to forfeit the
+    // turn, so with one cup remaining only a roll of 1 could ever finish the game.)
+    this.diceValue = value;
+    this.capturesRemaining = Math.min(value, opponentCount);
+    this.presentQuestion();
+    this.cdr.detectChanges();
   }
 
   private captureCup(target: Cup) {
@@ -881,7 +854,7 @@ resetGame() {
       } else if (key === 'l') {
         event.preventDefault();
         this.rpsChoose('blue');
-      } else if (key === 'r') {
+      } else if (key === 'r' && event.shiftKey) {
         event.preventDefault();
         this.resetGame();
       }
@@ -932,7 +905,7 @@ resetGame() {
         } else if (key === 'n') {
           event.preventDefault();
           this.scrollItems('right');
-        } else if (key === 'r') {
+        } else if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -948,19 +921,11 @@ resetGame() {
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
   imageUrl(blob: Blob, itemId: number): string {

@@ -5,6 +5,7 @@ import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
+import { shuffled, TrackedAudio, isTypingTarget, GameCountdown } from './game-utils';
 
 interface QuizOption {
   id: number;
@@ -84,13 +85,13 @@ export class SquidGameComponent implements OnInit, OnDestroy {
 
   // Sounds
   private bgMusic: HTMLAudioElement | null = null;
+  countdown = new GameCountdown(() => this.cdr.detectChanges());
   private greenLightSound: HTMLAudioElement | null = null;
   private redLightSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private revealRewardSound: HTMLAudioElement | null = null;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
 
   // Result
   resultVisible = false;
@@ -222,15 +223,15 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     this.simpleConfirmMode = false;
     this.resultVisible = false;
     this.gameStatus = 'running';
-
-    if (this.enableTimer) {
-      this.timerSeconds = this.timerMinutes * 60;
-      this.startCountdown();
-    }
-
-    this.startBgMusic();
-    this.scheduleDollTurn();
+    if (this.enableTimer) this.timerSeconds = this.timerMinutes * 60;
     this.cdr.detectChanges();
+
+    // The clock, the music and the doll all wait for GO.
+    this.countdown.run(() => {
+      if (this.enableTimer) this.startCountdown();
+      this.startBgMusic();
+      this.scheduleDollTurn();
+    });
   }
 
   private startBgMusic() {
@@ -477,31 +478,17 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameStatus === 'finished') {
@@ -527,7 +514,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (key === 'r') {
+    if (key === 'r' && event.shiftKey) {
       event.preventDefault();
       this.resetGame();
     }
@@ -610,7 +597,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       { key: '1-4', action: 'Choose quiz answer' },
       { key: '← ↑ ↓ →', action: 'Move quiz answer highlight' },
       { key: 'Enter', action: 'Choose highlighted answer' },
-      { key: 'R', action: 'Start over' }
+      { key: 'Shift + R', action: 'Start over' }
     ];
   }
 
@@ -620,11 +607,6 @@ export class SquidGameComponent implements OnInit, OnDestroy {
 
   private getKeyboardDigit(event: KeyboardEvent): string | null {
     return /^[1-9]$/.test(event.key) ? event.key : null;
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   onQuizConfirmOops() {
@@ -678,8 +660,8 @@ export class SquidGameComponent implements OnInit, OnDestroy {
     }
     if (distractors.length < 2) return null; // not enough real distractors → fall back to OK/Oops
 
-    const shuffled = [...distractors].sort(() => Math.random() - 0.5).slice(0, 2);
-    const optionItems = [correctItem, ...shuffled].sort(() => Math.random() - 0.5);
+    const chosen = shuffled(distractors).slice(0, 2);
+    const optionItems = shuffled([correctItem, ...chosen]);
     return optionItems.map(item => this.toQuizOption(item, type));
   }
 
@@ -744,6 +726,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
   onMenuAction(action: string) {
     if (action === 'activity') {
       this.isDestroyed = true;
+      this.countdown.cancel();
       this.clearAllTimers();
       this.stopAllAudio();
       this.router.navigate(['/topics', this.topicId, 'activities']);
@@ -753,6 +736,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.isDestroyed = true;
+    this.countdown.cancel();
     this.clearAllTimers();
     this.stopAllAudio();
     this.stopActiveAudio();

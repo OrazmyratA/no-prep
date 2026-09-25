@@ -51,6 +51,11 @@ export class BookCreatorGuidePreviewController {
     }
     this.creator.previewPitchCleanup?.();
     this.creator.previewPitchCleanup = null;
+    this.creator.previewPitchSetter = null;
+    if (this.creator.previewPitchRestartTimer !== null) {
+      window.clearTimeout(this.creator.previewPitchRestartTimer);
+      this.creator.previewPitchRestartTimer = null;
+    }
     this.creator.previewGuideElementId = null;
     this.creator.previewGuideTrackId = null;
     this.creator.previewBubbleText = '';
@@ -87,13 +92,31 @@ export class BookCreatorGuidePreviewController {
 
   setGuideTrackPitch(element: BookElement, track: GuideAudioTrack, event: Event): void {
     const semitones = Number((event.target as HTMLInputElement).value);
-    this.creator.captureHistory();
+    // One undo step per drag (committed on the slider's change/blur), not one per tick: a
+    // captureHistory() here serialized the whole book on every input event and pushed a full
+    // snapshot each time, flushing the real undo history out of its 60-entry window.
+    if (!this.creator.historyCaptureActive) this.creator.beginHistoryCapture();
     track.pitchSemitones = semitones || undefined;
     this.creator.markBookDirty();
-    if (this.creator.activePreviewAudio && this.creator.previewGuideTrackId === track.id) {
-      this.stopGuidePreview();
-      this.startGuideTrackPreview(element, track, this.creator.previewGuideCurrentTime);
+    if (!this.creator.activePreviewAudio || this.creator.previewGuideTrackId !== track.id) return;
+
+    // Already playing through a pitch node: retune it live, no restart.
+    if (this.creator.previewPitchSetter) {
+      this.creator.previewPitchSetter(semitones);
+      return;
     }
+    // Playing plain (pitch was 0): a node has to be built once, so restart — but only after the
+    // slider settles, not on every tick of the drag.
+    if (this.creator.previewPitchRestartTimer !== null) {
+      window.clearTimeout(this.creator.previewPitchRestartTimer);
+    }
+    this.creator.previewPitchRestartTimer = window.setTimeout(() => {
+      this.creator.previewPitchRestartTimer = null;
+      if (!this.creator.activePreviewAudio || this.creator.previewGuideTrackId !== track.id) return;
+      const resumeAt = this.creator.activePreviewAudio.currentTime;
+      this.stopGuidePreview();
+      this.startGuideTrackPreview(element, track, resumeAt);
+    }, 180);
   }
 
   selectGuidePin(element: BookElement, track: GuideAudioTrack, pin: GuideTimelinePin, event?: Event): void {
@@ -237,11 +260,12 @@ export class BookCreatorGuidePreviewController {
     this.creator.previewGuideTrackId = track.id;
     const semitones = track.pitchSemitones ?? 0;
     const pitchReady = semitones
-      ? this.creator.guidePitch.connect(audio, semitones).then((cleanup: () => void) => {
+      ? this.creator.guidePitch.connectControlled(audio, semitones).then((connection: { cleanup: () => void; setPitch: (s: number) => void }) => {
           if (token === this.creator.previewToken) {
-            this.creator.previewPitchCleanup = cleanup;
+            this.creator.previewPitchCleanup = connection.cleanup;
+            this.creator.previewPitchSetter = connection.setPitch;
           } else {
-            cleanup();
+            connection.cleanup();
           }
         })
       : Promise.resolve();

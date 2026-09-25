@@ -13,6 +13,7 @@ import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
 import { showAppNotification } from '../../core/notification';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { TrackedAudio, isTypingTarget } from './game-utils';
 
 interface LetterSlot {
   char: string;
@@ -68,8 +69,7 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
   private tracePoints: { x: number; y: number; breakBefore?: boolean }[] = [];
   private fontSize = 0;
 
-  private currentItemAudio: HTMLAudioElement | null = null;
-  private currentItemAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
 
   private resizeObserver: ResizeObserver | null = null;
   private setupTimer: number | null = null;
@@ -107,7 +107,7 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      this.traceIndicesByItem = this.items.map(item => this.computeTraceIndices((item.text ?? '').split('')));
+      this.traceIndicesByItem = this.items.map(item => this.computeTraceIndices(Array.from((item.text ?? '').normalize('NFC'))));
 
       this.collectSound = new Audio('assets/sound/collect.mp3');
       this.collectSound.load();
@@ -181,7 +181,7 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private buildSlots(index: number, revealed: boolean) {
     const item = this.items[index];
-    const chars = (item.text ?? '').split('');
+    const chars = Array.from((item.text ?? '').normalize('NFC'));
     const traceableIndices = this.traceIndicesByItem[index] ?? this.getFirstNTraceableIndices(chars);
     this.slots = chars.map((char, i) => ({
       char,
@@ -462,26 +462,11 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ---- Audio ----
   playCurrentItemAudio() {
-    if (!this.currentItem?.audio) return;
-    this.stopCurrentItemAudio();
-    const url = URL.createObjectURL(this.currentItem.audio);
-    const audio = new Audio(url);
-    this.currentItemAudio = audio;
-    this.currentItemAudioUrl = url;
-    audio.play().catch(e => console.debug);
-    audio.onended = () => this.stopCurrentItemAudio();
+    this.trackedAudio.play(this.currentItem?.audio);
   }
 
   private stopCurrentItemAudio() {
-    if (this.currentItemAudio) {
-      this.currentItemAudio.pause();
-      this.currentItemAudio.currentTime = 0;
-      this.currentItemAudio = null;
-    }
-    if (this.currentItemAudioUrl) {
-      URL.revokeObjectURL(this.currentItemAudioUrl);
-      this.currentItemAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   // ---- Image helper ----
@@ -504,7 +489,7 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     switch (event.key) {
       case ' ':
@@ -532,11 +517,6 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
         this.resetCurrentItem();
         break;
     }
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   resetGame() {

@@ -7,6 +7,7 @@ import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
+import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 @Component({
   selector: 'app-spin-wheel',
@@ -29,7 +30,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
     { key: 'O', action: 'OK in confirm mode' },
     { key: 'X / Esc', action: 'Oops in confirm mode' },
     { key: 'E', action: 'Eliminate current segment' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
   private rotation = 0;
   private ctx: CanvasRenderingContext2D | null = null;
@@ -43,15 +44,14 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   private rewardSound: HTMLAudioElement | null = null;
   private victoryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private confirmTimerId: ReturnType<typeof setTimeout> | null = null;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private spinFrameId: number | null = null;
   private destroyed = false;
   private imageUrls = new Map<number, string>();
   quizOverlayVisible = false;
   aitOrder: AitType[] = [...AIT_DEFAULT_ORDER];
   isFlipped = false;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private audioIconImg: HTMLImageElement | null = null;
   // New: quiz state
   showQuiz = false;
@@ -71,6 +71,7 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
   gameFinished = false;
   keyboardSelectedOptionIndex = 0;
   private victoryPending = false;
+  private awaitingQuiz = false;
 
   // Constants for wheel geometry
   private centerX = 280;
@@ -169,8 +170,6 @@ private resizeCanvas() {
   // Update canvas element dimensions
   const canvas = this.canvasRef?.nativeElement;
   if (canvas) {
-    canvas.width = this.canvasSize;
-    canvas.height = this.canvasSize;
     // Re‑center geometry
     this.centerX = this.canvasSize / 2;
     this.centerY = this.canvasSize / 2;
@@ -225,9 +224,17 @@ drawWheel(): boolean {
     if (!this.ctx) return false;
   }
 
+  // Draw in CSS-pixel units on a canvas that has one backing pixel per device pixel.
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const backing = Math.round(this.canvasSize * dpr);
+  if (canvas.width !== backing || canvas.height !== backing) {
+    canvas.width = backing;
+    canvas.height = backing;
+  }
   const ctx = this.ctx;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const count = this.currentItems.length;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, this.canvasSize, this.canvasSize);
 
   if (count === 0) {
     ctx.beginPath();
@@ -241,6 +248,10 @@ drawWheel(): boolean {
   }
 
   const angle = (2 * Math.PI) / count;
+  // How much room one segment has where its picture/text sits - with many segments it is
+  // narrow, so pictures and text shrink to stay inside their own wedge.
+  const arcLen = this.wheelRadius * 0.72 * angle;
+  const glyph = Math.max(14, Math.min(this.imageSize, arcLen * 0.85));
   const bottomAngle = 3 * Math.PI / 2;
 
   for (let i = 0; i < count; i++) {
@@ -296,20 +307,20 @@ drawWheel(): boolean {
         if (spaceIndex > 0 && spaceIndex < displayText.length) {
           line1 = displayText.substring(0, spaceIndex);
           line2 = displayText.substring(spaceIndex + 1);
-        } else {
-          line1 = displayText.substring(0, maxChars);
-          line2 = displayText.substring(maxChars);
         }
+        // A long single word stays in one piece - the font shrinks to fit it instead.
       }
 
-      ctx.font = 'bold 18px Arial';
+      const longestLine = Math.max(line1.length, line2.length, 3);
+      const fontPx = Math.max(8, Math.min(this.wheelRadius * 0.072, arcLen / (longestLine * 0.78)));
+      ctx.font = `bold ${Math.round(fontPx)}px Arial`;
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       if (line2) {
-        ctx.fillText(line1, 0, -12);
-        ctx.fillText(line2, 0, 12);
+        ctx.fillText(line1, 0, -fontPx * 0.65);
+        ctx.fillText(line2, 0, fontPx * 0.65);
       } else {
         ctx.fillText(displayText, 0, 0);
       }
@@ -317,9 +328,9 @@ drawWheel(): boolean {
       // Every segment shows the same speaker glyph (sound has no per-segment visual) -
       // the actual item is only revealed once the wheel lands and the quiz card plays it.
       if (this.audioIconImg) {
-        ctx.drawImage(this.audioIconImg, -this.imageSize / 2, -this.imageSize / 2, this.imageSize, this.imageSize);
+        ctx.drawImage(this.audioIconImg, -glyph / 2, -glyph / 2, glyph, glyph);
       } else {
-        ctx.font = `${Math.round(this.imageSize * 0.7)}px Arial`;
+        ctx.font = `${Math.round(glyph * 0.7)}px Arial`;
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -328,7 +339,7 @@ drawWheel(): boolean {
     } else {
       if (item.image && item.id && this.images.has(item.id)) {
         const img = this.images.get(item.id)!;
-        ctx.drawImage(img, -this.imageSize / 2, -this.imageSize / 2, this.imageSize, this.imageSize);
+        ctx.drawImage(img, -glyph / 2, -glyph / 2, glyph, glyph);
       } else {
         ctx.font = 'bold 24px Arial';
         ctx.fillStyle = 'white';
@@ -392,25 +403,11 @@ drawWheel(): boolean {
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.onended = null;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   toggleCardFlip() {
@@ -428,23 +425,15 @@ drawWheel(): boolean {
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
 spin() {
-  if (this.spinning || this.currentItems.length === 0 || this.gameFinished || this.victoryPending) return;
+  if (this.spinning || this.awaitingQuiz || this.currentItems.length === 0 || this.gameFinished || this.victoryPending) return;
   this.playSound(this.spinSound);
   this.spinning = true;
   this.cdr.detectChanges();
@@ -494,7 +483,11 @@ spin() {
       this.spinning = false;
       // Show quiz (answer options) or the simple OK/Oops confirm, depending on the setting.
       const canShowQuiz = !this.forceSimpleMode && this.buildQuizOptions();
+      // For the next second the wheel is still, but the quiz isn't up yet: block a new
+      // spin or an elimination so they can't run against the item that just landed.
+      this.awaitingQuiz = true;
       this.setGameTimeout(() => {
+        this.awaitingQuiz = false;
         this.simpleConfirmMode = !canShowQuiz;
         this.isFlipped = false;
         this.keyboardSelectedOptionIndex = 0;
@@ -614,7 +607,7 @@ onQuizAnswer(selected: Item) {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     if (this.showQuiz) {
       this.handleQuizKey(event);
@@ -643,6 +636,7 @@ onQuizAnswer(selected: Item) {
         this.eliminate();
         break;
       case 'r':
+        if (!event.shiftKey) break;
         event.preventDefault();
         this.resetGame();
         break;
@@ -709,11 +703,6 @@ onQuizAnswer(selected: Item) {
     return /^[1-9]$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   onConfirmOk() {
     if (!this.selectedItem || this.gameFinished || this.eliminationLong) return;
     this.playSound(this.collectSound);
@@ -749,7 +738,7 @@ onQuizAnswer(selected: Item) {
 
   // Direct elimination (same as old eliminate button)
   eliminate() {
-    if (this.showQuiz || this.gameFinished || this.victoryPending || this.spinning) return; // do not eliminate during quiz or an in-flight spin
+    if (this.showQuiz || this.gameFinished || this.victoryPending || this.spinning || this.awaitingQuiz) return; // do not eliminate during quiz or an in-flight spin
     const count = this.currentItems.length;
     if (count === 0) return;
     this.playSound(this.collectSound);
@@ -767,6 +756,9 @@ onQuizAnswer(selected: Item) {
 
   resetGame() {
     if (this.showQuiz) return;
+    // Drop a quiz that was about to open for the item that had just landed.
+    this.awaitingQuiz = false;
+    this.clearPendingTimers();
     if (this.spinFrameId !== null) {
       cancelAnimationFrame(this.spinFrameId);
       this.spinFrameId = null;

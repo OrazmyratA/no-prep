@@ -2,7 +2,8 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, 
 import { SwipeDirective } from '../../../shared/swipe.directive';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import html2canvas from 'html2canvas';
+import { loadHtml2Canvas } from '../html2canvas-loader';
+import { READER_SHORTCUTS } from '../book-shortcuts';
 import { Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
 import { GuidePitchService } from '../../../core/guide-pitch';
@@ -79,6 +80,8 @@ import { BookReaderVideoController } from './book-reader-video-controller';
 import { BookReaderLayoutController } from './book-reader-layout-controller';
 import { BookReaderProgressController } from './book-reader-progress-controller';
 import { cloneTextAnnotation } from './book-reader-annotation-utils';
+import { BookReaderPageFrameComponent } from './book-reader-page-frame';
+import { PdfPageCanvasComponent, PdfPrefetchRequest } from '../pdf-page-canvas/pdf-page-canvas';
 
 @Component({
   selector: 'app-book-reader',
@@ -129,6 +132,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   lessonSession: { unitId: string; lessonId: string; pageIds: string[] } | null = null;
   zoom = 1;
   twoPageMode = false;
+  // Keyboard-shortcut cheat sheet (opened from the top bar or with ?).
+  readonly shortcutSections = READER_SHORTCUTS;
+  shortcutHelpOpen = false;
   readerSpreadWidthPx: number | null = null;
   private readerInteractionFrame = 0;
   private drawingCanvasFrame = 0;
@@ -321,8 +327,19 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   };
 
+  // A plain @HostListener('document:pointermove') runs inside Angular's zone, so every mouse
+  // move anywhere on the page triggered a full change-detection pass (~140 template calls even
+  // on a 25-element page) with nothing being dragged. Registered outside the zone instead, and
+  // only re-entered while one of the two move-driven interactions is active.
+  private readonly pointerMoveListener = (event: PointerEvent): void => {
+    // Must mirror the states the handlers below react to (text dragging, tracing sessions).
+    if (!this.textDrag && !this.activeTracingSession) return;
+    this.zone.run(() => this.onDocumentPointerMove(event));
+  };
+
   async ngOnInit(): Promise<void> {
     document.addEventListener('keydown', this.answerKeyArrowHandler, true);
+    this.zone.runOutsideAngular(() => document.addEventListener('pointermove', this.pointerMoveListener));
     this.moveOwlToCorner();
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
       void this.loadBook(params.get('id'));
@@ -336,6 +353,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     document.removeEventListener('keydown', this.answerKeyArrowHandler, true);
+    document.removeEventListener('pointermove', this.pointerMoveListener);
+    if (this.pdfPrefetchTimer !== null) window.clearTimeout(this.pdfPrefetchTimer);
     this.routeSubscription?.unsubscribe();
     this.stopGuideAudio();
     this.aiSpeakingRuntime.stopSpeaking();
@@ -1068,6 +1087,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       await this.nextFrame();
     }
     try {
+      const html2canvas = await loadHtml2Canvas();
       return await html2canvas(target, {
         backgroundColor: null,
         scale: Math.min(2, window.devicePixelRatio || 1),
@@ -1240,6 +1260,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   onDocumentKeydown(event: KeyboardEvent): void {
     if (event.defaultPrevented || this.isKeyboardEditingTarget(event.target)) return;
 
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      this.toggleShortcutHelp();
+      return;
+    }
+
     const shortcutKey = event.key.toLowerCase();
     const commandKey = event.ctrlKey || event.metaKey;
     if (commandKey) {
@@ -1375,6 +1401,19 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return true;
   }
 
+  toggleShortcutHelp(): void {
+    this.shortcutHelpOpen = !this.shortcutHelpOpen;
+  }
+
+  closeShortcutHelp(): void {
+    this.shortcutHelpOpen = false;
+  }
+
+  // On-screen counterpart to Ctrl+D so touch-only screens (smart boards) can duplicate a note.
+  duplicateSelectedText(): void {
+    this.duplicateSelectedTextAnnotation();
+  }
+
   private duplicateSelectedTextAnnotation(): void {
     const source = this.getSelectedTextAnnotation();
     if (!source) return;
@@ -1443,6 +1482,10 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getFocusZoomTransform(element: BookElement | null): string {
     return this.focusController.getFocusZoomTransform(element);
+  }
+
+  getGuideDotNumber(element: BookElement, page = this.currentPage): number {
+    return this.guideController.getGuideDotNumber(element, page);
   }
 
   isGuideDotEnabled(element: BookElement, page = this.currentPage): boolean {
@@ -1655,6 +1698,46 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       this.updateReaderSpreadWidth();
       this.resizeDrawingCanvas(size.width, size.height);
     }
+    // The visible page is on screen now: this is the moment to warm the neighbours.
+    this.schedulePdfPrefetch();
+  }
+
+  private pdfPrefetchTimer: number | null = null;
+
+  // Page turns re-rasterize the target page with pdf.js, which is what makes them feel slow on
+  // weaker screens (smart boards). Once the current page has settled, quietly render the next
+  // and previous pages into a small cache so the turn becomes a single drawImage.
+  private schedulePdfPrefetch(): void {
+    if (this.pdfPrefetchTimer !== null) window.clearTimeout(this.pdfPrefetchTimer);
+    this.zone.runOutsideAngular(() => {
+      this.pdfPrefetchTimer = window.setTimeout(() => {
+        this.pdfPrefetchTimer = null;
+        if (this.destroyed || this.expandedFocusElement) return;
+        const requests = this.getPdfPrefetchRequests();
+        if (requests.length) PdfPageCanvasComponent.prefetch(requests);
+      }, 300);
+    });
+  }
+
+  private getPdfPrefetchRequests(): PdfPrefetchRequest[] {
+    const requests: PdfPrefetchRequest[] = [];
+    const add = (index: number, renderScale: number): void => {
+      const page = this.visiblePages[index];
+      if (!page || page.type !== 'pdf') return;
+      const sourceUrl = this.getPagePdfUrl(page);
+      if (!sourceUrl) return;
+      requests.push({ sourceUrl, pageNumber: page.pdfPage || 1, renderScale, rotation: this.getPageRotation(page) });
+    };
+    const primary = BookReaderPageFrameComponent.PRIMARY_RENDER_SCALE;
+    const companion = BookReaderPageFrameComponent.COMPANION_RENDER_SCALE;
+    const current = this.currentPageIndex;
+    // Forward turns are far more common than backward ones, so next goes first. In two-page
+    // mode a turn also changes which page sits in the smaller companion slot.
+    add(current + 1, primary);
+    if (this.twoPageMode) add(current + 2, companion);
+    add(current - 1, primary);
+    if (this.twoPageMode) add(current, companion);
+    return requests;
   }
 
   async canDeactivate(): Promise<boolean> {
@@ -2233,7 +2316,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.layoutController.onWindowResize();
   }
 
-  @HostListener('document:pointermove', ['$event'])
+  // Wired up manually in ngOnInit (see pointerMoveListener), not via @HostListener.
   onDocumentPointerMove(event: PointerEvent): void {
     this.annotationController.onDocumentPointerMove(event);
     this.tracingController.onDocumentPointerMove(event);
@@ -2466,6 +2549,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.book || !page || page.type !== 'pdf' || !sourcePdf) {
       this.pdfUrl = '';
       this.resizeDrawingCanvas(900, 1200);
+      // A blank/non-PDF page never reports a rendered size, so kick off the neighbours here.
+      this.schedulePdfPrefetch();
       return;
     }
 

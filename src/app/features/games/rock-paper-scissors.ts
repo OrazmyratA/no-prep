@@ -73,7 +73,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     { key: '1-3', action: 'Choose quiz answer' },
     { key: '← →', action: 'Move quiz highlight' },
     { key: 'Enter', action: 'Choose highlighted answer or replay' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   // Victory state
@@ -656,7 +656,7 @@ export class RockPaperScissorsComponent implements OnInit, AfterViewInit, OnDest
     } else if (key === 'l') {
       event.preventDefault();
       this.onChoose('right');
-    } else if (key === 'r') {
+    } else if (key === 'r' && event.shiftKey) {
       event.preventDefault();
       this.resetGame();
     }

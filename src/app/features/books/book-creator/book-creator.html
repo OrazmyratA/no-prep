@@ -1,5 +1,6 @@
 <div class="book-creator-page">
   <app-book-creator-toolbar [creator]="this"></app-book-creator-toolbar>
+  <app-shortcut-help-panel [open]="shortcutHelpOpen" [sections]="shortcutSections" title="Creator shortcuts" (closed)="closeShortcutHelp()"></app-shortcut-help-panel>
 
   <div class="operation-panel" *ngIf="progress$ | async as progress">
     <div class="operation-row">

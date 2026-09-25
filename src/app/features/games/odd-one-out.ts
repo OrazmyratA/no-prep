@@ -4,6 +4,7 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { shuffled, isTypingTarget, TimerBag } from './game-utils';
 
 interface RoundItem {
   item: Item;
@@ -36,7 +37,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     { key: '← ↑ ↓ →', action: 'Move item highlight' },
     { key: 'Enter', action: 'Choose highlighted item' },
     { key: 'P', action: 'Pause or resume timer' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   // Settings
@@ -56,7 +57,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   private correctSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private winSound: HTMLAudioElement | null = null;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
 
   // Image handling
@@ -155,17 +156,11 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
 
     // Choose common items (distinct from odd)
     const otherItems = this.items.filter(item => item.id !== this.currentOddItem!.id);
-    const shuffledOthers = [...otherItems].sort(() => Math.random() - 0.5);
-    const commonItems = shuffledOthers.slice(0, this.itemAmount);
+    const commonItems = shuffled(otherItems).slice(0, this.itemAmount);
 
-    // Build sets
-    const largerSetItems = [this.currentOddItem, ...commonItems];
-    const smallerSetItems = [...commonItems];
-
-    // Shuffle each set
-    const shuffle = (arr: any[]) => arr.sort(() => Math.random() - 0.5);
-    shuffle(largerSetItems);
-    shuffle(smallerSetItems);
+    // Build sets (each one shuffled)
+    const largerSetItems = shuffled([this.currentOddItem, ...commonItems]);
+    const smallerSetItems = shuffled(commonItems);
 
     // Generate non-overlapping positions for each set
     const largerPositions = this.generatePositions(largerSetItems.length);
@@ -259,7 +254,8 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
       this.setGameTimeout(() => this.nextRound(), 3000);
     } else {
       this.playSound(this.buzzSound);
-      const element = document.querySelector(`[data-item-id="${item.id}"]`);
+      // The same item can appear on both sides, so the side is part of the lookup.
+      const element = document.querySelector(`[data-item-id="${item.id}"][data-side="${side}"]`);
       element?.classList.add('shake');
       this.setGameTimeout(() => element?.classList.remove('shake'), 500);
     }
@@ -267,7 +263,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   }
 
   private highlightCorrectItem() {
-    const element = document.querySelector(`[data-item-id="${this.currentOddItem!.id}"]`);
+    const element = document.querySelector(`[data-item-id="${this.currentOddItem!.id}"][data-side="${this.oddSide}"]`);
     element?.classList.add('correct-glow');
     this.setGameTimeout(() => element?.classList.remove('correct-glow'), 1000);
   }
@@ -287,19 +283,11 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
   private parseBooleanParam(value: unknown, defaultValue: boolean): boolean {
@@ -349,7 +337,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameFinished) {
@@ -386,7 +374,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
         if (key === 'p') {
           event.preventDefault();
           this.togglePause();
-        } else if (key === 'r') {
+        } else if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -453,10 +441,5 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
 
   private getKeyboardDigit(event: KeyboardEvent): string | null {
     return /^\d$/.test(event.key) ? event.key : null;
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 }

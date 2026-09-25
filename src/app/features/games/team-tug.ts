@@ -4,6 +4,7 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { isTypingTarget, TimerBag, GameCountdown } from './game-utils';
 
 interface Team {
   name: string;
@@ -32,12 +33,18 @@ export class TeamTugComponent implements OnInit, OnDestroy {
   gameStatus: 'running' | 'leftWin' | 'rightWin' | 'draw' = 'running';
   timerRemaining: number | null = null;
   private timerInterval: any;
-  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
 
   // Character position (0 = far left, 100 = far right, relative to container)
   characterPosition = 50;
   characterWidth = 60; // percentage of container width
+
+  // After a wrong answer a team's buttons are locked for a moment, so tapping both
+  // buttons one after the other can't guarantee the point.
+  leftLocked = false;
+  rightLocked = false;
+  private readonly wrongAnswerLockMs = 1000;
 
   // Button order: true = correct on first button, false = correct on second
   leftButtonOrder: boolean = true;
@@ -53,11 +60,12 @@ export class TeamTugComponent implements OnInit, OnDestroy {
 
   loading = true;
   gameActive = false; // for template
+  countdown = new GameCountdown(() => this.cdr.detectChanges());
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
     { key: 'A / S', action: 'Left team first or second answer' },
     { key: 'K / L', action: 'Right team first or second answer' },
-    { key: 'R', action: 'Start over' },
+    { key: 'Shift + R', action: 'Start over' },
     { key: 'Enter', action: 'Play again after winner' }
   ];
 
@@ -136,6 +144,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.destroyed = true;
+    this.countdown.cancel();
     this.clearTimer();
     this.clearFeedbackTimers();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
@@ -183,6 +192,8 @@ export class TeamTugComponent implements OnInit, OnDestroy {
 
   startGame() {
     this.clearFeedbackTimers();
+    this.leftLocked = false;
+    this.rightLocked = false;
     this.resetRoundState();
     this.gameStatus = 'running';
     this.gameActive = true;
@@ -192,11 +203,12 @@ export class TeamTugComponent implements OnInit, OnDestroy {
       this.assignTeamPair('right');
     }
 
-    if (this.enableTimer) {
-      this.timerRemaining = this.timerDurationSeconds;
-      this.startTimer();
-    }
+    this.clearTimer();
+    this.timerRemaining = this.enableTimer ? this.timerDurationSeconds : null;
     this.cdr.detectChanges();
+    this.countdown.run(() => {
+      if (this.enableTimer) this.startTimer();
+    });
   }
 
   resetGame() {
@@ -211,6 +223,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
 
   onTeamButtonClick(team: 'left' | 'right', isCorrect: boolean) {
     if (this.gameStatus !== 'running') return;
+    if (team === 'left' ? this.leftLocked : this.rightLocked) return;
 
     if (isCorrect) {
       this.playSound(this.correctSound);
@@ -228,6 +241,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
     } else {
       this.playSound(this.buzzSound);
       this.shakeButton(team);
+      this.lockTeam(team);
     }
 
     this.cdr.detectChanges();
@@ -236,7 +250,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameStatus !== 'running') {
@@ -265,6 +279,7 @@ export class TeamTugComponent implements OnInit, OnDestroy {
         this.onTeamButtonClick('right', this.rightButtonOrder ? false : true);
         break;
       case 'r':
+        if (!event.shiftKey) break;
         event.preventDefault();
         this.resetGame();
         break;
@@ -355,6 +370,16 @@ export class TeamTugComponent implements OnInit, OnDestroy {
     this.concludeByScoreComparison();
   }
 
+  private lockTeam(team: 'left' | 'right') {
+    if (team === 'left') this.leftLocked = true;
+    else this.rightLocked = true;
+    this.setFeedbackTimeout(() => {
+      if (team === 'left') this.leftLocked = false;
+      else this.rightLocked = false;
+      this.cdr.detectChanges();
+    }, this.wrongAnswerLockMs);
+  }
+
   private shakeButton(team: 'left' | 'right') {
     const selector = team === 'left' ? '.left-team .team-button' : '.right-team .team-button';
     const buttons = document.querySelectorAll(selector);
@@ -371,25 +396,12 @@ export class TeamTugComponent implements OnInit, OnDestroy {
     }
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.feedbackTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.feedbackTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearFeedbackTimers() {
-    this.feedbackTimers.forEach(timer => clearTimeout(timer));
-    this.feedbackTimers.clear();
+    this.timers.clear();
   }
 
   imageUrl(blob: Blob | undefined | null, itemId: number): string | null {

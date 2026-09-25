@@ -15,6 +15,7 @@ import { LanguageService } from '../../core/language';
 import { showAppNotification } from '../../core/notification';
 import { ThemeService } from '../../core/theme';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { shuffled, TrackedAudio, isTypingTarget } from './game-utils';
 
 interface Point {
   x: number;
@@ -107,8 +108,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private rewardSound: HTMLAudioElement | null = null;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private roundItems: Item[] = [];
 
   private ctx!: CanvasRenderingContext2D;
@@ -240,8 +240,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private pickRandomSubset(pool: Item[], count: number): Item[] {
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+    return shuffled(pool).slice(0, count);
   }
 
   private placeElements() {
@@ -729,25 +728,11 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(() => {});
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   // ---- Segment intersection (orientation / CCW test) ----
@@ -939,7 +924,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event, { allowButtons: true })) return;
     if (event.key === 'Escape' && this.selectedElementId) {
       event.preventDefault();
       this.clearSelection();
@@ -953,11 +938,6 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
 
   private isSpaceKey(event: KeyboardEvent): boolean {
     return event.key === ' ' || event.key === 'Spacebar' || event.code === 'Space';
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   // ---- Menu actions ----

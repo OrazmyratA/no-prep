@@ -111,14 +111,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckSuffixes': {
   en: 'Suffixes',
-  tk: 'Suffixes',
-  ru: 'Suffixes',
-  cn: 'Suffixes',
-  cde: 'Suffixes',
-  es: 'Suffixes',
+  tk: 'Soňluklar',
+  ru: 'Суффиксы',
+  cn: '后缀',
+  cde: 'Suffixe',
+  es: 'Sufijos',
   fr: 'Suffixes',
-  kr: 'Suffixes',
-  sa: 'Suffixes',
+  kr: '접미사',
+  sa: 'اللواحق',
 },
 
 
@@ -126,14 +126,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckPrefixes': {
   en: 'Prefixes',
-  tk: 'Prefixes',
-  ru: 'Prefixes',
-  cn: 'Prefixes',
-  cde: 'Prefixes',
-  es: 'Prefixes',
-  fr: 'Prefixes',
-  kr: 'Prefixes',
-  sa: 'Prefixes',
+  tk: 'Öňlükler',
+  ru: 'Приставки',
+  cn: '前缀',
+  cde: 'Präfixe',
+  es: 'Prefijos',
+  fr: 'Préfixes',
+  kr: '접두사',
+  sa: 'السوابق',
 },
 
 
@@ -141,14 +141,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckPrepositions': {
   en: 'Prepositions',
-  tk: 'Prepositions',
-  ru: 'Prepositions',
-  cn: 'Prepositions',
-  cde: 'Prepositions',
-  es: 'Prepositions',
-  fr: 'Prepositions',
-  kr: 'Prepositions',
-  sa: 'Prepositions',
+  tk: 'Predloglar',
+  ru: 'Предлоги',
+  cn: '介词',
+  cde: 'Präpositionen',
+  es: 'Preposiciones',
+  fr: 'Prépositions',
+  kr: '전치사',
+  sa: 'حروف الجر',
 },
 
 
@@ -156,14 +156,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckArticles': {
   en: 'Articles',
-  tk: 'Articles',
-  ru: 'Articles',
-  cn: 'Articles',
-  cde: 'Articles',
-  es: 'Articles',
+  tk: 'Artikller',
+  ru: 'Артикли',
+  cn: '冠词',
+  cde: 'Artikel',
+  es: 'Artículos',
   fr: 'Articles',
-  kr: 'Articles',
-  sa: 'Articles',
+  kr: '관사',
+  sa: 'أدوات التعريف',
 },
 
 
@@ -171,14 +171,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckConjunctions': {
   en: 'Conjunctions',
-  tk: 'Conjunctions',
-  ru: 'Conjunctions',
-  cn: 'Conjunctions',
-  cde: 'Conjunctions',
-  es: 'Conjunctions',
-  fr: 'Conjunctions',
-  kr: 'Conjunctions',
-  sa: 'Conjunctions',
+  tk: 'Baglaýjylar',
+  ru: 'Союзы',
+  cn: '连词',
+  cde: 'Konjunktionen',
+  es: 'Conjunciones',
+  fr: 'Conjonctions',
+  kr: '접속사',
+  sa: 'أدوات العطف',
 },
 
 
@@ -186,14 +186,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckAdverbs': {
   en: 'Adverbs',
-  tk: 'Adverbs',
-  ru: 'Adverbs',
-  cn: 'Adverbs',
-  cde: 'Adverbs',
-  es: 'Adverbs',
-  fr: 'Adverbs',
-  kr: 'Adverbs',
-  sa: 'Adverbs',
+  tk: 'Hal sözleri',
+  ru: 'Наречия',
+  cn: '副词',
+  cde: 'Adverbien',
+  es: 'Adverbios',
+  fr: 'Adverbes',
+  kr: '부사',
+  sa: 'الظروف',
 },
 
 
@@ -201,14 +201,14 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
 'settingsSpellingCheckVerbs': {
   en: 'Verbs',
-  tk: 'Verbs',
-  ru: 'Verbs',
-  cn: 'Verbs',
-  cde: 'Verbs',
-  es: 'Verbs',
-  fr: 'Verbs',
-  kr: 'Verbs',
-  sa: 'Verbs',
+  tk: 'Işlikler',
+  ru: 'Глаголы',
+  cn: '动词',
+  cde: 'Verben',
+  es: 'Verbos',
+  fr: 'Verbes',
+  kr: '동사',
+  sa: 'الأفعال',
 },
 
 

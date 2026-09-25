@@ -13,6 +13,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
+import { isTypingTarget, TimerBag } from './game-utils';
 
 interface Team {
   id: number;
@@ -70,7 +71,7 @@ export class RevealGameComponent implements OnInit, OnDestroy {
   private imageUrls: Map<number, string> = new Map();
   private objectUrls: string[] = [];
   private transitionLock = false;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
   isCoverResetting = false;
   private coverResetFrame: number | null = null;
@@ -505,7 +506,7 @@ private updateTeamButtonHintVisibility() {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     if (this.showQuiz) {
       this.handleQuizKey(event);
@@ -560,6 +561,7 @@ private updateTeamButtonHintVisibility() {
         }
         break;
       case 'r':
+        if (!event.shiftKey) break;
         event.preventDefault();
         this.resetGame();
         break;
@@ -611,7 +613,7 @@ private updateTeamButtonHintVisibility() {
       { key: 'N', action: 'Skip to next item' },
       { key: 'O', action: 'OK in confirm mode' },
       { key: 'X / Esc', action: 'Oops in confirm mode' },
-      { key: 'R', action: 'Start over' }
+      { key: 'Shift + R', action: 'Start over' }
     ];
   }
 
@@ -653,11 +655,6 @@ private updateTeamButtonHintVisibility() {
     return /^[1-9]$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   private closeQuizAndResetTurn() {
     this.showQuiz = false;
     this.quizOverlayVisible = false;
@@ -686,19 +683,11 @@ private updateTeamButtonHintVisibility() {
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
   trackByIndex(index: number): number {

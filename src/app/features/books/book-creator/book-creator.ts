@@ -1,5 +1,7 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import html2canvas from 'html2canvas';
+import { loadHtml2Canvas } from '../html2canvas-loader';
+import { CREATOR_SHORTCUTS } from '../book-shortcuts';
+import { getGuideDotNumber, getOrderedGuideDots } from '../guide-dot-order';
 import { SwipeDirective } from '../../../shared/swipe.directive';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -155,6 +157,9 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   previewGuideDuration = 0;
   previewGuidePaused = true;
   recordingGuideElementId: string | null = null;
+  // Keyboard-shortcut cheat sheet (opened from the top bar or with ?).
+  readonly shortcutSections = CREATOR_SHORTCUTS;
+  shortcutHelpOpen = false;
   // Teacher guide dot text-to-speech (same voices/languages as the audio uploader).
   readonly voiceLanguages = VOICE_LANGUAGES;
   guideSpeechPanelOpen = false;
@@ -246,6 +251,9 @@ Tomorrow I will help my mom.`;
   private copiedWordBank: BookWordBank | null = null;
   private activePreviewAudio: HTMLAudioElement | null = null;
   private previewPitchCleanup: (() => void) | null = null;
+  // Retunes the playing preview without rebuilding its audio graph (null until a pitch node exists).
+  private previewPitchSetter: ((semitones: number) => void) | null = null;
+  private previewPitchRestartTimer: number | null = null;
   private previewToken = 0;
   private guideTrackSeekTimes: Record<string, number> = {};
   previewGuideTrackId: string | null = null;
@@ -345,7 +353,33 @@ Tomorrow I will help my mom.`;
   private readonly taskSettingsController = new BookCreatorTaskSettingsController(this);
   private readonly workbookLinkController = new BookCreatorWorkbookLinkController(this);
 
+  // A plain @HostListener('document:pointermove') runs inside Angular's zone, so every mouse
+  // move anywhere on the page triggered a full change-detection pass (~160 template calls with
+  // the inspector open) even when nothing was being dragged. Registered outside the zone
+  // instead, and only re-entered while a pointer interaction is actually in progress.
+  private readonly pointerMoveListener = (event: PointerEvent): void => {
+    if (!this.hasActivePointerInteraction()) return;
+    this.ngZone.run(() => this.onDocumentPointerMove(event));
+  };
+
+  // Must mirror the states onDocumentPointerMove reacts to: anything it would early-return on
+  // has to be false here, and any state it handles has to be listed here.
+  private hasActivePointerInteraction(): boolean {
+    return !!(
+      this.inspectorResizeState
+      || this.creatorInkState
+      || this.taskDrawState
+      || this.guideTrackSeekDragState
+      || this.timelinePinDragState
+      || this.pagePinDragState
+      || this.tracingPointDragState
+      || (this.placingTracingTask && this.tracingPlacementElementId)
+      || (this.dragState && this.editorCanvas)
+    );
+  }
+
   async ngOnInit(): Promise<void> {
+    this.ngZone.runOutsideAngular(() => document.addEventListener('pointermove', this.pointerMoveListener));
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
       void this.loadBook(params.get('id'));
     });
@@ -356,6 +390,7 @@ Tomorrow I will help my mom.`;
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('pointermove', this.pointerMoveListener);
     this.routeSubscription?.unsubscribe();
     this.stopGuideDotRecording();
     this.clearRecordingTimeout();
@@ -631,6 +666,19 @@ Tomorrow I will help my mom.`;
     }
   }
 
+  // Order of a guide dot on the page (what the reader unlocks first, second, ...); 0 if it is the only one.
+  getGuideDotNumber(element: BookElement): number {
+    return getGuideDotNumber(getOrderedGuideDots(this.selectedPage?.elements ?? []), element.id);
+  }
+
+  toggleShortcutHelp(): void {
+    this.shortcutHelpOpen = !this.shortcutHelpOpen;
+  }
+
+  closeShortcutHelp(): void {
+    this.shortcutHelpOpen = false;
+  }
+
   toggleInspector(): void {
     this.navigationController.toggleInspector();
   }
@@ -641,6 +689,7 @@ Tomorrow I will help my mom.`;
     this.cdr.detectChanges();
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     try {
+      const html2canvas = await loadHtml2Canvas();
       const canvas = await html2canvas(this.editorCanvas.nativeElement, {
         backgroundColor: null,
         scale: Math.min(2, window.devicePixelRatio || 1),
@@ -809,6 +858,12 @@ Tomorrow I will help my mom.`;
   @HostListener('document:keydown', ['$event'])
   onDocumentKeydown(event: KeyboardEvent): void {
     if (event.defaultPrevented || this.isKeyboardEditingTarget(event.target)) return;
+
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      this.toggleShortcutHelp();
+      return;
+    }
 
     const shortcutKey = event.key.toLowerCase();
     const commandKey = event.ctrlKey || event.metaKey;
@@ -1475,7 +1530,7 @@ Tomorrow I will help my mom.`;
     this.inspectorResizeState = { startClientX: event.clientX, startWidth: this.inspectorWidthPx };
   }
 
-  @HostListener('document:pointermove', ['$event'])
+  // Wired up manually in ngOnInit (see pointerMoveListener), not via @HostListener.
   onDocumentPointerMove(event: PointerEvent): void {
     if (this.inspectorResizeState) {
       event.preventDefault();

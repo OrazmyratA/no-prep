@@ -114,10 +114,7 @@
       <span class="hunt-paused">⏸ {{ 'flashcardHuntPaused' | translate }}</span>
     </div>
 
-    <!-- Countdown -->
-    <div *ngIf="phase === 'countdown' && countdownLabel" class="hunt-banner">
-      <span class="hunt-countdown" [attr.data-label]="countdownLabel">{{ countdownLabel }}</span>
-    </div>
+    <app-game-countdown [label]="countdown.label" [blocking]="countdown.active"></app-game-countdown>
 
     <!-- Hunt over -> quiz banner -->
     <div *ngIf="phase === 'transition'" class="hunt-banner hunt-banner-dim">

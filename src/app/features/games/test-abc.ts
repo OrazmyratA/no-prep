@@ -6,6 +6,7 @@ import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
+import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 interface Question {
   correctItem: Item;
@@ -34,6 +35,7 @@ export class TestAbcComponent implements OnInit, OnDestroy {
   selectedCorrect = false;
   keyboardSelectedOptionIndex = 0;
   answeredQuestions = new Map<number, number>();
+  private missedQuestions = new Set<number>();
   fadeOutOptionIds = new Set<number>();
   keyboardHintsVisible = false;
   keyboardShortcuts: GameKeyboardShortcut[] = [
@@ -43,16 +45,15 @@ export class TestAbcComponent implements OnInit, OnDestroy {
     { key: '← ↑ ↓ →', action: 'Move answer highlight' },
     { key: 'Enter', action: 'Choose highlighted answer' },
     { key: 'B / N', action: 'Previous or next question' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   private correctSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private winSound: HTMLAudioElement | null = null;
   private captureSound: HTMLAudioElement | null = null;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
-  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private trackedAudio = new TrackedAudio();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
 
   private objectUrls: string[] = [];
@@ -169,6 +170,7 @@ export class TestAbcComponent implements OnInit, OnDestroy {
       [this.questions[i], this.questions[j]] = [this.questions[j], this.questions[i]];
     }
     this.answeredQuestions.clear();
+    this.missedQuestions.clear();
     this.currentIndex = 0;
     this.isFlipped = false;
     this.score = 0;
@@ -214,7 +216,8 @@ private getDistinctDistractors(correct: Item): Item[] {
 
     if (isCorrect) {
       this.playSound(this.correctSound);
-      this.score++;
+      // Only a first-try correct answer scores; a question that took several tries doesn't.
+      if (!this.missedQuestions.has(this.currentIndex)) this.score++;
       this.selectedOptionId = selectedItem.id ?? null;
       this.selectedCorrect = true;
       this.answered = true;
@@ -242,6 +245,7 @@ private getDistinctDistractors(correct: Item): Item[] {
         this.cdr.detectChanges();
       }, 2000);
     } else {
+      this.missedQuestions.add(this.currentIndex);
       this.playSound(this.buzzSound);
       const el = document.querySelector(`[data-opt-id="${selectedItem.id}"]`);
       el?.classList.add('shake');
@@ -353,7 +357,7 @@ private getDistinctDistractors(correct: Item): Item[] {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameFinished) {
@@ -403,7 +407,7 @@ private getDistinctDistractors(correct: Item): Item[] {
         } else if (key === 'n') {
           event.preventDefault();
           this.nextQuestion();
-        } else if (key === 'r') {
+        } else if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -472,47 +476,19 @@ private getDistinctDistractors(correct: Item): Item[] {
     return /^[1-9]$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.feedbackTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.feedbackTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearFeedbackTimers() {
-    this.feedbackTimers.forEach(timer => clearTimeout(timer));
-    this.feedbackTimers.clear();
+    this.timers.clear();
   }
 }

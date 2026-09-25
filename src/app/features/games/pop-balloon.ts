@@ -9,6 +9,7 @@ import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
+import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 type RPSChoice = 'rock' | 'paper' | 'scissors';
 
@@ -82,6 +83,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   topicId!: number;
   aitOrder: AitType[] = [...AIT_DEFAULT_ORDER];
   disableRps = false;
+  // 0 = one balloon per item; otherwise at most this many balloons per team (keeps a round short
+  // when a topic has many items). Quiz answer choices still come from every item.
+  private balloonCap = 0;
   items: Item[] = [];
   balloons: Balloon[] = [];
   teams: PopTeam[] = [];
@@ -110,7 +114,6 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
 
   giftPosition: GiftPosition = 'hidden';
   giftOpened = false;
-  private readonly giftHeight = 160;
   private readonly giftStringAnchorOffset = 74;
   private readonly stringBalloonOverlap = 8;
   private giftTopicId: number | null = null;
@@ -120,7 +123,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private liftTimeout?: ReturnType<typeof setTimeout>;
   private dropTimeout?: ReturnType<typeof setTimeout>;
   private victoryTimeout?: ReturnType<typeof setTimeout>;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
   private stringTrackFrame?: number;
   private gameStartTime = 0;
@@ -135,8 +138,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private cashSound: HTMLAudioElement | null = null;
   private powerUpSound: HTMLAudioElement | null = null;
   private layoutSubscription?: Subscription;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
 
   // RPS phase (2-team mode only)
   readonly rpsChoiceList: readonly RPSChoice[] = ['rock', 'paper', 'scissors'];
@@ -200,6 +202,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     this.aitOrder = parseAitOrder(params['ait']);
     this.forceSimpleMode = params['simpleMode'] !== 'false';
     this.disableRps = params['disableRps'] === 'true';
+    const rawBalloonCount = Number(params['balloonCount']);
+    this.balloonCap = Number.isFinite(rawBalloonCount) && rawBalloonCount > 0 ? Math.floor(rawBalloonCount) : 0;
     this.syncKeyboardShortcuts();
     const rawGiftTopicId = Number(params['giftTopicId']);
     this.giftTopicId = Number.isFinite(rawGiftTopicId) && rawGiftTopicId > 0 ? rawGiftTopicId : null;
@@ -334,37 +338,6 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     this.balloons = this.teams[0]?.balloons ?? [];
   }
 
-  private createBalloons(onlyWithAudio: boolean = false) {
-    this.teams = [{
-      id: 0,
-      name: `${this.langService.translate('team')} 1`,
-      color: this.teamColors[0],
-      balloons: this.createBalloonSet(onlyWithAudio, Math.max(window.innerWidth, 1), Math.max(window.innerHeight, 1), 0),
-      giftPosition: 'hidden',
-      giftOpened: false,
-      giftRisingComplete: false,
-      showGift: false,
-      stringsReady: false,
-      score: 0,
-      completed: false,
-      completedAt: null,
-      showQuiz: false,
-      quizOverlayVisible: false,
-      quizClosing: false,
-      simpleConfirmMode: false,
-      isFlipped: false,
-      selectedBalloonIndex: null,
-      selectedItem: null,
-      quizOptions: [],
-      quizAnswerLocked: false,
-      fadeOutOptionIds: new Set<number>(),
-      showCenterPopEffect: false,
-      keyboardSelectedBalloonIndex: 0,
-      keyboardSelectedOptionIndex: 0
-    }];
-    this.balloons = this.teams[0].balloons;
-  }
-
   private createBalloonSet(onlyWithAudio: boolean = false, laneWidth = Math.max(window.innerWidth, 1), laneHeight = Math.max(window.innerHeight, 1), teamIndex = 0): Balloon[] {
     let sourceItems = this.items;
     if (onlyWithAudio) {
@@ -379,6 +352,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     for (let i = shuffledItems.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffledItems[i], shuffledItems[j]] = [shuffledItems[j], shuffledItems[i]];
+    }
+
+    if (this.balloonCap > 0 && shuffledItems.length > this.balloonCap) {
+      shuffledItems.length = this.balloonCap;
     }
 
     const count = shuffledItems.length;
@@ -825,7 +802,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       { key: 'F', action: 'Flip question card' },
       { key: 'O', action: 'OK in confirm mode' },
       { key: 'X / Esc', action: 'Oops in confirm mode' },
-      { key: 'R', action: 'Start over' }
+      { key: 'Shift + R', action: 'Start over' }
     );
 
     return shortcuts;
@@ -845,7 +822,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       }
       return;
     }
-    if (this.loading || this.menuOpen || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || this.menuOpen || isTypingTarget(event)) return;
 
     const activeQuizTeam = this.teams.find(team => team.showQuiz);
     if (activeQuizTeam) {
@@ -890,7 +867,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         this.popKeyboardSelectedBalloon();
         break;
       default:
-        if (event.key.toLowerCase() === 'r') {
+        if (event.key.toLowerCase() === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -916,7 +893,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     } else if (key === 'l' || key === '2') {
       event.preventDefault();
       this.onRpsChoose(1);
-    } else if (key === 'r') {
+    } else if (key === 'r' && event.shiftKey) {
       event.preventDefault();
       this.resetGame();
     }
@@ -1050,11 +1027,6 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     return /^\d$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   onConfirmOk(teamId = 0) {
     const team = this.getTeam(teamId);
     if (!team?.showQuiz || !team.selectedItem || team.quizClosing) return;
@@ -1115,124 +1087,19 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.onended = null;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
-  }
-
-  // ... (rest of the helper methods: buildRowCounts, distributeAcrossRows, buildRowCombos, string update methods, gift lift/drop, etc.)
-  // Keep all those unchanged from your original working code.
-  // I'll include them below for completeness.
-
-  private distributeAcrossRows(count: number, rows: number): number[] {
-    const base = Math.floor(count / rows);
-    const remainder = count % rows;
-    return Array.from({ length: rows }, (_, i) => base + (i < remainder ? 1 : 0));
-  }
-
-  private buildRowCounts(total: number): number[] {
-    const MAX_PER_ROW = 7;
-    if (total <= MAX_PER_ROW) return [total];
-    const rows = total <= 14 ? 2 : 3;
-    const combos = this.buildRowCombos(total, rows);
-    if (combos.length) {
-      combos.sort((a, b) => {
-        const diffA = a[a.length - 1] - a[0];
-        const diffB = b[b.length - 1] - b[0];
-        if (diffA !== diffB) return diffA - diffB;
-        return a[0] - b[0];
-      });
-      return combos[0];
-    }
-    const fallbackRows = Math.max(rows, Math.ceil(total / MAX_PER_ROW));
-    return this.distributeAcrossRows(total, fallbackRows);
-  }
-
-  private buildRowCombos(total: number, rows: number): number[][] {
-    const MAX_PER_ROW = 7;
-    const combos: number[][] = [];
-    if (rows === 1) {
-      if (total <= MAX_PER_ROW) combos.push([total]);
-      return combos;
-    }
-    const row2Options = (base: number) => [base, base + 1].filter(v => v <= MAX_PER_ROW);
-    const row3Options = (base: number) => [base, base + 1, base + 2].filter(v => v <= MAX_PER_ROW);
-    for (let base = 1; base <= Math.min(MAX_PER_ROW, total); base++) {
-      for (const row2 of row2Options(base)) {
-        if (rows === 2) {
-          if (base + row2 === total) combos.push([base, row2]);
-        } else {
-          for (const row3 of row3Options(base)) {
-            if (base + row2 + row3 === total) combos.push([base, row2, row3]);
-          }
-        }
-      }
-    }
-    return combos;
-  }
-
-  private getFinalGiftTarget(): { x: number; y: number } {
-    const vh = window.innerHeight / 100;
-    const bottomPx = 15 * vh;
-    const giftTopPx = window.innerHeight - bottomPx - this.giftHeight;
-    const targetY = giftTopPx + this.giftStringAnchorOffset;
-    const targetX = window.innerWidth / 2;
-    return { x: targetX, y: targetY };
-  }
-
-  private updateAllStringParamsWithTarget(targetX: number, targetY: number) {
-    if (!this.balloons.length) return;
-    const windowWidth = window.innerWidth;
-    const debugRows: Array<Record<string, number | string>> = [];
-    this.balloons.forEach(balloon => {
-      const size = this.getBalloonSizePx(balloon);
-      const startX = (parseFloat(balloon.left) / 100) * windowWidth + size / 2;
-      const startY = parseFloat(balloon.top) + size * 1.08 - this.stringBalloonOverlap;
-      const dx = targetX - startX;
-      const dy = targetY - startY;
-      const length = Math.sqrt(dx * dx + dy * dy);
-      const angleNumber = (Math.atan2(dy, dx) * 180 / Math.PI) - 90;
-      const angle = angleNumber.toFixed(1) + 'deg';
-      balloon.stringLeft = startX + 'px';
-      balloon.stringTop = startY + 'px';
-      balloon.stringLength = length + 'px';
-      balloon.stringAngle = angle;
-      debugRows.push(this.buildStringDebugRow(balloon.id, startX, startY, targetX, targetY, length, angleNumber));
-    });
-    this.logStringCoordinates('targeted', targetX, targetY, debugRows);
-    this.cdr.detectChanges();
+    this.timers.clear();
   }
 
   private updateAllStringParams() {

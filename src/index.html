@@ -6,8 +6,120 @@
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!--
+    Startup splash. Plain HTML/CSS on purpose: it has to paint the moment the page starts, long
+    before the Angular bundle has been downloaded, parsed and bootstrapped (that gap used to be a
+    blank white window). AppComponent removes it via window.__hideAppSplash once the first screen
+    is drawn and the license/theme have loaded. Language-neutral: no text except on failure.
+  -->
+  <style>
+    html, body { margin: 0; height: 100%; background: #eef2ff; }
+    #app-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.6rem;
+      padding: 1.5rem;
+      box-sizing: border-box;
+      background: radial-gradient(circle at 50% 38%, #ffffff 0%, #eef2ff 58%, #dbeafe 100%);
+      font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+      color: #334155;
+      text-align: center;
+      transition: opacity 0.35s ease;
+    }
+    #app-splash.is-hiding { opacity: 0; pointer-events: none; }
+    #app-splash .splash-logo {
+      display: block;
+      width: min(11rem, 40vmin);
+      height: auto;
+      filter: drop-shadow(0 16px 24px rgba(37, 99, 235, 0.22));
+      animation: splash-float 2.6s ease-in-out infinite;
+    }
+    #app-splash .splash-bar {
+      position: relative;
+      width: 7rem;
+      height: 5px;
+      border-radius: 9999px;
+      overflow: hidden;
+      background: rgba(37, 99, 235, 0.14);
+    }
+    #app-splash .splash-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: #2563eb;
+      transform: translateX(-100%);
+      animation: splash-slide 1.4s ease-in-out infinite;
+    }
+    #app-splash .splash-note { margin: 0; max-width: 22rem; min-height: 1.2em; font-size: 0.9rem; line-height: 1.4; color: #64748b; }
+    #app-splash .splash-retry {
+      display: none;
+      padding: 0.5rem 1.1rem;
+      border: 0;
+      border-radius: 9999px;
+      background: #2563eb;
+      color: #ffffff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #app-splash.is-failed .splash-bar { display: none; }
+    #app-splash.is-failed .splash-retry { display: inline-block; }
+    @keyframes splash-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.45rem); } }
+    @keyframes splash-slide { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+    @media (prefers-reduced-motion: reduce) {
+      #app-splash .splash-logo { animation: none; }
+      #app-splash .splash-bar::after { animation-duration: 2.6s; }
+      #app-splash { transition-duration: 0.01s; }
+    }
+  </style>
 </head>
 <body>
+  <div id="app-splash" role="status" aria-live="polite" aria-label="Loading">
+    <img class="splash-logo" src="assets/images/noprep-logo.png" alt="NoPrep" width="176" height="176" decoding="async">
+    <div class="splash-bar" aria-hidden="true"></div>
+    <p class="splash-note" id="app-splash-note"></p>
+    <button type="button" class="splash-retry" id="app-splash-retry">Restart</button>
+  </div>
   <app-root></app-root>
+  <script>
+    (function () {
+      var splash = document.getElementById('app-splash');
+      var note = document.getElementById('app-splash-note');
+      var retry = document.getElementById('app-splash-retry');
+      if (!splash) return;
+      var finished = false;
+
+      window.__hideAppSplash = function () {
+        if (finished) return;
+        finished = true;
+        splash.classList.add('is-hiding');
+        setTimeout(function () {
+          if (splash.parentNode) splash.parentNode.removeChild(splash);
+        }, 450);
+      };
+
+      // Bootstrap failed: say so instead of spinning forever.
+      window.__failAppSplash = function () {
+        if (finished) return;
+        splash.classList.add('is-failed');
+        note.textContent = 'NoPrep could not start. Please restart the app.';
+      };
+
+      retry.addEventListener('click', function () { location.reload(); });
+
+      // Very slow start (old hardware, first run): reassure rather than look frozen.
+      setTimeout(function () {
+        if (!finished && !splash.classList.contains('is-failed')) {
+          note.textContent = 'Still starting… this can take a little longer the first time.';
+        }
+      }, 12000);
+    })();
+  </script>
 </body>
 </html>

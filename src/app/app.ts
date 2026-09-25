@@ -58,14 +58,33 @@ export class AppComponent implements OnDestroy {
         this.updateThemeBodyClasses();
         this.resizeService.requestLayoutRefresh();
         this.finishRouteLoading();
+        this.revealAfterStartup();
       }));
 
     this.subscriptions.add(this.router.events
       .pipe(filter((event): event is NavigationCancel | NavigationError => event instanceof NavigationCancel || event instanceof NavigationError))
-      .subscribe(() => this.finishRouteLoading()));
+      .subscribe(() => {
+        this.finishRouteLoading();
+        this.revealAfterStartup();
+      }));
 
     this.themeExcluded = this.isThemeExcludedRoute(this.router.url);
     this.updateThemeBodyClasses();
+  }
+
+  private startupRevealed = false;
+
+  // Fades out the startup splash from index.html. Called when the first navigation settles (the
+  // first real screen exists), then waits for the license check and saved theme so the app is
+  // never revealed half-configured; capped so a slow disk can't keep the splash up forever.
+  private revealAfterStartup(): void {
+    if (this.startupRevealed) return;
+    this.startupRevealed = true;
+    const cap = new Promise<void>((resolve) => setTimeout(resolve, 4000));
+    void Promise.race([Promise.all([this.licenseService.ready, this.themeService.ready]), cap]).then(() => {
+      // Two frames, so the first real screen has been painted underneath before the splash fades.
+      requestAnimationFrame(() => requestAnimationFrame(() => (window as any).__hideAppSplash?.()));
+    });
   }
 
   ngOnDestroy(): void {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ElementRef, HostListener, NgZone, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
@@ -6,6 +6,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { TrackedAudio, isTypingTarget, TimerBag, GameCountdown } from './game-utils';
 
 interface WordTile {
   id: number;
@@ -56,8 +57,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   winner: 'left' | 'right' | 'draw' | null = null;
   loading = true;
   private destroyed = false;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private animationFrame: any;
+  countdown = new GameCountdown(() => this.cdr.detectChanges());
   private speed = 4;
   reverseMode = false;
   teamCount = 2;
@@ -75,7 +77,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     { key: 'F', action: 'Flip card' },
     { key: 'A / L', action: 'Add next word for left or right team' },
     { key: 'B / N', action: 'Previous or next in one-by-one mode' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   private correctSound: HTMLAudioElement | null = null;
@@ -83,8 +85,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private winSound: HTMLAudioElement | null = null;
   private explodeSound: HTMLAudioElement | null = null;
   private captureSound: HTMLAudioElement | null = null;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
 
   explodingTeam: 'left' | 'right' | null = null;
   private eligibleItems: Item[] = [];
@@ -103,6 +104,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef,
+    private zone: NgZone,
     private langService: LanguageService,
     private resizeService: ResizeService
   ) {}
@@ -169,6 +171,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroyed = true;
     this.gameActive = false;
+    this.countdown.cancel();
     this.clearPendingTimers();
     if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
     this.layoutSubscription?.unsubscribe();
@@ -179,19 +182,11 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
   private buildWordImageMap(items: Item[]) {
@@ -267,6 +262,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     this.cardItem = null;
     this.currentItemIndex = 0;
     this.cdr.detectChanges();
+    // Nothing to start at GO: tiles are already drifting, but the overlay keeps everyone's
+    // hands off them until then.
+    this.countdown.run(() => undefined);
     this.pickNextCardItem();
   }
 
@@ -376,7 +374,11 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
       this.updatePositions();
       this.animationFrame = requestAnimationFrame(animate);
     };
-    this.animationFrame = requestAnimationFrame(animate);
+    // Every frame already ends in an explicit detectChanges(), so the loop runs outside the
+    // zone; otherwise each frame would also trigger a whole-app change-detection pass.
+    this.zone.runOutsideAngular(() => {
+      this.animationFrame = requestAnimationFrame(animate);
+    });
   }
 
   private updatePositions() {
@@ -743,7 +745,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameFinished) {
@@ -776,7 +778,7 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
         } else if (key === 'n') {
           event.preventDefault();
           this.nextOneByOneItem();
-        } else if (key === 'r') {
+        } else if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -785,27 +787,11 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   }
 
   private playTrackedAudio(blob: Blob | undefined) {
-    if (!blob) return;
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   private shakeTile(team: 'left' | 'right', tileId: number) {
@@ -855,11 +841,6 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     } else {
       this.playSound(this.buzzSound);
     }
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   resetGame() {

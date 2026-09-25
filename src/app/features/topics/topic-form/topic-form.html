@@ -85,7 +85,8 @@
                 </button>
                 <div *ngIf="isImagePanelOpen(item)" class="upload-card media-panel-open">
                   <app-image-uploader 
-                    [initialImage]="item.get('image')?.value" 
+                    [autoPasteTarget]="isImagePasteReady(item)"
+                    [initialImage]="item.get('image')?.value"
                     (imageSelected)="onImageSelected($event, i)">
                   </app-image-uploader>
                 </div>

@@ -6,6 +6,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { TrackedAudio, isTypingTarget } from './game-utils';
 
 @Component({
   selector: 'app-spotlight',
@@ -37,7 +38,7 @@ export class SpotlightComponent implements OnInit, OnDestroy {
     { key: 'V', action: 'Reveal screen' },
     { key: 'M', action: 'Random item' },
     { key: 'B / N', action: 'Previous or next item' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   currentHasAudio = false;
@@ -72,8 +73,7 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   private static readonly SPOTLIGHT_REFERENCE_WIDTH = 1200;
   private drawFrame: number | null = null;
   private layoutSubscription?: Subscription;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private revealTimer: ReturnType<typeof setTimeout> | null = null;
   private startTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -186,26 +186,11 @@ private loadItem(index: number) {
   }
 
   playCurrentItemSound() {
-    if (!this.currentItem?.audio) return;
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(this.currentItem.audio);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(this.currentItem?.audio);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.onended = null;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
   private moveSpotlightToCorner(corner: 'center' | 'top-left', runChecks = true) {
     const canvas = this.canvasRef?.nativeElement;
@@ -231,8 +216,11 @@ private loadItem(index: number) {
     const canvas = this.canvasRef?.nativeElement;
     const container = this.itemContainerRef?.nativeElement;
     if (!canvas || !container) return;
-    canvas.width = container.clientWidth;
-    canvas.height = container.clientHeight;
+    // One backing pixel per device pixel (capped at 2x) so the spot edge stays sharp on
+    // high-density screens. Positions and the radius are all in these canvas pixels.
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(container.clientWidth * dpr);
+    canvas.height = Math.round(container.clientHeight * dpr);
     if (this.currentItem) {
       this.scheduleDraw();
     }
@@ -279,7 +267,7 @@ private loadItem(index: number) {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || !this.currentItem || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || !this.currentItem || isTypingTarget(event)) return;
 
     switch (event.key) {
       case 'ArrowLeft':
@@ -328,6 +316,7 @@ private loadItem(index: number) {
         this.nextItem();
         break;
       case 'r':
+        if (!event.shiftKey) break;
         event.preventDefault();
         this.resetGame();
         break;
@@ -349,11 +338,6 @@ private loadItem(index: number) {
     const scaleY = canvas.height / rect.height;
     this.setSpotlightPosition(nextCssX * scaleX, nextCssY * scaleY, nextCssX, nextCssY);
     this.cdr.detectChanges();
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private setSpotlightPosition(canvasX: number, canvasY: number, cssX: number, cssY: number, runChecks = true) {
@@ -462,9 +446,11 @@ private loadItem(index: number) {
     const rect = itemEl.getBoundingClientRect();
     const canvasRect = this.canvasRef.nativeElement.getBoundingClientRect();
 
-    // Calculate item center in canvas coordinates
-    const itemCenterX = rect.left + rect.width / 2 - canvasRect.left;
-    const itemCenterY = rect.top + rect.height / 2 - canvasRect.top;
+    // Item center in canvas pixels (the screen-pixel offset scaled up to the backing size)
+    const scaleX = canvasRect.width ? this.canvasRef.nativeElement.width / canvasRect.width : 1;
+    const scaleY = canvasRect.height ? this.canvasRef.nativeElement.height / canvasRect.height : 1;
+    const itemCenterX = (rect.left + rect.width / 2 - canvasRect.left) * scaleX;
+    const itemCenterY = (rect.top + rect.height / 2 - canvasRect.top) * scaleY;
 
     const distance = Math.hypot(this.spotlightX - itemCenterX, this.spotlightY - itemCenterY);
     const threshold = this.spotlightRadius;

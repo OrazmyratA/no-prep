@@ -12,6 +12,7 @@ import {
   clamp,
   getGuideTextDelay
 } from './book-reader-geometry';
+import { getGuideDotNumber, getOrderedGuideDots } from '../guide-dot-order';
 
 export class BookReaderGuideController {
   constructor(private readonly reader: any) {}
@@ -119,6 +120,15 @@ export class BookReaderGuideController {
     if (token !== this.reader.guidePlaybackToken) return;
 
     this.finishGuideDot(element, page);
+  }
+
+  // 1-based order of a dot on the page (across both pages of an open spread); 0 if it is the only one.
+  getGuideDotNumber(element: BookElement, page = this.reader.currentPage): number {
+    if (!page || element.type !== 'guideDot') return 0;
+    if (this.isPageInActiveSpread(page)) {
+      return getGuideDotNumber(this.getActiveSpreadGuideDots().map((item) => item.element), element.id);
+    }
+    return getGuideDotNumber(this.getGuideDots(page), element.id);
   }
 
   isGuideDotEnabled(element: BookElement, page = this.reader.currentPage): boolean {
@@ -402,11 +412,7 @@ export class BookReaderGuideController {
   }
 
   private getGuideDots(page: BookPage): BookElement[] {
-    return page.elements
-      .map((element, index) => ({ element, index }))
-      .filter(({ element }) => element.type === 'guideDot')
-      .sort((a, b) => Number(a.element.data['stepNumber'] ?? a.index) - Number(b.element.data['stepNumber'] ?? b.index))
-      .map(({ element }) => element);
+    return getOrderedGuideDots(page.elements);
   }
 
   private isPageInActiveSpread(page: BookPage): boolean {

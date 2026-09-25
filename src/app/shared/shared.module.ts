@@ -14,7 +14,9 @@ import { SwipeDirective } from './swipe.directive';
 import { BodyPortalDirective } from './body-portal.directive';
 import { HorizontalToolbarScrollDirective } from './horizontal-toolbar-scroll.directive';
 import { GameKeyboardHelpComponent } from './game-keyboard-help';
+import { ShortcutHelpPanelComponent } from './shortcut-help-panel';
 import { GameFinishOverlayComponent } from './game-finish-overlay';
+import { GameCountdownComponent } from './game-countdown';
 import { RandomPickerComponent } from './random-picker';
 import { LeaderboardStarRatingComponent } from './leaderboard-star-rating';
 import { LeaderboardStudentRowComponent } from './leaderboard-student-row';
@@ -37,7 +39,9 @@ import { AitSelectorComponent } from './ait-selector';
     BodyPortalDirective,
     HorizontalToolbarScrollDirective,
     GameKeyboardHelpComponent,
+    ShortcutHelpPanelComponent,
     GameFinishOverlayComponent,
+    GameCountdownComponent,
     RandomPickerComponent,
     LeaderboardStarRatingComponent,
     LeaderboardStudentRowComponent,
@@ -64,7 +68,9 @@ import { AitSelectorComponent } from './ait-selector';
     SwipeDirective,
     HorizontalToolbarScrollDirective,
     GameKeyboardHelpComponent,
+    ShortcutHelpPanelComponent,
     GameFinishOverlayComponent,
+    GameCountdownComponent,
     RandomPickerComponent,
     LeaderboardStarRatingComponent,
     LeaderboardStudentRowComponent,

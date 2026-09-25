@@ -4,6 +4,7 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { shuffled, TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 type MatchMode = 'prefix' | 'suffix' | 'contains' | 'whole';
 
@@ -59,6 +60,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   currentCorrectAnswer = '';
   answerLocked = false;
   answeredQuestions = new Set<number>();
+  private missedQuestions = new Set<number>();
   isMediaFlipped = false;
   penDragging = false;
   penShake = false;
@@ -74,22 +76,21 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     { key: '1 / 2 / 3', action: 'Choose popup answer' },
     { key: '← ↑ ↓ →', action: 'Move popup answer highlight' },
     { key: 'B / N', action: 'Previous or next question' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
   private activePointerId: number | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private buzzSound: HTMLAudioElement | null = null;
   private winSound: HTMLAudioElement | null = null;
   private captureSound: HTMLAudioElement | null = null;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private advanceTimer: number | null = null;
   private selectedRules: OmissionRule[] = [];
   private readonly defaultRuleValues: string[] = [];
   private activeSpotEl: HTMLElement | null = null;
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
-  private feedbackTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
 
   constructor(
@@ -165,6 +166,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.isMediaFlipped = false;
     this.keyboardSelectedOptionIndex = 0;
     this.answeredQuestions.clear();
+    this.missedQuestions.clear();
     this.clearActiveSpot();
     this.cdr.detectChanges();
   }
@@ -655,10 +657,12 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.currentMissingPart = q.missingPart;
     this.currentCorrectAnswer = q.missingPart;
     const distractors: string[] = [];
+    // Wrong options must be in the same writing system as the answer: a Latin "o" next to a
+    // Cyrillic "о" is a look-alike, and a Latin letter next to Cyrillic ones is a giveaway.
+    const scriptTest = this.scriptTestFor(q.missingPart);
     if (q.missingPart.length === 1 && !this.isCjkChar(q.missingPart)) {
-      const alphabet = 'abcdefghijklmnopqrstuvwxyz';
       const correct = q.missingPart.toLowerCase();
-      const others = alphabet.split('').filter(l => l !== correct);
+      const others = this.letterPool(correct, scriptTest);
       while (distractors.length < 2 && others.length) {
         const rand = others.splice(Math.floor(Math.random() * others.length), 1)[0];
         distractors.push(this.matchCase(q.missingPart, rand));
@@ -671,10 +675,14 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       const fallback = q.rule.matchMode === 'whole'
         ? this.getWholeFallbackDistractors()
         : this.getPartFallbackDistractors();
-      this.addUniqueDistractors(distractors, [...ruleDistractors, ...otherWords, ...fallback], q.missingPart);
+      this.addUniqueDistractors(distractors, [...ruleDistractors, ...otherWords, ...fallback], q.missingPart, scriptTest);
     }
 
-    this.addUniqueDistractors(distractors, this.getCommonDistractors(), q.missingPart);
+    this.addUniqueDistractors(distractors, this.getCommonDistractors(), q.missingPart, scriptTest);
+    // Last resort: better a mismatched-script option than a question with only two choices.
+    if (distractors.length < 2) {
+      this.addUniqueDistractors(distractors, this.getCommonDistractors(), q.missingPart);
+    }
     let options = [this.currentCorrectAnswer, ...distractors.slice(0, 2)];
     for (let i = options.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -684,13 +692,64 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.keyboardSelectedOptionIndex = 0;
   }
 
-  private addUniqueDistractors(target: string[], pool: string[], correctAnswer: string) {
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    for (const candidate of shuffled) {
+  private static readonly SCRIPT_TESTS: RegExp[] = [
+    /\p{Script=Latin}/u,
+    /\p{Script=Cyrillic}/u,
+    /\p{Script=Greek}/u,
+    /\p{Script=Arabic}/u,
+    /\p{Script=Hangul}/u,
+    /\p{Script=Han}/u,
+    /\p{Script=Hiragana}|\p{Script=Katakana}/u,
+    /\p{Script=Hebrew}/u
+  ];
+
+  private firstLetter(text: string): string | undefined {
+    return Array.from(text).find(ch => /\p{L}/u.test(ch));
+  }
+
+  // The writing system of `text` (from its first letter), or null when it can't be told.
+  private scriptTestFor(text: string): RegExp | null {
+    const letter = this.firstLetter(text);
+    if (!letter) return null;
+    return SpellingCheckComponent.SCRIPT_TESTS.find(test => test.test(letter)) ?? null;
+  }
+
+  private isSameScript(candidate: string, scriptTest: RegExp | null): boolean {
+    if (!scriptTest) return true;
+    const letter = this.firstLetter(candidate);
+    return !letter || scriptTest.test(letter);
+  }
+
+  // Single letters to use as wrong answers: the letters the topic's own words use (so a
+  // Turkmen or Russian topic gets Turkmen or Russian letters), topped up with a plain
+  // alphabet when the topic has too few different letters.
+  private letterPool(correctLower: string, scriptTest: RegExp | null): string[] {
+    const pool = new Set<string>();
+    for (const item of this.items) {
+      for (const ch of Array.from((item.text ?? '').toLowerCase())) {
+        if (/\p{L}/u.test(ch) && ch !== correctLower && this.isSameScript(ch, scriptTest)) pool.add(ch);
+      }
+    }
+    if (pool.size < 2) {
+      const fallback = scriptTest?.source.includes('Cyrillic')
+        ? 'абвгдежзийклмнопрстуфхцчшщыэюя'
+        : 'abcdefghijklmnopqrstuvwxyz';
+      for (const ch of fallback) {
+        if (ch !== correctLower && this.isSameScript(ch, scriptTest)) pool.add(ch);
+      }
+    }
+    return Array.from(pool);
+  }
+
+  private addUniqueDistractors(target: string[], pool: string[], correctAnswer: string, scriptTest: RegExp | null = null) {
+    for (const candidate of shuffled(pool)) {
       if (target.length >= 2) {
         return;
       }
       if (!candidate || candidate.toLowerCase() === correctAnswer.toLowerCase()) {
+        continue;
+      }
+      if (!this.isSameScript(candidate, scriptTest)) {
         continue;
       }
       if (target.some(value => value.toLowerCase() === candidate.toLowerCase())) {
@@ -723,7 +782,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.answerLocked = true;
     if (selected === this.currentCorrectAnswer) {
       this.playSound(this.collectSound);
-      if (!this.answeredQuestions.has(this.currentIndex)) {
+      // Only a first-try correct answer scores; a question that took several tries doesn't.
+      if (!this.answeredQuestions.has(this.currentIndex) && !this.missedQuestions.has(this.currentIndex)) {
         this.score++;
       }
       this.answeredQuestions.add(this.currentIndex);
@@ -744,6 +804,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
         }
       }, 1600);
     } else {
+      this.missedQuestions.add(this.currentIndex);
       this.playSound(this.buzzSound);
       const popup = document.querySelector('.quiz-popup');
       if (popup) {
@@ -878,7 +939,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameFinished) {
@@ -916,7 +977,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
         } else if (key === 'n') {
           event.preventDefault();
           this.nextQuestion();
-        } else if (key === 'r') {
+        } else if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         }
@@ -997,32 +1058,12 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     return /^[1-9]$/.test(event.key) ? event.key : null;
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   get currentQuestionHtml(): string {
@@ -1153,18 +1194,10 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   }
 
   private setFeedbackTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.feedbackTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.feedbackTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearFeedbackTimers() {
-    this.feedbackTimers.forEach(timer => clearTimeout(timer));
-    this.feedbackTimers.clear();
+    this.timers.clear();
   }
 }

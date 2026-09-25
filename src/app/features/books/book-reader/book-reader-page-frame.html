@@ -210,6 +210,7 @@
       <span *ngIf="element.type === 'focus' && !reader.expandedFocusElement" class="focus-label"></span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
+      <span *ngIf="element.type === 'guideDot' && reader.getGuideDotNumber(element, page) as dotNumber" class="guide-dot-number" aria-hidden="true">{{ dotNumber }}</span>
       <img *ngIf="element.type === 'tracingTask'" class="book-marker-icon tracing-marker-icon" src="assets/images/book/pencil.png" alt="Tracing task">
       <span *ngIf="element.type === 'speakingAi'" class="speaking-ai-marker">
         <img class="book-marker-icon" src="assets/images/book/speaking.png" alt="AI speaking">

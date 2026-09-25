@@ -14,8 +14,16 @@ export class BookReaderPageFrameComponent {
   @Input() primary = false;
   @Input() companion = false;
 
+  // Shared with the reader's page prefetching: a prefetched page only helps if it was drawn at
+  // exactly the scale the visible frame will later ask for.
+  static readonly PRIMARY_RENDER_SCALE = 1.7;
+  static readonly COMPANION_RENDER_SCALE = 1.35;
+  static readonly FOCUS_CROP_RENDER_SCALE = 2.6;
+
   get renderScale(): number {
-    if (!this.primary) return 1.35;
-    return this.reader.isFocusCropActive(this.page) ? 2.6 : 1.7;
+    if (!this.primary) return BookReaderPageFrameComponent.COMPANION_RENDER_SCALE;
+    return this.reader.isFocusCropActive(this.page)
+      ? BookReaderPageFrameComponent.FOCUS_CROP_RENDER_SCALE
+      : BookReaderPageFrameComponent.PRIMARY_RENDER_SCALE;
   }
 }

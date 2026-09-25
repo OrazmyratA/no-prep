@@ -1,0 +1,16 @@
+<div class="shortcut-help-panel" *ngIf="open" appBodyPortal role="dialog" [attr.aria-label]="title">
+  <div class="shortcut-help-head">
+    <strong>{{ title }}</strong>
+    <button type="button" class="shortcut-help-close" (click)="closed.emit()" aria-label="Close">&times;</button>
+  </div>
+  <div class="shortcut-help-body">
+    <section class="shortcut-help-section" *ngFor="let section of sections">
+      <h3>{{ section.heading }}</h3>
+      <div class="shortcut-help-row" *ngFor="let item of section.shortcuts; trackBy: trackByKey">
+        <kbd>{{ item.key }}</kbd>
+        <span>{{ item.action }}</span>
+      </div>
+    </section>
+  </div>
+  <div class="shortcut-help-foot">Press <kbd>?</kbd> to open or close this list.</div>
+</div>

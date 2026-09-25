@@ -6,6 +6,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService, SupportedLanguage } from '../../core/language';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { shuffled, TrackedAudio, isTypingTarget, GameCountdown } from './game-utils';
 
 interface GridCell {
   letter: string;
@@ -107,7 +108,7 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'Space', action: 'Play highlighted card audio (1 team)' },
     { key: '1-9 / 0', action: 'Reveal numbered word (1 team)' },
     { key: 'L', action: 'Hide or show card texts' },
-    { key: 'R', action: 'Start over' }
+    { key: 'Shift + R', action: 'Start over' }
   ];
 
   // Settings (from the activity's settings dialog via query params)
@@ -159,13 +160,13 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
   private collectSound: HTMLAudioElement | null = null;
   private victorySound: HTMLAudioElement | null = null;
   private startSound: HTMLAudioElement | null = null;
+  countdown = new GameCountdown(() => this.cdr.detectChanges());
   private victoryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private victoryPending = false;
   // The board whose team found every word first (that team wins straight away).
   private completedBoard: WordSearchBoard | null = null;
   private layoutSubscription?: Subscription;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private cardImageUrls: string[] = [];
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   // When each card's text was last revealed with its 🔍, so the second click of a
@@ -231,6 +232,7 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.layoutSubscription?.unsubscribe();
+    this.countdown.cancel();
     this.clearVictoryTimeout();
     this.clearTimer();
     this.cancelReveal();
@@ -303,7 +305,8 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    candidates.sort((a, b) => b.answer.length - a.answer.length || Math.random() - 0.5);
+    // Longest words first; shuffling first makes equal-length words land in random order.
+    candidates = shuffled(candidates).sort((a, b) => b.answer.length - a.answer.length);
 
     // Grid size grows with the longest word / total letters, but is capped so a
     // teacher pasting a very long item (or many items) can't blow the grid up to
@@ -356,8 +359,8 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
 
     for (let size = first.letters.length; size <= WordSearchComponent.MAX_GRID_SIZE; size++) {
       for (let attempt = 0; attempt < 6; attempt++) {
-        const shuffled = [...candidates].sort((a, b) => b.answer.length - a.answer.length || Math.random() - 0.5);
-        const layout = this.layoutWords(shuffled, size);
+        const ordered = shuffled(candidates).sort((a, b) => b.answer.length - a.answer.length);
+        const layout = this.layoutWords(ordered, size);
         if (layout && signature(layout) !== firstSignature) return layout;
       }
     }
@@ -409,7 +412,7 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     this.clearTimer();
     this.finishReason = 'complete';
     this.timerRemaining = this.enableTimer ? this.timerMinutes * 60 : null;
-    this.startTimer();
+    this.countdown.run(() => this.startTimer());
   }
 
   private startTimer() {
@@ -905,7 +908,7 @@ private prepareWords(): WordCandidate[] {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.victoryPending || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || this.victoryPending || isTypingTarget(event)) return;
 
     const key = event.key.toLowerCase();
     if (this.gameFinished) {
@@ -922,7 +925,7 @@ private prepareWords(): WordCandidate[] {
       this.toggleTextVisibility();
       return;
     }
-    if (key === 'r') {
+    if (key === 'r' && event.shiftKey) {
       event.preventDefault();
       this.resetGame();
       return;
@@ -1003,26 +1006,11 @@ private prepareWords(): WordCandidate[] {
   }
 
   private playTrackedAudio(blob: Blob | undefined) {
-    if (!blob) return;
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.onended = null;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   private createCardImageUrl(blob?: Blob): string | null {
@@ -1068,11 +1056,6 @@ private prepareWords(): WordCandidate[] {
 
   private getKeyboardDigit(event: KeyboardEvent): string | null {
     return /^\d$/.test(event.key) ? event.key : null;
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   onMenuAction(action: string) {

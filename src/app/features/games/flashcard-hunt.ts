@@ -19,6 +19,7 @@ import { GameFinishRanking } from '../../shared/game-finish-overlay';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 import { getTeamIndexForKey } from './team-keyboard-layout';
+import { TrackedAudio, isTypingTarget, TimerBag, GameCountdown } from './game-utils';
 
 type HuntPhase = 'loading' | 'countdown' | 'hunt' | 'transition' | 'quiz' | 'finished';
 type CardState = 'entering' | 'idle' | 'hit' | 'flying' | 'fading';
@@ -132,7 +133,6 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
 
   teams: HuntTeam[] = [];
   boardCards: BoardCard[] = [];
-  countdownLabel = '';
   huntEndReason: 'cleared' | 'timeout' = 'cleared';
   timeLeftMs = 0;
   frenzy = false;
@@ -182,13 +182,13 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   private frameId: number | null = null;
   private lastFrameAt = 0;
   private uiTickerId: ReturnType<typeof setInterval> | null = null;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
+  countdown = new GameCountdown(() => this.cdr.detectChanges());
   private flyingBalls = new Set<HTMLElement>();
   private destroyed = false;
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private sounds: Record<string, HTMLAudioElement> = {};
 
   constructor(
@@ -255,7 +255,6 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     this.loadSound('explode', 'assets/sound/explode.mp3');
     this.loadSound('freeze', 'assets/sound/down.mp3');
     this.loadSound('buzz', 'assets/sound/buzz.mp3');
-    this.loadSound('start', 'assets/sound/start.mp3');
     this.loadSound('stop', 'assets/sound/stop.mp3');
     this.loadSound('achieve', 'assets/sound/achieve.mp3');
     this.loadSound('tenSec', 'assets/sound/10sec.mp3');
@@ -286,6 +285,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.frameId !== null) cancelAnimationFrame(this.frameId);
     this.stopUiTicker();
     this.clearPendingTimers();
+    this.countdown.cancel();
     this.removeFlyingBalls();
     this.stopActiveAudio();
     Object.values(this.sounds).forEach(sound => sound.pause());
@@ -297,6 +297,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   private startGame() {
     this.huntGeneration++;
     this.clearPendingTimers();
+    this.countdown.cancel();
     this.stopUiTicker();
     this.removeFlyingBalls();
     this.stopActiveAudio();
@@ -381,26 +382,11 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private runCountdown() {
     this.phase = 'countdown';
-    const gen = this.huntGeneration;
-    const steps = ['3', '2', '1', 'GO!'];
-    steps.forEach((label, i) => {
-      this.setGameTimeout(() => {
-        if (gen !== this.huntGeneration) return;
-        this.countdownLabel = label;
-        if (label === 'GO!') this.playSound('start');
-        this.cdr.detectChanges();
-      }, i * 700);
-    });
-    this.setGameTimeout(() => {
-      if (gen !== this.huntGeneration) return;
-      this.startHunt();
-    }, steps.length * 700);
-    this.cdr.detectChanges();
+    this.countdown.run(() => this.startHunt());
   }
 
   private startHunt() {
     this.phase = 'hunt';
-    this.countdownLabel = '';
     this.huntEndsAt = performance.now() + this.timerMinutes * 60000;
     this.goldenNextAt = performance.now() + GOLDEN_FIRST_DELAY_MS;
     this.startUiTicker();
@@ -1163,14 +1149,14 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
       { key: 'Enter', action: 'Choose highlighted answer' },
       { key: 'O', action: 'OK in confirm mode' },
       { key: 'X / Esc', action: 'Oops in confirm mode' },
-      { key: 'R', action: 'Start over' }
+      { key: 'Shift + R', action: 'Start over' }
     ];
   }
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.loading || this.gameFinished || this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (this.loading || this.gameFinished || isTypingTarget(event)) return;
 
     if (this.showQuiz) {
       this.handleQuizKey(event);
@@ -1191,7 +1177,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
       }
     }
 
-    if (event.key.toLowerCase() === 'r') {
+    if (event.key.toLowerCase() === 'r' && event.shiftKey) {
       event.preventDefault();
       this.resetGame();
     }
@@ -1253,11 +1239,6 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     this.cdr.detectChanges();
   }
 
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target instanceof Element ? event.target : null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
-  }
-
   // ─── Media helpers ───────────────────────────────────────────
 
   private ensureImageUrl(item: Item) {
@@ -1274,25 +1255,11 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.onended = null;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   private loadSound(name: string, src: string) {
@@ -1316,17 +1283,11 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   // ─── Timers / cleanup ────────────────────────────────────────
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) callback();
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
   private removeFlyingBalls() {

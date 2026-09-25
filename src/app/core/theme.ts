@@ -66,8 +66,12 @@ export class ThemeService {
   private backgroundsSubject = new BehaviorSubject<ThemeBackgroundView[]>([]);
   readonly backgrounds$ = this.backgroundsSubject.asObservable();
 
+  // Resolves once the saved theme has been read, so the startup splash can wait for it and the
+  // app is not shown in the default look for a moment before switching to the saved one.
+  readonly ready: Promise<void>;
+
   constructor() {
-    void this.load();
+    this.ready = this.load().catch(() => undefined);
   }
 
   get defaultSelection(): ThemeSelection {

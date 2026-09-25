@@ -184,6 +184,8 @@
       </div>
     </app-game-finish-overlay>
 
+    <app-game-countdown [label]="countdown.label" [blocking]="countdown.active"></app-game-countdown>
+
     <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
   </div>
 </div>

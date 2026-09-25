@@ -25,6 +25,8 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   returnToBookElementId = '';
   saving = false;
   private expandedImageItems = new WeakSet<AbstractControl>();
+  // Items whose image panel was opened by clicking + : their uploader takes Ctrl+V right away.
+  private pasteReadyImageItems = new WeakSet<AbstractControl>();
   private expandedAudioItems = new WeakSet<AbstractControl>();
   @ViewChild('topicNameInput') topicNameInput?: ElementRef<HTMLInputElement>;
 
@@ -183,6 +185,11 @@ onImageSelected(blob: Blob | null, index: number) {
 
 openImagePanel(item: AbstractControl) {
   this.expandedImageItems.add(item);
+  this.pasteReadyImageItems.add(item);
+}
+
+isImagePasteReady(item: AbstractControl): boolean {
+  return this.pasteReadyImageItems.has(item);
 }
 
 openAudioPanel(item: AbstractControl) {

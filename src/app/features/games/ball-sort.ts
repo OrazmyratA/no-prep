@@ -2,8 +2,10 @@ import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, 
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
+import { LanguageService } from '../../core/language';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
+import { isTypingTarget } from './game-utils';
 
 interface Ball {
   id: number;
@@ -146,7 +148,8 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private langService: LanguageService
   ) {}
 
   async ngOnInit() {
@@ -244,7 +247,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
       this.colorGroups.push({ id: groupId, color, expectedCount: groupItems.length });
 
       groupItems.forEach((item, index) => {
-        const text = item.text?.trim() || `Item ${start + index + 1}`;
+        const text = item.text?.trim() || `#${start + index + 1}`;
         balls.push({
           id: this.ballIdSeed++,
           groupId,
@@ -304,7 +307,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
     }));
     const team: BallSortTeam = {
       id: teamId,
-      name: `Team ${teamId}`,
+      name: `${this.langService.translate('team')} ${teamId}`,
       tubes,
       layout: this.createDefaultTubeLayout(tubes.length),
       addedTubeCount: 0,
@@ -395,7 +398,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeydown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.isKeyboardEventFromInteractiveElement(event)) return;
+    if (isTypingTarget(event, { allowButtons: true })) return;
 
     const activeQuizTeam = this.teams.find(team => team.showQuiz);
     if (activeQuizTeam) {
@@ -441,7 +444,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
         break;
       default: {
         const key = event.key.toLowerCase();
-        if (key === 'r') {
+        if (key === 'r' && event.shiftKey) {
           event.preventDefault();
           this.resetGame();
         } else if (event.key === '+' || event.key === '=') {
@@ -880,8 +883,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get finishTitle(): string {
-    if (this.teamCount === 1) return 'You did it!';
-    return this.winnerTeam ? `${this.winnerTeam.name} wins!` : 'Game Results';
+    return this.langService.translate(this.teamCount === 1 ? 'ballSortVictory' : 'gameResults');
   }
 
   get finishResultTeams(): BallSortResultEntry[] {
@@ -947,7 +949,7 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
       { key: 'O / 1', action: 'OK in confirm mode' },
       { key: 'X / 2 / Esc', action: 'Oops or drop lifted ball' },
       { key: '+', action: 'Add empty tube for selected team' },
-      { key: 'R', action: 'Start over' }
+      { key: 'Shift + R', action: 'Start over' }
     );
 
     return shortcuts;
@@ -1248,11 +1250,6 @@ export class BallSortComponent implements OnInit, AfterViewInit, OnDestroy {
   private pixelValue(value: string): number {
     const parsedValue = Number.parseFloat(value);
     return Number.isFinite(parsedValue) ? parsedValue : 0;
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private markTubeBounce(team: BallSortTeam, tube: Tube) {

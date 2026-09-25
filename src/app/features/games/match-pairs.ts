@@ -8,6 +8,7 @@ import { showAppNotification } from '../../core/notification';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { AitType } from '../../shared/ait-selector';
 import { itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
+import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 
 interface Card {
   id: number;
@@ -45,7 +46,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     { key: 'Enter', action: 'Flip highlighted card' },
     { key: 'Space', action: 'Play highlighted card audio' },
     { key: 'P', action: 'Peek at cards' },
-    { key: 'R', action: 'Shuffle and restart' }
+    { key: 'Shift + R', action: 'Shuffle and restart' }
   ];
   gridColumns = 4;
   gridRows = 1;
@@ -65,11 +66,10 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
   private rewardSound: HTMLAudioElement | null = null;
-  private activeAudio: HTMLAudioElement | null = null;
-  private activeAudioUrl: string | null = null;
+  private trackedAudio = new TrackedAudio();
   private cardImageUrls: string[] = [];
   private layoutSubscription?: Subscription;
-  private pendingTimers = new Set<ReturnType<typeof setTimeout>>();
+  private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
   private keyboardNumberBuffer = '';
   private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
@@ -226,19 +226,11 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private setGameTimeout(callback: () => void, delay: number): ReturnType<typeof setTimeout> {
-    const timer = setTimeout(() => {
-      this.pendingTimers.delete(timer);
-      if (!this.destroyed) {
-        callback();
-      }
-    }, delay);
-    this.pendingTimers.add(timer);
-    return timer;
+    return this.timers.set(callback, delay);
   }
 
   private clearPendingTimers() {
-    this.pendingTimers.forEach(timer => clearTimeout(timer));
-    this.pendingTimers.clear();
+    this.timers.clear();
   }
 
   // Returns false (and navigates away) when no item carries the content the selected AIT
@@ -288,6 +280,8 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cards = pairs;
     this.flippedCards = [];
     this.gameFinished = false;
+    // The peek's "hide again" timer was just cleared above, so it can't reset this itself.
+    this.isPeeking = false;
     this.keyboardSelectedIndex = this.findNextKeyboardCardIndex(0, 1) ?? 0;
     this.rebuildCardRows();
     this.calculateCardSize();
@@ -350,7 +344,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
           this.playSound(this.rewardSound);
         }
         this.cdr.detectChanges();
-      }, 3000);
+      }, 1500);
     } else {
       this.setGameTimeout(() => {
         this.playSound(this.buzzSound);
@@ -385,25 +379,11 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private playTrackedAudio(blob: Blob) {
-    this.stopActiveAudio();
-    const url = URL.createObjectURL(blob);
-    const audio = new Audio(url);
-    this.activeAudio = audio;
-    this.activeAudioUrl = url;
-    audio.play().catch(e => console.debug('Audio play error:', e));
-    audio.onended = () => this.stopActiveAudio();
+    this.trackedAudio.play(blob);
   }
 
   private stopActiveAudio() {
-    if (this.activeAudio) {
-      this.activeAudio.pause();
-      this.activeAudio.currentTime = 0;
-      this.activeAudio = null;
-    }
-    if (this.activeAudioUrl) {
-      URL.revokeObjectURL(this.activeAudioUrl);
-      this.activeAudioUrl = null;
-    }
+    this.trackedAudio.stop();
   }
 
   resetGame() {
@@ -417,7 +397,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onWindowKeyDown(event: KeyboardEvent) {
     if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (this.isKeyboardEventFromInteractiveElement(event) || this.gameFinished) return;
+    if (isTypingTarget(event) || this.gameFinished) return;
 
     const digit = this.getKeyboardDigit(event);
     if (digit !== null) {
@@ -480,6 +460,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
         this.peek();
         break;
       case 'r':
+        if (!event.shiftKey) break;
         event.preventDefault();
         this.clearKeyboardNumberBuffer();
         this.resetGame();
@@ -581,11 +562,6 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private getKeyboardDigit(event: KeyboardEvent): string | null {
     return /^\d$/.test(event.key) ? event.key : null;
-  }
-
-  private isKeyboardEventFromInteractiveElement(event: KeyboardEvent): boolean {
-    const target = event.target as HTMLElement | null;
-    return !!target?.closest('input, textarea, select, button, [contenteditable="true"], [contenteditable=""], [role="textbox"]');
   }
 
   private clearKeyboardNumberTimer() {

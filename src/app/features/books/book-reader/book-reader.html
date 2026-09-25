@@ -1,5 +1,6 @@
 <div class="book-reader-page">
   <app-book-reader-toolbar [reader]="readerContext"></app-book-reader-toolbar>
+  <app-shortcut-help-panel [open]="shortcutHelpOpen" [sections]="shortcutSections" title="Reader shortcuts" (closed)="closeShortcutHelp()"></app-shortcut-help-panel>
 
   <app-book-reader-task-overlay [reader]="readerContext"></app-book-reader-task-overlay>
 
