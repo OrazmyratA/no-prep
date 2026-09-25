@@ -9,8 +9,8 @@
   (click)="reader.onPageFrameClick($event)"
   appSwipe
   [swipeDisabled]="reader.isReaderSurfaceToolActive()"
-  (swipeLeft)="reader.nextPage()"
-  (swipeRight)="reader.previousPage()"
+  (swipeLeft)="reader.stepFocusOrPage(1)"
+  (swipeRight)="reader.stepFocusOrPage(-1)"
   (pointerup)="reader.onPageFramePointerUp($event)"
   [attr.data-page-id]="page.id"
   [style.aspect-ratio]="reader.getPageAspectRatioFor(page)"

@@ -113,7 +113,7 @@ hideLicenseOverlay() {
   }
 
   private isThemeExcludedRoute(url: string): boolean {
-    return url.includes('/team-sentence') || url.includes('/pop-balloon');
+    return url.includes('/team-sentence') || url.includes('/pop-balloon') || url.includes('/flashcard-hunt');
   }
 
   private updateThemeBodyClasses() {

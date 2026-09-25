@@ -21,6 +21,7 @@ import { SquidGameComponent } from './squid-game';
 import { RockPaperScissorsComponent } from './rock-paper-scissors';
 import { TracingComponent } from './tracing';
 import { LineTraceMatchComponent } from './line-trace-match';
+import { FlashcardHuntComponent } from './flashcard-hunt';
 
 const routes: Routes = [
   { path: 'spin-wheel', component: SpinWheelComponent },
@@ -43,7 +44,8 @@ const routes: Routes = [
   { path: 'squid-game', component: SquidGameComponent },
   { path: 'rock-paper-scissors', component: RockPaperScissorsComponent },
   { path: 'tracing', component: TracingComponent },
-  { path: 'line-trace-match', component: LineTraceMatchComponent }
+  { path: 'line-trace-match', component: LineTraceMatchComponent },
+  { path: 'flashcard-hunt', component: FlashcardHuntComponent }
 ];
 
 @NgModule({

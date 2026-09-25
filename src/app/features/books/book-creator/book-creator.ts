@@ -7,6 +7,13 @@ import { Observable, Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
 import { PlatformFileService } from '../../../core/platform-file';
 import { GuidePitchService } from '../../../core/guide-pitch';
+import { AudioVoiceChange } from '../../../shared/audio-uploader';
+import {
+  AudioVoiceService,
+  VOICE_LANGUAGES,
+  getStoredVoiceLanguage,
+  storeVoiceLanguage
+} from '../../../core/audio-voice';
 import { DbService } from '../../../core/db';
 import { LanguageService } from '../../../core/language';
 import { showAppNotification } from '../../../core/notification';
@@ -148,6 +155,12 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   previewGuideDuration = 0;
   previewGuidePaused = true;
   recordingGuideElementId: string | null = null;
+  // Teacher guide dot text-to-speech (same voices/languages as the audio uploader).
+  readonly voiceLanguages = VOICE_LANGUAGES;
+  guideSpeechPanelOpen = false;
+  guideSpeechText = '';
+  guideSpeechLanguage = getStoredVoiceLanguage();
+  generatingGuideSpeech = false;
   requestingMicPermission = false;
   savingRecording = false;
   selectedGuideTrackId: string | null = null;
@@ -302,6 +315,7 @@ Tomorrow I will help my mom.`;
     private confirmationService: ConfirmationService,
     private platformFile: PlatformFileService,
     private guidePitch: GuidePitchService,
+    public audioVoice: AudioVoiceService,
     private aiSpeakingRuntime: AiSpeakingRuntimeService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef
@@ -987,6 +1001,27 @@ Tomorrow I will help my mom.`;
 
   getAnswerKeyImageAudioUrl(element: BookElement, imageIndex: number): string {
     return this.mediaController.getAnswerKeyImageAudioUrl(element, imageIndex);
+  }
+
+  toggleGuideSpeechPanel(): void {
+    this.guideSpeechPanelOpen = !this.guideSpeechPanelOpen;
+  }
+
+  onGuideSpeechLanguageChange(code: string): void {
+    this.guideSpeechLanguage = code;
+    storeVoiceLanguage(code);
+  }
+
+  async generateGuideDotSpeech(element: BookElement): Promise<void> {
+    await this.guideAudioController.generateGuideDotSpeech(element);
+  }
+
+  getAnswerKeyVoiceState(element: BookElement) {
+    return this.mediaController.getAnswerKeyVoiceState(element);
+  }
+
+  onAnswerKeyVoiceChange(change: AudioVoiceChange, element: BookElement, imageIndex: number): void {
+    this.mediaController.onAnswerKeyVoiceChange(change, element, imageIndex);
   }
 
   async uploadVideoElement(element: BookElement): Promise<void> {

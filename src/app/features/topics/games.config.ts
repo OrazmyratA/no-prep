@@ -158,4 +158,11 @@ export const GAMES: GameConfig[] = [
     icon: '\u{1F534}\u{1F535}',
     requiresSettings: true,
   },
+  {
+    id: 'flashcard-hunt',
+    nameKey: 'gameFlashcardHuntName',
+    descKey: 'gameFlashcardHuntDesc',
+    icon: '\u{1F3AF}',
+    requiresSettings: true,
+  },
 ];

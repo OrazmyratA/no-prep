@@ -23,7 +23,7 @@
 </button>
 
 <div class="rp-backdrop" *ngIf="overlayOpen" (click)="closeOverlay($event)">
-  <div class="rp-panel" role="dialog" aria-modal="true" (click)="stopPropagation($event)">
+  <div class="rp-panel" role="dialog" aria-modal="true" (click)="onPanelClick($event)">
     <button
       type="button"
       class="rp-close"

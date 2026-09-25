@@ -10,6 +10,37 @@ export const VOICE_SPEED_MAX = 2;
 
 declare const window: any;
 
+// Shared by every text-to-speech UI (audio uploader, teacher guide dot) so they offer the same
+// languages and remember the same last-used choice.
+export const VOICE_LANGUAGES = [
+  { code: 'en-US', label: 'English (US)' },
+  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'ru-RU', label: 'Русский' },
+  { code: 'tr-TR', label: 'Türkçe' },
+  { code: 'es-ES', label: 'Español' },
+  { code: 'fr-FR', label: 'Français' },
+  { code: 'de-DE', label: 'Deutsch' },
+  { code: 'ar-SA', label: 'العربية' },
+  { code: 'zh-CN', label: '中文' },
+  { code: 'ko-KR', label: '한국어' }
+];
+
+const VOICE_LANGUAGE_KEY = 'audioVoiceLanguage';
+
+export function getStoredVoiceLanguage(): string {
+  try {
+    return localStorage.getItem(VOICE_LANGUAGE_KEY) || VOICE_LANGUAGES[0].code;
+  } catch {
+    return VOICE_LANGUAGES[0].code;
+  }
+}
+
+export function storeVoiceLanguage(code: string): void {
+  try {
+    localStorage.setItem(VOICE_LANGUAGE_KEY, code);
+  } catch { /* storage unavailable */ }
+}
+
 @Injectable({ providedIn: 'root' })
 export class AudioVoiceService {
   constructor(private aiSpeaking: AiSpeakingRuntimeService) {}

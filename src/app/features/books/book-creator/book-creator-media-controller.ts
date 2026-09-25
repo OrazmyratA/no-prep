@@ -6,6 +6,30 @@ import {
   getAnswerKeyImagePaths
 } from '../../../core/book.model';
 
+export interface AnswerKeyVoiceState {
+  path: string;
+  audio: Blob | null;
+  source: Blob | null;
+  pitch: number | null;
+  speed: number | null;
+  text: string;
+}
+
+interface AnswerKeyVoiceChange {
+  audio: Blob | null;
+  source: Blob | null;
+  pitch: number;
+  speed: number;
+  text: string;
+}
+
+interface StoredAnswerKeyVoice {
+  source: string | null;
+  pitch: number;
+  speed: number;
+  text: string;
+}
+
 export class BookCreatorMediaController {
   private draggedAnswerKeyImageIndex: number | null = null;
   private selectedAnswerKeyImageIndex = new Map<string, number>();
@@ -178,6 +202,130 @@ export class BookCreatorMediaController {
     // can't silently fall back to resurrecting it.
     delete element.data['audio'];
     this.creator.refreshElementAssetChange();
+  }
+
+  // ---- Voice tools (text-to-speech / pitch / speed) for an image's audio ----
+  // Same audio uploader the topic form uses. The saved clip (data['imageAudios']) is always the
+  // final pitch/speed-adjusted audio, which is all the reader plays; the untouched source plus
+  // the settings live in data['audioVoices'], keyed by the clip's path so reordering or
+  // removing images never has to move them, so the sliders stay re-adjustable later.
+  private voiceStates = new Map<string, AnswerKeyVoiceState>();
+  private voiceLoads = new Set<string>();
+  private voiceSourcePaths = new WeakMap<Blob, string>();
+  private voiceSaveQueue: Promise<void> = Promise.resolve();
+  private readonly emptyVoiceState: AnswerKeyVoiceState = {
+    path: '', audio: null, source: null, pitch: null, speed: null, text: ''
+  };
+
+  getAnswerKeyVoiceState(element: BookElement): AnswerKeyVoiceState {
+    const index = this.getSelectedAnswerKeyImageIndex(element);
+    const path = getAnswerKeyImageAudioPath(element, index);
+    if (!path) return this.emptyVoiceState;
+    const key = `${element.id}:${index}`;
+    const cached = this.voiceStates.get(key);
+    if (cached?.path === path) return cached;
+    void this.loadVoiceState(element, key, path);
+    return cached ?? this.emptyVoiceState;
+  }
+
+  private async loadVoiceState(element: BookElement, key: string, path: string): Promise<void> {
+    const loadKey = `${key}:${path}`;
+    if (this.voiceLoads.has(loadKey) || !this.creator.book) return;
+    this.voiceLoads.add(loadKey);
+    try {
+      const voices = (element.data['audioVoices'] ?? {}) as Record<string, StoredAnswerKeyVoice>;
+      const stored = voices[path];
+      const audio = await this.fetchBlob(this.getAnswerKeyPathUrl(path));
+      const source = stored?.source ? await this.fetchBlob(this.getAnswerKeyPathUrl(stored.source)) : null;
+      if (!audio) return;
+      if (stored?.source && source) this.voiceSourcePaths.set(source, stored.source);
+      this.voiceStates.set(key, {
+        path,
+        audio,
+        source,
+        pitch: stored?.pitch ?? null,
+        speed: stored?.speed ?? null,
+        text: stored?.text ?? ''
+      });
+      this.creator.refreshCreatorView();
+    } finally {
+      this.voiceLoads.delete(loadKey);
+    }
+  }
+
+  onAnswerKeyVoiceChange(change: AnswerKeyVoiceChange, element: BookElement, imageIndex: number): void {
+    // Serialized: the uploader emits repeatedly while a slider moves and each save is async.
+    this.voiceSaveQueue = this.voiceSaveQueue
+      .then(() => this.saveAnswerKeyVoice(change, element, imageIndex))
+      .catch(() => undefined);
+  }
+
+  private async saveAnswerKeyVoice(change: AnswerKeyVoiceChange, element: BookElement, imageIndex: number): Promise<void> {
+    if (!this.creator.book || element.type !== 'answerKey') return;
+    const key = `${element.id}:${imageIndex}`;
+    const previousPath = getAnswerKeyImageAudioPath(element, imageIndex);
+
+    if (!change.audio) {
+      this.voiceStates.delete(key);
+      await this.setAnswerKeyImageAudio(null, element, imageIndex);
+      this.dropStoredVoice(element, previousPath);
+      return;
+    }
+
+    await this.setAnswerKeyImageAudio(change.audio, element, imageIndex);
+    const path = getAnswerKeyImageAudioPath(element, imageIndex);
+    if (!path) return;
+
+    let sourcePath = '';
+    if (change.source) {
+      sourcePath = this.voiceSourcePaths.get(change.source) ?? '';
+      if (!sourcePath) {
+        const saved = await this.creator.bookLibrary.saveAudioRecording(
+          this.creator.book.id,
+          await this.creator.blobToDataUrl(change.source)
+        );
+        sourcePath = saved?.relativePath ?? '';
+        if (sourcePath) this.voiceSourcePaths.set(change.source, sourcePath);
+      }
+    }
+
+    this.dropStoredVoice(element, previousPath);
+    const voices = { ...((element.data['audioVoices'] ?? {}) as Record<string, StoredAnswerKeyVoice>) };
+    voices[path] = { source: sourcePath || null, pitch: change.pitch, speed: change.speed, text: change.text };
+    element.data['audioVoices'] = voices;
+    // Holding the very blobs the uploader emitted lets it recognise its own echo instead of
+    // reloading the <audio> element mid-playback.
+    this.voiceStates.set(key, {
+      path,
+      audio: change.audio,
+      source: change.source,
+      pitch: change.pitch,
+      speed: change.speed,
+      text: change.text
+    });
+    this.creator.refreshElementAssetChange();
+  }
+
+  private dropStoredVoice(element: BookElement, path: string): void {
+    const voices = element.data['audioVoices'] as Record<string, StoredAnswerKeyVoice> | undefined;
+    if (!path || !voices || !(path in voices)) return;
+    const next = { ...voices };
+    delete next[path];
+    element.data['audioVoices'] = next;
+  }
+
+  private getAnswerKeyPathUrl(path: string): string {
+    return this.isExternalUrl(path) ? path : this.getCachedAssetUrl(path);
+  }
+
+  private async fetchBlob(url: string): Promise<Blob | null> {
+    if (!url) return null;
+    try {
+      const response = await fetch(url);
+      return response.ok ? await response.blob() : null;
+    } catch {
+      return null;
+    }
   }
 
   getAnswerKeyImageAudioUrl(element: BookElement, imageIndex: number): string {

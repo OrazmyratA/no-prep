@@ -145,16 +145,9 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   // The absent column is always the trailing bucket buildDisplayColumns appends (see
   // random-picker.ts) — never interleaved with the real columns — so everything before it is
   // "main" and its own index is stable regardless of gridColumns/team-column count.
-  get hasAbsentColumn(): boolean {
-    return this.columnBuckets.length > 0 && this.isAbsentColumn(this.columnBuckets.length - 1);
-  }
-
-  get absentColumnIndex(): number {
-    return this.columnBuckets.length - 1;
-  }
-
-  get mainColumns(): LeaderboardEntry[][] {
-    return this.hasAbsentColumn ? this.columnBuckets.slice(0, -1) : this.columnBuckets;
+  get mainColumnCount(): number {
+    const last = this.columnBuckets.length - 1;
+    return Math.max(1, this.isAbsentColumn(last) ? last : this.columnBuckets.length);
   }
 
   trackByColumnIndex(index: number): number {

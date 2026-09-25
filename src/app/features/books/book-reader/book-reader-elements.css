@@ -778,9 +778,14 @@
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 22px 56px rgba(41, 37, 36, 0.28);
   overflow: hidden;
+  position: relative;
 }
 
+/* Pinned to the frame's box (not sized by the grid cell) so a tall or wide image is scaled to
+   fit entirely inside the fixed-size frame instead of overflowing and being clipped. */
 .guide-pin-media-frame img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;

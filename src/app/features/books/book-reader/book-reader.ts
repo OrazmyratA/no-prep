@@ -304,7 +304,25 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     private confirmationService: ConfirmationService
   ) {}
 
+  // Capture phase on purpose: once the answer-key <audio> controls have focus, the browser's
+  // media controls consume ←/→ (to seek) and mark them handled before a normal bubbling
+  // listener would ever see them, which made the arrows stop switching images.
+  private readonly answerKeyArrowHandler = (event: KeyboardEvent): void => {
+    if (this.expandedElement?.type !== 'answerKey') return;
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (this.isKeyboardEditingTarget(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === 'ArrowLeft') {
+      this.showPreviousAnswerKeyImage();
+    } else {
+      this.showNextAnswerKeyImage();
+    }
+  };
+
   async ngOnInit(): Promise<void> {
+    document.addEventListener('keydown', this.answerKeyArrowHandler, true);
     this.moveOwlToCorner();
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
       void this.loadBook(params.get('id'));
@@ -317,6 +335,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.destroyed = true;
+    document.removeEventListener('keydown', this.answerKeyArrowHandler, true);
     this.routeSubscription?.unsubscribe();
     this.stopGuideAudio();
     this.aiSpeakingRuntime.stopSpeaking();
@@ -1152,6 +1171,26 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.expandedAnswerKeyIndex = (this.expandedAnswerKeyIndex + 1) % total;
   }
 
+  // Inside an expanded focus with siblings, the page-edge arrows and horizontal swipes step
+  // through the page's focuses (like ←/→ on a keyboard) instead of turning the page — this is
+  // the only way to do it on touch-only screens such as smart boards.
+  hasMultipleFocusElements(): boolean {
+    return !!this.expandedFocusElement
+      && (this.expandedFocusPage?.elements.filter(el => el.type === 'focus').length ?? 0) > 1;
+  }
+
+  stepFocusOrPage(direction: 1 | -1): void {
+    if (this.hasMultipleFocusElements()) {
+      this.focusController.showAdjacentFocusElement(direction);
+      return;
+    }
+    if (direction < 0) {
+      this.previousPage();
+    } else {
+      this.nextPage();
+    }
+  }
+
   getExpandedAnswerKeyAudioUrl(): string {
     return this.expandedElement
       ? this.mediaController.getAnswerKeyImageAudioUrl(this.expandedElement, this.expandedAnswerKeyIndex)
@@ -1250,16 +1289,6 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.selectedText) return;
       event.preventDefault();
       this.deleteTextAnnotation(this.selectedText.pageId, this.selectedText.textId);
-      return;
-    }
-
-    if (this.expandedElement?.type === 'answerKey' && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
-      event.preventDefault();
-      if (event.key === 'ArrowLeft') {
-        this.showPreviousAnswerKeyImage();
-      } else {
-        this.showNextAnswerKeyImage();
-      }
       return;
     }
 

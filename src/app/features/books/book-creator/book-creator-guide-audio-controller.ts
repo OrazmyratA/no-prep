@@ -36,6 +36,51 @@ export class BookCreatorGuideAudioController {
     void this.creator.ensureGuideTrackDuration(track);
   }
 
+  // Text-to-speech straight into a new track (same synthesis as the audio uploader). Pitch is
+  // then adjusted per track with the existing ♂/♀ slider, which is applied at playback and
+  // keeps the clip's length, so timed teacher positions stay aligned.
+  async generateGuideDotSpeech(element: BookElement): Promise<void> {
+    const text = String(this.creator.guideSpeechText ?? '').trim();
+    if (!this.creator.book || element.type !== 'guideDot' || !text || this.creator.generatingGuideSpeech) return;
+    this.creator.generatingGuideSpeech = true;
+    this.creator.cdr.detectChanges();
+    try {
+      const generated = await this.creator.audioVoice.synthesize(text, this.creator.guideSpeechLanguage);
+      if (!generated) {
+        showAppNotification(this.creator.languageService.translate('creatorMicRecordingFailed'), 'error');
+        return;
+      }
+      // Re-encode to WAV, as for recordings, so the clip has a seekable duration for the timeline.
+      let blob: Blob;
+      try {
+        blob = await decodeAudioBlobToMonoWav(generated);
+      } catch {
+        blob = generated;
+      }
+      const saved = await this.creator.bookLibrary.saveAudioRecording(
+        this.creator.book.id,
+        await this.creator.blobToDataUrl(blob)
+      );
+      if (!saved) return;
+      this.creator.captureHistory();
+      const track: GuideAudioTrack = {
+        id: this.creator.createId('guide-track'),
+        src: saved.relativePath,
+        pins: []
+      };
+      this.creator.getGuideDotTracks(element).push(track);
+      syncLegacyGuideAudioFiles(element);
+      this.creator.selectGuideTrack(element, track);
+      void this.creator.ensureGuideTrackDuration(track);
+      this.creator.guideSpeechText = '';
+    } catch {
+      showAppNotification(this.creator.languageService.translate('creatorMicRecordingFailed'), 'error');
+    } finally {
+      this.creator.generatingGuideSpeech = false;
+      this.creator.cdr.detectChanges();
+    }
+  }
+
   async deleteSelectedGuideTrack(element: BookElement): Promise<void> {
     const tracks = this.creator.getGuideDotTracks(element);
     const index = tracks.findIndex((track: GuideAudioTrack) => track.id === this.creator.selectedGuideTrackId);

@@ -424,6 +424,17 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         });
         this.wireAitSimpleModeDefault('ait', 'simpleMode');
         break;
+      case 'flashcard-hunt':
+        this.settingsForm = this.fb.group({
+          teamCount: [2],
+          ait: [[...AIT_DEFAULT_ORDER]],
+          simpleMode: [AIT_DEFAULT_ORDER.length <= 1],
+          targetSpeed: [2],
+          enableTimer: [false],
+          timerMinutes: [2]
+        });
+        this.wireAitSimpleModeDefault('ait', 'simpleMode');
+        break;
       case 'squid-game':
         this.settingsForm = this.fb.group({
           teamCount: [2],

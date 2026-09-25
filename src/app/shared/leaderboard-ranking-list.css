@@ -26,23 +26,14 @@
   padding: 0.15rem;
 }
 
-/* Wraps only the real (non-absent) columns. min-width:100% is the load-bearing part: a flex
-   item's percentage width resolves against its flex container's content box, so this track is
-   pinned to at least the full visible row width no matter how few columns/students it holds —
-   the absent column (fixed-width sibling, see .lb-list-rows-absent) can then never be absorbed
-   into that same width and always spills past it, guaranteeing the horizontal scrollbar rather
-   than "fitting" flexbox naturally would otherwise produce when there's spare space. */
-.lb-main-columns-track {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 0.6rem;
-  flex: 1 1 auto;
-  min-width: 100%;
-}
-
+/* Each real column is a fixed share of the row: an equal split of the FULL visible width
+   (--lb-main-cols = number of non-absent columns), floored at 200px. Because they never flex-grow
+   into leftover space, the trailing absent column (see .lb-list-rows-absent) can't be absorbed
+   into the visible area — it always spills past the edge and is reached only by scrolling, at 1,
+   2 or 3 columns alike. A single flat loop (no wrapper element) keeps every row declared directly
+   inside its cdkDropList, which CDK requires. */
 .lb-list-rows {
-  flex: 1 1 0;
+  flex: 0 0 max(200px, calc((100% - (var(--lb-main-cols, 1) - 1) * 0.6rem) / var(--lb-main-cols, 1)));
   min-width: 200px;
   display: flex;
   flex-direction: column;

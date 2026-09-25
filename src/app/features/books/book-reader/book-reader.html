@@ -17,11 +17,11 @@
 
     <div #readerCanvasShell *ngIf="book && currentPage && currentPage.type !== 'progressMap'" class="reader-canvas-shell">
       <button
-        *ngIf="!expandedFocusElement"
+        *ngIf="!expandedFocusElement || hasMultipleFocusElements()"
         type="button"
         class="reader-page-edge previous"
-        (click)="$event.stopPropagation(); previousPage()"
-        [disabled]="currentPageIndex <= 0"
+        (click)="$event.stopPropagation(); stepFocusOrPage(-1)"
+        [disabled]="!expandedFocusElement && currentPageIndex <= 0"
         [title]="'previousPage' | translate"
         [attr.aria-label]="'previousPage' | translate">
         <img class="turn-icon turn-icon-previous" src="assets/images/book/hide.png" alt="">
@@ -52,11 +52,11 @@
       </div>
 
       <button
-        *ngIf="!expandedFocusElement"
+        *ngIf="!expandedFocusElement || hasMultipleFocusElements()"
         type="button"
         class="reader-page-edge next"
-        (click)="$event.stopPropagation(); nextPage()"
-        [disabled]="currentPageIndex >= visiblePages.length - 1"
+        (click)="$event.stopPropagation(); stepFocusOrPage(1)"
+        [disabled]="!expandedFocusElement && currentPageIndex >= visiblePages.length - 1"
         [title]="'nextPage' | translate"
         [attr.aria-label]="'nextPage' | translate">
         <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">

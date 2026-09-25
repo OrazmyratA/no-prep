@@ -1,78 +1,55 @@
-<ng-template #rowsTpl let-column="column" let-colIndex="colIndex" let-isAbsent="isAbsent">
+<!-- Rows must be declared directly inside their cdkDropList element (not via ng-template /
+     ngTemplateOutlet): CDK links a cdkDrag to its drop list by declaration site, so rows rendered
+     from a template declared elsewhere lose their list and drag freely without ever reordering. -->
+<div class="lb-columns-wrap" [style.--lb-main-cols]="mainColumnCount" (click)="onBackgroundClick()">
   <div
-    class="lb-column-header"
-    *ngIf="columnLabels && columnLabels[colIndex] as label"
-    [style.--team-color]="label.color || '#94a3b8'">
-    <span class="lb-column-header-name">
-      {{ label.isAbsent ? ('leaderboardAbsent' | translate) : (label.isUnassigned ? ('leaderboardTeamSetupUnassigned' | translate) : label.name) }}
-    </span>
-  </div>
-  <ng-container *ngFor="let entry of column; trackBy: trackByItemId">
-    <app-leaderboard-student-row
-      #row
-      cdkDrag
-      [cdkDragStartDelay]="500"
-      [cdkDragDisabled]="isAbsent"
-      (cdkDragStarted)="onDragStarted()"
-      (cdkDragEnded)="onDragEnded()"
-      [entry]="entry"
-      [rank]="rankByItemId.get(entry.itemId) || 0"
-      [showMedals]="rankingApplied"
-      [rankedUp]="isRankedUp(entry.itemId)"
-      [hammerHit]="hammerHitItemId === entry.itemId"
-      [controlsOpen]="openControlsItemId === entry.itemId"
-      (starClick)="starClick.emit($event)"
-      (toggleAbsent)="toggleAbsent.emit($event)"
-      (toggleControls)="toggleControls.emit($event)"
-      (incrementPoints)="incrementPoints.emit($event)"
-      (decrementPoints)="decrementPoints.emit($event)"
-      (setPoints)="setPoints.emit($event)">
-    </app-leaderboard-student-row>
-  </ng-container>
-
-  <button
-    type="button"
-    class="lb-add-student-tile"
-    *ngIf="colIndex === addStudentColumnIndex && hasAnyEntries"
-    (click)="addStudent.emit()">
-    <span class="lb-add-student-plus" aria-hidden="true">+</span>
-    <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
-  </button>
-</ng-template>
-
-<div class="lb-columns-wrap" (click)="onBackgroundClick()">
-  <!-- Main columns always claim the track's full width (min-width:100% below) regardless of how
-       little content they hold, so the absent column after it can never simply "fit" into the
-       already-visible area — it's guaranteed to overflow and be scroll-only, no matter whether
-       we're at 1, 2, or 3 columns. -->
-  <div class="lb-main-columns-track">
-    <div
-      class="lb-list-rows"
-      *ngFor="let column of mainColumns; let colIndex = index; trackBy: trackByColumnIndex"
-      cdkDropList
-      [id]="columnListId(colIndex)"
-      [cdkDropListData]="column"
-      [cdkDropListConnectedTo]="connectedColumnIds(colIndex)"
-      (cdkDropListDropped)="onColumnDrop($event)">
-      <ng-container
-        [ngTemplateOutlet]="rowsTpl"
-        [ngTemplateOutletContext]="{ column: column, colIndex: colIndex, isAbsent: false }">
-      </ng-container>
-    </div>
-  </div>
-
-  <div
-    class="lb-list-rows lb-list-rows-absent"
-    *ngIf="hasAbsentColumn"
+    class="lb-list-rows"
+    [class.lb-list-rows-absent]="isAbsentColumn(colIndex)"
+    *ngFor="let column of columnBuckets; let colIndex = index; trackBy: trackByColumnIndex"
     cdkDropList
-    [id]="columnListId(absentColumnIndex)"
-    [cdkDropListData]="columnBuckets[absentColumnIndex]"
-    [cdkDropListConnectedTo]="connectedColumnIds(absentColumnIndex)"
+    [id]="columnListId(colIndex)"
+    [cdkDropListData]="column"
+    [cdkDropListConnectedTo]="connectedColumnIds(colIndex)"
     (cdkDropListDropped)="onColumnDrop($event)">
-    <ng-container
-      [ngTemplateOutlet]="rowsTpl"
-      [ngTemplateOutletContext]="{ column: columnBuckets[absentColumnIndex], colIndex: absentColumnIndex, isAbsent: true }">
+    <div
+      class="lb-column-header"
+      *ngIf="columnLabels && columnLabels[colIndex] as label"
+      [style.--team-color]="label.color || '#94a3b8'">
+      <span class="lb-column-header-name">
+        {{ label.isAbsent ? ('leaderboardAbsent' | translate) : (label.isUnassigned ? ('leaderboardTeamSetupUnassigned' | translate) : label.name) }}
+      </span>
+    </div>
+    <ng-container *ngFor="let entry of column; trackBy: trackByItemId">
+      <app-leaderboard-student-row
+        #row
+        cdkDrag
+        [cdkDragStartDelay]="500"
+        [cdkDragDisabled]="isAbsentColumn(colIndex)"
+        (cdkDragStarted)="onDragStarted()"
+        (cdkDragEnded)="onDragEnded()"
+        [entry]="entry"
+        [rank]="rankByItemId.get(entry.itemId) || 0"
+        [showMedals]="rankingApplied"
+        [rankedUp]="isRankedUp(entry.itemId)"
+        [hammerHit]="hammerHitItemId === entry.itemId"
+        [controlsOpen]="openControlsItemId === entry.itemId"
+        (starClick)="starClick.emit($event)"
+        (toggleAbsent)="toggleAbsent.emit($event)"
+        (toggleControls)="toggleControls.emit($event)"
+        (incrementPoints)="incrementPoints.emit($event)"
+        (decrementPoints)="decrementPoints.emit($event)"
+        (setPoints)="setPoints.emit($event)">
+      </app-leaderboard-student-row>
     </ng-container>
+
+    <button
+      type="button"
+      class="lb-add-student-tile"
+      *ngIf="colIndex === addStudentColumnIndex && hasAnyEntries"
+      (click)="addStudent.emit()">
+      <span class="lb-add-student-plus" aria-hidden="true">+</span>
+      <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
+    </button>
   </div>
 </div>
 

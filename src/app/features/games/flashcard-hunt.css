@@ -1,0 +1,933 @@
+:host {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.hunt-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #3b2a1a;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Blurred copy of the classroom fills the letterbox around the 16:9 stage. */
+.hunt-letterbox {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(18px) brightness(0.7);
+  transform: scale(1.1);
+  pointer-events: none;
+}
+
+.hunt-keyboard-help {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 70;
+}
+
+/* Everything inside the stage is positioned in % of this 16:9 box, and sized with
+   cqw (1% of the stage width), so the game looks the same at any window size. */
+.hunt-stage {
+  position: relative;
+  width: min(100vw, calc(100dvh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.hunt-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.hunt-stage.shaking {
+  animation: stageShake 0.5s ease-in-out;
+}
+
+@keyframes stageShake {
+  0%, 100% { transform: translate(0, 0); }
+  15% { transform: translate(-1.2cqw, 0.6cqw); }
+  30% { transform: translate(1cqw, -0.8cqw); }
+  45% { transform: translate(-0.8cqw, 0.4cqw); }
+  60% { transform: translate(0.6cqw, 0.4cqw); }
+  80% { transform: translate(-0.3cqw, -0.2cqw); }
+}
+
+.hunt-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+}
+
+/* ─── HUD ─────────────────────────────────────────── */
+
+.hunt-hud {
+  position: absolute;
+  top: 0.9%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 1cqw;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.hunt-pill {
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.7cqw;
+  padding: 0.3cqw 1.2cqw;
+  border-radius: 999px;
+  border: 0.2cqw solid rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.hunt-timer.warning {
+  background: #dc2626;
+  animation: timerPulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes timerPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.12); }
+}
+
+/* ─── Flashcards ──────────────────────────────────── */
+
+.hunt-card {
+  --rot: 0deg;
+  position: absolute;
+  width: 10.5cqw;
+  height: 8.44cqw; /* 15% of the stage height */
+  transform: translate(-50%, -50%) rotate(var(--rot));
+  background: #fff;
+  border-radius: 0.8cqw;
+  box-shadow: 0 0.4cqw 0.9cqw rgba(0, 0, 0, 0.35);
+  border: 0.25cqw solid #fde68a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5cqw;
+  z-index: 10;
+  pointer-events: none;
+  transition: left 0.6s cubic-bezier(0.5, 0, 0.3, 1), top 0.6s cubic-bezier(0.5, 0, 0.3, 1),
+    transform 0.6s cubic-bezier(0.5, 0, 0.3, 1), opacity 0.6s ease;
+}
+
+.hunt-card.bomb {
+  background: radial-gradient(circle at 50% 40%, #fff7ed, #fed7aa);
+  border-color: #f97316;
+}
+
+/* Golden bonus card: shimmering gold face plus a bar that runs down while it's up. */
+.hunt-card.golden {
+  background: linear-gradient(135deg, #fde68a, #f59e0b 45%, #fef3c7 55%, #d97706);
+  background-size: 250% 250%;
+  border-color: #fff7ae;
+  box-shadow: 0 0 1.4cqw rgba(250, 204, 21, 0.95), 0 0.4cqw 0.9cqw rgba(0, 0, 0, 0.35);
+  z-index: 11;
+  animation: goldenShimmer 1.2s linear infinite, goldenPulse 0.6s ease-in-out infinite alternate;
+  overflow: hidden;
+}
+
+.hunt-card.golden.entering {
+  animation: cardPopIn 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), goldenShimmer 1.2s linear infinite;
+}
+
+.hunt-card.golden::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 0.5cqw;
+  width: 100%;
+  background: #fff;
+  transform-origin: left;
+  animation: goldenTimer 4.5s linear forwards;
+}
+
+.hunt-card.golden.hit::after,
+.hunt-card.golden.flying::after {
+  display: none;
+}
+
+@keyframes goldenShimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 250% 50%; }
+}
+
+@keyframes goldenPulse {
+  from { box-shadow: 0 0 0.8cqw rgba(250, 204, 21, 0.7), 0 0.4cqw 0.9cqw rgba(0, 0, 0, 0.35); }
+  to { box-shadow: 0 0 2.2cqw rgba(250, 204, 21, 1), 0 0.4cqw 0.9cqw rgba(0, 0, 0, 0.35); }
+}
+
+@keyframes goldenTimer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.hunt-golden-face {
+  display: flex;
+  align-items: center;
+  gap: 0.4cqw;
+}
+
+.hunt-golden-star {
+  font-size: 3.6cqw;
+  animation: targetSpin 3s linear infinite;
+}
+
+.hunt-golden-points {
+  font-size: 2.6cqw;
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 0.15cqw #92400e;
+}
+
+.hunt-card.fading {
+  opacity: 0;
+  transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.6);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.hunt-paused {
+  font-size: 5cqw;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0.4cqw 1cqw rgba(0, 0, 0, 0.6);
+}
+
+.hunt-card-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.hunt-card-text {
+  font-weight: 800;
+  color: #1f2937;
+  font-size: 1.55cqw;
+  line-height: 1.1;
+  text-align: center;
+  word-break: break-word;
+  overflow: hidden;
+}
+
+.hunt-card-audio,
+.hunt-card-bomb {
+  width: 70%;
+  height: 90%;
+  object-fit: contain;
+}
+
+.hunt-card.entering {
+  animation: cardPopIn 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes cardPopIn {
+  from { transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.2); opacity: 0; }
+  to { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; }
+}
+
+.hunt-card.hit:not(.bomb) {
+  animation: cardWobble 0.45s ease-in-out;
+  z-index: 12;
+}
+
+@keyframes cardWobble {
+  0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); }
+  25% { transform: translate(-50%, -50%) rotate(calc(var(--rot) - 8deg)) scale(1.08); }
+  60% { transform: translate(-50%, -50%) rotate(calc(var(--rot) + 6deg)) scale(1.05); }
+}
+
+.hunt-card.flying {
+  transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.35);
+  opacity: 0.2;
+  z-index: 25;
+}
+
+.hunt-card.bomb.hit {
+  animation: bombBlast 0.7s ease-out forwards;
+}
+
+@keyframes bombBlast {
+  0% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1); opacity: 1; }
+  30% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(1.4); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.2); opacity: 0; }
+}
+
+.hunt-boom {
+  position: absolute;
+  inset: -40%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9cqw;
+  animation: boomPop 0.6s ease-out forwards;
+}
+
+@keyframes boomPop {
+  from { transform: scale(0.3); opacity: 1; }
+  to { transform: scale(1.4); opacity: 0; }
+}
+
+.hunt-stuck-ball {
+  position: absolute;
+  width: 5cqw;
+  height: 5cqw;
+  transform: translate(-50%, -50%);
+  animation: ballSquish 0.3s ease-out;
+  filter: drop-shadow(0 0.2cqw 0.3cqw rgba(0, 0, 0, 0.4));
+}
+
+@keyframes ballSquish {
+  0% { transform: translate(-50%, -50%) scale(1.4, 0.6); }
+  60% { transform: translate(-50%, -50%) scale(0.9, 1.1); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Balls are created from the component and animated with the Web Animations API,
+   so these rules need ::ng-deep to reach them. */
+:host ::ng-deep .hunt-ball-flying,
+:host ::ng-deep .hunt-ball-splat {
+  position: absolute;
+  width: 5.5cqw;
+  height: 5.5cqw;
+  pointer-events: none;
+  z-index: 28;
+  filter: drop-shadow(0 0.3cqw 0.4cqw rgba(0, 0, 0, 0.45));
+}
+
+:host ::ng-deep .hunt-ball-splat {
+  z-index: 9;
+}
+
+/* ─── Targets ─────────────────────────────────────── */
+
+.hunt-target {
+  position: absolute;
+  width: 7cqw;
+  height: 7cqw;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.hunt-target.hidden {
+  opacity: 0;
+}
+
+.hunt-target img {
+  width: 100%;
+  height: 100%;
+  animation: targetSpin 4s linear infinite;
+  filter: drop-shadow(0 0 0.25cqw #fff) drop-shadow(0 0 0.25cqw #fff);
+}
+
+.hunt-stage.frenzy .hunt-target img {
+  animation-duration: 1.5s;
+}
+
+@keyframes targetSpin {
+  to { transform: rotate(360deg); }
+}
+
+.hunt-target.frozen img {
+  animation-play-state: paused;
+  filter: drop-shadow(0 0 0.6cqw #7dd3fc) saturate(0.4) brightness(1.3);
+}
+
+.hunt-ice {
+  position: absolute;
+  inset: -20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4.5cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(186, 230, 253, 0.65), rgba(125, 211, 252, 0.25) 70%, transparent);
+  animation: icePulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes icePulse {
+  from { transform: scale(0.95); }
+  to { transform: scale(1.05); }
+}
+
+/* ─── Trays ───────────────────────────────────────── */
+
+.hunt-tray {
+  position: absolute;
+  bottom: 1.5%;
+  left: 1.2%;
+  width: 26%;
+  height: 20%;
+  z-index: 15;
+  border-radius: 1.2cqw;
+  background: rgba(255, 255, 255, 0.82);
+  border: 0.35cqw solid var(--team-color);
+  box-shadow: 0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 0.5cqw 0.8cqw;
+  transition: transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.hunt-tray.right {
+  left: auto;
+  right: 1.2%;
+}
+
+.hunt-tray.team-red { --team-color: #ef4444; }
+.hunt-tray.team-blue { --team-color: #3b82f6; }
+
+.hunt-tray.bump {
+  transform: scale(1.06);
+}
+
+.hunt-tray.active {
+  box-shadow: 0 0 0 0.4cqw #facc15, 0 0 2cqw rgba(250, 204, 21, 0.8);
+}
+
+.hunt-tray-label {
+  font-weight: 900;
+  font-size: 1.4cqw;
+  color: var(--team-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hunt-tray-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  min-height: 0;
+}
+
+.hunt-tray-stack {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+.hunt-tray-mini {
+  --i: 0;
+  position: absolute;
+  top: 50%;
+  left: calc(var(--i) * 2.6cqw);
+  width: 5.5cqw;
+  height: 4.2cqw;
+  transform: translateY(-50%) rotate(calc((var(--i) - 1.5) * 5deg));
+  background: #fff;
+  border-radius: 0.5cqw;
+  border: 0.15cqw solid #e5e7eb;
+  box-shadow: 0 0.2cqw 0.5cqw rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 0.9cqw;
+  font-weight: 700;
+  color: #1f2937;
+  text-align: center;
+  padding: 0.2cqw;
+}
+
+.hunt-tray-mini img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.hunt-tray-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-weight: 900;
+  font-size: 2.2cqw;
+  color: #1f2937;
+  white-space: nowrap;
+}
+
+.hunt-tray-score {
+  color: #ca8a04;
+}
+
+.hunt-combo {
+  position: absolute;
+  top: -3.2cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 900;
+  font-size: 2.2cqw;
+  color: #facc15;
+  -webkit-text-stroke: 0.15cqw #7c2d12;
+  white-space: nowrap;
+  animation: comboFloat 1.2s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes comboFloat {
+  0% { transform: translate(-50%, 1cqw) scale(0.6); opacity: 0; }
+  20% { transform: translate(-50%, 0) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -2cqw) scale(1); opacity: 0; }
+}
+
+/* ─── Launchers ───────────────────────────────────── */
+
+.hunt-pile {
+  position: absolute;
+  width: 9cqw;
+  height: 9cqw;
+  transform: translate(-50%, -50%);
+  z-index: 22;
+  cursor: pointer;
+  touch-action: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%);
+  transition: filter 0.2s ease;
+}
+
+.hunt-pile img {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 0.4cqw 0.5cqw rgba(0, 0, 0, 0.45));
+  animation: pileIdle 1.6s ease-in-out infinite;
+}
+
+.hunt-pile:active img {
+  animation: none;
+  transform: scale(0.88);
+}
+
+@keyframes pileIdle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-0.4cqw) scale(1.03); }
+}
+
+.hunt-pile.disabled {
+  pointer-events: none;
+}
+
+.hunt-pile.disabled img {
+  animation: none;
+}
+
+.hunt-pile.offstage {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.hunt-pile.frozen {
+  pointer-events: none;
+  filter: saturate(0.2) brightness(1.3) drop-shadow(0 0 0.8cqw #7dd3fc);
+}
+
+.hunt-pile.frozen img {
+  animation: none;
+}
+
+.hunt-freeze-count {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.2cqw;
+  font-weight: 900;
+  color: #0c4a6e;
+  background: rgba(224, 242, 254, 0.9);
+  border-radius: 999px;
+  padding: 0.2cqw 0.8cqw;
+  white-space: nowrap;
+}
+
+/* ─── Banners ─────────────────────────────────────── */
+
+.hunt-banner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 35;
+  pointer-events: none;
+}
+
+.hunt-banner-dim {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.hunt-countdown {
+  font-size: 13cqw;
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 0.4cqw #1e3a8a;
+  text-shadow: 0 0.6cqw 1.5cqw rgba(0, 0, 0, 0.5);
+  animation: countPop 0.7s ease-out;
+}
+
+.hunt-countdown[data-label='GO!'] {
+  color: #facc15;
+}
+
+@keyframes countPop {
+  0% { transform: scale(2); opacity: 0; }
+  30% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.9; }
+}
+
+.hunt-transition {
+  text-align: center;
+  animation: countPop 0.8s ease-out;
+}
+
+.hunt-transition-reason {
+  font-size: 3cqw;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.hunt-transition-title {
+  font-size: 7cqw;
+  font-weight: 900;
+  color: #fff;
+  -webkit-text-stroke: 0.3cqw #7c3aed;
+  text-shadow: 0 0.5cqw 1.2cqw rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Quiz overlay ────────────────────────────────── */
+
+.hunt-quiz-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.hunt-quiz-panel {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5.5rem 1rem 1rem; /* top room for the scoreboard */
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+  transition: transform 0.55s cubic-bezier(0.6, 0, 0.3, 1), background 0.4s ease;
+}
+
+/* ─── Quiz scoreboard ─────────────────────────────── */
+
+.hunt-scoreboard {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+
+.hunt-score-pill {
+  position: absolute;
+  top: 0.9rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 1.4rem;
+  border-radius: 999px;
+  background: var(--team-color);
+  border: 4px solid #fff;
+  color: #fff;
+  font-weight: 900;
+  font-size: clamp(1.6rem, 3.6vw, 2.6rem);
+  line-height: 1.1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  opacity: 0.75;
+  transition: opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hunt-score-pill.team-red { --team-color: #ef4444; }
+.hunt-score-pill.team-blue { --team-color: #3b82f6; }
+.hunt-score-pill.pos-left { left: 25%; }
+.hunt-score-pill.pos-right { left: 75%; }
+.hunt-score-pill.pos-full { left: 50%; opacity: 1; }
+
+.hunt-score-pill.active {
+  opacity: 1;
+  box-shadow: 0 0 0 4px #facc15, 0 0 26px rgba(250, 204, 21, 0.85);
+}
+
+.hunt-score-value {
+  min-width: 1.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.hunt-score-pill.pop .hunt-score-value {
+  animation: scorePop 0.4s cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+@keyframes scorePop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.7); color: #fde047; }
+  100% { transform: scale(1); }
+}
+
+/* "+1 ⭐" rising from the answer area into the pill above it. */
+.hunt-score-gain {
+  position: fixed;
+  z-index: 61;
+  top: 1.2rem;
+  transform: translateX(-50%);
+  font-weight: 900;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  color: #fde047;
+  -webkit-text-stroke: 2px #92400e;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: scoreGainRise 0.75s cubic-bezier(0.5, 0, 0.6, 1) forwards;
+}
+
+.hunt-score-gain.pos-left { left: 25%; }
+.hunt-score-gain.pos-right { left: 75%; }
+.hunt-score-gain.pos-full { left: 50%; }
+
+@keyframes scoreGainRise {
+  0% { transform: translate(-50%, 55vh) scale(0.6); opacity: 0; }
+  20% { transform: translate(-50%, 45vh) scale(1.2); opacity: 1; }
+  85% { transform: translate(-50%, 0) scale(0.9); opacity: 1; }
+  100% { transform: translate(-50%, 0) scale(0.4); opacity: 0; }
+}
+
+.hunt-quiz-panel.team-red {
+  --team-color: #ef4444;
+  background: linear-gradient(160deg, rgba(127, 29, 29, 0.9), rgba(15, 23, 42, 0.92));
+}
+
+.hunt-quiz-panel.team-blue {
+  --team-color: #3b82f6;
+  background: linear-gradient(160deg, rgba(30, 58, 138, 0.9), rgba(15, 23, 42, 0.92));
+}
+
+.hunt-quiz-panel.side-right {
+  transform: translateX(100%);
+}
+
+.hunt-quiz-panel.side-full {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.hunt-quiz-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+
+
+
+
+.hunt-quiz-progress {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+}
+
+.hunt-quiz-card {
+  width: min(40vw, 484px);
+  height: min(32vh, 340px);
+  padding: 20px;
+  position: relative;
+}
+
+.side-full .hunt-quiz-card {
+  width: min(70vw, 484px);
+  height: min(42vh, 360px);
+}
+
+.hunt-quiz-card.flip-enabled {
+  cursor: pointer;
+}
+
+.hunt-quiz-text {
+  font-size: clamp(1.6rem, 4vw, 3rem);
+  font-weight: 800;
+  color: #1f2937;
+  text-align: center;
+  word-break: break-word;
+  padding: 0 1rem;
+}
+
+
+
+
+.quiz-option {
+  padding: 0.75rem 1.25rem;
+  font-size: clamp(1.1rem, 2.4vw, 1.8rem);
+  min-width: 140px;
+  border-radius: 1.5rem;
+  transition: all 0.25s ease;
+}
+
+.side-full .quiz-option {
+  min-width: 200px;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+}
+
+.quiz-option:hover:not(:disabled) {
+  transform: translateY(-4px);
+}
+
+.quiz-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hunt-option-img {
+  width: clamp(80px, 12vw, 160px);
+  height: clamp(64px, 10vw, 128px);
+}
+
+.quiz-option.fade-out {
+  opacity: 0.15;
+  transform: scale(0.92);
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.quiz-option.keyboard-selected:not(.fade-out) {
+  outline: 5px solid #facc15;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.3), 0 0 28px rgba(250, 204, 21, 0.85);
+}
+
+.quiz-option.correct-flash {
+  background: linear-gradient(135deg, #4caf50, #2e7d32) !important;
+  transform: scale(1.08);
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+  20%, 40%, 60%, 80% { transform: translateX(8px); }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.2); opacity: 0; }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.pop-in {
+  animation: popIn 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+}
+
+/* Flip card (front/back reveal) shown when a 3rd AIT type is picked */
+.ait-flip-card {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.ait-flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.ait-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ait-flip-back {
+  transform: rotateY(180deg);
+}
+
+.ait-audio-btn,
+.ait-option-audio-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ait-audio-btn:disabled,
+.ait-option-audio-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ait-audio-btn .speaker-icon {
+  font-size: 5rem;
+  transition: transform 0.2s;
+}
+
+.ait-audio-btn:hover:not(:disabled) .speaker-icon {
+  transform: scale(1.08);
+}
+
+@media (max-height: 560px) {
+  .hunt-quiz-card {
+    height: 28vh;
+    padding: 10px;
+  }
+  .quiz-option {
+    padding: 0.4rem 0.8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hunt-target img,
+  .hunt-pile img,
+  .hunt-timer.warning,
+  .hunt-score-pill.pop .hunt-score-value {
+    animation: none;
+  }
+}

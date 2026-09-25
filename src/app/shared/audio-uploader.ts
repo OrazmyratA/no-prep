@@ -15,6 +15,9 @@ import { registerPlugin } from '@capacitor/core';
 import { PlatformService } from '../core/platform';
 import {
   AudioVoiceService,
+  VOICE_LANGUAGES,
+  getStoredVoiceLanguage,
+  storeVoiceLanguage,
   VOICE_PITCH_MAX,
   VOICE_PITCH_MIN,
   VOICE_SPEED_MAX,
@@ -37,7 +40,6 @@ export interface AudioVoiceChange {
   text: string;
 }
 
-const VOICE_LANGUAGE_KEY = 'audioVoiceLanguage';
 const RENDER_DEBOUNCE_MS = 300;
 
 @Component({
@@ -50,7 +52,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   @Input() initialAudio: Blob | null = null;
   @Input() contextKey = '';
   // Voice tools (text-to-speech, pitch, speed) are opt-in so other users of this component
-  // (e.g. the book creator's answer-key audio) keep the plain record/upload behavior.
+  // keep the plain record/upload behavior. Used by the topic form and the answer-key audio.
   @Input() enableVoiceTools = false;
   @Input() initialSource: Blob | null = null;
   @Input() initialPitch: number | null = null;
@@ -64,18 +66,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   readonly speedMin = VOICE_SPEED_MIN;
   readonly speedMax = VOICE_SPEED_MAX;
   readonly speedPresets = [0.75, 1, 1.25];
-  readonly voiceLanguages = [
-    { code: 'en-US', label: 'English (US)' },
-    { code: 'en-GB', label: 'English (UK)' },
-    { code: 'ru-RU', label: 'Русский' },
-    { code: 'tr-TR', label: 'Türkçe' },
-    { code: 'es-ES', label: 'Español' },
-    { code: 'fr-FR', label: 'Français' },
-    { code: 'de-DE', label: 'Deutsch' },
-    { code: 'ar-SA', label: 'العربية' },
-    { code: 'zh-CN', label: '中文' },
-    { code: 'ko-KR', label: '한국어' }
-  ];
+  readonly voiceLanguages = VOICE_LANGUAGES;
 
   // Voice tools state. `audioBlob` is always the final (pitch/speed applied) clip;
   // `sourceBlob` is the untouched original so the sliders stay reversible.
@@ -110,9 +101,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     private cdr: ChangeDetectorRef,
     public voice: AudioVoiceService
   ) {
-    try {
-      this.voiceLanguage = localStorage.getItem(VOICE_LANGUAGE_KEY) || this.voiceLanguage;
-    } catch { /* storage unavailable */ }
+    this.voiceLanguage = getStoredVoiceLanguage();
   }
 
   get canGenerateVoice(): boolean {
@@ -126,19 +115,20 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   ngOnChanges(changes: SimpleChanges) {
     // The parent feeds our own emitted blob straight back in; re-applying it would reload
     // the <audio> element (resetting playback) and re-emit for nothing.
+    // Same as image-uploader's contextKey: switching to a different target (e.g. a
+    // different answer-key image) must clear out whatever was just recorded/previewed
+    // here, otherwise it visually lingers as if it belonged to the new target too. Done
+    // first so the new target's own clip (applied below) isn't wiped by the reset.
+    const contextChange = changes['contextKey'];
+    if (contextChange && !contextChange.firstChange) {
+      this.resetPreview();
+    }
+
     const isEcho = !!this.initialAudio && this.initialAudio === this.audioBlob;
     const initialAudioChanged = !!changes['initialAudio'] && !changes['initialAudio'].isFirstChange();
     if (!isEcho && (initialAudioChanged || this.initialAudio)) {
       this.setAudioBlob(this.initialAudio);
       this.syncVoiceStateFromInputs();
-    }
-
-    // Same as image-uploader's contextKey: switching to a different target (e.g. a
-    // different answer-key image) must clear out whatever was just recorded/previewed
-    // here, otherwise it visually lingers as if it belonged to the new target too.
-    const contextChange = changes['contextKey'];
-    if (contextChange && !contextChange.firstChange) {
-      this.resetPreview();
     }
   }
 
@@ -433,9 +423,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
 
   onVoiceLanguageChange(code: string) {
     this.voiceLanguage = code;
-    try {
-      localStorage.setItem(VOICE_LANGUAGE_KEY, code);
-    } catch { /* storage unavailable */ }
+    storeVoiceLanguage(code);
   }
 
   onPitchInput(event: Event) {

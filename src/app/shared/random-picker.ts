@@ -634,8 +634,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     if (this.overlayOpen) this.closeOverlay();
   }
 
-  stopPropagation(event: MouseEvent) {
+  // A student row stops its own click before it reaches here, so anything arriving at the panel
+  // is a click outside every row — header, gaps, empty space — and dismisses an open controls panel.
+  onPanelClick(event: MouseEvent) {
     event.stopPropagation();
+    this.closeRowControls();
   }
 
   // ===== Class list selection round-trip =====

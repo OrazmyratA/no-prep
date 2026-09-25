@@ -1323,6 +1323,64 @@
   gap: 0.45rem;
 }
 
+.guide-speech-panel {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  padding: 0.55rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+}
+
+.guide-speech-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.guide-speech-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.guide-speech-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  font-size: 0.82rem;
+  background: #ffffff;
+}
+
+.guide-speech-language {
+  flex: 0 1 auto;
+  max-width: 7.5rem;
+  padding: 0.3rem 0.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  font-size: 0.78rem;
+  background: #ffffff;
+}
+
+.guide-speech-generate {
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.guide-speech-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .audio-list {
   display: grid;
   gap: 0.45rem;

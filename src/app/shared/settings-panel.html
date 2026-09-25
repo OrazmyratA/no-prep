@@ -177,6 +177,71 @@
       </div>
     </div>
 
+    <!-- Flashcard Hunt Settings -->
+    <div *ngSwitchCase="'flashcard-hunt'" class="space-y-6">
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsRevealTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-sm font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ count }}
+            </span>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsFlashcardHuntTeamHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsFlashcardHuntAitHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="flex items-center">
+          <input type="checkbox" formControlName="simpleMode" class="mr-2">
+          {{ 'settingsSimpleMode' | translate }}
+        </label>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsSimpleModeHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsFlashcardHuntSpeed' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let level of [1, 2, 3, 4]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="targetSpeed" [value]="level" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-gray-300 text-xs font-bold bg-white text-gray-700 peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
+              {{ ('settingsFlashcardHuntSpeed' + level) | translate }}
+            </span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="flex items-center gap-2" [attr.title]="'settingsEnableTimer' | translate">
+          <input type="checkbox" formControlName="enableTimer" class="h-4 w-4">
+          <img src="assets/images/timer.png" alt="" class="w-6 h-6">
+          <span class="text-sm font-medium">{{ 'settingsEnableTimer' | translate }}</span>
+        </label>
+        <div *ngIf="settingsForm.get('enableTimer')?.value" class="mt-3">
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-sm font-medium">{{ 'settingsTimerMinutes' | translate }}</label>
+            <span class="text-sm font-bold bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full min-w-[2.5rem] text-center">
+              {{ settingsForm.get('timerMinutes')?.value }}m
+            </span>
+          </div>
+          <input
+            type="range"
+            formControlName="timerMinutes"
+            min="1" max="10" step="1"
+            class="w-full h-2 rounded-full cursor-pointer accent-blue-600"
+          >
+          <div class="flex justify-between text-xs text-gray-400 mt-1">
+            <span>1m</span>
+            <span>10m</span>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">{{ 'settingsFlashcardHuntTimerHint' | translate }}</p>
+      </div>
+    </div>
+
     <!-- Spotlight Settings -->
     <div *ngSwitchCase="'spotlight'" class="space-y-6">
       <div>

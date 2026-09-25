@@ -26,6 +26,7 @@ import { SquidGameComponent } from './squid-game';
 import { RockPaperScissorsComponent } from './rock-paper-scissors';
 import { TracingComponent } from './tracing';
 import { LineTraceMatchComponent } from './line-trace-match';
+import { FlashcardHuntComponent } from './flashcard-hunt';
 
 @NgModule({
   declarations: [
@@ -49,7 +50,8 @@ import { LineTraceMatchComponent } from './line-trace-match';
     SquidGameComponent,
     RockPaperScissorsComponent,
     TracingComponent,
-    LineTraceMatchComponent
+    LineTraceMatchComponent,
+    FlashcardHuntComponent
   ],
   imports: [
     CommonModule,

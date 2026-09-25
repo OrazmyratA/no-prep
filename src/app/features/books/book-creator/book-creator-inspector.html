@@ -620,18 +620,19 @@
         <div class="answer-key-audio-label">
           Audio for image {{ creator.getSelectedAnswerKeyImageIndex(element) + 1 }} of {{ imageCount }}
         </div>
-        <div class="answer-key-audio" *ngIf="creator.getAnswerKeyImageAudio(element, creator.getSelectedAnswerKeyImageIndex(element))">
-          <audio [src]="creator.getAnswerKeyImageAudioUrl(element, creator.getSelectedAnswerKeyImageIndex(element))" controls></audio>
-          <button
-            type="button"
-            class="answer-key-audio-remove"
-            (click)="creator.setAnswerKeyImageAudio(null, element, creator.getSelectedAnswerKeyImageIndex(element))"
-            title="Remove recording"
-            aria-label="Remove recording">&times;</button>
-        </div>
-        <app-audio-uploader
-          [contextKey]="element.id + ':' + creator.getSelectedAnswerKeyImageIndex(element)"
-          (audioSelected)="creator.setAnswerKeyImageAudio($event, element, creator.getSelectedAnswerKeyImageIndex(element))"></app-audio-uploader>
+        <!-- Same uploader as the topic form: record/upload, text-to-speech, pitch and speed.
+             It shows and removes the current clip itself, so no separate player is needed. -->
+        <ng-container *ngIf="creator.getAnswerKeyVoiceState(element) as voice">
+          <app-audio-uploader
+            [contextKey]="element.id + ':' + creator.getSelectedAnswerKeyImageIndex(element)"
+            [enableVoiceTools]="true"
+            [initialAudio]="voice.audio"
+            [initialSource]="voice.source"
+            [initialPitch]="voice.pitch"
+            [initialSpeed]="voice.speed"
+            [initialText]="voice.text"
+            (voiceChange)="creator.onAnswerKeyVoiceChange($event, element, creator.getSelectedAnswerKeyImageIndex(element))"></app-audio-uploader>
+        </ng-container>
       </div>
     </div>
     <div class="speaking-ai-settings" *ngIf="element.type === 'speakingAi'">
@@ -707,7 +708,45 @@
           <span *ngIf="!creator.requestingMicPermission">{{ (creator.recordingGuideElementId === element.id ? 'stopLabel' : 'record') | translate }}</span>
           <span *ngIf="creator.requestingMicPermission">…</span>
         </button>
+        <button
+          type="button"
+          class="mini-icon-btn wide"
+          [class.active]="creator.guideSpeechPanelOpen"
+          (click)="creator.toggleGuideSpeechPanel()"
+          [title]="'textToSpeech' | translate"
+          [attr.aria-label]="'textToSpeech' | translate"
+          [attr.aria-pressed]="creator.guideSpeechPanelOpen">
+          <span aria-hidden="true">🗣</span>
+          <span>{{ 'textToSpeech' | translate }}</span>
+        </button>
         <span class="recording-saving-hint" *ngIf="creator.savingRecording">{{ 'save' | translate }}…</span>
+      </div>
+      <div class="guide-speech-panel" *ngIf="creator.guideSpeechPanelOpen">
+        <p class="guide-speech-note" *ngIf="!creator.audioVoice.canSynthesize">{{ 'textToSpeechDesktopOnly' | translate }}</p>
+        <ng-container *ngIf="creator.audioVoice.canSynthesize">
+          <div class="guide-speech-row">
+            <input
+              type="text"
+              class="guide-speech-input"
+              maxlength="500"
+              [(ngModel)]="creator.guideSpeechText"
+              (keydown.enter)="$event.preventDefault(); creator.generateGuideDotSpeech(element)"
+              [placeholder]="'voiceTextPlaceholder' | translate">
+            <select
+              class="guide-speech-language"
+              [attr.aria-label]="'voiceLanguage' | translate"
+              (change)="creator.onGuideSpeechLanguageChange($any($event.target).value)">
+              <option *ngFor="let lang of creator.voiceLanguages" [value]="lang.code" [selected]="lang.code === creator.guideSpeechLanguage">{{ lang.label }}</option>
+            </select>
+          </div>
+          <button
+            type="button"
+            class="guide-speech-generate"
+            [disabled]="creator.generatingGuideSpeech || !creator.guideSpeechText.trim()"
+            (click)="creator.generateGuideDotSpeech(element)">
+            {{ (creator.generatingGuideSpeech ? 'save' : 'generateVoice') | translate }}{{ creator.generatingGuideSpeech ? '…' : '' }}
+          </button>
+        </ng-container>
       </div>
       <div class="guide-place-hint" *ngIf="creator.placingGuidePin">Click the book page to place this position.</div>
       <div class="audio-list" role="listbox" *ngIf="creator.getGuideDotTracks(element).length">
