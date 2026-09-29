@@ -2,6 +2,84 @@ import type { TranslationDictionary } from './language-types';
 
 export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
 
+'settingsSpellingCheckViTenseMarkers': {
+  en: 'Tense Markers',
+  tk: 'Wagt görkezijileri',
+  ru: 'Показатели времени',
+  cn: '时态标记',
+  cde: 'Zeitmarker',
+  es: 'Marcadores de tiempo',
+  fr: 'Marqueurs de temps',
+  kr: '시제 표지',
+  sa: 'علامات الزمن',
+  vi: 'Từ chỉ thời',
+},
+
+'settingsSpellingCheckViClassifiers': {
+  en: 'Classifiers',
+  tk: 'Hasap sözleri',
+  ru: 'Счётные слова',
+  cn: '量词',
+  cde: 'Zählwörter',
+  es: 'Clasificadores',
+  fr: 'Classificateurs',
+  kr: '분류사',
+  sa: 'المصنِّفات',
+  vi: 'Loại từ',
+},
+
+'settingsSpellingCheckViPrepositions': {
+  en: 'Prepositions',
+  tk: 'Predloglar',
+  ru: 'Предлоги',
+  cn: '介词',
+  cde: 'Präpositionen',
+  es: 'Preposiciones',
+  fr: 'Prépositions',
+  kr: '전치사',
+  sa: 'حروف الجر',
+  vi: 'Giới từ',
+},
+
+'settingsSpellingCheckViConjunctions': {
+  en: 'Conjunctions',
+  tk: 'Baglaýjylar',
+  ru: 'Союзы',
+  cn: '连词',
+  cde: 'Konjunktionen',
+  es: 'Conjunciones',
+  fr: 'Conjonctions',
+  kr: '접속사',
+  sa: 'أدوات العطف',
+  vi: 'Liên từ',
+},
+
+'settingsSpellingCheckViPronouns': {
+  en: 'Pronouns',
+  tk: 'Çalyşmalar',
+  ru: 'Местоимения',
+  cn: '代词',
+  cde: 'Pronomen',
+  es: 'Pronombres',
+  fr: 'Pronoms',
+  kr: '대명사',
+  sa: 'الضمائر',
+  vi: 'Đại từ',
+},
+
+'settingsSpellingCheckViQuestionWords': {
+  en: 'Question Words',
+  tk: 'Sorag sözleri',
+  ru: 'Вопросительные слова',
+  cn: '疑问词',
+  cde: 'Fragewörter',
+  es: 'Palabras interrogativas',
+  fr: 'Mots interrogatifs',
+  kr: '의문사',
+  sa: 'أدوات الاستفهام',
+  vi: 'Từ để hỏi',
+},
+
 
 
 'spellingCheckTitle': {
@@ -14,6 +92,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouve l\'erreur',
   kr: '실수 찾기',
   sa: 'اعثر على الخطأ',
+  vi: 'Tìm lỗi sai',
 },
 
 
@@ -29,6 +108,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement...',
   kr: '로딩 중...',
   sa: 'جارٍ التحميل...',
+  vi: 'Đang tải...',
 },
 
 
@@ -44,6 +124,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Glisser le stylo',
   kr: '펜 드래그',
   sa: 'اسحب القلم',
+  vi: 'Kéo bút',
 },
 
 
@@ -59,6 +140,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tu as corrigé toutes les erreurs !',
   kr: '모든 실수를 고쳤어요!',
   sa: 'لقد صححت جميع الأخطاء!',
+  vi: 'Bạn đã sửa hết lỗi sai!',
 },
 
 
@@ -74,6 +156,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Score',
   kr: '점수',
   sa: 'النتيجة',
+  vi: 'Điểm',
 },
 
 
@@ -89,6 +172,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucune question d\'orthographe valide n\'a pu être créée pour ce sujet.',
   kr: '이 주제에서 유효한 맞춤법 문제를 만들 수 없습니다.',
   sa: 'لا يمكن إنشاء أسئلة تدقيق إملائي صالحة لهذا الموضوع.',
+  vi: 'Không tạo được câu hỏi kiểm tra chính tả hợp lệ từ chủ đề này.',
 },
 
 
@@ -104,6 +188,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément texte trouvé pour cette activité.',
   kr: '이 활동에 대한 텍스트 항목이 없습니다.',
   sa: 'لم يتم العثور على عناصر نصية لهذا النشاط.',
+  vi: 'Không tìm thấy mục văn bản nào cho hoạt động này.',
 },
 
 
@@ -119,6 +204,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Suffixes',
   kr: '접미사',
   sa: 'اللواحق',
+  vi: 'Hậu tố',
 },
 
 
@@ -134,6 +220,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Préfixes',
   kr: '접두사',
   sa: 'السوابق',
+  vi: 'Tiền tố',
 },
 
 
@@ -149,6 +236,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -164,6 +252,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Articles',
   kr: '관사',
   sa: 'أدوات التعريف',
+  vi: 'Mạo từ',
 },
 
 
@@ -179,6 +268,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'أدوات العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -194,6 +284,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Adverbes',
   kr: '부사',
   sa: 'الظروف',
+  vi: 'Trạng từ',
 },
 
 
@@ -209,6 +300,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Verbes',
   kr: '동사',
   sa: 'الأفعال',
+  vi: 'Động từ',
 },
 
 
@@ -224,6 +316,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Omissions personnalisées',
   kr: '사용자 정의 생략',
   sa: 'حذف مخصص',
+  vi: 'Phần bỏ trống tùy chỉnh',
 },
 
 
@@ -239,6 +332,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Utilisez -xxx pour les suffixes, xxx- pour les préfixes, -xxx- pour un texte à l\'intérieur d\'un mot, ou sans tirets pour des mots et phrases entiers.',
   kr: '-xxx는 접미사, xxx-는 접두사, -xxx-는 단어 내부 텍스트, 대시 없이는 전체 단어나 구를 나타냅니다.',
   sa: 'استخدم -xxx للاحقات، وxxx- للبادئات، و-xxx- للنص داخل الكلمة، أو بدون شرطات للكلمات والعبارات الكاملة.',
+  vi: 'Dùng -ing cho hậu tố, un- cho tiền tố, -th- cho phần bên trong từ, hoặc không dùng gạch nối cho cả từ và cụm từ.',
 },
 
 
@@ -254,6 +348,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajouter personnalisé',
   kr: '사용자 정의 추가',
   sa: 'إضافة مخصص',
+  vi: 'Thêm tùy chỉnh',
 },
 
 
@@ -269,6 +364,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons verbales',
   kr: '동사 어미',
   sa: 'نهايات الأفعال',
+  vi: 'Đuôi động từ',
 },
 
 
@@ -284,6 +380,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons adjectivales',
   kr: '형용사 어미',
   sa: 'نهايات الصفات',
+  vi: 'Đuôi tính từ',
 },
 
 
@@ -299,6 +396,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Désinences casuelles',
   kr: '격 어미',
   sa: 'نهايات الإعراب',
+  vi: 'Đuôi cách',
 },
 
 
@@ -314,6 +412,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Préfixes',
   kr: '접두사',
   sa: 'البادئات',
+  vi: 'Tiền tố',
 },
 
 
@@ -329,6 +428,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -344,6 +444,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -359,6 +460,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons verbales',
   kr: '동사 어미',
   sa: 'نهايات الأفعال',
+  vi: 'Đuôi động từ',
 },
 
 
@@ -374,6 +476,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons de cas',
   kr: '격 어미',
   sa: 'نهايات الحالات الإعرابية',
+  vi: 'Đuôi cách',
 },
 
 
@@ -389,6 +492,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Suffixes de formation de mots',
   kr: '조어 접미사',
   sa: 'لواحق تكوين الكلمات',
+  vi: 'Hậu tố cấu tạo từ',
 },
 
 
@@ -404,6 +508,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Postpositions',
   kr: '후치사',
   sa: 'حروف الجر المؤخرة',
+  vi: 'Hậu giới từ',
 },
 
 
@@ -419,6 +524,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -434,6 +540,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons verbales',
   kr: '동사 어미',
   sa: 'نهايات الأفعال',
+  vi: 'Đuôi động từ',
 },
 
 
@@ -449,6 +556,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons adjectivales',
   kr: '형용사 어미',
   sa: 'نهايات الصفات',
+  vi: 'Đuôi tính từ',
 },
 
 
@@ -464,6 +572,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Préfixes',
   kr: '접두사',
   sa: 'البادئات',
+  vi: 'Tiền tố',
 },
 
 
@@ -479,6 +588,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -494,6 +604,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Articles',
   kr: '관사',
   sa: 'أدوات التعريف',
+  vi: 'Mạo từ',
 },
 
 
@@ -509,6 +620,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -524,6 +636,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons verbales',
   kr: '동사 어미',
   sa: 'نهايات الأفعال',
+  vi: 'Đuôi động từ',
 },
 
 
@@ -539,6 +652,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons adjectivales',
   kr: '형용사 어미',
   sa: 'نهايات الصفات',
+  vi: 'Đuôi tính từ',
 },
 
 
@@ -554,6 +668,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Préfixes',
   kr: '접두사',
   sa: 'البادئات',
+  vi: 'Tiền tố',
 },
 
 
@@ -569,6 +684,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -584,6 +700,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Articles',
   kr: '관사',
   sa: 'أدوات التعريف',
+  vi: 'Mạo từ',
 },
 
 
@@ -599,6 +716,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -614,6 +732,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons verbales',
   kr: '동사 어미',
   sa: 'نهايات الأفعال',
+  vi: 'Đuôi động từ',
 },
 
 
@@ -629,6 +748,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons adjectivales',
   kr: '형용사 어미',
   sa: 'نهايات الصفات',
+  vi: 'Đuôi tính từ',
 },
 
 
@@ -644,6 +764,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Préfixes',
   kr: '접두사',
   sa: 'البادئات',
+  vi: 'Tiền tố',
 },
 
 
@@ -659,6 +780,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -674,6 +796,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Articles',
   kr: '관사',
   sa: 'أدوات التعريف',
+  vi: 'Mạo từ',
 },
 
 
@@ -689,6 +812,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -704,6 +828,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Particules',
   kr: '조사',
   sa: 'أدوات الربط',
+  vi: 'Trợ từ',
 },
 
 
@@ -719,6 +844,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminaisons verbales',
   kr: '동사 어미',
   sa: 'نهايات الأفعال',
+  vi: 'Đuôi động từ',
 },
 
 
@@ -734,6 +860,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Suffixes',
   kr: '접미사',
   sa: 'اللواحق',
+  vi: 'Hậu tố',
 },
 
 
@@ -749,6 +876,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속어',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -764,6 +892,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Adverbes',
   kr: '부사',
   sa: 'الظروف',
+  vi: 'Trạng từ',
 },
 
 
@@ -779,6 +908,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -794,6 +924,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف الربط',
+  vi: 'Liên từ',
 },
 
 
@@ -809,6 +940,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Pronoms',
   kr: '대명사',
   sa: 'الضمائر',
+  vi: 'Đại từ',
 },
 
 
@@ -824,6 +956,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mots interrogatifs',
   kr: '의문사',
   sa: 'أدوات الاستفهام',
+  vi: 'Từ để hỏi',
 },
 
 
@@ -839,6 +972,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Adverbes',
   kr: '부사',
   sa: 'الظروف',
+  vi: 'Trạng từ',
 },
 
 
@@ -854,6 +988,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Particules',
   kr: '조사',
   sa: 'أدوات الربط',
+  vi: 'Trợ từ',
 },
 
 
@@ -869,6 +1004,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prépositions',
   kr: '전치사',
   sa: 'حروف الجر',
+  vi: 'Giới từ',
 },
 
 
@@ -884,6 +1020,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Conjonctions',
   kr: '접속사',
   sa: 'حروف العطف',
+  vi: 'Liên từ',
 },
 
 
@@ -899,6 +1036,7 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Classificateurs',
   kr: '양사',
   sa: 'كلمات القياس',
+  vi: 'Lượng từ',
 },
 
 
@@ -914,5 +1052,6 @@ export const GAME_SPELLING_TRANSLATIONS: TranslationDictionary = {
   fr: 'Adverbes de temps',
   kr: '시간 부사',
   sa: 'ظروف الزمان',
+  vi: 'Trạng từ chỉ thời gian',
 },
 };

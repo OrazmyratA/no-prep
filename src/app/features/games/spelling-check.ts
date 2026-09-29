@@ -617,7 +617,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       es:  ['algo', 'todo', 'nada'],
       fr:  ['quelque chose', 'tout', 'rien'],
       kr:  ['무언가', '모든 것', '아무것도'],
-      sa:  ['شيء', 'أي شيء', 'لا شيء']
+      sa:  ['شيء', 'أي شيء', 'لا شيء'],
+      vi:  ['cái gì đó', 'mọi thứ', 'không gì']
     };
     return map[this.langService.currentLang] ?? map['en'];
   }
@@ -632,7 +633,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       es:  ['ar', 'er', 'ir', 'ado', 'ando', 'des', 'ción', 'mente'],
       fr:  ['er', 'ir', 'ais', 'ait', 'ons', 'dé', 'tion', 'ment'],
       kr:  ['이다', '하다', '되다', '에서', '을', '는', '가', '도'],
-      sa:  ['في', 'على', 'من', 'إلى', 'هو', 'هي', 'و', 'أو']
+      sa:  ['في', 'على', 'من', 'إلى', 'هو', 'هي', 'و', 'أو'],
+      vi:  ['đã', 'đang', 'sẽ', 'của', 'và', 'với', 'cho', 'những']
     };
     return map[this.langService.currentLang] ?? map['en'];
   }
@@ -647,7 +649,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
       es:  ['a', 'e', 'i', 'o', 'u', 'el', 'la', 'es', 'y'],
       fr:  ['a', 'e', 'i', 'o', 'u', 'le', 'la', 'et', 'est'],
       kr:  ['이', '가', '을', '를', '은', '는', '에', '의', '와'],
-      sa:  ['ا', 'و', 'ي', 'في', 'من', 'على', 'هو', 'هي', 'لا']
+      sa:  ['ا', 'و', 'ي', 'في', 'من', 'على', 'هو', 'هي', 'لا'],
+      vi:  ['a', 'e', 'i', 'o', 'u', 'là', 'và', 'có', 'không']
     };
     return map[this.langService.currentLang] ?? map['en'];
   }

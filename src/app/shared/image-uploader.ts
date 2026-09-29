@@ -21,6 +21,7 @@ import { debounceTime, distinctUntilChanged, switchMap, take, takeUntil } from '
 import { of, Subject } from 'rxjs';
 import { LanguageService } from '../core/language';
 import { PlatformService } from '../core/platform';
+import { renderTextImage } from './text-image';
 
 @Component({
   selector: 'app-image-uploader',
@@ -45,6 +46,8 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
 
   activeTab: 'upload' | 'search' | 'text' = 'upload';
   preview: string | null = null;
+  // The blob behind `preview`, to tell our own emitted images apart from outside replacements.
+  private previewSource: Blob | null = null;
   searchControl: FormControl<string | null>;
   googleSearchControl: FormControl<string | null>;
   textImageControl: FormControl<string | null>;
@@ -100,8 +103,7 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       this.markAsPasteTarget();
     }
     if (this.initialImage) {
-      this.preview = URL.createObjectURL(this.initialImage);
-      this.objectUrls.push(this.preview);
+      this.setPreview(this.initialImage);
     }
 
     this.searchControl.valueChanges.pipe(
@@ -147,6 +149,17 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     const contextChange = changes['contextKey'];
     if (contextChange && !contextChange.firstChange) {
       this.resetContextPreview();
+    }
+    // The image was replaced from outside (e.g. the AI topic's "another picture" button), not by
+    // this uploader: just show it. Images this uploader emitted come back here unchanged and are
+    // skipped, so nothing is re-emitted.
+    const imageChange = changes['initialImage'];
+    if (imageChange && !imageChange.firstChange && imageChange.currentValue !== this.previewSource) {
+      if (imageChange.currentValue) {
+        this.setPreview(imageChange.currentValue);
+      } else {
+        this.clearPreview();
+      }
     }
   }
 
@@ -482,10 +495,7 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
 
   removeImage(event: MouseEvent) {
     event.stopPropagation();
-    if (this.preview) {
-      URL.revokeObjectURL(this.preview);
-    }
-    this.preview = null;
+    this.clearPreview();
     this.selectedImageId = null;
     this.imageSelected.emit(null);
   }
@@ -537,14 +547,18 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   private setPreview(blob: Blob) {
     if (this.preview) URL.revokeObjectURL(this.preview);
     this.preview = URL.createObjectURL(blob);
+    this.previewSource = blob;
     this.objectUrls.push(this.preview);
   }
 
-  private resetContextPreview() {
-    if (this.preview) {
-      URL.revokeObjectURL(this.preview);
-    }
+  private clearPreview() {
+    if (this.preview) URL.revokeObjectURL(this.preview);
     this.preview = null;
+    this.previewSource = null;
+  }
+
+  private resetContextPreview() {
+    this.clearPreview();
     this.selectedImageId = null;
     this.activeTab = 'upload';
     this.isSearchFullscreen = false;
@@ -750,79 +764,13 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     return 'jpg';
   }
 
-  private async renderTextAsImage(text: string): Promise<Blob> {
-    const width = this.textImageWidth;
-    const height = this.textImageHeight;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Unable to create canvas context for text image generation.');
-    }
-
+  private renderTextAsImage(text: string): Promise<Blob> {
     const isTransparent = this.textImageColor === this.transparentTextImageColor;
-    if (!isTransparent) {
-      ctx.fillStyle = this.textImageColor;
-      ctx.fillRect(0, 0, width, height);
-    }
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    const maxWidth = width * 0.9;
-    const maxHeight = height * 0.88;
-    const minFontSize = 10;
-    let fontSize = height;
-    let lines: string[] = [];
-    for (; fontSize >= minFontSize; fontSize -= 2) {
-      ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
-      lines = this.wrapText(ctx, text, maxWidth);
-      const widestLine = Math.max(...lines.map(line => ctx.measureText(line).width));
-      const totalHeight = lines.length * fontSize * 1.18;
-      if (widestLine <= maxWidth && totalHeight <= maxHeight) {
-        break;
-      }
-    }
-    fontSize = Math.max(fontSize, minFontSize);
-
-    ctx.fillStyle = isTransparent ? '#111827' : '#fff';
-    ctx.font = `bold ${fontSize}px "Inter", sans-serif`;
-    const lineHeight = fontSize * 1.18;
-    const textBlockHeight = lines.length * lineHeight;
-    const startY = height / 2 - textBlockHeight / 2 + lineHeight / 2;
-    lines.forEach((line, idx) => {
-      ctx.fillText(line, width / 2, startY + idx * lineHeight);
+    return renderTextImage(text, {
+      width: this.textImageWidth,
+      height: this.textImageHeight,
+      background: isTransparent ? null : this.textImageColor
     });
-
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(blob => {
-        if (!blob) {
-          reject(new Error('Unable to generate image from text.'));
-          return;
-        }
-        resolve(blob);
-      }, 'image/png');
-    });
-  }
-
-  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-    const words = text.split(/\s+/).filter(Boolean);
-    if (!words.length) return [''];
-    const lines: string[] = [];
-    let currentLine = words[0];
-
-    for (let i = 1; i < words.length; i++) {
-      const word = words[i];
-      const width = ctx.measureText(`${currentLine} ${word}`).width;
-      if (width <= maxWidth) {
-        currentLine += ` ${word}`;
-      } else {
-        lines.push(currentLine);
-        currentLine = word;
-      }
-    }
-    lines.push(currentLine);
-    return lines;
   }
 
   private releaseCameraAfterNativeReturn() {

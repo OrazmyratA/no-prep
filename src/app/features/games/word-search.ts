@@ -141,7 +141,9 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     es: Array.from('ABCDEFGHIJKLMNÑOPQRSTUVWXYZÁÉÍÓÚÜ'),
     fr: Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZÀÂÆÇÉÈÊËÎÏÔŒÙÛÜŸ'),
     kr: Array.from('가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추쿠투푸후기니디리미비시이지치키티피히'),
-    sa: Array.from('ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأإؤئةى')
+    sa: Array.from('ابتثجحخدذرزسشصضطظعغفقكلمنهويءآأإؤئةى'),
+    // Base letters plus common toned vowels, so words with diacritics don't stand out.
+    vi: Array.from('AĂÂBCDĐEÊGHIKLMNOÔƠPQRSTUƯVXYÁÀẢÃẠẤẦẬẮẰÉÈẸẾỀỆÍÌỊÓÒỌỐỒỘỚỜỢÚÙỤỨỪỰÝ')
   };
 
   private readonly localeByLanguage: Record<SupportedLanguage, string> = {
@@ -153,7 +155,8 @@ export class WordSearchComponent implements OnInit, AfterViewInit, OnDestroy {
     es: 'es',
     fr: 'fr',
     kr: 'ko',
-    sa: 'ar'
+    sa: 'ar',
+    vi: 'vi'
   };
 
   private flipSound: HTMLAudioElement | null = null;

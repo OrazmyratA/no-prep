@@ -22,7 +22,8 @@ export const VOICE_LANGUAGES = [
   { code: 'de-DE', label: 'Deutsch' },
   { code: 'ar-SA', label: 'العربية' },
   { code: 'zh-CN', label: '中文' },
-  { code: 'ko-KR', label: '한국어' }
+  { code: 'ko-KR', label: '한국어' },
+  { code: 'vi-VN', label: 'Tiếng Việt' }
 ];
 
 const VOICE_LANGUAGE_KEY = 'audioVoiceLanguage';

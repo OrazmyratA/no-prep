@@ -1188,11 +1188,71 @@
   white-space: nowrap;
 }
 
+.game-topic-picker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.42rem;
+  padding: 0.5rem 0.6rem;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  background: #ffffff;
+  color: #111827;
+  cursor: pointer;
+}
+
+.game-topic-picker-btn:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
 .game-topic-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.45rem;
   margin-bottom: 0.75rem;
+}
+
+.game-ai-pages {
+  display: grid;
+  gap: 0.3rem;
+  margin: -0.25rem 0 0.75rem;
+  padding: 0.55rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 0.55rem;
+  background: #eef2ff;
+}
+
+.game-ai-pages label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #3730a3;
+}
+
+.game-ai-pages small {
+  color: #6366f1;
+  font-size: 0.72rem;
+}
+
+.game-ai-pages .game-ai-pages-error {
+  color: #b91c1c;
+}
+
+.game-ai-pages-btn {
+  border-color: transparent;
+  background: linear-gradient(90deg, #4f46e5, #9333ea);
+  color: #ffffff;
+}
+
+.game-ai-pages-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .game-activity-panel {

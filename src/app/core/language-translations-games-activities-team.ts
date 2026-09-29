@@ -15,6 +15,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Feu rouge, Feu vert',
   kr: '무궁화 꽃이 피었습니다',
   sa: 'الضوء الأحمر، الضوء الأخضر',
+  vi: 'Đèn đỏ, đèn xanh',
 },
 
 
@@ -31,6 +32,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éclater le ballon',
   kr: '풍선 터뜨리기',
   sa: 'فرقع البالون',
+  vi: 'Bắn bóng bay',
 },
 
 
@@ -47,6 +49,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éclatez tous les ballons pour révéler un cadeau surprise.',
   kr: '모든 풍선을 터뜨려 깜짝 선물을 확인하세요.',
   sa: 'افقع جميع البالونات للكشف عن هدية مفاجئة.',
+  vi: 'Làm nổ hết bóng bay để nhận một món quà bất ngờ.',
 },
 
 
@@ -63,6 +66,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement des ballons...',
   kr: '풍선을 불러오는 중...',
   sa: 'جاري تحميل البالونات...',
+  vi: 'Đang tải bóng bay...',
 },
 
 
@@ -80,6 +84,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tu as réussi !',
   kr: '해냈습니다!',
   sa: 'لقد فعلتها!',
+  vi: 'Bạn làm được rồi!',
 },
 
 
@@ -96,6 +101,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vous avez gagné une récompense surprise :',
   kr: '깜짝 보상을 받았습니다:',
   sa: 'لقد حصلت على مكافأة مفاجئة:',
+  vi: 'Bạn nhận được phần thưởng bất ngờ:',
 },
 
 
@@ -112,6 +118,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément trouvé pour ce sujet.',
   kr: '이 주제에 대한 항목을 찾을 수 없습니다.',
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
+  vi: 'Không tìm thấy mục nào trong chủ đề này.',
 },
 
 
@@ -128,6 +135,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément avec son trouvé dans ce sujet. Mode sonore désactivé.',
   kr: '이 주제에서 소리가 있는 항목을 찾을 수 없습니다. 사운드 모드가 비활성화되었습니다.',
   sa: 'لم يتم العثور على عناصر تحتوي على صوت في هذا الموضوع. تم تعطيل وضع الصوت.',
+  vi: 'Chủ đề này không có mục nào có âm thanh. Đã tắt chế độ âm thanh.',
 },
 
 
@@ -144,6 +152,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Recherche au projecteur',
   kr: '스포트라이트 찾기',
   sa: 'البحث بالكشاف',
+  vi: 'Đèn pin tìm kiếm',
 },
 
 
@@ -160,6 +169,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Déplacez le projecteur pour trouver et collecter des objets cachés.',
   kr: '스포트라이트를 움직여 숨겨진 항목을 찾고 수집하세요.',
   sa: 'حرك الكشاف للعثور على العناصر المخفية وجمعها.',
+  vi: 'Di chuyển đèn pin để tìm các mục bị ẩn.',
 },
 
 
@@ -176,6 +186,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement du projecteur...',
   kr: '스포트라이트 로딩 중...',
   sa: 'جاري تحميل الكشاف...',
+  vi: 'Đang tải đèn pin...',
 },
 
 
@@ -192,6 +203,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Illuminez l’écran pendant 3 secondes',
   kr: '3초 동안 화면을 밝혀보세요',
   sa: 'أضئ الشاشة لمدة 3 ثوانٍ',
+  vi: 'Chiếu sáng màn hình trong 3 giây',
 },
 
 
@@ -208,6 +220,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément trouvé pour ce sujet.',
   kr: '이 주제에 대한 항목을 찾을 수 없습니다.',
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
+  vi: 'Không tìm thấy mục nào trong chủ đề này.',
 },
 
 
@@ -224,6 +237,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tir à la corde en équipe',
   kr: '팀 줄다리기',
   sa: 'شد الحبل الجماعي',
+  vi: 'Kéo co',
 },
 
 
@@ -240,6 +254,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Deux équipes s’affrontent pour identifier le bon élément. Cliquez sur le bon nom pour tirer la corde !',
   kr: '두 팀이 올바른 항목을 찾기 위해 경쟁합니다. 올바른 이름을 클릭해 줄을 당기세요!',
   sa: 'يتنافس فريقان لتحديد العنصر الصحيح. انقر على الاسم الصحيح لسحب الحبل!',
+  vi: 'Hai đội thi nhau nhận ra mục đúng. Nhấn vào tên đúng để kéo dây!',
 },
 
 
@@ -256,6 +271,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement du tir à la corde...',
   kr: '팀 줄다리기 로딩 중...',
   sa: 'جاري تحميل شد الحبل الجماعي...',
+  vi: 'Đang tải kéo co...',
 },
 
 
@@ -273,6 +289,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Minuteur',
   kr: '타이머',
   sa: 'مؤقت',
+  vi: 'Hẹn giờ',
 },
 
 
@@ -289,6 +306,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prêt à gagner !',
   kr: '승리 직전!',
   sa: 'على وشك الفوز!',
+  vi: 'Sắp thắng rồi!',
 },
 
 
@@ -305,6 +323,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'gagne',
   kr: '승리',
   sa: 'يفوز',
+  vi: 'thắng',
 },
 
 
@@ -321,6 +340,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Match nul !',
   kr: '무승부!',
   sa: 'تعادل!',
+  vi: 'Hòa!',
 },
 
 
@@ -338,6 +358,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Le tir à la corde en équipe nécessite des éléments avec des images. Veuillez ajouter des images aux éléments de votre sujet.',
   kr: '팀 줄다리기에는 이미지가 있는 항목이 필요합니다. 주제 항목에 이미지를 추가하세요.',
   sa: 'تحتاج لعبة شد الحبل الجماعي إلى عناصر تحتوي على صور. يرجى إضافة صور إلى عناصر موضوعك.',
+  vi: 'Kéo co cần các mục có hình ảnh. Vui lòng thêm hình ảnh cho các mục trong chủ đề.',
 },
 
 
@@ -354,6 +375,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Au moins 2 éléments sont nécessaires pour jouer au tir à la corde.',
   kr: '팀 줄다리기를 플레이하려면 최소 2개의 항목이 필요합니다.',
   sa: 'يلعب شد الحبل الجماعي يتطلب عنصرين على الأقل.',
+  vi: 'Cần ít nhất 2 mục có văn bản để chơi kéo co.',
 },
 
 
@@ -370,6 +392,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Combat des tasses',
   kr: '컵 대결',
   sa: 'صراع الأكواب',
+  vi: 'Đại chiến cốc',
 },
 
 
@@ -386,6 +409,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Lancez les dés et capturez les tasses adverses pour gagner le combat.',
   kr: '주사위를 굴려 상대방의 컵을 빼앗아 승리하세요.',
   sa: 'ارمِ النرد واستحوذ على أكواب الخصم للفوز في الصراع.',
+  vi: 'Tung xúc xắc và chiếm cốc của đối thủ để giành chiến thắng.',
 },
 
 
@@ -402,6 +426,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement des tasses...',
   kr: '컵 로딩 중...',
   sa: 'جاري تحميل الأكواب...',
+  vi: 'Đang tải cốc...',
 },
 
 
@@ -418,6 +443,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe rouge',
   kr: '레드 팀',
   sa: 'الفريق الأحمر',
+  vi: 'Đội Đỏ',
 },
 
 
@@ -434,6 +460,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe bleue',
   kr: '블루 팀',
   sa: 'الفريق الأزرق',
+  vi: 'Đội Xanh',
 },
 
 
@@ -450,6 +477,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tour manqué ! Pas assez de tasses',
   kr: '턴 놓침! 컵이 충분하지 않음',
   sa: 'دور ضائع! لا توجد أكواب كافية',
+  vi: 'Mất lượt! Không đủ cốc',
 },
 
 
@@ -466,6 +494,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun aperçu',
   kr: '미리보기 없음',
   sa: 'لا معاينة',
+  vi: 'Không có xem trước',
 },
 
 
@@ -482,6 +511,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Appuyez pour révéler',
   kr: '탭하여 표시',
   sa: 'اضغط للكشف',
+  vi: 'Chạm để mở',
 },
 
 
@@ -498,6 +528,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'L’équipe rouge gagne !',
   kr: '레드 팀 승리!',
   sa: 'الفريق الأحمر يفوز!',
+  vi: 'Đội Đỏ thắng!',
 },
 
 
@@ -514,6 +545,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'L’équipe bleue gagne !',
   kr: '블루 팀 승리!',
   sa: 'الفريق الأزرق يفوز!',
+  vi: 'Đội Xanh thắng!',
 },
 
 
@@ -530,6 +562,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Match nul !',
   kr: '무승부!',
   sa: 'تعادل!',
+  vi: 'Hòa!',
 },
 
 
@@ -546,6 +579,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Score final',
   kr: '최종 점수',
   sa: 'النتيجة النهائية',
+  vi: 'Điểm chung cuộc',
 },
 
 
@@ -562,6 +596,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rouge',
   kr: '레드',
   sa: 'أحمر',
+  vi: 'Đỏ',
 },
 
 
@@ -578,6 +613,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Bleu',
   kr: '블루',
   sa: 'أزرق',
+  vi: 'Xanh',
 },
 
 
@@ -594,6 +630,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Qui commence ?',
   kr: '누가 먼저?',
   sa: 'من يبدأ أولاً؟',
+  vi: 'Ai đi trước?',
 },
 
 
@@ -610,6 +647,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'VS',
   kr: 'VS',
   sa: 'ضد',
+  vi: 'VS',
 },
 
 
@@ -626,6 +664,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément trouvé pour ce sujet.',
   kr: '이 주제에 대한 항목을 찾을 수 없습니다.',
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
+  vi: 'Không tìm thấy mục nào trong chủ đề này.',
 },
 
 'cupClashNeedMatchingItems': {
@@ -638,6 +677,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Combat des tasses a besoin d\'au moins 2 éléments au contenu correspondant aux types choisis.',
   kr: '컵 대결에는 선택한 유형에 맞는 내용이 있는 항목이 최소 2개 필요합니다.',
   sa: 'تحتاج معركة الأكواب إلى عنصرين على الأقل بمحتوى مناسب للأنواع المختارة.',
+  vi: 'Đại chiến cốc cần ít nhất 2 mục có nội dung phù hợp với các loại đã chọn.',
 },
 
 
@@ -654,6 +694,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'L’intrus',
   kr: '다른 것 찾기',
   sa: 'العنصر الشاذ',
+  vi: 'Tìm điểm khác biệt',
 },
 
 
@@ -670,6 +711,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouvez l’élément qui est différent des autres.',
   kr: '나머지와 다른 항목을 찾으세요.',
   sa: 'ابحث عن العنصر المختلف عن البقية.',
+  vi: 'Tìm mục khác với những mục còn lại.',
 },
 
 
@@ -686,6 +728,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement de "L’intrus"...',
   kr: '"다른 것 찾기" 로딩 중...',
   sa: 'جاري تحميل "العنصر الشاذ"...',
+  vi: 'Đang tải Tìm điểm khác biệt...',
 },
 
 
@@ -702,6 +745,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Temps restant',
   kr: '남은 시간',
   sa: 'الوقت المتبقي',
+  vi: 'Thời gian còn lại',
 },
 
 
@@ -718,6 +762,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Victoire !',
   kr: '승리!',
   sa: 'انتصار!',
+  vi: 'Chiến thắng!',
 },
 
 
@@ -734,6 +779,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Score final',
   kr: '최종 점수',
   sa: 'النتيجة النهائية',
+  vi: 'Điểm chung cuộc',
 },
 
 
@@ -750,6 +796,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Au moins 2 éléments sont nécessaires pour jouer à "L’intrus".',
   kr: '"다른 것 찾기"를 플레이하려면 최소 2개의 항목이 필요합니다.',
   sa: 'يلعب "العنصر الشاذ" يتطلب عنصرين على الأقل.',
+  vi: 'Cần ít nhất 2 mục để chơi Tìm điểm khác biệt.',
 },
 
 
@@ -766,6 +813,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Échec du chargement des éléments pour "L’intrus".',
   kr: '"다른 것 찾기" 항목을 불러오지 못했습니다.',
   sa: 'فشل تحميل عناصر "العنصر الشاذ".',
+  vi: 'Không tải được các mục cho Tìm điểm khác biệt.',
 },
 
 
@@ -782,6 +830,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Test ABC',
   kr: 'ABC 테스트',
   sa: 'اختبار ABC',
+  vi: 'Trắc nghiệm ABC',
 },
 
 
@@ -798,6 +847,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Associez les mots aux images dans un format de quiz.',
   kr: '퀴즈 형식으로 단어와 이미지를 매치하세요.',
   sa: 'طابق الكلمات مع الصور في شكل اختبار.',
+  vi: 'Ghép từ với hình ảnh dưới dạng câu đố trắc nghiệm.',
 },
 
 
@@ -814,6 +864,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement du quiz...',
   kr: '퀴즈 로딩 중...',
   sa: 'جاري تحميل الاختبار...',
+  vi: 'Đang tải câu đố...',
 },
 
 
@@ -832,6 +883,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Quiz terminé !',
   kr: '퀴즈 완료!',
   sa: 'اكتمل الاختبار!',
+  vi: 'Hoàn thành câu đố!',
 },
 
 
@@ -848,6 +900,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Votre score',
   kr: '당신의 점수',
   sa: 'نتيجتك',
+  vi: 'Điểm của bạn',
 },
 
 
@@ -864,6 +917,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Au moins 3 éléments sont nécessaires pour jouer à Test ABC.',
   kr: 'ABC 테스트를 플레이하려면 최소 3개의 항목이 필요합니다.',
   sa: 'يلعب اختبار ABC يتطلب 3 عناصر على الأقل.',
+  vi: 'Cần ít nhất 3 mục để chơi Trắc nghiệm ABC.',
 },
 
 'testAbcNeedMatchingItems': {
@@ -876,6 +930,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Il faut au moins 2 éléments ayant à la fois le contenu de question et de réponse choisis.',
   kr: '선택한 질문 내용과 답 내용이 모두 있는 항목이 최소 2개 필요합니다.',
   sa: 'يلزم عنصران على الأقل يحتويان على محتوى السؤال والإجابة المختارين.',
+  vi: 'Cần ít nhất 2 mục có cả nội dung câu hỏi và câu trả lời đã chọn.',
 },
 
 'testAbcInsufficientVariety': {
@@ -888,6 +943,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucune question n\'a pu être générée faute d\'éléments différents. Ajoutez plus de variété à votre thème.',
   kr: '서로 다른 항목이 부족해 문제를 만들 수 없습니다. 주제에 더 다양한 항목을 추가하세요.',
   sa: 'تعذّر إنشاء أي أسئلة بسبب قلة العناصر المختلفة. أضف مزيدًا من التنوع إلى موضوعك.',
+  vi: 'Không tạo được câu hỏi vì các mục chưa đủ khác nhau. Vui lòng thêm nội dung đa dạng hơn cho chủ đề.',
 },
 
 
@@ -904,6 +960,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Phrase en équipe',
   kr: '팀 문장',
   sa: 'جملة الفريق',
+  vi: 'Đồng đội ghép câu',
 },
 
 
@@ -920,6 +977,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Les équipes s’affrontent pour former des phrases correctes tout en évitant les mines.',
   kr: '팀이 지뢰를 피하면서 올바른 문장을 만드는 경주를 합니다.',
   sa: 'تتنافس الفرق لتكوين جمل صحيحة مع تجنب الألغام.',
+  vi: 'Các đội thi nhau ghép câu đúng và tránh mìn.',
 },
 
 
@@ -936,6 +994,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement du jeu de phrase en équipe...',
   kr: '팀 문장 게임 로딩 중...',
   sa: 'جاري تحميل لعبة جملة الفريق...',
+  vi: 'Đang tải trò chơi ghép câu...',
 },
 
 
@@ -952,6 +1011,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'gagne',
   kr: '승리',
   sa: 'يفوز',
+  vi: 'thắng',
 },
 
 
@@ -968,6 +1028,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Match nul',
   kr: '\ubb34\uc2b9\ubd80',
   sa: '\u062a\u0639\u0627\u062f\u0644',
+  vi: 'Hòa',
 },
 
 
@@ -982,6 +1043,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Score final',
   kr: '최종 점수',
   sa: 'النتيجة النهائية',
+  vi: 'Điểm chung cuộc',
 },
 
 
@@ -998,6 +1060,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément trouvé pour ce sujet.',
   kr: '이 주제에 대한 항목을 찾을 수 없습니다.',
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
+  vi: 'Không tìm thấy mục nào trong chủ đề này.',
 },
 
 
@@ -1014,6 +1077,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucune phrase valide trouvée. Veuillez ajouter des éléments avec texte à ce sujet.',
   kr: '유효한 문장을 찾을 수 없습니다. 이 주제에 텍스트가 있는 항목을 추가하세요.',
   sa: 'لم يتم العثور على جمل صالحة. يرجى إضافة عناصر تحتوي على نص إلى هذا الموضوع.',
+  vi: 'Không có câu hợp lệ. Vui lòng thêm các mục có văn bản vào chủ đề này.',
 },
 
 
@@ -1030,6 +1094,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe Gauche',
   kr: '왼쪽 팀',
   sa: 'الفريق الأيسر',
+  vi: 'Đội bên trái',
 },
 
 
@@ -1046,6 +1111,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe Droite',
   kr: '오른쪽 팀',
   sa: 'الفريق الأيمن',
+  vi: 'Đội bên phải',
 },
 
 
@@ -1062,6 +1128,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Les équipes foncent vers la ligne d\'arrivée. Avancez au vert, gelez au rouge — ou répondez à un quiz!',
   kr: '팀들이 결승선을 향해 달립니다. 초록 불에 전진, 빨간 불에 멈춰요—잡히면 퀴즈를 풀어야 해요!',
   sa: 'تتسابق الفرق نحو خط النهاية. تحرك عند الضوء الأخضر، وتجمد عند الأحمر — وإلا ستواجه اختباراً!',
+  vi: 'Các đội đua về đích. Đèn xanh thì đi, đèn đỏ thì đứng im — nếu bị bắt phải trả lời câu đố!',
 },
 
 
@@ -1078,6 +1145,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement...',
   kr: '로딩 중...',
   sa: 'جاري التحميل...',
+  vi: 'Đang tải Đèn đỏ, đèn xanh...',
 },
 
 
@@ -1094,6 +1162,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Feu vert !',
   kr: '초록 불!',
   sa: 'الضوء الأخضر!',
+  vi: 'Đèn xanh!',
 },
 
 
@@ -1110,6 +1179,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Feu rouge !',
   kr: '빨간 불!',
   sa: 'الضوء الأحمر!',
+  vi: 'Đèn đỏ!',
 },
 
 
@@ -1126,6 +1196,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Arrivée',
   kr: '결승선',
   sa: 'خط النهاية',
+  vi: 'Đích',
 },
 
 
@@ -1141,6 +1212,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe',
   kr: '팀',
   sa: 'الفريق',
+  vi: 'Đội',
 },
 
 
@@ -1157,6 +1229,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choc des châteaux : Pierre Feuille Ciseaux',
   kr: '성 충돌: 가위 바위 보',
   sa: 'صراع القلاع: حجر ورقة مقص',
+  vi: 'Đại chiến lâu đài: Oẳn tù tì',
 },
 
 
@@ -1173,6 +1246,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Deux équipes s\'affrontent à Pierre Feuille Ciseaux pour faire avancer un chevalier vers leur château !',
   kr: '두 팀이 가위 바위 보로 기사를 자신의 성으로 전진시킵니다!',
   sa: 'فريقان يتنافسان بحجر ورقة ومقص لتقدّم فارس نحو قلعتهم!',
+  vi: 'Hai đội đấu oẳn tù tì để đưa hiệp sĩ tiến về lâu đài của mình!',
 },
 
 
@@ -1189,6 +1263,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement…',
   kr: '로딩 중…',
   sa: 'جارٍ التحميل…',
+  vi: 'Đang tải…',
 },
 
 
@@ -1205,6 +1280,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisir',
   kr: '선택',
   sa: 'اختر',
+  vi: 'Chọn',
 },
 
 
@@ -1221,6 +1297,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe Bleue',
   kr: '파란 팀',
   sa: 'الفريق الأزرق',
+  vi: 'Đội Xanh',
 },
 
 
@@ -1237,6 +1314,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe Rouge',
   kr: '빨간 팀',
   sa: 'الفريق الأحمر',
+  vi: 'Đội Đỏ',
 },
 
 
@@ -1253,6 +1331,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réponds !',
   kr: '대답해!',
   sa: 'أجب!',
+  vi: 'Trả lời!',
 },
 
 
@@ -1269,6 +1348,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'TON TOUR !',
   kr: '당신 차례!',
   sa: 'دورك!',
+  vi: 'ĐẾN LƯỢT BẠN!',
 },
 
 
@@ -1285,6 +1365,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ce n\'est pas ton tour !',
   kr: '당신 차례가 아닙니다!',
   sa: 'ليس دورك!',
+  vi: 'Chưa đến lượt bạn!',
 },
 'gameFlashcardHuntName': {
   en: 'Flashcard Hunting',
@@ -1296,6 +1377,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chasse aux cartes',
   kr: '플래시카드 사냥',
   sa: 'صيد البطاقات',
+  vi: 'Săn thẻ từ',
 },
 
 'gameFlashcardHuntDesc': {
@@ -1308,6 +1390,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Lancez des balles collantes sur les cartes du tableau, évitez les bombes, puis répondez pour les cartes attrapées.',
   kr: '칠판의 카드에 끈끈이 공을 쏘고, 폭탄은 피한 다음, 잡은 카드에 답하세요.',
   sa: 'أطلق كرات لاصقة على البطاقات في اللوح وتجنّب القنابل، ثم أجب عمّا اصطدته.',
+  vi: 'Bắn bóng dính vào các thẻ trên bảng, tránh bom, rồi trả lời những thẻ bạn bắt được.',
 },
 
 'flashcardHuntTitle': {
@@ -1320,6 +1403,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chasse aux cartes',
   kr: '플래시카드 사냥',
   sa: 'صيد البطاقات',
+  vi: 'Săn thẻ từ',
 },
 
 'flashcardHuntRedTeam': {
@@ -1332,6 +1416,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe rouge',
   kr: '레드 팀',
   sa: 'الفريق الأحمر',
+  vi: 'Đội Đỏ',
 },
 
 'flashcardHuntBlueTeam': {
@@ -1344,6 +1429,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe bleue',
   kr: '블루 팀',
   sa: 'الفريق الأزرق',
+  vi: 'Đội Xanh',
 },
 
 'flashcardHuntTimeUp': {
@@ -1356,6 +1442,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Temps écoulé !',
   kr: '시간 종료!',
   sa: 'انتهى الوقت!',
+  vi: 'Hết giờ!',
 },
 
 'flashcardHuntAllCollected': {
@@ -1368,6 +1455,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Toutes les cartes sont attrapées !',
   kr: '모든 카드를 잡았어요!',
   sa: 'تم اصطياد جميع البطاقات!',
+  vi: 'Đã bắt được tất cả các thẻ!',
 },
 
 'flashcardHuntTimeToAnswer': {
@@ -1380,6 +1468,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'C\'est l\'heure de répondre !',
   kr: '이제 답할 시간이에요!',
   sa: 'حان وقت الإجابة!',
+  vi: 'Đến lúc trả lời!',
 },
 
 
@@ -1396,6 +1485,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: "It's a tie!",
   kr: "It's a tie!",
   sa: "It's a tie!",
+  vi: 'Hòa!',
 },
 
 'flashcardHuntTeamWins': {
@@ -1408,6 +1498,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: '{team} gagne !',
   kr: '{team} 승리!',
   sa: 'فاز {team}!',
+  vi: '{team} thắng!',
 },
 
 'flashcardHuntSoloResult': {
@@ -1420,6 +1511,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: '{score} sur {total} correctes',
   kr: '{total}개 중 {score}개 정답',
   sa: '{score} من {total} صحيحة',
+  vi: 'Đúng {score} / {total}',
 },
 
 'gameCountdownGo': {
@@ -1432,6 +1524,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'PARTEZ !',
   kr: '출발!',
   sa: 'انطلق!',
+  vi: 'BẮT ĐẦU!',
 },
 
 'flashcardHuntNoCards': {
@@ -1444,6 +1537,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucune carte attrapée - essayez encore !',
   kr: '잡은 카드가 없어요 - 다시 도전해 보세요!',
   sa: 'لم يتم اصطياد أي بطاقة - حاول مرة أخرى!',
+  vi: 'Chưa bắt được thẻ nào - hãy thử lại!',
 },
 
 
@@ -1457,6 +1551,7 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: '⭐ +{points} bonus doré',
   kr: '⭐ +{points} 황금 보너스',
   sa: '⭐ +{points} مكافأة ذهبية',
+  vi: '⭐ +{points} điểm thưởng vàng',
 },
 
 'flashcardHuntPaused': {
@@ -1469,5 +1564,6 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'En pause',
   kr: '일시 정지',
   sa: 'متوقف مؤقتًا',
+  vi: 'Tạm dừng',
 },
 };

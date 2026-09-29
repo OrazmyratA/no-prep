@@ -66,7 +66,8 @@ supportedLanguages: { code: SupportedLanguage; name: string; flag: string }[] = 
   { code: 'es', name: 'Español', flag: 'es.svg' },
   { code: 'fr', name: 'Français', flag: 'fr.svg' },
   { code: 'kr', name: '한국어', flag: 'kr.svg' },
-  { code: 'sa', name: 'العربية', flag: 'sa.svg' }
+  { code: 'sa', name: 'العربية', flag: 'sa.svg' },
+  { code: 'vi', name: 'Tiếng Việt', flag: 'vn.svg' }
 ];
 
   showLanguageMenu = false;
@@ -267,6 +268,16 @@ onClickOutside(event: MouseEvent) {
 
   isBookArmed(bookId: string): boolean {
     return this.activeBookId === bookId;
+  }
+
+  // Which hint the picker banner shows, keyed by the source tag each caller passes to
+  // LeaderboardStateService.beginTopicSelection - falls back to the leaderboard's own copy.
+  get pickerBannerHintKey(): string {
+    switch (this.leaderboardState.activeSelectionSource) {
+      case 'gift-topic': return 'giftTopicPickerBannerHint';
+      case 'book-game-topic': return 'bookGameTopicPickerBannerHint';
+      default: return 'leaderboardPickerBannerHint';
+    }
   }
 
   onTopicClick(topicId: number) {

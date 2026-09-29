@@ -177,3 +177,139 @@
     margin-left: 3rem;
   }
 }
+
+/* AI topic fill */
+.ai-fill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4f46e5, #9333ea);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-fill-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+}
+
+.ai-fill-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-fill-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #312e81;
+  font-size: 0.9rem;
+}
+
+.ai-fill-banner-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ai-fill-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4f46e5;
+}
+
+.ai-fill-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #c7d2fe;
+  border-top-color: #4f46e5;
+  border-radius: 999px;
+  animation: ai-fill-spin 0.8s linear infinite;
+}
+
+@keyframes ai-fill-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-fill-notes {
+  list-style: disc;
+  padding-left: 18px;
+  color: #92400e;
+}
+
+.ai-fill-games {
+  color: #6b7280;
+}
+
+.ai-fill-banner-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ai-fill-undo {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid #a5b4fc;
+  background: #fff;
+  color: #4338ca;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.ai-fill-dismiss {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #6b7280;
+}
+
+.ai-fill-dismiss:disabled {
+  opacity: 0.4;
+}
+
+.topic-name-missing {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+.ai-swap-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.ai-swap-btn:hover:not(:disabled) {
+  background: #e0e7ff;
+}
+
+.ai-swap-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.ai-swap-spin {
+  display: inline-block;
+  animation: ai-fill-spin 0.8s linear infinite;
+}

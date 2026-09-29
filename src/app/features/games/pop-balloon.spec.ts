@@ -29,7 +29,8 @@ describe('PopBalloonComponent', () => {
       snapshot: {
         paramMap: {
           get: () => '1'
-        }
+        },
+        queryParams: {}
       },
       parent: null
     } as unknown as ActivatedRoute;

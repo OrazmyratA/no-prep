@@ -1,0 +1,11 @@
+{
+  "name": "noprep-ai-proxy",
+  "private": true,
+  "type": "module",
+  "description": "Built-in AI for NoPrep topic generation (Cloudflare Worker). Not part of the app build.",
+  "scripts": {
+    "test": "node --test",
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy"
+  }
+}

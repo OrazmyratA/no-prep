@@ -213,11 +213,23 @@ function getFeatureUnlockKey(featureName) {
   );
 }
 
+// The signed license fields, for services that must prove this copy is licensed (the NoPrep AI
+// proxy verifies the signature itself). Null when there is no valid license on this machine.
+function getValidLicense() {
+  const license = loadLicense();
+  if (!validateLicense(license)) {
+    return null;
+  }
+  const { machineId, expiry, nonce, signature } = license;
+  return { machineId, expiry, nonce, signature };
+}
+
 module.exports = {
   activateLicenseContent,
   checkLicense,
   getAppDataPath,
   getFeatureUnlockKey,
+  getValidLicense,
   getMachineFingerprint,
   parseLicenseContent,
   saveLicense,

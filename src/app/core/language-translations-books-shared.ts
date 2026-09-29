@@ -14,6 +14,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Zoomer',
     kr: '확대',
     sa: 'تكبير',
+    vi: 'Phóng to',
   },
 
 
@@ -29,6 +30,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Dézoomer',
     kr: '축소',
     sa: 'تصغير',
+    vi: 'Thu nhỏ',
   },
 
 
@@ -44,6 +46,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Focus',
     kr: '포커스',
     sa: 'التركيز',
+    vi: 'Tập trung',
   },
 
 
@@ -59,6 +62,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Dessiner',
     kr: '그리기',
     sa: 'رسم',
+    vi: 'Vẽ',
   },
 
 
@@ -74,6 +78,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Taille',
     kr: '크기',
     sa: 'الحجم',
+    vi: 'Kích thước',
   },
 
 
@@ -89,6 +94,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter du texte',
     kr: '텍스트 추가',
     sa: 'إضافة نص',
+    vi: 'Thêm chữ',
   },
 
 
@@ -104,6 +110,7 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Lecture',
     kr: '재생',
     sa: 'تشغيل',
+    vi: 'Phát',
   },
 
 
@@ -119,5 +126,6 @@ export const BOOK_SHARED_TRANSLATIONS: TranslationDictionary = {
     fr: 'Pause',
     kr: '일시정지',
     sa: 'إيقاف مؤقت',
+    vi: 'Tạm dừng',
   },
 };

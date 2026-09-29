@@ -18,9 +18,9 @@ import {
 } from '../../../core/audio-voice';
 import { DbService } from '../../../core/db';
 import { LanguageService } from '../../../core/language';
+import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { showAppNotification } from '../../../core/notification';
 import { AiSpeakingRuntimeService, AiSpeakingRuntimeStatus } from '../../../core/ai-speaking-runtime';
-import { Topic } from '../../../core/db.model';
 import {
   BookElement,
   BookElementType,
@@ -78,6 +78,9 @@ import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-
 import { BookCreatorLayoutController } from './book-creator-layout-controller';
 import { BookCreatorVirtualPageController } from './book-creator-virtual-page-controller';
 import { BookCreatorLoadingController } from './book-creator-loading-controller';
+import { AiPagesError } from './book-creator-game-controller';
+import { AiTopicService } from '../../../core/ai-topic/ai-topic.service';
+import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
 
 @Component({
   selector: 'app-book-creator',
@@ -143,7 +146,6 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedWorkbookPageIndex = 0;
   linkingMainPageId: string | null = null;
   progress$: Observable<BookOperationProgress | null>;
-  topics$: Observable<Topic[]>;
   games = GAMES;
   isDirty = false;
   canSwitchBook = async (): Promise<boolean> => this.confirmSaveBeforeLeaving();
@@ -326,10 +328,12 @@ Tomorrow I will help my mom.`;
     public audioVoice: AudioVoiceService,
     private aiSpeakingRuntime: AiSpeakingRuntimeService,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public aiTopic: AiTopicService,
+    public aiPageHandoff: AiPageHandoffService,
+    public leaderboardState: LeaderboardStateService
   ) {
     this.progress$ = this.bookLibrary.progress$;
-    this.topics$ = this.db.topics$;
     this.inspectorWidthPx = this.readStoredInspectorWidth();
   }
 
@@ -383,6 +387,7 @@ Tomorrow I will help my mom.`;
     this.routeSubscription = this.route.paramMap.subscribe((params) => {
       void this.loadBook(params.get('id'));
     });
+    void this.gameController.loadAiPageLimit().then(() => this.cdr.markForCheck());
   }
 
   ngAfterViewInit(): void {
@@ -1218,6 +1223,36 @@ Tomorrow I will help my mom.`;
 
   async editGameTopic(element: BookElement): Promise<void> {
     await this.gameController.editGameTopic(element);
+  }
+
+  async chooseGameTopicFromList(element: BookElement): Promise<void> {
+    await this.gameController.chooseGameTopicFromList(element);
+  }
+
+  get aiPageLimit(): number | null {
+    return this.gameController.aiPageLimit;
+  }
+
+  get preparingAiPages(): boolean {
+    return this.gameController.preparingAiPages;
+  }
+
+  getAiPagesError(element: BookElement): AiPagesError | null {
+    const error = this.gameController.aiPagesError;
+    return error?.elementId === element.id ? error : null;
+  }
+
+  getAiPagesText(element: BookElement): string {
+    return this.gameController.getAiPagesText(element);
+  }
+
+  setAiPagesText(element: BookElement, text: string): void {
+    this.gameController.setAiPagesText(element, text);
+  }
+
+  async createTopicWithAi(element: BookElement): Promise<void> {
+    await this.gameController.createTopicWithAi(element);
+    this.cdr.markForCheck();
   }
 
   async deleteGameTopic(element: BookElement): Promise<void> {

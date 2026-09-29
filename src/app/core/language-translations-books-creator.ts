@@ -2,6 +2,110 @@ import type { TranslationDictionary } from './language-types';
 
 export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
 
+'creatorAiPagesLabel': {
+  en: 'Pages for AI',
+  tk: 'AI üçin sahypalar',
+  ru: 'Страницы для ИИ',
+  cn: '给 AI 的页面',
+  cde: 'Seiten für die KI',
+  es: 'Páginas para la IA',
+  fr: 'Pages pour l’IA',
+  kr: 'AI에 보낼 페이지',
+  sa: 'صفحات للذكاء الاصطناعي',
+  vi: 'Trang gửi cho AI',
+},
+
+'creatorAiPagesHint': {
+  en: 'Page numbers from the page list, e.g. 12 or 12-13 · up to {max} pages',
+  tk: 'Sahypa sanawyndaky belgiler, meselem 12 ýa-da 12-13 · {max} sahypa çenli',
+  ru: 'Номера из списка страниц, например 12 или 12-13 · до {max} стр.',
+  cn: '页面列表中的页码，如 12 或 12-13 · 最多 {max} 页',
+  cde: 'Seitenzahlen aus der Seitenliste, z. B. 12 oder 12-13 · bis zu {max} Seiten',
+  es: 'Números de la lista de páginas, p. ej. 12 o 12-13 · hasta {max} páginas',
+  fr: 'Numéros de la liste des pages, p. ex. 12 ou 12-13 · jusqu’à {max} pages',
+  kr: '페이지 목록의 번호, 예: 12 또는 12-13 · 최대 {max}페이지',
+  sa: 'أرقام من قائمة الصفحات، مثل 12 أو 12-13 · حتى {max} صفحات',
+  vi: 'Số trang trong danh sách trang, vd: 12 hoặc 12-13 · tối đa {max} trang',
+},
+
+'creatorAiPagesInvalid': {
+  en: 'Type page numbers like 12, 12-13 or 12, 15.',
+  tk: 'Sahypa belgilerini şeýle ýazyň: 12, 12-13 ýa-da 12, 15.',
+  ru: 'Введите номера страниц, например: 12, 12-13 или 12, 15.',
+  cn: '请这样输入页码：12、12-13 或 12, 15。',
+  cde: 'Gib Seitenzahlen wie 12, 12-13 oder 12, 15 ein.',
+  es: 'Escribe números de página como 12, 12-13 o 12, 15.',
+  fr: 'Saisissez des numéros de page comme 12, 12-13 ou 12, 15.',
+  kr: '12, 12-13 또는 12, 15처럼 페이지 번호를 입력하세요.',
+  sa: 'اكتب أرقام الصفحات مثل 12 أو 12-13 أو 12, 15.',
+  vi: 'Nhập số trang như 12, 12-13 hoặc 12, 15.',
+},
+
+'creatorAiPagesOutOfRange': {
+  en: 'This book has pages 1 to {count}.',
+  tk: 'Bu kitapda 1-den {count}-e çenli sahypa bar.',
+  ru: 'В этой книге страницы с 1 по {count}.',
+  cn: '本书的页码为 1 到 {count}。',
+  cde: 'Dieses Buch hat die Seiten 1 bis {count}.',
+  es: 'Este libro tiene las páginas 1 a {count}.',
+  fr: 'Ce livre a les pages 1 à {count}.',
+  kr: '이 책의 페이지는 1부터 {count}까지입니다.',
+  sa: 'يحتوي هذا الكتاب على الصفحات من 1 إلى {count}.',
+  vi: 'Sách này có các trang từ 1 đến {count}.',
+},
+
+'creatorAiPagesTooMany': {
+  en: 'The selected AI can read up to {max} pages at once.',
+  tk: 'Saýlanan AI bir gezekde {max} sahypa çenli okap bilýär.',
+  ru: 'Выбранный ИИ читает не более {max} стр. за раз.',
+  cn: '所选 AI 一次最多能读取 {max} 页。',
+  cde: 'Die gewählte KI kann höchstens {max} Seiten auf einmal lesen.',
+  es: 'La IA elegida puede leer hasta {max} páginas a la vez.',
+  fr: 'L’IA choisie peut lire jusqu’à {max} pages à la fois.',
+  kr: '선택한 AI는 한 번에 최대 {max}페이지까지 읽을 수 있습니다.',
+  sa: 'يمكن للذكاء الاصطناعي المختار قراءة {max} صفحات كحد أقصى في المرة الواحدة.',
+  vi: 'AI đã chọn chỉ đọc được tối đa {max} trang mỗi lần.',
+},
+
+'creatorAiPagesNotPdf': {
+  en: 'Page {page} is a blank page, so there is nothing for the AI to read.',
+  tk: '{page}-nji sahypa boş, şonuň üçin AI-niň okajak zady ýok.',
+  ru: 'Страница {page} пустая, ИИ нечего читать.',
+  cn: '第 {page} 页是空白页，AI 没有可读取的内容。',
+  cde: 'Seite {page} ist leer, die KI hat dort nichts zu lesen.',
+  es: 'La página {page} está en blanco, así que la IA no tiene nada que leer.',
+  fr: 'La page {page} est vierge, l’IA n’a rien à lire.',
+  kr: '{page}페이지는 빈 페이지라 AI가 읽을 내용이 없습니다.',
+  sa: 'الصفحة {page} فارغة، فلا يوجد ما يقرؤه الذكاء الاصطناعي.',
+  vi: 'Trang {page} là trang trống nên AI không có gì để đọc.',
+},
+
+'creatorAiPagesFailed': {
+  en: 'Could not prepare these pages. Please try again.',
+  tk: 'Bu sahypalary taýýarlap bolmady. Täzeden synanyşyň.',
+  ru: 'Не удалось подготовить страницы. Попробуйте ещё раз.',
+  cn: '无法准备这些页面，请重试。',
+  cde: 'Die Seiten konnten nicht vorbereitet werden. Bitte versuche es erneut.',
+  es: 'No se pudieron preparar estas páginas. Inténtalo de nuevo.',
+  fr: 'Impossible de préparer ces pages. Veuillez réessayer.',
+  kr: '페이지를 준비하지 못했습니다. 다시 시도하세요.',
+  sa: 'تعذّر تجهيز هذه الصفحات. يرجى المحاولة مرة أخرى.',
+  vi: 'Không thể chuẩn bị các trang này. Vui lòng thử lại.',
+},
+
+'creatorAiPreparingPages': {
+  en: 'Preparing pages…',
+  tk: 'Sahypalar taýýarlanýar…',
+  ru: 'Готовим страницы…',
+  cn: '正在准备页面……',
+  cde: 'Seiten werden vorbereitet …',
+  es: 'Preparando páginas…',
+  fr: 'Préparation des pages…',
+  kr: '페이지 준비 중…',
+  sa: 'جارٍ تجهيز الصفحات…',
+  vi: 'Đang chuẩn bị trang…',
+},
+
 
 
   'redo': {
@@ -14,6 +118,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Rétablir',
     kr: '다시 실행',
     sa: 'إعادة',
+    vi: 'Làm lại',
   },
 
 
@@ -29,6 +134,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Titre du livre',
     kr: '책 제목',
     sa: 'عنوان الكتاب',
+    vi: 'Tên sách',
   },
 
 
@@ -44,6 +150,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Annuler',
     kr: '실행 취소',
     sa: 'تراجع',
+    vi: 'Hoàn tác',
   },
 
 
@@ -59,6 +166,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter une image',
     kr: '이미지 추가',
     sa: 'إضافة صورة',
+    vi: 'Thêm hình ảnh',
   },
 
 
@@ -74,6 +182,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Vidéo',
     kr: '동영상',
     sa: 'فيديو',
+    vi: 'Video',
   },
 
 
@@ -89,6 +198,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter une vidéo',
     kr: '동영상 추가',
     sa: 'إضافة فيديو',
+    vi: 'Thêm video',
   },
 
 
@@ -104,6 +214,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Jeu',
     kr: '게임',
     sa: 'لعبة',
+    vi: 'Trò chơi',
   },
 
 
@@ -119,6 +230,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter un jeu',
     kr: '게임 추가',
     sa: 'إضافة لعبة',
+    vi: 'Thêm trò chơi',
   },
 
 
@@ -134,6 +246,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter une zone de focus',
     kr: '포커스 영역 추가',
     sa: 'إضافة منطقة تركيز',
+    vi: 'Thêm vùng tập trung',
   },
 
 
@@ -149,6 +262,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Point de guidage de l’enseignant',
     kr: '교사 가이드 포인트',
     sa: 'نقطة دليل المعلم',
+    vi: 'Chấm hướng dẫn giáo viên',
   },
 
 
@@ -164,6 +278,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter un point de guidage de l’enseignant',
     kr: '교사 가이드 포인트 추가',
     sa: 'إضافة نقطة دليل المعلم',
+    vi: 'Thêm chấm hướng dẫn giáo viên',
   },
 
 
@@ -179,6 +294,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Note',
     kr: '노트',
     sa: 'ملاحظة',
+    vi: 'Ghi chú',
   },
 
 
@@ -194,6 +310,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter une note',
     kr: '노트 추가',
     sa: 'إضافة ملاحظة',
+    vi: 'Thêm ghi chú',
   },
 
 
@@ -209,6 +326,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Afficher dans le lecteur',
     kr: '리더에서 보기',
     sa: 'عرض في القارئ',
+    vi: 'Xem trình đọc',
   },
 
 
@@ -224,6 +342,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Veuillez patienter...',
     kr: '잠시만 기다려 주세요...',
     sa: 'يرجى الانتظار...',
+    vi: 'Vui lòng đợi...',
   },
 
 
@@ -239,6 +358,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Masqué',
     kr: '숨김',
     sa: 'مخفي',
+    vi: 'Đã ẩn',
   },
 
 
@@ -254,6 +374,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Importer un PDF',
     kr: 'PDF 업로드',
     sa: 'تحميل PDF',
+    vi: 'Tải lên PDF',
   },
 
 
@@ -269,6 +390,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Lier les pages du cahier d’exercices',
     kr: '워크북 페이지 연결',
     sa: 'ربط صفحات كتاب التمارين',
+    vi: 'Liên kết trang sách bài tập',
   },
 
 
@@ -284,6 +406,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter une page vierge après cette page',
     kr: '이 페이지 뒤에 빈 페이지 추가',
     sa: 'إضافة صفحة فارغة بعد هذه الصفحة',
+    vi: 'Thêm trang trống sau trang này',
   },
 
 
@@ -299,6 +422,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer cette page',
     kr: '이 페이지 삭제',
     sa: 'حذف هذه الصفحة',
+    vi: 'Xóa trang này',
   },
 
 
@@ -314,6 +438,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Lié',
     kr: '연결됨',
     sa: 'مرتبط',
+    vi: 'Đã liên kết',
   },
 
 
@@ -329,6 +454,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter une page vierge après cette page du cahier',
     kr: '이 워크북 페이지 뒤에 빈 페이지 추가',
     sa: 'إضافة صفحة فارغة بعد صفحة كتاب التمارين هذه',
+    vi: 'Thêm trang trống sau trang sách bài tập này',
   },
 
 
@@ -348,6 +474,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer cette page du cahier',
     kr: '이 워크북 페이지 삭제',
     sa: 'حذف صفحة كتاب التمارين هذه',
+    vi: 'Xóa trang sách bài tập này',
   },
 
 
@@ -363,6 +490,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Importez le PDF du livre de l’élève ou commencez cette page avec une image.',
     kr: '학생용 책 PDF를 업로드하거나 이미지로 이 페이지를 시작하세요.',
     sa: 'قم بتحميل ملف PDF لكتاب الطالب، أو ابدأ هذه الصفحة بصورة.',
+    vi: 'Tải lên PDF sách học sinh, hoặc bắt đầu trang này bằng một hình ảnh.',
   },
 
 
@@ -378,6 +506,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Importez le PDF du cahier d’exercices ou commencez cette page avec une image.',
     kr: '워크북 PDF를 업로드하거나 이미지로 이 페이지를 시작하세요.',
     sa: 'قم بتحميل ملف PDF لكتاب التمارين، أو ابدأ هذه الصفحة بصورة.',
+    vi: 'Tải lên PDF sách bài tập, hoặc bắt đầu trang này bằng một hình ảnh.',
   },
 
 
@@ -393,6 +522,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Insérer une image',
     kr: '이미지 삽입',
     sa: 'إدراج صورة',
+    vi: 'Chèn hình ảnh',
   },
 
 
@@ -408,6 +538,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Aperçu du hibou enseignant',
     kr: '교사 부엉이 미리보기',
     sa: 'معاينة بومة المعلم',
+    vi: 'Xem trước cú giáo viên',
   },
 
 
@@ -423,6 +554,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Effacer les éléments de la page',
     kr: '페이지 요소 지우기',
     sa: 'مسح عناصر الصفحة',
+    vi: 'Xóa các thành phần trên trang',
   },
 
 
@@ -438,6 +570,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer le cahier d’exercices',
     kr: '워크북 삭제',
     sa: 'حذف كتاب التمارين',
+    vi: 'Xóa sách bài tập',
   },
 
 
@@ -453,6 +586,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer le livre de l’élève',
     kr: '학생용 책 삭제',
     sa: 'حذف كتاب الطالب',
+    vi: 'Xóa sách học sinh',
   },
 
 
@@ -468,6 +602,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Coller l’élément',
     kr: '요소 붙여넣기',
     sa: 'لصق العنصر',
+    vi: 'Dán thành phần',
   },
 
 
@@ -483,6 +618,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Arrêter la liaison',
     kr: '연결 중지',
     sa: 'إيقاف الربط',
+    vi: 'Dừng liên kết',
   },
 
 
@@ -498,6 +634,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Dupliquer',
     kr: '복제',
     sa: 'تكرار',
+    vi: 'Nhân bản',
   },
 
 
@@ -513,6 +650,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Copier',
     kr: '복사',
     sa: 'نسخ',
+    vi: 'Sao chép',
   },
 
 
@@ -528,6 +666,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Coller',
     kr: '붙여넣기',
     sa: 'لصق',
+    vi: 'Dán',
   },
 
 
@@ -543,6 +682,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer l’élément sélectionné',
     kr: '선택한 요소 삭제',
     sa: 'حذف العنصر المحدد',
+    vi: 'Xóa thành phần đã chọn',
   },
 
 
@@ -558,6 +698,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Envoyer vers l’arrière',
     kr: '뒤로 보내기',
     sa: 'إرسال إلى الخلف',
+    vi: 'Đưa ra sau',
   },
 
 
@@ -573,6 +714,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Mettre en avant',
     kr: '앞으로 가져오기',
     sa: 'إحضار إلى الأمام',
+    vi: 'Đưa lên trước',
   },
 
 
@@ -588,6 +730,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Remplacer',
     kr: '교체',
     sa: 'استبدال',
+    vi: 'Thay thế',
   },
 
 
@@ -603,6 +746,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Sujet lié',
     kr: '연결된 주제',
     sa: 'الموضوع المرتبط',
+    vi: 'Chủ đề liên kết',
   },
 
 
@@ -618,6 +762,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Aucun sujet lié',
     kr: '연결된 주제 없음',
     sa: 'لا يوجد موضوع مرتبط',
+    vi: 'Chưa liên kết chủ đề',
   },
 
 
@@ -633,6 +778,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Créez ou choisissez un sujet pour ce repère.',
     kr: '이 마커에 대한 주제를 만들거나 선택하세요.',
     sa: 'أنشئ أو اختر موضوعاً لهذه العلامة.',
+    vi: 'Tạo hoặc chọn một chủ đề cho điểm đánh dấu này.',
   },
 
 
@@ -648,6 +794,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Sujet n° {id}',
     kr: '주제 #{id}',
     sa: 'الموضوع #{id}',
+    vi: 'Chủ đề #{id}',
   },
 
 
@@ -663,6 +810,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Modifier le sujet',
     kr: '주제 편집',
     sa: 'تعديل الموضوع',
+    vi: 'Sửa chủ đề',
   },
 
 
@@ -678,6 +826,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Sujet',
     kr: '주제',
     sa: 'الموضوع',
+    vi: 'Chủ đề',
   },
 
 
@@ -693,6 +842,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir un sujet',
     kr: '주제 선택',
     sa: 'اختر موضوعاً',
+    vi: 'Chọn chủ đề',
   },
 
 
@@ -708,6 +858,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Importer une vidéo',
     kr: '동영상 업로드',
     sa: 'تحميل فيديو',
+    vi: 'Tải lên video',
   },
 
 
@@ -723,6 +874,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'URL',
     kr: 'URL',
     sa: 'الرابط',
+    vi: 'URL',
   },
 
 
@@ -738,6 +890,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Aperçu',
     kr: '미리보기',
     sa: 'معاينة',
+    vi: 'Xem trước',
   },
 
 
@@ -753,6 +906,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Arrêter',
     kr: '정지',
     sa: 'إيقاف',
+    vi: 'Dừng',
   },
 
 
@@ -768,6 +922,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ajouter un audio',
     kr: '오디오 추가',
     sa: 'إضافة صوت',
+    vi: 'Thêm âm thanh',
   },
 
 
@@ -783,6 +938,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Retirer',
     kr: '제거',
     sa: 'إزالة',
+    vi: 'Xóa',
   },
 
 
@@ -798,6 +954,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: '{count} fichier(s) audio',
     kr: '오디오 파일 {count}개',
     sa: '{count} ملف صوتي',
+    vi: '{count} tệp âm thanh',
   },
 
 
@@ -813,6 +970,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'La création de livre à partir d’un PDF est disponible dans l’application de bureau No-Prep. Utilisez la fenêtre Electron, pas l’onglet du navigateur.',
     kr: 'PDF 책 생성은 No-Prep 데스크톱 앱에서 사용할 수 있습니다. 브라우저 탭이 아닌 Electron 창을 사용하세요.',
     sa: 'إنشاء الكتاب من PDF متاح في تطبيق No-Prep لسطح المكتب. يرجى استخدام نافذة Electron وليس علامة تبويب المتصفح.',
+    vi: 'Tạo sách từ PDF chỉ có trên ứng dụng máy tính No-Prep. Vui lòng dùng cửa sổ ứng dụng, không dùng tab trình duyệt.',
   },
 
 
@@ -828,6 +986,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Au moins une page doit rester visible pour le lecteur.',
     kr: '리더에는 최소 한 페이지가 표시되어야 합니다.',
     sa: 'يجب أن تبقى صفحة واحدة على الأقل مرئية للقارئ.',
+    vi: 'Phải có ít nhất một trang hiển thị cho trình đọc.',
   },
 
 
@@ -843,6 +1002,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer cette page du livre ? Le PDF original ne sera pas modifié.',
     kr: '이 페이지를 책에서 삭제하시겠습니까? 원본 PDF는 변경되지 않습니다.',
     sa: 'هل تريد حذف هذه الصفحة من الكتاب؟ لن يتغير ملف PDF الأصلي.',
+    vi: 'Xóa trang này khỏi sách? Tệp PDF gốc sẽ không bị thay đổi.',
   },
 
 
@@ -858,6 +1018,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Effacer tous les éléments de cette page ? Les liens du cahier d’exercices resteront inchangés.',
     kr: '이 페이지의 모든 요소를 지우시겠습니까? 워크북 링크는 그대로 유지됩니다.',
     sa: 'هل تريد مسح جميع العناصر من هذه الصفحة؟ سيتم الاحتفاظ بروابط كتاب التمارين كما هي.',
+    vi: 'Xóa tất cả thành phần trên trang này? Các liên kết sách bài tập vẫn được giữ nguyên.',
   },
 
 
@@ -873,6 +1034,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer ce cahier d’exercices de ce livre No-Prep ? Les pages du livre de l’élève resteront.',
     kr: '이 No-Prep 책에서 이 워크북을 삭제하시겠습니까? 학생용 책 페이지는 유지됩니다.',
     sa: 'هل تريد حذف كتاب التمارين هذا من كتاب No-Prep هذا؟ ستبقى صفحات كتاب الطالب.',
+    vi: 'Xóa sách bài tập này khỏi sách No-Prep? Các trang sách học sinh vẫn được giữ lại.',
   },
 
 
@@ -888,6 +1050,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer le contenu du livre de l’élève de ce livre No-Prep ? Les fichiers du cahier d’exercices resteront.',
     kr: '이 No-Prep 책에서 학생용 책 콘텐츠를 삭제하시겠습니까? 워크북 파일은 유지됩니다.',
     sa: 'هل تريد حذف محتوى كتاب الطالب من كتاب No-Prep هذا؟ ستبقى ملفات كتاب التمارين.',
+    vi: 'Xóa nội dung sách học sinh khỏi sách No-Prep này? Các tệp sách bài tập vẫn được giữ lại.',
   },
 
 
@@ -903,6 +1066,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer cette page du cahier d’exercices du livre ? Le PDF original ne sera pas modifié.',
     kr: '이 워크북 페이지를 책에서 삭제하시겠습니까? 원본 PDF는 변경되지 않습니다.',
     sa: 'هل تريد حذف صفحة كتاب التمارين هذه من الكتاب؟ لن يتغير ملف PDF الأصلي.',
+    vi: 'Xóa trang sách bài tập này khỏi sách? Tệp PDF gốc sẽ không bị thay đổi.',
   },
 
   'creatorConfirmDeleteAudioTrack': {
@@ -915,6 +1079,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: "Supprimer cette piste audio et tous ses repères ?",
     kr: '이 오디오 트랙과 모든 핀을 삭제하시겠습니까?',
     sa: 'هل تريد حذف هذا المسار الصوتي وجميع علاماته؟',
+    vi: 'Xóa bản âm thanh này và tất cả các ghim của nó?',
   },
 
 
@@ -930,6 +1095,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer ce sujet lié de la bibliothèque de sujets et le retirer de ce repère de jeu ?',
     kr: '이 연결된 주제를 주제 라이브러리에서 삭제하고 이 게임 마커에서 제거하시겠습니까?',
     sa: 'هل تريد حذف هذا الموضوع المرتبط من مكتبة المواضيع وإزالته من علامة اللعبة هذه؟',
+    vi: 'Xóa chủ đề liên kết này khỏi thư viện chủ đề và gỡ nó khỏi điểm đánh dấu trò chơi này?',
   },
 
 
@@ -945,6 +1111,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Retirer ce lien de repère de jeu ?',
     kr: '이 게임 마커 링크를 제거하시겠습니까?',
     sa: 'هل تريد إزالة رابط علامة اللعبة هذه؟',
+    vi: 'Gỡ liên kết điểm đánh dấu trò chơi này?',
   },
 
 
@@ -960,6 +1127,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ce livre comporte des modifications non enregistrées. Appuyez sur OK pour enregistrer, ou sur Annuler pour choisir de quitter sans enregistrer.',
     kr: '이 책에는 저장되지 않은 변경 사항이 있습니다. 저장하려면 OK를 누르고, 저장하지 않고 나갈지 선택하려면 취소를 누르세요.',
     sa: 'يحتوي هذا الكتاب على تغييرات غير محفوظة. اضغط على موافق للحفظ، أو إلغاء لاختيار المغادرة دون الحفظ.',
+    vi: 'Sách này có thay đổi chưa lưu. Nhấn OK để lưu, hoặc Cancel để chọn có rời đi mà không lưu hay không.',
   },
 
   'creatorHistoryLimitWarning': {
@@ -972,6 +1140,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: "Ce livre est trop volumineux pour l'historique complet d'annulation ; certaines modifications peuvent ne pas être annulables.",
     kr: '이 책은 전체 실행 취소 기록을 저장하기에는 너무 큽니다. 일부 변경 사항은 취소할 수 없을 수 있습니다.',
     sa: 'هذا الكتاب كبير جدًا للاحتفاظ بسجل تراجع كامل — قد لا يمكن التراجع عن بعض التغييرات.',
+    vi: 'Sách này quá lớn để lưu toàn bộ lịch sử hoàn tác — một số thay đổi có thể không hoàn tác được.',
   },
 
 
@@ -987,6 +1156,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Modifications du livre non enregistrées',
     kr: '저장되지 않은 책 변경 사항',
     sa: 'تغييرات الكتاب غير المحفوظة',
+    vi: 'Thay đổi sách chưa lưu',
   },
 
 
@@ -1002,6 +1172,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ce livre comporte des modifications non enregistrées.',
     kr: '이 책에는 저장되지 않은 변경 사항이 있습니다.',
     sa: 'يحتوي هذا الكتاب على تغييرات غير محفوظة.',
+    vi: 'Sách này có thay đổi chưa lưu.',
   },
 
 
@@ -1017,6 +1188,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Voulez-vous enregistrer avant de quitter la page de création de livre ?',
     kr: '책 만들기 페이지를 나가기 전에 저장하시겠습니까?',
     sa: 'هل تريد الحفظ قبل ترك صفحة إنشاء الكتاب؟',
+    vi: 'Bạn có muốn lưu trước khi rời trang tạo sách không?',
   },
 
 
@@ -1032,6 +1204,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ne pas enregistrer',
     kr: '저장 안 함',
     sa: 'عدم الحفظ',
+    vi: 'Không lưu',
   },
 
 
@@ -1047,6 +1220,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Quitter sans enregistrer les modifications du livre ?',
     kr: '책 변경 사항을 저장하지 않고 나가시겠습니까?',
     sa: 'هل تريد المغادرة دون حفظ تغييرات الكتاب؟',
+    vi: 'Rời đi mà không lưu các thay đổi của sách?',
   },
 
 
@@ -1062,6 +1236,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Enregistrer les modifications actuelles du livre avant d’importer ce PDF ? Appuyez sur OK pour enregistrer et continuer, ou sur Annuler pour arrêter.',
     kr: '이 PDF를 업로드하기 전에 현재 책 변경 사항을 저장하시겠습니까? 저장 후 계속하려면 OK를, 중지하려면 취소를 누르세요.',
     sa: 'هل تريد حفظ تغييرات الكتاب الحالية قبل تحميل هذا الملف PDF؟ اضغط على موافق للحفظ والاستمرار، أو إلغاء للتوقف.',
+    vi: 'Lưu các thay đổi hiện tại của sách trước khi tải PDF này lên? Nhấn OK để lưu và tiếp tục, hoặc Cancel để dừng.',
   },
 
 
@@ -1077,6 +1252,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'L’enregistrement au microphone a échoué.',
     kr: '마이크 녹음에 실패했습니다.',
     sa: 'فشل التسجيل من الميكروفون.',
+    vi: 'Ghi âm bằng micrô thất bại.',
   },
 
 
@@ -1092,6 +1268,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'L’enregistrement au microphone n’est pas disponible.',
     kr: '마이크 녹음을 사용할 수 없습니다.',
     sa: 'تسجيل الميكروفون غير متاح.',
+    vi: 'Không thể ghi âm bằng micrô.',
   },
 
 
@@ -1107,6 +1284,7 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Point de guidage',
     kr: '가이드 포인트',
     sa: 'نقطة الدليل',
+    vi: 'Chấm hướng dẫn',
   },
 
 
@@ -1122,5 +1300,6 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     fr: 'Génération de la page...',
     kr: '페이지 렌더링 중...',
     sa: 'جارٍ تجهيز الصفحة...',
+    vi: 'Đang hiển thị trang...',
   },
 };

@@ -14,6 +14,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Changer de livre',
     kr: '책 전환',
     sa: 'تبديل الكتاب',
+    vi: 'Đổi sách',
   },
 
 
@@ -29,6 +30,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livres',
     kr: '책',
     sa: 'الكتب',
+    vi: 'Sách',
   },
 
 
@@ -44,6 +46,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: '{count} pages',
     kr: '{count}페이지',
     sa: '{count} صفحة',
+    vi: '{count} trang',
   },
 
 
@@ -59,6 +62,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Aucun livre trouvé.',
     kr: '책을 찾을 수 없습니다.',
     sa: 'لم يتم العثور على كتب.',
+    vi: 'Không tìm thấy sách nào.',
   },
 
 
@@ -74,6 +78,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir un PDF',
     kr: 'PDF 선택',
     sa: 'اختر ملف PDF',
+    vi: 'Chọn PDF',
   },
 
 
@@ -89,6 +94,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre créé.',
     kr: '책이 생성되었습니다.',
     sa: 'تم إنشاء الكتاب.',
+    vi: 'Đã tạo sách.',
   },
 
 
@@ -104,6 +110,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir le PDF du livre de l’élève',
     kr: '학생 책 PDF 선택',
     sa: 'اختر ملف PDF لكتاب الطالب',
+    vi: 'Chọn PDF sách học sinh',
   },
 
 
@@ -119,6 +126,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'PDF du livre de l’élève ajouté.',
     kr: '학생 책 PDF가 추가되었습니다.',
     sa: 'تمت إضافة ملف PDF لكتاب الطالب.',
+    vi: 'Đã thêm PDF sách học sinh.',
   },
 
 
@@ -134,6 +142,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’ajouter ce PDF du livre de l’élève.',
     kr: '이 학생 책 PDF를 추가할 수 없습니다.',
     sa: 'تعذرت إضافة ملف PDF لكتاب الطالب هذا.',
+    vi: 'Không thể thêm PDF sách học sinh này.',
   },
 
 
@@ -149,6 +158,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir le dossier du livre',
     kr: '책 폴더 선택',
     sa: 'اختر مجلد الكتاب',
+    vi: 'Chọn thư mục sách',
   },
 
 
@@ -164,6 +174,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre importé.',
     kr: '책을 가져왔습니다.',
     sa: 'تم استيراد الكتاب.',
+    vi: 'Đã nhập sách.',
   },
 
 
@@ -179,6 +190,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Préparation de l’exportation du livre',
     kr: '책 내보내기 준비 중',
     sa: 'جارٍ تجهيز تصدير الكتاب',
+    vi: 'Đang chuẩn bị xuất sách',
   },
 
 
@@ -194,6 +206,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre copié dans Desktop/No-Prep Books.',
     kr: '책이 Desktop/No-Prep Books에 복사되었습니다.',
     sa: 'تم نسخ الكتاب إلى Desktop/No-Prep Books.',
+    vi: 'Đã sao chép sách vào Desktop/No-Prep Books.',
   },
 
 
@@ -209,6 +222,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’exporter ce livre.',
     kr: '이 책을 내보낼 수 없습니다.',
     sa: 'تعذر تصدير هذا الكتاب.',
+    vi: 'Không thể xuất sách này.',
   },
 
 
@@ -224,6 +238,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre copié.',
     kr: '책이 복사되었습니다.',
     sa: 'تم نسخ الكتاب.',
+    vi: 'Đã sao chép sách.',
   },
 
 
@@ -239,6 +254,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livres combinés.',
     kr: '책이 결합되었습니다.',
     sa: 'تم دمج الكتب.',
+    vi: 'Đã gộp sách.',
   },
 
 
@@ -254,6 +270,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre supprimé.',
     kr: '책이 삭제되었습니다.',
     sa: 'تم حذف الكتاب.',
+    vi: 'Đã xóa sách.',
   },
 
 
@@ -269,6 +286,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible de supprimer ce livre.',
     kr: '이 책을 삭제할 수 없습니다.',
     sa: 'تعذر حذف هذا الكتاب.',
+    vi: 'Không thể xóa sách này.',
   },
 
 
@@ -284,6 +302,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Nettoyage du stockage du livre',
     kr: '책 저장소 정리 중',
     sa: 'جارٍ تنظيف تخزين الكتاب',
+    vi: 'Đang dọn dẹp bộ nhớ sách',
   },
 
 
@@ -299,6 +318,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Fichiers inutilisés du livre nettoyés.',
     kr: '사용하지 않는 책 파일이 정리되었습니다.',
     sa: 'تم تنظيف ملفات الكتاب غير المستخدمة.',
+    vi: 'Đã dọn các tệp sách không dùng.',
   },
 
 
@@ -314,6 +334,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible de charger ce livre.',
     kr: '이 책을 불러올 수 없습니다.',
     sa: 'تعذر تحميل هذا الكتاب.',
+    vi: 'Không thể tải sách này.',
   },
 
 
@@ -329,6 +350,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre enregistré.',
     kr: '책이 저장되었습니다.',
     sa: 'تم حفظ الكتاب.',
+    vi: 'Đã lưu sách.',
   },
 
 
@@ -344,6 +366,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir le PDF du cahier d’exercices',
     kr: '워크북 PDF 선택',
     sa: 'اختر ملف PDF لكتاب التمارين',
+    vi: 'Chọn PDF sách bài tập',
   },
 
 
@@ -359,6 +382,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Cahier d’exercices ajouté.',
     kr: '워크북이 추가되었습니다.',
     sa: 'تمت إضافة كتاب التمارين.',
+    vi: 'Đã thêm sách bài tập.',
   },
 
 
@@ -374,6 +398,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’ajouter ce cahier d’exercices.',
     kr: '이 워크북을 추가할 수 없습니다.',
     sa: 'تعذرت إضافة كتاب التمارين هذا.',
+    vi: 'Không thể thêm sách bài tập này.',
   },
 
 
@@ -389,6 +414,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'PDF du cahier d’exercices ajouté.',
     kr: '워크북 PDF가 추가되었습니다.',
     sa: 'تمت إضافة ملف PDF لكتاب التمارين.',
+    vi: 'Đã thêm PDF sách bài tập.',
   },
 
 
@@ -404,6 +430,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’ajouter ce PDF du cahier d’exercices.',
     kr: '이 워크북 PDF를 추가할 수 없습니다.',
     sa: 'تعذرت إضافة ملف PDF لكتاب التمارين هذا.',
+    vi: 'Không thể thêm PDF sách bài tập này.',
   },
 
 
@@ -419,6 +446,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir le PDF à insérer',
     kr: '삽입할 PDF 선택',
     sa: 'اختر ملف PDF لإدراجه',
+    vi: 'Chọn PDF để chèn',
   },
 
 
@@ -434,6 +462,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Pages du PDF insérées.',
     kr: 'PDF 페이지가 삽입되었습니다.',
     sa: 'تم إدراج صفحات PDF.',
+    vi: 'Đã chèn các trang PDF.',
   },
 
 
@@ -449,6 +478,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’insérer ce PDF.',
     kr: '이 PDF를 삽입할 수 없습니다.',
     sa: 'تعذر إدراج ملف PDF هذا.',
+    vi: 'Không thể chèn PDF này.',
   },
 
 
@@ -464,6 +494,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible de charger les annotations du lecteur.',
     kr: '리더 주석을 불러올 수 없습니다.',
     sa: 'تعذر تحميل ملاحظات القارئ.',
+    vi: 'Không thể tải ghi chú trên trình đọc.',
   },
 
 
@@ -479,6 +510,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’enregistrer les annotations du lecteur.',
     kr: '리더 주석을 저장할 수 없습니다.',
     sa: 'تعذر حفظ ملاحظات القارئ.',
+    vi: 'Không thể lưu ghi chú trên trình đọc.',
   },
 
 
@@ -494,6 +526,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’ajouter ce fichier.',
     kr: '이 파일을 추가할 수 없습니다.',
     sa: 'تعذرت إضافة هذا الملف.',
+    vi: 'Không thể thêm tài nguyên này.',
   },
 
 
@@ -509,6 +542,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’enregistrer ce sujet dans le livre.',
     kr: '이 주제를 책 안에 저장할 수 없습니다.',
     sa: 'تعذر حفظ هذا الموضوع داخل الكتاب.',
+    vi: 'Không thể lưu chủ đề này vào sách.',
   },
 
 
@@ -524,6 +558,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Espace de stockage du navigateur insuffisant.',
     kr: '브라우저 저장 공간이 부족합니다.',
     sa: 'مساحة تخزين المتصفح غير كافية.',
+    vi: 'Không đủ dung lượng lưu trữ của trình duyệt.',
   },
 
 
@@ -539,6 +574,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’enregistrer cet enregistrement.',
     kr: '이 녹음을 저장할 수 없습니다.',
     sa: 'تعذر حفظ هذا التسجيل.',
+    vi: 'Không thể lưu bản ghi âm này.',
   },
 
 
@@ -554,6 +590,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’enregistrer ce fichier.',
     kr: '이 파일을 저장할 수 없습니다.',
     sa: 'تعذر حفظ هذا الملف.',
+    vi: 'Không thể lưu tài nguyên này.',
   },
 
 
@@ -569,6 +606,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'L’opération sur le livre a échoué.',
     kr: '책 작업이 실패했습니다.',
     sa: 'فشلت عملية الكتاب.',
+    vi: 'Thao tác với sách thất bại.',
   },
 
 
@@ -584,6 +622,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Les livres sont disponibles dans l’application de bureau.',
     kr: '책 기능은 데스크톱 앱에서 사용할 수 있습니다.',
     sa: 'الكتب متوفرة في تطبيق سطح المكتب فقط.',
+    vi: 'Sách có trên ứng dụng máy tính hoặc ứng dụng Android.',
   },
 
   'bookStorageTitle': {
@@ -596,6 +635,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Emplacement de stockage des livres',
     kr: '책 저장 위치',
     sa: 'موقع تخزين الكتب',
+    vi: 'Vị trí lưu sách',
   },
 
   'bookStoragePrompt': {
@@ -608,6 +648,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisissez où NoPrep doit conserver les dossiers de livres sur cet ordinateur. Vous pouvez utiliser le dossier AppData par défaut, sûr, ou choisir un autre lecteur.',
     kr: '이 컴퓨터에서 NoPrep이 책 폴더를 보관할 위치를 고르세요. 안전한 기본 AppData 폴더를 쓰거나 다른 드라이브를 선택할 수 있어요.',
     sa: 'اختر المكان الذي يحفظ فيه NoPrep مجلدات الكتب على هذا الحاسوب. يمكنك استخدام مجلد AppData الافتراضي الآمن أو اختيار قرص آخر.',
+    vi: 'Chọn nơi NoPrep lưu các thư mục sách trên máy tính này. Bạn có thể dùng thư mục AppData mặc định an toàn hoặc chọn ổ đĩa khác.',
   },
 
   'bookStorageCurrentLocation': {
@@ -620,6 +661,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Emplacement actuel',
     kr: '현재 위치',
     sa: 'الموقع الحالي',
+    vi: 'Vị trí hiện tại',
   },
 
   'bookStorageUseDefault': {
@@ -632,6 +674,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Utiliser l\'emplacement par défaut',
     kr: '기본 위치 사용',
     sa: 'استخدام الموقع الافتراضي',
+    vi: 'Dùng vị trí mặc định',
   },
 
   'bookStorageChooseFolder': {
@@ -644,6 +687,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisir un dossier',
     kr: '폴더 선택',
     sa: 'اختيار مجلد',
+    vi: 'Chọn thư mục',
   },
 
   'bookStorageOpenFolder': {
@@ -656,6 +700,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ouvrir le dossier',
     kr: '폴더 열기',
     sa: 'فتح المجلد',
+    vi: 'Mở thư mục',
   },
 
   'bookStorageDefaultBadge': {
@@ -668,6 +713,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Bibliothèque AppData par défaut',
     kr: '기본 AppData 라이브러리',
     sa: 'مكتبة AppData الافتراضية',
+    vi: 'Thư viện AppData mặc định',
   },
 
   'bookStorageCustomBadge': {
@@ -680,6 +726,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Dossier de bibliothèque personnalisé',
     kr: '사용자 지정 라이브러리 폴더',
     sa: 'مجلد مكتبة مخصص',
+    vi: 'Thư mục thư viện tùy chỉnh',
   },
 
   'bookStorageMissingWarning': {
@@ -692,6 +739,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ce dossier de stockage n\'est pas disponible. Connectez le lecteur ou choisissez un autre dossier avant de créer ou d\'importer des livres.',
     kr: '이 저장 폴더를 사용할 수 없습니다. 책을 만들거나 가져오기 전에 드라이브를 연결하거나 다른 폴더를 고르세요.',
     sa: 'مجلد التخزين هذا غير متاح. صِل القرص أو اختر مجلدًا آخر قبل إنشاء الكتب أو استيرادها.',
+    vi: 'Thư mục lưu trữ này không khả dụng. Hãy kết nối ổ đĩa hoặc chọn thư mục khác trước khi tạo hoặc nhập sách.',
   },
 
   'bookLibCouldNotSetStorageLocation': {
@@ -704,6 +752,7 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible de définir l\'emplacement de stockage des livres.',
     kr: '책 저장 위치를 설정하지 못했습니다.',
     sa: 'تعذّر تعيين موقع تخزين الكتب.',
+    vi: 'Không thể đặt vị trí lưu sách.',
   },
 
   'bookLibCouldNotOpenStorageLocation': {
@@ -716,5 +765,6 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d\'ouvrir le dossier de stockage des livres.',
     kr: '책 저장 폴더를 열지 못했습니다.',
     sa: 'تعذّر فتح مجلد تخزين الكتب.',
+    vi: 'Không thể mở thư mục lưu sách.',
   },
 };

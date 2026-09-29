@@ -1,0 +1,139 @@
+<div appBodyPortal class="ai-overlay" (click)="close()">
+  <div class="ai-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'aiTopicTitle' | translate"
+       (click)="$event.stopPropagation()" (paste)="onPaste($event)">
+    <div class="ai-header">
+      <h2>✨ {{ 'aiTopicTitle' | translate }}</h2>
+      <button type="button" class="ai-close" (click)="close()" [disabled]="generating"
+              [attr.aria-label]="'cancel' | translate">✕</button>
+    </div>
+
+    <p *ngIf="!available" class="ai-info">{{ 'aiTopicDesktopOnly' | translate }}</p>
+
+    <ng-container *ngIf="available">
+      <!-- Which AI -->
+      <div class="ai-section">
+        <label class="ai-label">{{ 'aiTopicAiSource' | translate }}</label>
+        <div class="ai-providers">
+          <button type="button" *ngFor="let p of providers"
+                  class="ai-provider" [class.ai-provider-active]="p.id === providerId"
+                  [disabled]="generating" (click)="selectProvider(p.id)">
+            <span>{{ p.label }}</span>
+            <small *ngIf="!p.configured">{{ 'aiTopicNotLinked' | translate }}</small>
+            <small *ngIf="p.configured" class="ai-linked">✓</small>
+          </button>
+        </div>
+
+        <div *ngIf="provider && editingKey" class="ai-key-setup">
+          <p class="ai-key-title">{{ 'aiTopicLinkTitle' | translate: { provider: provider.label } }}</p>
+          <p class="ai-hint">{{ 'aiTopicLinkSteps' | translate }}</p>
+          <p *ngIf="provider.id === 'gemini'" class="ai-hint ai-tip">{{ 'aiTopicGeminiTip' | translate }}</p>
+          <div class="ai-key-row">
+            <button type="button" class="ai-secondary" (click)="openKeyPage()">{{ 'aiTopicOpenKeyPage' | translate }}</button>
+            <input type="password" class="ai-input" autocomplete="off" spellcheck="false"
+                   [value]="keyInput" (input)="keyInput = $any($event.target).value"
+                   (keydown.enter)="$event.preventDefault(); saveKey()"
+                   [placeholder]="'aiTopicApiKeyPlaceholder' | translate">
+            <button type="button" class="ai-primary" (click)="saveKey()" [disabled]="!keyInput.trim() || savingKey">
+              {{ 'aiTopicSaveKey' | translate }}
+            </button>
+            <button *ngIf="provider.configured" type="button" class="ai-link" (click)="editingKey = false">
+              {{ 'cancel' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <p *ngIf="isBuiltin" class="ai-hint ai-tip">{{ 'aiTopicBuiltinHint' | translate }}</p>
+
+        <div *ngIf="provider?.configured && !editingKey && !isBuiltin" class="ai-key-actions">
+          <button type="button" class="ai-link" (click)="editingKey = true" [disabled]="generating">{{ 'aiTopicChangeKey' | translate }}</button>
+          <button type="button" class="ai-link ai-danger" (click)="removeKey()" [disabled]="generating">{{ 'aiTopicRemoveKey' | translate }}</button>
+        </div>
+      </div>
+
+      <!-- Prompt -->
+      <div class="ai-section">
+        <label class="ai-label" for="aiTopicPrompt">{{ 'aiTopicPromptLabel' | translate }}</label>
+        <div class="ai-chips">
+          <button type="button" *ngFor="let chip of promptChips" class="ai-chip"
+                  [disabled]="generating" (click)="applyChip(chip)">
+            <span aria-hidden="true">{{ chip.icon }}</span> {{ chip.labelKey | translate }}
+          </button>
+        </div>
+        <textarea #promptInput id="aiTopicPrompt" class="ai-input ai-prompt" rows="4" [disabled]="generating"
+                  [value]="prompt" (input)="prompt = $any($event.target).value"
+                  [placeholder]="'aiTopicPromptPlaceholder' | translate"></textarea>
+      </div>
+
+      <!-- Page photos -->
+      <div class="ai-section">
+        <div class="ai-pages" [class.ai-pages-drag]="dragOver"
+             (dragover)="$event.preventDefault(); dragOver = true"
+             (dragleave)="dragOver = false"
+             (drop)="onDrop($event)">
+          <div *ngFor="let page of pages; let i = index" class="ai-page">
+            <img [src]="page.url" alt="">
+            <button type="button" class="ai-page-remove" (click)="removePage(i)" [disabled]="generating"
+                    [attr.aria-label]="'aiTopicRemovePage' | translate">✕</button>
+          </div>
+          <label *ngIf="pages.length < maxPages" class="ai-page-add" [class.ai-disabled]="generating">
+            <input #pagesInput type="file" accept="image/*" multiple hidden [disabled]="generating" (change)="onFilesChosen($event)">
+            <span class="ai-page-plus">📷</span>
+            <span>{{ 'aiTopicAddPages' | translate }}</span>
+          </label>
+        </div>
+        <p class="ai-hint">{{ 'aiTopicPagesHint' | translate: { max: maxPages } }}</p>
+      </div>
+
+      <!-- Options -->
+      <div class="ai-section">
+        <button type="button" class="ai-link" (click)="optionsOpen = !optionsOpen">
+          {{ optionsOpen ? '▾' : '▸' }} {{ 'aiTopicOptions' | translate }}
+        </button>
+        <div *ngIf="optionsOpen" class="ai-options">
+          <label>
+            <span>{{ 'aiTopicItemCount' | translate }}</span>
+            <input type="number" min="1" max="40" class="ai-input ai-number" [disabled]="generating"
+                   [value]="itemCount ?? ''" (input)="setItemCount($any($event.target).value)"
+                   [placeholder]="'aiTopicAuto' | translate">
+          </label>
+          <label>
+            <span>{{ 'aiTopicImages' | translate }}</span>
+            <select class="ai-input" [disabled]="generating" (change)="imagesMode = $any($event.target).value">
+              <option *ngFor="let m of mediaModes" [value]="m" [selected]="m === imagesMode">{{ ('aiTopicMode_' + m) | translate }}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{ 'aiTopicAudio' | translate }}</span>
+            <select class="ai-input" [disabled]="generating" (change)="audioMode = $any($event.target).value">
+              <option *ngFor="let m of mediaModes" [value]="m" [selected]="m === audioMode">{{ ('aiTopicMode_' + m) | translate }}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{ 'aiTopicVoice' | translate }}</span>
+            <select class="ai-input" [disabled]="generating || audioMode === 'off'" (change)="voiceLanguage = $any($event.target).value">
+              <option value="auto" [selected]="voiceLanguage === 'auto'">{{ 'aiTopicAuto' | translate }}</option>
+              <option *ngFor="let lang of voiceLanguages" [value]="lang.code" [selected]="lang.code === voiceLanguage">{{ lang.label }}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div *ngIf="hasExistingItems" class="ai-section ai-mode">
+        <label><input type="radio" name="aiTopicMode" [checked]="mode === 'append'" [disabled]="generating" (change)="mode = 'append'"> {{ 'aiTopicAddToItems' | translate }}</label>
+        <label><input type="radio" name="aiTopicMode" [checked]="mode === 'replace'" [disabled]="generating" (change)="mode = 'replace'"> {{ 'aiTopicReplaceItems' | translate }}</label>
+      </div>
+
+      <div *ngIf="errorKey" class="ai-error" role="alert">
+        <strong>{{ errorKey | translate }}</strong>
+        <span *ngIf="errorDetail">{{ errorDetail }}</span>
+      </div>
+
+      <div class="ai-footer">
+        <span *ngIf="generating" class="ai-working"><span class="ai-spinner"></span>{{ 'aiTopicGenerating' | translate }}</span>
+        <button type="button" class="ai-secondary" (click)="close()" [disabled]="generating">{{ 'cancel' | translate }}</button>
+        <button type="button" class="ai-primary" (click)="generate()" [disabled]="!canGenerate"
+                title="Ctrl+Enter">✨ {{ 'aiTopicGenerate' | translate }}</button>
+      </div>
+    </ng-container>
+  </div>
+</div>

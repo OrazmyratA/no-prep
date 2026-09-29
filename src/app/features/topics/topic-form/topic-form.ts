@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, NgZone, OnInit, ViewChild } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -10,6 +10,22 @@ import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
+import { AiTopicDialogResult } from '../ai-topic-dialog/ai-topic-dialog';
+import { AiImageChoice, AiMediaResolverService } from '../../../core/ai-topic/ai-media-resolver';
+import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
+import { getStoredVoiceLanguage } from '../../../core/audio-voice';
+import { GAMES } from '../games.config';
+import { showAppNotification } from '../../../core/notification';
+import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
+
+// Items whose pictures/audio are fetched at the same time after an AI fill.
+const AI_MEDIA_CONCURRENCY = 3;
+
+interface AiFillResult {
+  count: number;
+  notes: string[];
+  poorGameNameKeys: string[];
+}
 
 @Component({
   selector: 'app-topic-form',
@@ -24,11 +40,27 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   returnToBookId = '';
   returnToBookElementId = '';
   saving = false;
+  // Red border on the name field, only after a save was refused for a missing name (not merely
+  // because the field lost focus, which happens as soon as the page opens).
+  nameMissingShown = false;
   private expandedImageItems = new WeakSet<AbstractControl>();
   // Items whose image panel was opened by clicking + : their uploader takes Ctrl+V right away.
   private pasteReadyImageItems = new WeakSet<AbstractControl>();
   private expandedAudioItems = new WeakSet<AbstractControl>();
   @ViewChild('topicNameInput') topicNameInput?: ElementRef<HTMLInputElement>;
+
+  aiDialogOpen = false;
+  // Book pages sent from a game marker's "Create with AI"; used once when the dialog opens.
+  aiInitialPages: Blob[] = [];
+  aiProgress: { done: number; total: number } | null = null;
+  aiResult: AiFillResult | null = null;
+  // The form as it was before the last AI fill, for "Undo AI fill".
+  private aiUndoSnapshot: { name: string; controls: AbstractControl[] } | null = null;
+  // Bumped on every fill/undo so media still loading for an older fill is dropped.
+  private aiRunId = 0;
+  // Picture alternatives for AI-filled items, behind the "another picture" button.
+  private aiImageChoices = new WeakMap<AbstractControl, AiImageChoice>();
+  private swappingImages = new WeakSet<AbstractControl>();
 
   constructor(
     private fb: FormBuilder,
@@ -39,7 +71,10 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     private bookLibrary: BookLibraryService,
     private leaderboardState: LeaderboardStateService,
     private langService: LanguageService,
-    private confirmationService: ConfirmationService
+    private confirmationService: ConfirmationService,
+    private aiMedia: AiMediaResolverService,
+    private zone: NgZone,
+    private aiPageHandoff: AiPageHandoffService
   ) {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
@@ -68,6 +103,17 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     } else {
       this.addItem();
     }
+
+    const bookPages = this.aiPageHandoff.take();
+    if (bookPages.length) {
+      this.aiInitialPages = bookPages;
+      this.aiDialogOpen = true;
+    }
+  }
+
+  closeAiDialog() {
+    this.aiDialogOpen = false;
+    this.aiInitialPages = [];
   }
 
   ngAfterViewInit(): void {
@@ -176,6 +222,8 @@ createItemFormGroup(
 onImageSelected(blob: Blob | null, index: number) {
   const item = this.items.at(index);
   item.patchValue({ image: blob });
+  // The teacher picked their own picture, so the AI's alternatives no longer apply.
+  this.aiImageChoices.delete(item);
   if (blob) {
     this.expandedImageItems.add(item);
   } else {
@@ -204,13 +252,161 @@ isAudioPanelOpen(item: AbstractControl): boolean {
   return this.expandedAudioItems.has(item) || !!item.get('audio')?.value;
 }
 
+  openAiDialog() {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    this.aiDialogOpen = true;
+  }
+
+  get aiExistingItemTexts(): string[] {
+    return this.items.controls
+      .map(c => String(c.get('text')?.value || '').trim())
+      .filter(Boolean);
+  }
+
+  get hasFilledItems(): boolean {
+    return this.items.controls.some(c => this.itemHasContent(c));
+  }
+
+  async onAiDraft(result: AiTopicDialogResult) {
+    this.closeAiDialog();
+    const { draft } = result;
+    const runId = ++this.aiRunId;
+    this.aiUndoSnapshot = { name: this.topicForm.value.name ?? '', controls: [...this.items.controls] };
+
+    if (!String(this.topicForm.value.name || '').trim() && draft.topicName) {
+      this.topicForm.patchValue({ name: draft.topicName });
+    }
+    if (result.mode === 'replace') {
+      this.items.clear();
+    } else {
+      // The empty starter item (or any blank one) would only fail validation.
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        if (!this.itemHasContent(this.items.at(i))) this.items.removeAt(i);
+      }
+    }
+    const groups = draft.items.map(item => this.createItemFormGroup(null, item.text));
+    groups.forEach(group => this.items.push(group));
+
+    const poorIds = new Set(findPoorlySuitedGames(draft.items));
+    this.aiResult = {
+      count: groups.length,
+      notes: draft.notes,
+      poorGameNameKeys: GAMES.filter(game => poorIds.has(game.id)).map(game => game.nameKey)
+    };
+    this.aiProgress = { done: 0, total: groups.length };
+
+    const voiceLanguage = result.voiceLanguage === 'auto'
+      ? this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage())
+      : result.voiceLanguage;
+
+    let next = 0;
+    const worker = async () => {
+      while (next < draft.items.length && runId === this.aiRunId) {
+        const index = next++;
+        const item = draft.items[index];
+        const [picture, audio] = await Promise.all([
+          this.aiMedia.resolveImage(item).catch(() => null),
+          this.aiMedia.resolveAudio(item.audioText, voiceLanguage)
+        ]);
+        // Compression resolves from a Web Worker, outside Angular's zone.
+        this.zone.run(() => {
+          if (runId !== this.aiRunId) return;
+          const group = groups[index];
+          if (picture?.choice) this.aiImageChoices.set(group, picture.choice);
+          if (picture?.blob) group.patchValue({ image: picture.blob });
+          if (audio) {
+            group.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: item.audioText });
+          }
+          if (this.aiProgress) this.aiProgress.done++;
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: AI_MEDIA_CONCURRENCY }, worker));
+    this.zone.run(() => {
+      if (runId === this.aiRunId) this.aiProgress = null;
+    });
+  }
+
+  undoAiFill() {
+    if (!this.aiUndoSnapshot) return;
+    this.aiRunId++;
+    this.items.clear();
+    this.aiUndoSnapshot.controls.forEach(control => this.items.push(control));
+    this.topicForm.patchValue({ name: this.aiUndoSnapshot.name });
+    this.aiUndoSnapshot = null;
+    this.aiResult = null;
+    this.aiProgress = null;
+  }
+
+  dismissAiResult() {
+    this.aiResult = null;
+    this.aiUndoSnapshot = null;
+  }
+
+  hasAiImageChoice(item: AbstractControl): boolean {
+    return this.aiImageChoices.has(item);
+  }
+
+  isSwappingImage(item: AbstractControl): boolean {
+    return this.swappingImages.has(item);
+  }
+
+  /** "Another picture" on an AI item: the next search result, then the word card, and round. */
+  async swapAiImage(item: AbstractControl) {
+    const choice = this.aiImageChoices.get(item);
+    if (!choice || this.swappingImages.has(item)) return;
+    this.swappingImages.add(item);
+    try {
+      const blob = await this.aiMedia.nextImage(choice);
+      this.zone.run(() => {
+        if (blob && this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob });
+      });
+    } finally {
+      this.zone.run(() => this.swappingImages.delete(item));
+    }
+  }
+
+  private itemHasContent(item: AbstractControl): boolean {
+    return !!(item.get('text')?.value || item.get('image')?.value || item.get('audio')?.value);
+  }
+
+  // Blank items are almost always accidental (a stray "+"), so they are dropped on save instead of
+  // silently disabling the Save button. At least one item is kept so the form never ends up empty.
+  private removeBlankItems() {
+    if (!this.items.controls.some(c => this.itemHasContent(c))) return;
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      if (!this.itemHasContent(this.items.at(i))) this.items.removeAt(i);
+    }
+  }
+
+  // Says why the topic can't be saved yet, instead of the button just doing nothing.
+  private explainInvalidForm() {
+    const nameControl = this.topicForm.get('name');
+    if (nameControl?.invalid) {
+      this.nameMissingShown = true;
+      this.topicNameInput?.nativeElement.focus();
+      showAppNotification(this.langService.translate('topicNameRequired'), 'error');
+      return;
+    }
+    showAppNotification(this.langService.translate('topicNeedsOneItem'), 'error');
+  }
+
   async onSubmit() {
     if (!this.licenseService.fullAccess) {
       this.licenseService.requestReopen();
       return;
     }
 
-    if (this.topicForm.invalid || this.saving) return;
+    if (this.saving || this.aiProgress) return;
+
+    this.removeBlankItems();
+    if (this.topicForm.invalid) {
+      this.explainInvalidForm();
+      return;
+    }
 
     this.saving = true;
     try {
@@ -233,6 +429,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         savedTopicId = this.topicId;
       } else {
         const newId = await this.dbService.createTopic(name);
+        // From here on a retry must update this topic, not create a second copy.
+        this.isEdit = true;
+        this.topicId = newId;
         await this.dbService.addItems(newId, items);
         savedTopicId = newId;
       }
@@ -256,6 +455,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       }
 
       this.router.navigate(['/topics', savedTopicId, 'activities']);
+    } catch (error) {
+      console.error('Topic save failed', error);
+      showAppNotification(this.langService.translate('topicSaveFailed'), 'error');
     } finally {
       this.saving = false;
     }

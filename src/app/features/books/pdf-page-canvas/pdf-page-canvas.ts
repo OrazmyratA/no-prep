@@ -310,6 +310,33 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     return job;
   }
 
+  /**
+   * Renders one page to a JPEG, e.g. to send book pages to the AI topic generator. Falls back to
+   * reading the file's bytes when the URL can't be streamed, like the visible canvas does.
+   */
+  static async renderToBlob(sourceUrl: string, pageNumber: number, rotation = 0, renderScale = 2.5): Promise<Blob> {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/pdfjs/pdf.worker.mjs';
+    let doc: PdfDocumentProxy;
+    try {
+      doc = await PdfPageCanvasComponent.getDocument({
+        url: PdfPageCanvasComponent.getRenderablePdfUrl(sourceUrl),
+        wasmUrl: PdfPageCanvasComponent.wasmUrl
+      }, sourceUrl);
+    } catch {
+      const response = await fetch(sourceUrl);
+      if (!response.ok) throw new Error(`PDF fetch failed: ${response.status}`);
+      doc = await PdfPageCanvasComponent.getDocument({
+        data: new Uint8Array(await response.arrayBuffer()),
+        wasmUrl: PdfPageCanvasComponent.wasmUrl
+      }, `data:${sourceUrl}`);
+    }
+    const canvas = document.createElement('canvas');
+    await PdfPageCanvasComponent.renderPdfPage(doc, pageNumber, renderScale, rotation, canvas, { isStale: () => false });
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not export the page.')), 'image/jpeg', 0.9);
+    });
+  }
+
   /** Shared by the visible canvas and prefetching, so both produce identical pixels. */
   private static async renderPdfPage(
     doc: PdfDocumentProxy,

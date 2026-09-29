@@ -1,7 +1,7 @@
 <div class="topics-page min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
   <div class="topics-shell mx-auto w-full max-w-screen-xl">
     <div *ngIf="leaderboardState.isSelecting" class="leaderboard-picker-banner">
-      <span>{{ (leaderboardState.activeSelectionSource === 'gift-topic' ? 'giftTopicPickerBannerHint' : 'leaderboardPickerBannerHint') | translate }}</span>
+      <span>{{ pickerBannerHintKey | translate }}</span>
       <button type="button" (click)="leaderboardState.cancelTopicSelection()">{{ 'leaderboardPickerBannerCancel' | translate }}</button>
     </div>
     <!-- Header -->

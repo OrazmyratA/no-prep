@@ -1,0 +1,4 @@
+# Wrangler's local state and local secrets (the Gemini key must never be committed).
+.wrangler/
+.dev.vars
+node_modules/

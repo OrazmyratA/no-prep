@@ -126,9 +126,12 @@ function installDefaultAngularTestImports(): void {
     }
 
     imports.push(FormsModule, ReactiveFormsModule);
-    providers.push(
-      provideRouter([]),
-      {
+    // Default route stub, used only when the spec does not provide its own ActivatedRoute
+    // (providers added later win, so pushing it unconditionally would override the spec's).
+    const specProvidesRoute = providers.some((provider: any) => provider?.provide === ActivatedRoute);
+    providers.unshift(provideRouter([]));
+    if (!specProvidesRoute) {
+      providers.push({
         provide: ActivatedRoute,
         useValue: {
           snapshot: {
@@ -142,8 +145,8 @@ function installDefaultAngularTestImports(): void {
           params: of({ id: '1', topicId: '1' }),
           queryParams: of({})
         }
-      }
-    );
+      });
+    }
     schemas.push(CUSTOM_ELEMENTS_SCHEMA, NO_ERRORS_SCHEMA);
 
     return originalConfigureTestingModule({

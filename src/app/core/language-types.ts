@@ -1,4 +1,4 @@
-export type SupportedLanguage = 'en' | 'tk' | 'ru' | 'cn' | 'cde' | 'es' | 'fr' | 'kr' | 'sa';
+export type SupportedLanguage = 'en' | 'tk' | 'ru' | 'cn' | 'cde' | 'es' | 'fr' | 'kr' | 'sa' | 'vi';
 
 export interface TranslationDictionary {
   [key: string]: {
@@ -11,5 +11,6 @@ export interface TranslationDictionary {
     fr: string;
     kr: string;
     sa: string;
+    vi: string;
   };
 }

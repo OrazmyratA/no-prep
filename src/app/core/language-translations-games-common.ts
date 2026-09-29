@@ -14,6 +14,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Jeux',
   kr: '게임',
   sa: 'ألعاب',
+  vi: 'Trò chơi',
 },
 
 
@@ -29,6 +30,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Plein écran',
   kr: '전체 화면',
   sa: 'ملء الشاشة',
+  vi: 'Toàn màn hình',
 },
 
 
@@ -44,6 +46,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Jeux',
   kr: '게임',
   sa: 'ألعاب',
+  vi: 'Trò chơi',
 },
 
 
@@ -59,6 +62,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Précédent',
   kr: '이전',
   sa: 'السابق',
+  vi: 'Trước',
 },
 
 
@@ -74,6 +78,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Suivant',
   kr: '다음',
   sa: 'التالي',
+  vi: 'Tiếp',
 },
 
 
@@ -89,6 +94,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mélanger',
   kr: '섞기',
   sa: 'خلط',
+  vi: 'Xáo trộn',
 },
 
 
@@ -104,6 +110,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe',
   kr: '팀',
   sa: 'فريق',
+  vi: 'Đội',
 },
 
 
@@ -119,6 +126,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aléatoire',
   kr: '무작위',
   sa: 'عشوائي',
+  vi: 'Ngẫu nhiên',
 },
 
 
@@ -134,6 +142,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Score',
   kr: '점수',
   sa: 'النتيجة',
+  vi: 'Điểm',
 },
 
 
@@ -149,6 +158,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Fermer',
   kr: '닫기',
   sa: 'إغلاق',
+  vi: 'Đóng',
 },
 
 
@@ -164,6 +174,7 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Commencer le jeu',
   kr: '게임 시작',
   sa: 'ابدأ اللعبة',
+  vi: 'Bắt đầu chơi',
 },
 
 
@@ -179,5 +190,6 @@ export const GAME_COMMON_TRANSLATIONS: TranslationDictionary = {
   fr: 'Annuler',
   kr: '취소',
   sa: 'إلغاء',
+  vi: 'Hủy',
 },
 };

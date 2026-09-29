@@ -12,6 +12,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d\'équipes',
   kr: '팀 수',
   sa: 'عدد الفرق',
+  vi: 'Số đội',
 },
 
 'settingsBallSortTeamCountHint': {
@@ -24,6 +25,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: '1 équipe correspond au mode solo en classe. Jusqu\'à 6 équipes peuvent s\'affronter sur le même puzzle.',
   kr: '1팀은 학급 단독 모드입니다. 최대 6팀이 같은 퍼즐로 경쟁할 수 있어요.',
   sa: 'فريق واحد يعني وضع الصف الفردي. يمكن لما يصل إلى 6 فرق التسابق على اللغز نفسه.',
+  vi: '1 đội là chế độ cả lớp cùng chơi. Tối đa 6 đội có thể thi đấu trên cùng một câu đố.',
 },
 
 'settingsBallSortBallsPerColor': {
@@ -36,6 +38,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Boules par couleur',
   kr: '색깔당 공 수',
   sa: 'عدد الكرات لكل لون',
+  vi: 'Số bóng mỗi màu',
 },
 
 'settingsBallSortBallsPerColorHint': {
@@ -48,6 +51,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Capacité du tube et taille du groupe. Plus le nombre est grand, plus le puzzle est long et difficile.',
   kr: '튜브 용량과 그룹 크기입니다. 숫자가 클수록 퍼즐이 길고 어려워집니다.',
   sa: 'سعة الأنبوب وحجم المجموعة. كلما زاد الرقم أصبح اللغز أطول وأصعب.',
+  vi: 'Sức chứa của ống và số bóng mỗi nhóm. Số càng lớn thì câu đố càng dài và khó.',
 },
 
 'settingsBallSortReverseMode': {
@@ -60,6 +64,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mode inversé',
   kr: '역방향 모드',
   sa: 'الوضع العكسي',
+  vi: 'Chế độ đảo ngược',
 },
 
 'settingsBallSortReverseModeHint': {
@@ -72,6 +77,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Posez d\'abord la question avec du texte, puis laissez les élèves choisir l\'image correspondante.',
   kr: '먼저 텍스트로 묻고, 학생이 알맞은 그림 답을 고르게 합니다.',
   sa: 'اسأل بالنص أولًا ثم دع الطلاب يختارون الصورة المطابقة.',
+  vi: 'Hỏi bằng chữ trước, sau đó để học sinh chọn hình ảnh đúng.',
 },
 
 'settingsBallSortSimpleMode': {
@@ -84,6 +90,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mode OK / Oups',
   kr: '확인 / 틀림 모드',
   sa: 'وضع صح / خطأ',
+  vi: 'Chế độ OK / Oops',
 },
 
 'settingsBallSortSimpleModeHint': {
@@ -96,6 +103,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'L\'enseignant valide la réponse avec OK ou Oups. Désactivez pour des réponses à choix multiples.',
   kr: '교사가 확인 또는 틀림으로 답을 판단합니다. 객관식 답을 쓰려면 끄세요.',
   sa: 'يتحقق المعلم من الإجابة بزر صح أو خطأ. أوقفه للإجابات متعددة الخيارات.',
+  vi: 'Giáo viên chấm câu trả lời bằng OK hoặc Oops. Tắt đi để dùng câu trả lời trắc nghiệm.',
 },
 
 
@@ -110,6 +118,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Minuteur de révélation (secondes)',
   kr: '공개 타이머(초)',
   sa: 'مؤقت الكشف (بالثواني)',
+  vi: 'Thời gian mở hình (giây)',
 },
 
 
@@ -125,6 +134,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d’équipes',
   kr: '팀 수',
   sa: 'عدد الفرق',
+  vi: 'Số đội',
 },
 
 
@@ -140,6 +150,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: '1 = mode classe (pas de compétition). >1 bataille d’équipes.',
   kr: '1 = 클래스 모드 (경쟁 없음). >1 팀 배틀.',
   sa: '1 = وضع الفصل (بدون منافسة).>1 = معركة الفرق.',
+  vi: '1 = chế độ cả lớp (không thi đấu). >1 = các đội thi đấu.',
 },
 
 
@@ -155,6 +166,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre total de cellules = taille de la grille × taille de la grille',
   kr: '전체 셀 수 = 그리드 크기 × 그리드 크기',
   sa: 'إجمالي الخلايا = حجم الشبكة × حجم الشبكة',
+  vi: 'Tổng số ô = kích thước lưới × kích thước lưới',
 },
 
 
@@ -170,6 +182,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Paramètres',
   kr: '설정',
   sa: 'الإعدادات',
+  vi: 'Cài đặt',
 },
 
 
@@ -185,6 +198,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Que utiliser',
   kr: '사용할 유형',
   sa: 'ماذا تستخدم',
+  vi: 'Dùng nội dung nào',
 },
 
 'aitTypeAudio': {
@@ -197,6 +211,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Audio',
   kr: '오디오',
   sa: 'صوت',
+  vi: 'Âm thanh',
 },
 
 'aitTypeImage': {
@@ -209,6 +224,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Image',
   kr: '그림',
   sa: 'صورة',
+  vi: 'Hình ảnh',
 },
 
 'aitTypeText': {
@@ -221,6 +237,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Texte',
   kr: '텍스트',
   sa: 'نص',
+  vi: 'Văn bản',
 },
 
 'settingsSpinWheelAitHint': {
@@ -233,6 +250,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir, dans l\'ordre. Votre 1er choix apparaît sur la roue et comme question du quiz. Ajoutez un 2e pour un indice sur la carte retournable, et un 3e pour en faire les choix de réponse.',
   kr: '순서대로 눌러 고르세요. 첫 번째 선택은 룰렛과 퀴즈 질문에 표시됩니다. 두 번째는 뒤집기 카드 힌트, 세 번째는 정답 선택지가 됩니다.',
   sa: 'اضغط للاختيار بالترتيب. يظهر اختيارك الأول على العجلة وكسؤال للاختبار. أضف ثانيًا كتلميح على البطاقة المقلوبة وثالثًا ليصبح خيارات الإجابة.',
+  vi: 'Chạm để chọn theo thứ tự. Lựa chọn thứ 1 hiện trên vòng quay và làm câu hỏi. Thêm lựa chọn thứ 2 làm gợi ý trên thẻ lật, và thứ 3 để biến thành các phương án trả lời.',
 },
 
 'giftTopicPickerBannerHint': {
@@ -245,6 +263,20 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisissez un thème pour le cadeau surprise',
   kr: '깜짝 선물 주제를 고르세요',
   sa: 'اختر موضوعًا لهدية المفاجأة',
+  vi: 'Chọn một chủ đề cho món quà bất ngờ',
+},
+
+'bookGameTopicPickerBannerHint': {
+  en: 'Pick a topic for this game marker',
+  tk: 'Bu oýun bellikleri üçin tema saýlaň',
+  ru: 'Выберите тему для этого игрового маркера',
+  cn: '为此游戏标记选择一个主题',
+  cde: 'Wähle ein Thema für diese Spielmarkierung',
+  es: 'Elige un tema para este marcador de juego',
+  fr: 'Choisissez un thème pour ce repère de jeu',
+  kr: '이 게임 마커의 주제를 고르세요',
+  sa: 'اختر موضوعًا لعلامة اللعبة هذه',
+  vi: 'Chọn một chủ đề cho điểm đánh dấu trò chơi này',
 },
 
 'settingsPopBalloonAitHint': {
@@ -257,6 +289,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir, dans l\'ordre. Votre 1er choix est la question du ballon. Ajoutez un 2e pour un indice sur la carte retournable, et un 3e pour en faire les choix de réponse.',
   kr: '순서대로 눌러 고르세요. 첫 번째 선택은 풍선 질문입니다. 두 번째는 뒤집기 카드 힌트, 세 번째는 정답 선택지가 됩니다.',
   sa: 'اضغط للاختيار بالترتيب. اختيارك الأول هو سؤال البالون. أضف ثانيًا كتلميح على البطاقة المقلوبة وثالثًا ليصبح خيارات الإجابة.',
+  vi: 'Chạm để chọn theo thứ tự. Lựa chọn thứ 1 là câu hỏi trên bóng bay. Thêm lựa chọn thứ 2 làm gợi ý trên thẻ lật, và thứ 3 để biến thành các phương án trả lời.',
 },
 
 'settingsTestAbcAitHint': {
@@ -269,6 +302,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir, dans l\'ordre. Votre 1er choix est la carte question. Ajoutez un 2e pour un indice sur la carte retournable, et un 3e pour en faire les choix de réponse.',
   kr: '순서대로 눌러 고르세요. 첫 번째 선택은 질문 카드입니다. 두 번째는 뒤집기 카드 힌트, 세 번째는 정답 선택지가 됩니다.',
   sa: 'اضغط للاختيار بالترتيب. اختيارك الأول هو بطاقة السؤال. أضف ثانيًا كتلميح على البطاقة المقلوبة وثالثًا ليصبح خيارات الإجابة.',
+  vi: 'Chạm để chọn theo thứ tự. Lựa chọn thứ 1 là thẻ câu hỏi. Thêm lựa chọn thứ 2 làm gợi ý trên thẻ lật, và thứ 3 để biến thành các phương án trả lời.',
 },
 
 'settingsSquidGameAitHint': {
@@ -281,6 +315,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir, dans l\'ordre. Votre 1er choix est la question de la poupée. Ajoutez un 2e pour un indice sur la carte retournable, et un 3e pour en faire les choix de réponse.',
   kr: '순서대로 눌러 고르세요. 첫 번째 선택은 인형의 질문입니다. 두 번째는 뒤집기 카드 힌트, 세 번째는 정답 선택지가 됩니다.',
   sa: 'اضغط للاختيار بالترتيب. اختيارك الأول هو سؤال الدمية. أضف ثانيًا كتلميح على البطاقة المقلوبة وثالثًا ليصبح خيارات الإجابة.',
+  vi: 'Chạm để chọn theo thứ tự. Lựa chọn thứ 1 là câu hỏi của búp bê. Thêm lựa chọn thứ 2 làm gợi ý trên thẻ lật, và thứ 3 để biến thành các phương án trả lời.',
 },
 
 'settingsCupClashAitHint': {
@@ -293,6 +328,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir, dans l\'ordre. Votre 1er choix est la carte question. Ajoutez un 2e pour un indice sur la carte retournable, et un 3e pour en faire les choix de réponse.',
   kr: '순서대로 눌러 고르세요. 첫 번째 선택은 질문 카드입니다. 두 번째는 뒤집기 카드 힌트, 세 번째는 정답 선택지가 됩니다.',
   sa: 'اضغط للاختيار بالترتيب. اختيارك الأول هو بطاقة السؤال. أضف ثانيًا كتلميح على البطاقة المقلوبة وثالثًا ليصبح خيارات الإجابة.',
+  vi: 'Chạm để chọn theo thứ tự. Lựa chọn thứ 1 là thẻ câu hỏi. Thêm lựa chọn thứ 2 làm gợi ý trên thẻ lật, và thứ 3 để biến thành các phương án trả lời.',
 },
 
 'settingsMatchPairsAitHint': {
@@ -305,6 +341,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir 1 ou 2 types. Avec 1, les deux cartes d\'une paire correspondent sur ce type. Avec 2, une carte montre votre 1er choix et sa partenaire le 2e.',
   kr: '1개 또는 2개 유형을 고르세요. 1개를 고르면 짝 카드 두 장이 그 유형으로 일치합니다. 2개를 고르면 한 카드는 첫 번째 선택, 짝 카드는 두 번째 선택을 보여 줍니다.',
   sa: 'اضغط لاختيار نوع واحد أو نوعين. عند اختيار نوع واحد تتطابق بطاقتا الزوج على هذا النوع. عند اختيار نوعين تعرض إحدى البطاقات اختيارك الأول وتعرض شريكتها اختيارك الثاني.',
+  vi: 'Chạm để chọn 1 hoặc 2 loại. Chọn 1 thì hai thẻ của một cặp giống nhau theo loại đó. Chọn 2 thì một thẻ hiện lựa chọn thứ 1, thẻ còn lại hiện lựa chọn thứ 2.',
 },
 
 
@@ -320,6 +357,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Taille de la grille',
   kr: '그리드 크기',
   sa: 'حجم الشبكة',
+  vi: 'Kích thước lưới',
 },
 
 
@@ -335,6 +373,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d’éléments à mémoriser',
   kr: '기억할 항목 수',
   sa: 'عدد العناصر التي يجب تذكرها',
+  vi: 'Số mục cần ghi nhớ',
 },
 
 
@@ -350,6 +389,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Combien d’éléments défileront pendant la phase de mémoire.',
   kr: '메모리 단계에서 스크롤할 항목 수입니다.',
   sa: 'عدد العناصر التي ستظهر أثناء مرحلة التذكر.',
+  vi: 'Số mục sẽ chạy qua trong giai đoạn ghi nhớ.',
 },
 
 
@@ -365,6 +405,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vitesse de défilement (secondes par élément)',
   kr: '스크롤 속도(항목당 초)',
   sa: 'سرعة التمرير (ثوانٍ لكل عنصر)',
+  vi: 'Tốc độ chạy (giây mỗi mục)',
 },
 
 
@@ -380,6 +421,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Taille du projecteur (px)',
   kr: '스포트라이트 크기(px)',
   sa: 'حجم الكشاف (بكسل)',
+  vi: 'Kích thước đèn pin (px)',
 },
 
 
@@ -395,6 +437,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Diamètre de la zone visible. Des valeurs plus petites rendent le jeu plus difficile.',
   kr: '보이는 영역의 지름입니다. 값이 작을수록 게임이 어려워집니다.',
   sa: 'قطر المنطقة المرئية. القيم الأصغر تجعل اللعبة أصعب.',
+  vi: 'Đường kính vùng nhìn thấy. Giá trị càng nhỏ thì trò chơi càng khó.',
 },
 
 'settingsSpotlightPreviewLabel': {
@@ -407,6 +450,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aperçu',
   kr: '미리보기',
   sa: 'معاينة',
+  vi: 'Xem trước',
 },
 
 
@@ -422,6 +466,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vitesse de déplacement par clic',
   kr: '클릭당 이동 속도',
   sa: 'سرعة الحركة لكل نقرة',
+  vi: 'Tốc độ di chuyển mỗi lần nhấn',
 },
 
 
@@ -437,6 +482,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Gagner en atteignant le nombre de clics cible',
   kr: '목표 클릭 수에 도달하여 승리',
   sa: 'الفوز بالوصول إلى عدد النقرات المستهدف',
+  vi: 'Thắng khi đạt đủ số lần nhấn',
 },
 
 
@@ -452,6 +498,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Clics nécessaires pour gagner',
   kr: '승리에 필요한 클릭 수',
   sa: 'عدد النقرات اللازمة للفوز',
+  vi: 'Số lần nhấn để thắng',
 },
 
 
@@ -467,6 +514,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Minuteur (minutes)',
   kr: '타이머(분)',
   sa: 'المؤقت (دقائق)',
+  vi: 'Hẹn giờ (phút)',
 },
 
 
@@ -482,6 +530,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tasses par équipe',
   kr: '팀당 컵 수',
   sa: 'عدد الأكواب لكل فريق',
+  vi: 'Số cốc mỗi đội',
 },
 
 
@@ -497,6 +546,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éléments par ensemble',
   kr: '세트당 항목 수',
   sa: 'عدد العناصر في كل مجموعة',
+  vi: 'Số mục mỗi bộ',
 },
 
 
@@ -512,6 +562,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d’éléments affichés de chaque côté (hors intrus).',
   kr: '각 면에 표시되는 항목 수(다른 항목 제외).',
   sa: 'عدد العناصر المعروضة على كل جانب (باستثناء العنصر الشاذ).',
+  vi: 'Số mục hiển thị ở mỗi bên (không tính mục khác biệt).',
 },
 
 
@@ -527,6 +578,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Minuteur par manche (secondes)',
   kr: '라운드당 타이머(초)',
   sa: 'المؤقت لكل جولة (ثوانٍ)',
+  vi: 'Thời gian mỗi vòng (giây)',
 },
 
 
@@ -542,6 +594,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher les noms des éléments',
   kr: '항목 이름 표시',
   sa: 'إظهار أسماء العناصر',
+  vi: 'Hiện tên mục',
 },
 
 
@@ -557,6 +610,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Lorsqu’activé, des étiquettes textuelles apparaissent sous les images.',
   kr: '활성화하면 이미지 아래에 텍스트 레이블이 표시됩니다.',
   sa: 'عند التمكين، يتم عرض تسميات نصية أسفل الصور.',
+  vi: 'Khi bật, tên sẽ hiện bên dưới hình ảnh.',
 },
 
 
@@ -572,6 +626,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Quand activé, affiche les boutons OK / Oups ! à la place des réponses à choix multiples.',
   kr: '활성화하면 객관식 답변 대신 확인/앗! 버튼이 표시됩니다.',
   sa: 'عند التفعيل، تظهر أزرار موافق / أوبس! بدلاً من الإجابات المتعددة.',
+  vi: 'Khi bật, hiện nút OK / Oops! thay cho các câu trả lời trắc nghiệm.',
 },
 
 
@@ -587,6 +642,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vitesse de flottaison',
   kr: '떠다니는 속도',
   sa: 'سرعة الطفو',
+  vi: 'Tốc độ bay',
 },
 
 
@@ -602,6 +658,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vitesse de déplacement des mots à l’écran.',
   kr: '단어가 화면에서 움직이는 속도입니다.',
   sa: 'مدى سرعة تحرك الكلمات على الشاشة.',
+  vi: 'Tốc độ các từ di chuyển trên màn hình.',
 },
 
 
@@ -617,6 +674,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d\'équipes',
   kr: '팀 수',
   sa: 'عدد الفرق',
+  vi: 'Số đội',
 },
 
 
@@ -632,6 +690,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisissez une grande zone partagée ou la course normale à deux équipes.',
   kr: '하나의 큰 공용 영역 또는 일반 2팀 경주를 고르세요.',
   sa: 'اختر منطقة مشتركة كبيرة واحدة أو سباق الفريقين المعتاد.',
+  vi: 'Chọn một khu vực chung lớn hoặc cuộc đua hai đội thông thường.',
 },
 
 
@@ -647,6 +706,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher un par un',
   kr: '하나씩 표시',
   sa: 'عرض واحد تلو الآخر',
+  vi: 'Hiển thị từng mục',
 },
 
 
@@ -662,6 +722,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Affiche seulement l\'élément en cours, avec les commandes précédent, passer et suivant.',
   kr: '현재 항목만 표시하고 이전, 건너뛰기, 다음 버튼을 제공합니다.',
   sa: 'يعرض العنصر الحالي فقط مع أزرار السابق وتخطٍّ والتالي.',
+  vi: 'Chỉ hiện mục hiện tại, kèm nút quay lại, bỏ qua và tiếp theo.',
 },
 
 
@@ -677,6 +738,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Utiliser les images au lieu des mots',
   kr: '단어 대신 이미지 사용',
   sa: 'استخدام الصور بدلاً من الكلمات',
+  vi: 'Dùng hình ảnh thay cho từ',
 },
 
 
@@ -692,6 +754,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Affiche les images correspondantes sur les tuiles mobiles quand elles sont disponibles.',
   kr: '이미지가 있으면 움직이는 타일에 해당 이미지를 표시합니다.',
   sa: 'يعرض صور العناصر المطابقة على البطاقات المتحركة عند توفرها.',
+  vi: 'Hiện hình ảnh tương ứng trên các ô di chuyển khi có hình ảnh.',
 },
 
 
@@ -707,6 +770,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun paramètre requis pour ce jeu.',
   kr: '이 게임에는 설정이 필요하지 않습니다.',
   sa: 'لا توجد إعدادات مطلوبة لهذه اللعبة.',
+  vi: 'Trò chơi này không cần cài đặt.',
 },
 
 
@@ -722,6 +786,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Lettres à tracer',
   kr: '따라 쓸 글자 수',
   sa: 'عدد الحروف للتتبّع',
+  vi: 'Số chữ cái cần tô',
 },
 
 
@@ -737,6 +802,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Utilise les premières lettres ou chiffres de chaque élément. Les mots plus courts utilisent tous les caractères disponibles.',
   kr: '각 항목의 첫 글자나 숫자를 사용합니다. 짧은 단어는 가능한 모든 글자를 사용합니다.',
   sa: 'يستخدم الحروف أو الأرقام الأولى من كل عنصر. الكلمات الأقصر تستخدم كل الأحرف المتاحة.',
+  vi: 'Dùng các chữ cái hoặc chữ số đầu tiên của mỗi mục. Từ ngắn hơn sẽ dùng tất cả các ký tự.',
 },
 
 
@@ -752,6 +818,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'All',
   kr: 'All',
   sa: 'All',
+  vi: 'Tất cả',
 },
 
 
@@ -767,6 +834,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Omettre des lettres au hasard',
   kr: '글자를 무작위로 빼기',
   sa: 'حذف الحروف عشوائيًا',
+  vi: 'Bỏ chữ cái ngẫu nhiên',
 },
 
 
@@ -782,6 +850,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Au lieu de toujours tracer les premières lettres, des lettres au hasard prises n\'importe où dans le mot sont choisies à chaque partie.',
   kr: '항상 첫 글자만 따라 쓰는 대신, 매 게임마다 단어의 아무 곳에서나 글자를 무작위로 고릅니다.',
   sa: 'بدل تتبّع الحروف الأولى دائمًا، تُختار حروف عشوائية من أي موضع في الكلمة في كل لعبة.',
+  vi: 'Thay vì luôn tô các chữ cái đầu, mỗi lượt chơi sẽ chọn ngẫu nhiên chữ cái ở bất kỳ vị trí nào trong từ.',
 },
 
 
@@ -795,6 +864,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Paires à associer',
   kr: '맞출 짝 수',
   sa: 'عدد الأزواج للمطابقة',
+  vi: 'Số cặp cần nối',
 },
 
 'settingsLineTraceMatchPairCountHint': {
@@ -807,6 +877,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre de paires mot-image sur le plateau. Moins si le thème a moins d\'éléments éligibles.',
   kr: '판에 나오는 단어-그림 짝의 수입니다. 조건에 맞는 항목이 적으면 더 적게 사용합니다.',
   sa: 'عدد أزواج الكلمة والصورة على اللوحة. يُستخدم عدد أقل إذا كان في الموضوع عناصر مؤهلة أقل.',
+  vi: 'Số cặp từ - hình trên bảng. Sẽ ít hơn nếu chủ đề có ít mục phù hợp hơn.',
 },
 
 'settingsLineTraceMatchNoCrossing': {
@@ -819,6 +890,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Pas de lignes qui se croisent',
   kr: '선이 교차하지 않게',
   sa: 'بدون خطوط متقاطعة',
+  vi: 'Không được cắt nhau',
 },
 
 'settingsLineTraceMatchNoCrossingHint': {
@@ -831,6 +903,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Si une nouvelle ligne en croise une existante, le plateau se réinitialise et les élèves réessaient.',
   kr: '새 선이 기존 선과 교차하면 판이 초기화되고 학생들이 다시 시도합니다.',
   sa: 'إذا قطع خط جديد خطًا موجودًا تُعاد اللوحة ويحاول الطلاب من جديد.',
+  vi: 'Nếu đường mới cắt một đường đã có, bảng sẽ đặt lại và học sinh làm lại.',
 },
 
 
@@ -846,6 +919,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d\'équipes',
   kr: '팀 수',
   sa: 'عدد الفرق',
+  vi: 'Số đội',
 },
 
 
@@ -861,6 +935,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Distance (pas jusqu\'à l\'arrivée)',
   kr: '거리 (결승선까지의 걸음 수)',
   sa: 'المسافة (خطوات حتى النهاية)',
+  vi: 'Quãng đường (số bước về đích)',
 },
 
 
@@ -875,6 +950,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Timing de la poupée (durée feu vert)',
   kr: '인형 타이밍 (초록불 지속 시간)',
   sa: 'توقيت الدمية (مدة الضوء الأخضر)',
+  vi: 'Thời gian búp bê (thời lượng đèn xanh)',
 },
 
 
@@ -890,6 +966,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Pas pour gagner',
   kr: '승리까지 단계',
   sa: 'خطوات للفوز',
+  vi: 'Số bước để thắng',
 },
 
 
@@ -905,6 +982,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Bonnes réponses pour atteindre le château (1 = mort subite)',
   kr: '성에 도달하기 위한 정답 수 (1 = 즉사)',
   sa: 'إجابات صحيحة للوصول إلى القلعة (1 = موت مفاجئ)',
+  vi: 'Số câu trả lời đúng cần có để đến lâu đài (1 = phân thắng bại ngay)',
 },
 
 
@@ -920,6 +998,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mode inversé',
   kr: '역방향 모드',
   sa: 'الوضع العكسي',
+  vi: 'Chế độ đảo ngược',
 },
 
 
@@ -935,6 +1014,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Boutons Ok / Oups ! (mode simple)',
   kr: '확인 / 이런! 버튼 (단순 모드)',
   sa: 'أزرار موافق / يا لها! (الوضع البسيط)',
+  vi: 'Nút OK / Oops! (chế độ đơn giản)',
 },
 
 
@@ -950,6 +1030,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Activé : les quiz affichent uniquement ✓ OK et ✗ Oups. Désactivé : choix image/texte.',
   kr: '켜기: 퀴즈에 ✓ 확인 및 ✗ 이런 버튼만 표시. 끄기: 이미지/텍스트 답변 선택지 표시.',
   sa: 'تشغيل: تعرض الاختبارات فقط ✓ موافق و ✗ يا لها. إيقاف: خيارات إجابات نصية/صورية.',
+  vi: 'Bật: câu đố chỉ hiện nút ✓ OK và ✗ Oops. Tắt: hiện các phương án trả lời bằng hình/chữ.',
 },
 
 
@@ -965,6 +1046,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Cadeau surprise',
   kr: '깜짝 선물',
   sa: 'هدية المفاجأة',
+  vi: 'Quà bất ngờ',
 },
 
 
@@ -980,6 +1062,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombres par défaut 1-6',
   kr: '기본 숫자 1-6',
   sa: 'الأرقام الافتراضية 1-6',
+  vi: 'Mặc định số 1-6',
 },
 
 
@@ -995,6 +1078,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Utilise une image au hasard du thème choisi. À défaut d\'images, on revient aux nombres.',
   kr: '선택한 주제의 무작위 그림을 사용합니다. 그림이 없으면 숫자를 사용합니다.',
   sa: 'يستخدم صورة عشوائية من الموضوع المختار. وإن لم تُوجد صور فسيعود إلى الأرقام.',
+  vi: 'Dùng một hình ảnh ngẫu nhiên từ chủ đề đã chọn. Nếu không có hình ảnh sẽ dùng số.',
 },
 
 
@@ -1010,6 +1094,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sauter Pierre-Feuille-Ciseaux',
   kr: '가위바위보 건너뛰기',
   sa: 'تخطي حجر ورقة مقص',
+  vi: 'Bỏ qua Oẳn tù tì',
 },
 
 
@@ -1025,6 +1110,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Les deux équipes éclatent les ballons en même temps, comme dans les parties à 3-4 équipes, au lieu de jouer à tour de rôle via Pierre-Feuille-Ciseaux.',
   kr: '가위바위보로 번갈아 하는 대신, 3~4팀 게임처럼 두 팀이 동시에 풍선을 터뜨립니다.',
   sa: 'يفقأ الفريقان البالونات في وقت واحد كما في ألعاب 3-4 فرق، بدل التناوب عبر حجر ورقة مقص.',
+  vi: 'Hai đội cùng bắn bóng một lúc, giống như khi chơi 3-4 đội, thay vì oẳn tù tì để giành lượt.',
 },
 
 
@@ -1040,6 +1126,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Affiche le mot — choisissez l\'image correspondante',
   kr: '단어를 표시 — 맞는 이미지 선택',
   sa: 'يعرض الكلمة — اختر الصورة المطابقة',
+  vi: 'Hiện từ — chọn hình ảnh phù hợp',
 },
 
 'settingsWordSearchTeamCount': {
@@ -1052,6 +1139,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nombre d\'équipes',
   kr: '팀 수',
   sa: 'عدد الفرق',
+  vi: 'Số đội',
 },
 
 'settingsWordSearchTeamCountHint': {
@@ -1064,6 +1152,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: '1 équipe joue ensemble. Avec 2 équipes, elles trouvent des mots à tour de rôle.',
   kr: '1팀은 함께 플레이합니다. 2팀이면 번갈아 가며 단어를 찾습니다.',
   sa: 'فريق واحد يلعب معًا. مع فريقين، يتناوب الفريقان على إيجاد الكلمات.',
+  vi: '1 đội thì cả lớp cùng chơi. Với 2 đội, các đội thay phiên nhau tìm từ.',
 },
 'settingsFlashcardHuntTeamHint': {
   en: '1 team plays together. With 2 teams, red and blue shoot at the same time, then answer in turns - a wrong answer gives the other team a chance to steal.',
@@ -1075,6 +1164,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: '1 équipe joue ensemble. Avec 2 équipes, rouge et bleu tirent en même temps puis répondent à tour de rôle - une mauvaise réponse donne à l\'autre équipe la chance de voler.',
   kr: '1팀은 함께 플레이합니다. 2팀이면 빨강과 파랑이 동시에 쏜 뒤 번갈아 답하며, 오답이면 상대 팀이 가로챌 기회를 얻습니다.',
   sa: 'فريق واحد يلعب معًا. مع فريقين يطلق الأحمر والأزرق في الوقت نفسه ثم يجيبان بالتناوب، والإجابة الخاطئة تمنح الفريق الآخر فرصة الاستحواذ.',
+  vi: '1 đội thì cả lớp cùng chơi. Với 2 đội, đội đỏ và đội xanh bắn cùng lúc, rồi lần lượt trả lời - trả lời sai thì đội kia được quyền giành lượt.',
 },
 
 'settingsFlashcardHuntAitHint': {
@@ -1087,6 +1177,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez pour choisir, dans l\'ordre. Votre 1er choix apparaît sur les cartes et comme question du quiz. Ajoutez un 2e pour un indice sur la carte retournable, et un 3e pour en faire les choix de réponse.',
   kr: '순서대로 눌러 고르세요. 첫 번째 선택은 카드와 퀴즈 질문에 표시됩니다. 두 번째는 뒤집기 카드 힌트, 세 번째는 정답 선택지가 됩니다.',
   sa: 'اضغط للاختيار بالترتيب. يظهر اختيارك الأول على البطاقات وكسؤال للاختبار. أضف ثانيًا كتلميح على البطاقة المقلوبة وثالثًا ليصبح خيارات الإجابة.',
+  vi: 'Chạm để chọn theo thứ tự. Lựa chọn thứ 1 hiện trên thẻ từ và làm câu hỏi. Thêm lựa chọn thứ 2 làm gợi ý trên thẻ lật, và thứ 3 để biến thành các phương án trả lời.',
 },
 
 'settingsFlashcardHuntSpeed': {
@@ -1099,6 +1190,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vitesse de la cible',
   kr: '목표 속도',
   sa: 'سرعة الهدف',
+  vi: 'Tốc độ mục tiêu',
 },
 
 'settingsFlashcardHuntSpeed1': {
@@ -1111,6 +1203,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Lente',
   kr: '느림',
   sa: 'بطيء',
+  vi: 'Chậm',
 },
 
 'settingsFlashcardHuntSpeed2': {
@@ -1123,6 +1216,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Normale',
   kr: '보통',
   sa: 'عادي',
+  vi: 'Bình thường',
 },
 
 'settingsFlashcardHuntSpeed3': {
@@ -1135,6 +1229,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rapide',
   kr: '빠름',
   sa: 'سريع',
+  vi: 'Nhanh',
 },
 
 'settingsFlashcardHuntSpeed4': {
@@ -1147,6 +1242,7 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Folle',
   kr: '미친 속도',
   sa: 'جنوني',
+  vi: 'Siêu tốc',
 },
 
 'settingsFlashcardHuntTimerHint': {
@@ -1159,5 +1255,6 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   fr: 'Limite la manche de tir. Sans minuteur, elle se termine quand toutes les cartes sont attrapées.',
   kr: '사격 라운드를 제한합니다. 타이머가 없으면 모든 카드를 잡았을 때 끝납니다.',
   sa: 'يحدّد مدة جولة الرماية. بدون مؤقت تنتهي عند اصطياد كل البطاقات.',
+  vi: 'Giới hạn thời gian vòng bắn. Nếu không hẹn giờ, vòng kết thúc khi bắt được tất cả các thẻ.',
 },
 };

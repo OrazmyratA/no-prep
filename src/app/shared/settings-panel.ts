@@ -304,6 +304,39 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         labelKey: 'settingsSpellingCheckCnAdverbs',
         options: ['现在', '今天', '明天', '昨天', '以前', '以后', '经常', '已经', '正在', '马上', '刚才', '将来', '从来', '偶尔']
       }
+    ],
+    // Vietnamese words don't inflect, so every rule is a whole word (matched between spaces).
+    vi: [
+      {
+        id: 'vi_tense',
+        labelKey: 'settingsSpellingCheckViTenseMarkers',
+        options: ['đã', 'đang', 'sẽ', 'vừa', 'mới', 'rồi', 'chưa', 'sắp']
+      },
+      {
+        id: 'vi_classifier',
+        labelKey: 'settingsSpellingCheckViClassifiers',
+        options: ['cái', 'con', 'chiếc', 'quyển', 'cuốn', 'tờ', 'bức', 'quả', 'trái', 'người', 'đôi', 'bộ', 'ngôi', 'bông']
+      },
+      {
+        id: 'vi_prep',
+        labelKey: 'settingsSpellingCheckViPrepositions',
+        options: ['ở', 'trong', 'trên', 'dưới', 'với', 'cho', 'của', 'từ', 'đến', 'về', 'bằng', 'sau', 'trước', 'giữa']
+      },
+      {
+        id: 'vi_conj',
+        labelKey: 'settingsSpellingCheckViConjunctions',
+        options: ['và', 'hoặc', 'nhưng', 'vì', 'nên', 'nếu', 'khi', 'mà', 'tuy', 'để', 'còn', 'hay', 'thì']
+      },
+      {
+        id: 'vi_pronoun',
+        labelKey: 'settingsSpellingCheckViPronouns',
+        options: ['tôi', 'bạn', 'anh', 'chị', 'em', 'nó', 'chúng tôi', 'chúng ta', 'họ', 'mình', 'ông', 'bà', 'cô']
+      },
+      {
+        id: 'vi_question',
+        labelKey: 'settingsSpellingCheckViQuestionWords',
+        options: ['ai', 'gì', 'đâu', 'nào', 'bao nhiêu', 'mấy', 'sao', 'tại sao', 'khi nào', 'thế nào']
+      }
     ]
   };
 

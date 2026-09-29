@@ -12,6 +12,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tri de boules',
   kr: '공 정렬',
   sa: 'فرز الكرات',
+  vi: 'Phân loại bóng',
 },
 
 'gameBallSortDesc': {
@@ -24,6 +25,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Triez les images du thème par boules de couleur avant que les autres équipes aient fini.',
   kr: '다른 팀이 끝나기 전에 주제 그림을 색깔 공별로 정리하세요.',
   sa: 'رتّب صور الموضوع حسب الكرات الملونة قبل أن تنتهي الفرق الأخرى.',
+  vi: 'Xếp hình ảnh của chủ đề theo màu bóng trước khi các đội khác hoàn thành.',
 },
 
 'ballSortLoading': {
@@ -36,6 +38,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Chargement du Tri de boules...',
   kr: '공 정렬을 불러오는 중...',
   sa: 'جارٍ تحميل فرز الكرات...',
+  vi: 'Đang tải Phân loại bóng...',
 },
 
 'ballSortNoItems': {
@@ -48,6 +51,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajoutez des images ou du texte à ce thème avant de jouer au Tri de boules.',
   kr: '공 정렬을 하기 전에 이 주제에 그림이나 텍스트를 추가하세요.',
   sa: 'أضف صورًا أو نصًا إلى هذا الموضوع قبل لعب فرز الكرات.',
+  vi: 'Hãy thêm hình ảnh hoặc văn bản vào chủ đề này trước khi chơi Phân loại bóng.',
 },
 
 'ballSortLoadError': {
@@ -60,6 +64,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Le Tri de boules n\'a pas pu charger ce thème.',
   kr: '공 정렬이 이 주제를 불러오지 못했습니다.',
   sa: 'تعذّر على فرز الكرات تحميل هذا الموضوع.',
+  vi: 'Phân loại bóng không tải được chủ đề này.',
 },
 
 'ballSortAddTube': {
@@ -72,6 +77,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajouter un tube vide',
   kr: '빈 튜브 추가',
   sa: 'إضافة أنبوب فارغ',
+  vi: 'Thêm ống trống',
 },
 
 'ballSortSorted': {
@@ -84,6 +90,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'trié',
   kr: '정렬됨',
   sa: 'تم الفرز',
+  vi: 'đã xếp',
 },
 
 'ballSortVictoryLine': {
@@ -96,6 +103,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Un tri magnifique !',
   kr: '멋진 정렬이에요!',
   sa: 'فرز رائع!',
+  vi: 'Xếp tuyệt vời!',
 },
 'gameResults': {
   en: 'Game Results',
@@ -107,6 +115,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Résultats du jeu',
   kr: '게임 결과',
   sa: 'نتائج اللعبة',
+  vi: 'Kết quả trò chơi',
 },
 
 
@@ -123,6 +132,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tourner la roue',
   kr: '룰렛 돌리기',
   sa: 'أدر العجلة',
+  vi: 'Vòng quay may mắn',
 },
 
 
@@ -138,6 +148,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tournez pour tomber sur un élément. Supprimez les segments et continuez.',
   kr: '항목에 멈추도록 돌리세요. 구역을 제거하며 계속 진행하세요.',
   sa: 'قم بتدوير العجلة للوصول إلى عنصر. أزل الأجزاء واستمر.',
+  vi: 'Quay để dừng ở một mục. Loại bỏ ô và chơi tiếp.',
 },
 
 
@@ -154,6 +165,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tourner la roue',
   kr: '룰렛 돌리기',
   sa: 'أدر العجلة',
+  vi: 'Vòng quay may mắn',
 },
 
 
@@ -170,6 +182,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'TOURNER',
   kr: '돌리기',
   sa: 'أدر',
+  vi: 'QUAY',
 },
 
 
@@ -186,6 +199,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'TOURNE...',
   kr: '돌리는 중...',
   sa: 'يدور...',
+  vi: 'ĐANG QUAY...',
 },
 
 
@@ -202,6 +216,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément',
   kr: '항목 없음',
   sa: 'لا توجد عناصر',
+  vi: 'Không có mục nào',
 },
 
 
@@ -218,6 +233,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Il ne reste plus d’éléments sur la roue !',
   kr: '휠에 남은 항목이 없습니다!',
   sa: 'لم يتبق أي عناصر على العجلة!',
+  vi: 'Vòng quay đã hết mục!',
 },
 
 
@@ -234,6 +250,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éliminer',
   kr: '제거',
   sa: 'إزالة',
+  vi: 'Loại bỏ',
 },
 
 
@@ -250,6 +267,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Jeu de découverte',
   kr: '리빌 게임',
   sa: 'لعبة الكشف',
+  vi: 'Lật mở hình',
 },
 
 
@@ -266,6 +284,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Image recouverte de carrés qui disparaissent progressivement.',
   kr: '시간이 지나며 사라지는 사각형으로 덮인 이미지입니다.',
   sa: 'صورة مغطاة بمربعات تختفي تدريجياً مع الوقت.',
+  vi: 'Hình ảnh bị che bởi các ô vuông biến mất dần theo thời gian.',
 },
 
 
@@ -282,6 +301,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Jeu de découverte',
   kr: '리빌 게임',
   sa: 'لعبة الكشف',
+  vi: 'Lật mở hình',
 },
 
 
@@ -298,6 +318,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucune image trouvée dans ce sujet.',
   kr: '이 주제에서 이미지를 찾을 수 없습니다.',
   sa: 'لم يتم العثور على صور في هذا الموضوع.',
+  vi: 'Chủ đề này không có hình ảnh.',
 },
 
 
@@ -314,6 +335,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Appuyez sur l’image pour afficher une question',
   kr: '질문을 보려면 이미지를 탭하세요',
   sa: 'اضغط على الصورة لعرض سؤال',
+  vi: 'Chạm vào hình để nhận câu hỏi',
 },
 
 
@@ -330,6 +352,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Toutes les images révélées !',
   kr: '모든 이미지 공개됨!',
   sa: 'تم الكشف عن جميع الصور!',
+  vi: 'Đã mở hết các hình!',
 },
 
 
@@ -346,6 +369,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucune image trouvée dans ce sujet. Veuillez ajouter des éléments avec images.',
   kr: '이 주제에서 이미지를 찾을 수 없습니다. 이미지가 있는 항목을 추가하세요.',
   sa: 'لم يتم العثور على صور في هذا الموضوع. يرجى إضافة عناصر تحتوي على صور.',
+  vi: 'Chủ đề này không có hình ảnh. Vui lòng thêm các mục có hình ảnh.',
 },
 
 
@@ -362,6 +386,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Bravo ! Toutes les cartes trouvées !',
   kr: '잘했어요! 모든 카드를 찾았어요!',
   sa: 'أحسنت! تم العثور على جميع البطاقات!',
+  vi: 'Giỏi lắm! Đã tìm thấy tất cả các thẻ!',
 },
 
 
@@ -378,6 +403,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous les éléments audio supprimés !',
   kr: '모든 오디오 항목이 제거되었습니다!',
   sa: 'تم مسح جميع العناصر الصوتية!',
+  vi: 'Không có mục nào có ghi âm!',
 },
 
 
@@ -394,6 +420,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Cliquez d’abord sur le bouton haut-parleur !',
   kr: '먼저 스피커 버튼을 클릭하세요!',
   sa: 'انقر أولاً على زر السماعة!',
+  vi: 'Hãy nhấn nút loa trước!',
 },
 
 
@@ -410,6 +437,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Cliquez sur le haut-parleur pour le prochain son !',
   kr: '다음 소리를 위해 스피커를 클릭하세요!',
   sa: 'انقر على السماعة للصوت التالي!',
+  vi: 'Nhấn loa để nghe âm thanh tiếp theo!',
 },
 
 
@@ -426,6 +454,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouvez les paires',
   kr: '짝 맞추기',
   sa: 'مطابقة الأزواج',
+  vi: 'Ghép cặp',
 },
 
 
@@ -442,6 +471,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Associez toutes les paires de cartes pour gagner.',
   kr: '모든 카드 쌍을 맞춰 승리하세요.',
   sa: 'طابق جميع أزواج البطاقات للفوز.',
+  vi: 'Ghép đúng tất cả các cặp thẻ để chiến thắng.',
 },
 
 
@@ -458,6 +488,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher toutes les cartes pendant 3 secondes',
   kr: '3초 동안 모든 카드 보기',
   sa: 'ألق نظرة على جميع البطاقات لمدة 3 ثوانٍ',
+  vi: 'Xem nhanh tất cả thẻ trong 3 giây',
 },
 
 
@@ -474,6 +505,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouvez les paires',
   kr: '짝 맞추기',
   sa: 'مطابقة الأزواج',
+  vi: 'Ghép cặp',
 },
 
 
@@ -492,6 +524,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mélanger et recommencer',
   kr: '섞기 및 다시 시작',
   sa: 'خلط وبدء من جديد',
+  vi: 'Xáo trộn & chơi lại',
 },
 
 
@@ -508,6 +541,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tu les as tous trouvés !',
   kr: '모두 찾았습니다!',
   sa: 'لقد وجدتهم جميعاً!',
+  vi: 'Bạn đã ghép hết rồi!',
 },
 
 
@@ -524,6 +558,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher',
   kr: '보기',
   sa: 'إظهار',
+  vi: 'Hiện',
 },
 
 'flipTilesShowTexts': {
@@ -536,6 +571,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher les textes',
   kr: '텍스트 보이기',
   sa: 'إظهار النصوص',
+  vi: 'Hiện chữ',
 },
 
 'flipTilesHideTexts': {
@@ -548,6 +584,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Masquer les textes',
   kr: '텍스트 숨기기',
   sa: 'إخفاء النصوص',
+  vi: 'Ẩn chữ',
 },
 
 'flipTilesAllFlipped': {
@@ -560,6 +597,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Toutes les cartes sont déjà retournées !',
   kr: '모든 카드가 이미 뒤집혀 있습니다!',
   sa: 'جميع البطاقات قد تم قلبها بالفعل!',
+  vi: 'Tất cả thẻ đã được lật!',
 },
 
 
@@ -576,6 +614,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Retourner les cartes',
   kr: '카드 뒤집기',
   sa: 'اقلب البطاقات',
+  vi: 'Lật thẻ',
 },
 
 
@@ -592,6 +631,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Retournez les cartes pour révéler les éléments et les éliminer.',
   kr: '항목을 표시하고 제거하려면 카드를 뒤집으세요.',
   sa: 'اقلب البطاقات للكشف عن العناصر وإزالتها.',
+  vi: 'Lật thẻ để xem mục và loại bỏ chúng.',
 },
 
 
@@ -608,6 +648,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Retourner les cartes',
   kr: '카드 뒤집기',
   sa: 'اقلب البطاقات',
+  vi: 'Lật thẻ',
 },
 
 
@@ -624,6 +665,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sélection aléatoire',
   kr: '무작위 선택',
   sa: 'اختيار عشوائي',
+  vi: 'Chọn ngẫu nhiên',
 },
 
 
@@ -640,6 +682,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éliminer',
   kr: '제거',
   sa: 'إزالة',
+  vi: 'Loại bỏ',
 },
 
 
@@ -656,6 +699,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mélanger et réinitialiser',
   kr: '섞기 및 재설정',
   sa: 'خلط وإعادة تعيين',
+  vi: 'Xáo trộn & đặt lại',
 },
 
 
@@ -672,6 +716,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajoutez des images ou du texte à ce sujet avant de jouer à Flip Tiles.',
   kr: 'Flip Tiles를 플레이하기 전에 이 주제에 이미지나 텍스트를 추가하세요.',
   sa: 'أضف صورًا أو نصًا إلى هذا الموضوع قبل لعب Flip Tiles.',
+  vi: 'Hãy thêm hình ảnh hoặc văn bản vào chủ đề này trước khi chơi Lật thẻ.',
 },
 
 'matchPairsNoItems': {
@@ -684,6 +729,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajoutez des images ou du texte à ce sujet avant de jouer à Match Pairs.',
   kr: 'Match Pairs를 플레이하기 전에 이 주제에 이미지나 텍스트를 추가하세요.',
   sa: 'أضف صورًا أو نصًا إلى هذا الموضوع قبل لعب Match Pairs.',
+  vi: 'Hãy thêm hình ảnh hoặc văn bản vào chủ đề này trước khi chơi Ghép cặp.',
 },
 
 'flipTilesNoContent': {
@@ -696,6 +742,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Pas d’image ou de texte',
   kr: '이미지 또는 텍스트 없음',
   sa: 'لا توجد صورة أو نص',
+  vi: 'Không có hình hoặc chữ',
 },
 
 
@@ -712,6 +759,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Observer et mémoriser',
   kr: '보고 기억하기',
   sa: 'شاهد وتذكر',
+  vi: 'Xem & ghi nhớ',
 },
 
 
@@ -728,6 +776,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Regardez les éléments défiler puis mémorisez-les.',
   kr: '항목이 지나가는 것을 보고 기억하세요.',
   sa: 'شاهد العناصر أثناء مرورها ثم تذكرها.',
+  vi: 'Xem các mục chạy qua, sau đó nhớ lại.',
 },
 
 
@@ -744,6 +793,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Observer et mémoriser',
   kr: '보고 기억하기',
   sa: 'شاهد وتذكر',
+  vi: 'Xem & ghi nhớ',
 },
 
 
@@ -760,6 +810,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément à afficher.',
   kr: '표시할 항목이 없습니다.',
   sa: 'لا توجد عناصر لعرضها.',
+  vi: 'Không có mục nào để hiển thị.',
 },
 
 
@@ -776,6 +827,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tu les as tous eus !',
   kr: '모두 맞췄습니다!',
   sa: 'لقد حصلت عليهم جميعاً!',
+  vi: 'Bạn đã nhớ hết rồi!',
 },
 
 
@@ -792,6 +844,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément trouvé pour ce sujet.',
   kr: '이 주제에 대한 항목을 찾을 수 없습니다.',
   sa: 'لم يتم العثور على عناصر لهذا الموضوع.',
+  vi: 'Không tìm thấy mục nào trong chủ đề này.',
 },
 
 
@@ -808,6 +861,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Anagramme',
   kr: '애너그램',
   sa: 'أناغرام',
+  vi: 'Sắp xếp chữ cái',
 },
 
 
@@ -824,6 +878,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous les anagrammes résolus !',
   kr: '모든 애너그램 해결!',
   sa: 'تم حل جميع الألغاز!',
+  vi: 'Đã giải xong tất cả!',
 },
 
 
@@ -840,6 +895,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Remettez les lettres dans l’ordre pour former le mot correct.',
   kr: '올바른 단어를 만들기 위해 글자를 재정렬하세요.',
   sa: 'أعد ترتيب الحروف لتكوين الكلمة الصحيحة.',
+  vi: 'Sắp xếp lại các chữ cái để tạo thành từ đúng.',
 },
 
 
@@ -856,6 +912,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajoutez des éléments de texte à ce thème avant de jouer à Trace et apprends.',
   kr: '따라 쓰고 배우기를 하기 전에 이 주제에 텍스트 항목을 추가하세요.',
   sa: 'أضف بعض النصوص إلى هذا الموضوع قبل لعب تتبّع وتعلّم.',
+  vi: 'Hãy thêm vài mục văn bản vào chủ đề này trước khi chơi Tô & học.',
 },
 
 
@@ -871,6 +928,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trace et apprends',
   kr: '따라 쓰고 배우기',
   sa: 'تتبّع وتعلّم',
+  vi: 'Tô & học',
 },
 
 
@@ -886,6 +944,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tracez les lettres manquantes, puis révélez chaque mot lettre par lettre.',
   kr: '빠진 글자를 따라 쓴 다음, 각 단어를 한 글자씩 공개하세요.',
   sa: 'تتبّع الحروف الناقصة ثم اكشف كل كلمة حرفًا حرفًا.',
+  vi: 'Tô các chữ cái còn thiếu, sau đó hiện từng từ theo từng chữ cái.',
 },
 
 
@@ -901,6 +960,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous les mots sont travaillés !',
   kr: '모든 단어를 연습했어요!',
   sa: 'تم التدرّب على جميع الكلمات!',
+  vi: 'Đã luyện xong tất cả các từ!',
 },
 
 
@@ -916,6 +976,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vérifier',
   kr: '확인',
   sa: 'تحقّق',
+  vi: 'Kiểm tra',
 },
 
 
@@ -931,6 +992,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vérifié',
   kr: '확인됨',
   sa: 'تم التحقق',
+  vi: 'Đã kiểm tra',
 },
 
 
@@ -944,6 +1006,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trace et associe',
   kr: '선 긋고 짝 맞추기',
   sa: 'ارسم وطابق',
+  vi: 'Nối & ghép',
 },
 
 'gameLineTraceMatchDesc': {
@@ -956,6 +1019,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tracez une ligne de chaque mot vers son image.',
   kr: '각 단어에서 알맞은 그림까지 선을 이어 보세요.',
   sa: 'اسحب خطًا من كل كلمة إلى صورتها المطابقة.',
+  vi: 'Kéo một đường từ mỗi từ đến hình ảnh phù hợp.',
 },
 
 'lineTraceMatchNoItems': {
@@ -968,6 +1032,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajoutez au moins deux éléments avec texte et image avant de jouer à Trace et associe.',
   kr: '선 긋고 짝 맞추기를 하기 전에 텍스트와 그림이 모두 있는 항목을 두 개 이상 추가하세요.',
   sa: 'أضف عنصرين على الأقل يحتويان على نص وصورة قبل لعب ارسم وطابق.',
+  vi: 'Hãy thêm ít nhất hai mục có cả chữ và hình trước khi chơi Nối & ghép.',
 },
 
 'lineTraceMatchFinishTitle': {
@@ -980,6 +1045,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tout est associé !',
   kr: '모두 맞췄어요!',
   sa: 'تمت مطابقة الكل!',
+  vi: 'Đã nối đúng hết!',
 },
 
 'lineTraceMatchAllAudioCleared': {
@@ -992,6 +1058,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous les indices sonores sont associés !',
   kr: '모든 소리 힌트를 맞췄어요!',
   sa: 'تمت مطابقة جميع الأدلة الصوتية!',
+  vi: 'Đã ghép đúng tất cả gợi ý âm thanh!',
 },
 
 
@@ -1007,6 +1074,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Démêler les mots',
   kr: '단어 배열',
   sa: 'ترتيب الكلمات',
+  vi: 'Sắp xếp câu',
 },
 
 
@@ -1023,6 +1091,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Toutes les phrases résolues !',
   kr: '모든 문장 해결!',
   sa: 'تم حل جميع الجمل!',
+  vi: 'Đã sắp xếp xong tất cả các câu!',
 },
 
 
@@ -1039,6 +1108,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément avec plusieurs mots trouvé dans ce sujet !',
   kr: '이 주제에서 여러 단어가 있는 항목을 찾을 수 없습니다!',
   sa: 'لم يتم العثور على عناصر تحتوي على كلمات متعددة في هذا الموضوع!',
+  vi: 'Chủ đề này không có mục nào gồm nhiều từ!',
 },
 
 
@@ -1055,6 +1125,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Démêler les mots',
   kr: '단어 배열',
   sa: 'ترتيب الكلمات',
+  vi: 'Sắp xếp câu',
 },
 
 
@@ -1071,6 +1142,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Glissez les mots dans le bon ordre pour former une phrase.',
   kr: '문장을 만들기 위해 단어를 올바른 순서로 드래그하세요.',
   sa: 'اسحب الكلمات بالترتيب الصحيح لتكوين جملة.',
+  vi: 'Kéo các từ vào đúng thứ tự để tạo thành câu.',
 },
 
 
@@ -1087,6 +1159,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Recherche de mots',
   kr: '단어 찾기',
   sa: 'البحث عن الكلمات',
+  vi: 'Tìm từ',
 },
 
 
@@ -1103,6 +1176,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mots à trouver',
   kr: '찾을 단어',
   sa: 'الكلمات المطلوب العثور عليها',
+  vi: 'Các từ cần tìm',
 },
 
 
@@ -1119,6 +1193,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous les mots trouvés !',
   kr: '모든 단어를 찾았습니다!',
   sa: 'تم العثور على جميع الكلمات!',
+  vi: 'Đã tìm thấy tất cả các từ!',
 },
 
 
@@ -1135,6 +1210,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément avec texte trouvé dans ce sujet !',
   kr: '이 주제에서 텍스트가 있는 항목을 찾을 수 없습니다!',
   sa: 'لم يتم العثور على عناصر تحتوي على نص في هذا الموضوع!',
+  vi: 'Chủ đề này không có mục nào có văn bản!',
 },
 
 
@@ -1151,6 +1227,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun mot valide trouvé. Veuillez utiliser des éléments avec des lettres.',
   kr: '유효한 단어를 찾을 수 없습니다. 문자가 있는 항목을 사용하세요.',
   sa: 'لم يتم العثور على كلمات صالحة. يرجى استخدام العناصر التي تحتوي على أحرف.',
+  vi: 'Không có từ hợp lệ. Vui lòng dùng các mục có chữ cái.',
 },
 
 
@@ -1168,6 +1245,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Recherche de mots',
   kr: '단어 찾기',
   sa: 'البحث عن الكلمات',
+  vi: 'Tìm từ',
 },
 
 
@@ -1184,6 +1262,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouvez tous les mots cachés dans la grille de lettres.',
   kr: '문자 그리드에서 모든 숨겨진 단어를 찾으세요.',
   sa: 'ابحث عن جميع الكلمات المخفية في شبكة الحروف.',
+  vi: 'Tìm tất cả các từ ẩn trong bảng chữ cái.',
 },
 
 
@@ -1200,6 +1279,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouve l\'erreur',
   kr: '실수 찾기',
   sa: 'اعثر على الخطأ',
+  vi: 'Tìm lỗi sai',
 },
 
 
@@ -1216,6 +1296,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Trouve la lettre ou le mot manquant.',
   kr: '빠진 글자나 단어를 찾아보세요.',
   sa: 'ابحث عن الحرف أو الكلمة المفقودة.',
+  vi: 'Tìm chữ cái hoặc từ bị thiếu.',
 },
 
 
@@ -1232,6 +1313,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Continue à regarder !',
   kr: '계속 봐요!',
   sa: 'استمر في المشاهدة!',
+  vi: 'Tiếp tục quan sát!',
 },
 
 'wordSearchTimesUp': {
@@ -1244,6 +1326,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Temps écoulé !',
   kr: '시간 종료!',
   sa: 'انتهى الوقت!',
+  vi: 'Hết giờ!',
 },
 
 'wordSearchFoundOfTotal': {
@@ -1256,6 +1339,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: '{found} mots trouvés sur {total}',
   kr: '{total}개 중 {found}개 단어를 찾았습니다',
   sa: 'تم العثور على {found} من {total} كلمات',
+  vi: 'Đã tìm {found}/{total} từ',
 },
 
 'wordSearchTeamWins': {
@@ -1268,6 +1352,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'L\'équipe {number} gagne !',
   kr: '{number}팀 승리!',
   sa: 'فاز الفريق {number}!',
+  vi: 'Đội {number} thắng!',
 },
 
 'wordSearchDraw': {
@@ -1280,6 +1365,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Égalité !',
   kr: '무승부!',
   sa: 'تعادل!',
+  vi: 'Hòa!',
 },
 'ballSortVictory': {
   en: 'You did it!',
@@ -1291,6 +1377,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tu as réussi !',
   kr: '해냈습니다!',
   sa: 'لقد فعلتها!',
+  vi: 'Bạn làm được rồi!',
 },
 
 'settingsPopBalloonCount': {
@@ -1303,6 +1390,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ballons par équipe',
   kr: '팀당 풍선 수',
   sa: 'عدد البالونات لكل فريق',
+  vi: 'Số bóng mỗi đội',
 },
 
 'settingsPopBalloonCountHint': {
@@ -1315,6 +1403,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous = un ballon par élément du thème. Choisissez un nombre plus petit pour une manche plus courte.',
   kr: '전체 = 주제의 모든 항목마다 풍선 하나. 라운드를 짧게 하려면 더 작은 수를 고르세요.',
   sa: 'الكل = بالون لكل عنصر في الموضوع. اختر رقمًا أصغر لجولة أقصر.',
+  vi: 'Tất cả = mỗi mục trong chủ đề một quả bóng. Chọn số nhỏ hơn để ván chơi ngắn hơn.',
 },
 
 'settingsPopBalloonCountAll': {
@@ -1327,6 +1416,7 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tous',
   kr: '전체',
   sa: 'الكل',
+  vi: 'Tất cả',
 },
 
 };

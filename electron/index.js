@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Menu, dialog, protocol, net, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, dialog, protocol, net, nativeImage, safeStorage } = require('electron');
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
@@ -25,8 +25,10 @@ const {
   BOOK_PACKAGE_EXTENSION,
   MAX_INLINE_IMAGE_BYTES,
   MAX_AUDIO_RECORDING_BYTES,
-  MAX_TOPIC_SNAPSHOT_BYTES
+  MAX_TOPIC_SNAPSHOT_BYTES,
+  AI_PROXY_URL
 } = require('./main/constants');
+const { getValidLicense } = require('./license-service');
 const { operationResult, operationError } = require('./main/operation-result');
 const {
   createId,
@@ -53,6 +55,8 @@ const { createGroqService } = require('./main/ai-groq-service');
 const { createEdgeTtsService } = require('./main/ai-edge-tts-service');
 const { registerAppIpc } = require('./main/app-ipc');
 const { registerAiIpc } = require('./main/ai-ipc');
+const { createAiTopicService, AI_TOPIC_PROVIDERS } = require('./main/ai-topic-service');
+const { registerAiTopicIpc } = require('./main/ai-topic-ipc');
 const { registerBookDataIpc } = require('./main/book-data-ipc');
 const { registerBookManagementIpc } = require('./main/book-management-ipc');
 const { registerBookStorageIpc } = require('./main/book-storage-ipc');
@@ -178,6 +182,68 @@ async function clearUserGroqApiKey() {
 }
 const aiService = createGroqService({ getApiKey: getGroqApiKey });
 const ttsService = createEdgeTtsService();
+
+// Keys teachers link for the AI topic generator. Groq shares the AI Speaking key; the others are
+// stored encrypted with the OS keychain (safeStorage) when it is available.
+function getAiTopicKeysPath() {
+  return path.join(app.getPath('userData'), 'ai-topic-keys.json');
+}
+function readAiTopicKeys() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(getAiTopicKeysPath(), 'utf8'));
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function getAiTopicApiKey(provider) {
+  if (provider === 'groq') {
+    return getGroqApiKey();
+  }
+  const entry = readAiTopicKeys()[provider];
+  if (!entry?.value) {
+    return '';
+  }
+  try {
+    return entry.encrypted
+      ? safeStorage.decryptString(Buffer.from(entry.value, 'base64'))
+      : String(entry.value);
+  } catch {
+    return '';
+  }
+}
+async function writeAiTopicKeys(keys) {
+  const keysPath = getAiTopicKeysPath();
+  await fsp.mkdir(path.dirname(keysPath), { recursive: true });
+  await fsp.writeFile(keysPath, JSON.stringify(keys, null, 2), 'utf8');
+}
+async function saveAiTopicApiKey(provider, apiKey) {
+  if (provider === 'groq') {
+    await saveUserGroqApiKey(apiKey);
+    return;
+  }
+  const encrypted = safeStorage.isEncryptionAvailable();
+  const keys = readAiTopicKeys();
+  keys[provider] = {
+    encrypted,
+    value: encrypted ? safeStorage.encryptString(apiKey).toString('base64') : apiKey
+  };
+  await writeAiTopicKeys(keys);
+}
+async function clearAiTopicApiKey(provider) {
+  if (provider === 'groq') {
+    await clearUserGroqApiKey();
+    return;
+  }
+  const keys = readAiTopicKeys();
+  delete keys[provider];
+  await writeAiTopicKeys(keys);
+}
+const aiTopicService = createAiTopicService({
+  getApiKey: getAiTopicApiKey,
+  getLicense: getValidLicense,
+  proxyUrl: AI_PROXY_URL
+});
 
 async function ensureBooksRoot() {
   await fsp.mkdir(getBooksRoot(), { recursive: true });
@@ -349,10 +415,11 @@ function createWindow() {
           "default-src 'self' noprep-book:; " +
           "script-src 'self' 'unsafe-inline'; " +
           "style-src 'self' 'unsafe-inline'; " +
-          "img-src 'self' noprep-book: data: blob: https://i.ytimg.com https://*.ytimg.com; " +
+          "img-src 'self' noprep-book: data: blob: https://i.ytimg.com https://*.ytimg.com https://pixabay.com https://cdn.pixabay.com; " +
           "media-src 'self' noprep-book: blob: data:; " +
           "frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
-          "connect-src 'self' noprep-book: blob:; " +
+          // Pixabay: image search (API + downloads) for the image uploader and AI topics.
+          "connect-src 'self' noprep-book: blob: https://pixabay.com https://cdn.pixabay.com; " +
           "font-src 'self' data:; " +
           "object-src 'none';"
         ]
@@ -418,6 +485,15 @@ registerAiIpc({
   ttsService,
   saveUserGroqApiKey,
   clearUserGroqApiKey
+});
+registerAiTopicIpc({
+  ipcMain,
+  operationResult,
+  operationError,
+  aiTopicService,
+  saveApiKey: saveAiTopicApiKey,
+  clearApiKey: clearAiTopicApiKey,
+  providers: AI_TOPIC_PROVIDERS
 });
 registerBookDataIpc({
   ipcMain,

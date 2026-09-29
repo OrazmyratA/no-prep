@@ -551,14 +551,31 @@
         <button type="button" class="mini-btn" (click)="creator.createTopicForGame(element)">{{ 'createTopic' | translate }}</button>
         <button type="button" class="mini-btn" (click)="creator.editGameTopic(element)" [disabled]="!element.data['topicId']">{{ 'creatorEditTopic' | translate }}</button>
       </div>
+      <div class="game-ai-pages" *ngIf="creator.aiPageLimit !== null">
+        <label>
+          {{ 'creatorAiPagesLabel' | translate }}
+          <input type="text" inputmode="numeric" spellcheck="false"
+                 [value]="creator.getAiPagesText(element)"
+                 (input)="creator.setAiPagesText(element, $any($event.target).value)"
+                 (keydown.enter)="$event.preventDefault(); creator.createTopicWithAi(element)"
+                 [disabled]="creator.preparingAiPages">
+        </label>
+        <small>{{ 'creatorAiPagesHint' | translate: { max: creator.aiPageLimit } }}</small>
+        <small *ngIf="creator.getAiPagesError(element) as aiError" class="game-ai-pages-error" role="alert">
+          {{ aiError.key | translate: aiError.params }}
+        </small>
+        <button type="button" class="mini-btn game-ai-pages-btn"
+                (click)="creator.createTopicWithAi(element)"
+                [disabled]="creator.preparingAiPages">
+          ✨ {{ (creator.preparingAiPages ? 'creatorAiPreparingPages' : 'aiTopicButton') | translate }}
+        </button>
+      </div>
       <label>
         {{ 'creatorTopicLabel' | translate }}
-        <select
-          [(ngModel)]="element.data['topicId']"
-          (ngModelChange)="creator.onGameTopicSelected(element, $event)">
-          <option [ngValue]="null">{{ 'creatorChooseTopic' | translate }}</option>
-          <option *ngFor="let topic of creator.topics$ | async" [ngValue]="topic.id">{{ topic.name }}</option>
-        </select>
+        <button type="button" class="game-topic-picker-btn" (click)="creator.chooseGameTopicFromList(element)">
+          <span>{{ 'creatorChooseTopic' | translate }}</span>
+          <span aria-hidden="true">🔍</span>
+        </button>
       </label>
       <div class="game-activity-panel" *ngIf="element.data['topicId']">
         <div class="game-activity-heading">
@@ -592,7 +609,7 @@
       </div>
     </div>
     <div class="image-settings-panel" *ngIf="element.type === 'image'">
-      <app-image-uploader (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
+      <app-image-uploader [autoPasteTarget]="true" (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
     </div>
     <div class="image-settings-panel answer-key-settings" *ngIf="element.type === 'answerKey'">
       <div class="answer-key-gallery" *ngIf="creator.getAnswerKeyImages(element).length">
@@ -614,7 +631,7 @@
           <button type="button" class="answer-key-thumb-remove" (click)="$event.stopPropagation(); creator.removeAnswerKeyImage(element, i)" title="Remove image" aria-label="Remove image">&times;</button>
         </div>
       </div>
-      <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" (imageSelected)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
+      <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" [autoPasteTarget]="true" (imageSelected)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
 
       <div class="answer-key-audio-section" *ngIf="creator.getAnswerKeyImages(element).length as imageCount">
         <div class="answer-key-audio-label">

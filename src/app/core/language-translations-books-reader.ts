@@ -13,6 +13,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Retour',
     kr: '뒤로',
     sa: 'رجوع',
+    vi: 'Quay lại',
   },
 
 
@@ -27,6 +28,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Aller à la page',
     kr: '페이지로 이동',
     sa: 'الانتقال إلى الصفحة',
+    vi: 'Đến trang',
   },
 
 
@@ -40,6 +42,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Retour à la carte',
     kr: '지도로 돌아가기',
     sa: 'العودة إلى الخريطة',
+    vi: 'Quay lại bản đồ',
   },
 
 
@@ -55,6 +58,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Page précédente',
     kr: '이전 페이지',
     sa: 'الصفحة السابقة',
+    vi: 'Trang trước',
   },
 
 
@@ -70,6 +74,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Page suivante',
     kr: '다음 페이지',
     sa: 'الصفحة التالية',
+    vi: 'Trang sau',
   },
 
 
@@ -85,6 +90,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Annuler la dernière annotation',
     kr: '마지막 주석 실행 취소',
     sa: 'تراجع عن آخر ملاحظة',
+    vi: 'Hoàn tác ghi chú cuối',
   },
 
 
@@ -100,6 +106,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Effacer les annotations de la page',
     kr: '페이지 주석 지우기',
     sa: 'مسح ملاحظات الصفحة',
+    vi: 'Xóa ghi chú trên trang',
   },
 
 
@@ -115,6 +122,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Couleur du stylo {color}',
     kr: '펜 색상 {color}',
     sa: 'لون القلم {color}',
+    vi: 'Màu bút {color}',
   },
 
 
@@ -130,6 +138,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Taille du stylo',
     kr: '펜 크기',
     sa: 'حجم القلم',
+    vi: 'Cỡ bút',
   },
 
 
@@ -145,6 +154,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer les annotations du lecteur',
     kr: '리더 주석 삭제',
     sa: 'حذف ملاحظات القارئ',
+    vi: 'Xóa ghi chú trên trình đọc',
   },
 
 
@@ -160,6 +170,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Couleur du texte {color}',
     kr: '텍스트 색상 {color}',
     sa: 'لون النص {color}',
+    vi: 'Màu chữ {color}',
   },
 
 
@@ -175,6 +186,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Retour au livre',
     kr: '책으로 돌아가기',
     sa: 'العودة إلى الكتاب',
+    vi: 'Quay lại sách',
   },
 
 
@@ -190,6 +202,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Passer au cahier lié',
     kr: '연결된 워크북으로 전환',
     sa: 'التبديل إلى كتاب التمارين المرتبط',
+    vi: 'Chuyển sang sách bài tập liên kết',
   },
 
 
@@ -205,6 +218,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Capture d’écran',
     kr: '스크린샷',
     sa: 'لقطة شاشة',
+    vi: 'Chụp màn hình',
   },
 
 
@@ -220,6 +234,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Page unique',
     kr: '단일 페이지',
     sa: 'صفحة واحدة',
+    vi: 'Một trang',
   },
 
 
@@ -235,6 +250,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Deux pages',
     kr: '두 페이지',
     sa: 'صفحتان',
+    vi: 'Hai trang',
   },
 
 
@@ -250,6 +266,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Afficher une page',
     kr: '단일 페이지 표시',
     sa: 'إظهار صفحة واحدة',
+    vi: 'Hiện một trang',
   },
 
 
@@ -265,6 +282,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Afficher deux pages',
     kr: '두 페이지 표시',
     sa: 'إظهار صفحتين',
+    vi: 'Hiện hai trang',
   },
 
 
@@ -280,6 +298,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Contrôles audio de l’enseignant',
     kr: '교사 오디오 컨트롤',
     sa: 'عناصر تحكم صوت المعلم',
+    vi: 'Điều khiển âm thanh giáo viên',
   },
 
 
@@ -295,6 +314,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Lire l’audio de l’enseignant',
     kr: '교사 오디오 재생',
     sa: 'تشغيل صوت المعلم',
+    vi: 'Phát âm thanh giáo viên',
   },
 
 
@@ -310,6 +330,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Mettre en pause l’audio de l’enseignant',
     kr: '교사 오디오 일시정지',
     sa: 'إيقاف صوت المعلم مؤقتاً',
+    vi: 'Tạm dừng âm thanh giáo viên',
   },
 
 
@@ -325,6 +346,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Progression de l’audio de l’enseignant',
     kr: '교사 오디오 진행률',
     sa: 'تقدم صوت المعلم',
+    vi: 'Tiến độ âm thanh giáo viên',
   },
 
 
@@ -340,6 +362,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Volume de l’audio de l’enseignant',
     kr: '교사 오디오 볼륨',
     sa: 'مستوى صوت المعلم',
+    vi: 'Âm lượng âm thanh giáo viên',
   },
 
 
@@ -355,6 +378,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Vitesse de l’audio de l’enseignant',
     kr: '교사 오디오 속도',
     sa: 'سرعة صوت المعلم',
+    vi: 'Tốc độ âm thanh giáo viên',
   },
 
 
@@ -370,6 +394,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Aller à la page {number}',
     kr: '{number} 페이지로 이동',
     sa: 'الانتقال إلى الصفحة {number}',
+    vi: 'Đến trang {number}',
   },
 
 
@@ -385,6 +410,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Chargement du livre...',
     kr: '책 불러오는 중...',
     sa: 'جارٍ تحميل الكتاب...',
+    vi: 'Đang tải sách...',
   },
 
 
@@ -400,6 +426,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre introuvable.',
     kr: '책을 찾을 수 없습니다.',
     sa: 'الكتاب غير موجود.',
+    vi: 'Không tìm thấy sách.',
   },
 
 
@@ -415,6 +442,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Ce livre n’a aucune page visible.',
     kr: '이 책에 표시할 페이지가 없습니다.',
     sa: 'لا توجد صفحات مرئية في هذا الكتاب.',
+    vi: 'Sách này không có trang nào hiển thị.',
   },
 
 
@@ -430,6 +458,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Déplacer le texte',
     kr: '텍스트 이동',
     sa: 'تحريك النص',
+    vi: 'Di chuyển chữ',
   },
 
 
@@ -445,6 +474,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Supprimer le dessin',
     kr: '그림 삭제',
     sa: 'حذف الرسم',
+    vi: 'Xóa hình vẽ',
   },
 
 
@@ -460,6 +490,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Vidéo',
     kr: '동영상',
     sa: 'فيديو',
+    vi: 'Video',
   },
 
 
@@ -475,6 +506,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Jeu',
     kr: '게임',
     sa: 'لعبة',
+    vi: 'Trò chơi',
   },
 
 
@@ -490,6 +522,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Note',
     kr: '노트',
     sa: 'ملاحظة',
+    vi: 'Ghi chú',
   },
 
 
@@ -505,6 +538,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Guide de l’enseignant',
     kr: '교사 가이드',
     sa: 'دليل المعلم',
+    vi: 'Hướng dẫn giáo viên',
   },
 
 
@@ -520,6 +554,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Hibou enseignant',
     kr: '교사 부엉이',
     sa: 'بومة المعلم',
+    vi: 'Cú giáo viên',
   },
 
 
@@ -535,6 +570,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Réduire le texte de l’enseignant',
     kr: '교사 텍스트 접기',
     sa: 'طي نص المعلم',
+    vi: 'Thu gọn lời giáo viên',
   },
 
 
@@ -550,6 +586,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Développer le texte de l’enseignant',
     kr: '교사 텍스트 펼치기',
     sa: 'توسيع نص المعلم',
+    vi: 'Mở rộng lời giáo viên',
   },
 
 
@@ -565,6 +602,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Vidéo YouTube',
     kr: 'YouTube 동영상',
     sa: 'فيديو يوتيوب',
+    vi: 'Video YouTube',
   },
 
 
@@ -580,6 +618,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Regarder sur YouTube',
     kr: 'YouTube에서 보기',
     sa: 'المشاهدة على يوتيوب',
+    vi: 'Xem trên YouTube',
   },
 
 
@@ -595,6 +634,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Cahier d’exercices',
     kr: '워크북',
     sa: 'كتاب التمارين',
+    vi: 'Sách bài tập',
   },
 
 
@@ -610,6 +650,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Lecteur de livre',
     kr: '책 리더',
     sa: 'قارئ الكتاب',
+    vi: 'Trình đọc sách',
   },
 
 
@@ -625,6 +666,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Livre de l’élève',
     kr: '학생용 책',
     sa: 'كتاب الطالب',
+    vi: 'Sách học sinh',
   },
 
 
@@ -640,6 +682,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Effacer les dessins et le texte de ces deux pages ?',
     kr: '이 두 페이지의 그림과 텍스트를 지우시겠습니까?',
     sa: 'هل تريد مسح الرسومات والنصوص في هاتين الصفحتين؟',
+    vi: 'Xóa hình vẽ và chữ trên hai trang này?',
   },
 
 
@@ -655,6 +698,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Effacer les dessins et le texte de cette page ?',
     kr: '이 페이지의 그림과 텍스트를 지우시겠습니까?',
     sa: 'هل تريد مسح الرسومات والنصوص في هذه الصفحة؟',
+    vi: 'Xóa hình vẽ và chữ trên trang này?',
   },
 
 
@@ -670,6 +714,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Capture d’écran enregistrée dans Desktop/No-Prep Screenshots.',
     kr: '스크린샷이 Desktop/No-Prep Screenshots에 저장되었습니다.',
     sa: 'تم حفظ لقطة الشاشة في Desktop/No-Prep Screenshots.',
+    vi: 'Đã lưu ảnh chụp màn hình vào Desktop/No-Prep Screenshots.',
   },
 
 
@@ -685,6 +730,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Impossible d’enregistrer la capture d’écran.',
     kr: '스크린샷을 저장할 수 없습니다.',
     sa: 'تعذر حفظ لقطة الشاشة.',
+    vi: 'Không thể lưu ảnh chụp màn hình.',
   },
 
 
@@ -700,6 +746,7 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'La capture d’écran est disponible uniquement dans l’application de bureau.',
     kr: '스크린샷은 데스크톱 앱에서만 사용할 수 있습니다.',
     sa: 'لقطة الشاشة متوفرة فقط في تطبيق سطح المكتب.',
+    vi: 'Chụp màn hình có trên ứng dụng máy tính.',
   },
 
 
@@ -715,5 +762,6 @@ export const BOOK_READER_TRANSLATIONS: TranslationDictionary = {
     fr: 'Choisissez d’abord un sujet pour ce repère de jeu dans le créateur de livre.',
     kr: '먼저 책 제작기에서 이 게임 마커의 주제를 선택하세요.',
     sa: 'اختر أولاً موضوعاً لهذه علامة اللعبة في أداة إنشاء الكتاب.',
+    vi: 'Hãy chọn chủ đề cho điểm đánh dấu trò chơi này trong trình tạo sách trước.',
   },
 };

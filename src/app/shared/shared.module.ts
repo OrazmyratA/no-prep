@@ -79,7 +79,8 @@ import { AitSelectorComponent } from './ait-selector';
     LeaderboardWheelComponent,
     LeaderboardTeamSetupComponent,
     LeaderboardTimerComponent,
-    AitSelectorComponent
+    AitSelectorComponent,
+    BodyPortalDirective
   ]
 })
 export class SharedModule { }

@@ -13,6 +13,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sujet introuvable',
   kr: '주제를 찾을 수 없습니다',
   sa: 'الموضوع غير موجود',
+  vi: 'Không tìm thấy chủ đề',
 },
 
 
@@ -26,6 +27,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun sujet pour le moment',
   kr: '아직 주제가 없습니다',
   sa: 'لا توجد مواضيع بعد',
+  vi: 'Chưa có chủ đề nào',
 },
 
 
@@ -40,6 +42,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Créez votre premier sujet pour commencer',
   kr: '시작하려면 첫 번째 주제를 만드세요',
   sa: 'أنشئ أول موضوع للبدء',
+  vi: 'Hãy tạo chủ đề đầu tiên để bắt đầu',
 },
 
 
@@ -54,6 +57,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rechercher',
   kr: '검색',
   sa: 'بحث',
+  vi: 'Tìm kiếm',
 },
 
 
@@ -68,6 +72,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Combiner',
   kr: '결합',
   sa: 'دمج',
+  vi: 'Gộp',
 },
 
 
@@ -82,6 +87,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tout exporter',
   kr: '모두 내보내기',
   sa: 'تصدير الكل',
+  vi: 'Xuất tất cả',
 },
 
 'quickLinksButton': {
@@ -94,6 +100,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Liens rapides',
   kr: '빠른 링크',
   sa: 'روابط سريعة',
+  vi: 'Liên kết nhanh',
 },
 
 'quickLinksHint': {
@@ -106,6 +113,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Enregistrez des liens vers des dossiers Google Drive pour y accéder directement et télécharger des fichiers.',
   kr: 'Google 드라이브 폴더 링크를 저장해 바로 이동하고 파일을 다운로드하세요.',
   sa: 'احفظ روابط مجلدات Google Drive للانتقال إليها مباشرة وتنزيل الملفات.',
+  vi: 'Lưu liên kết đến các thư mục Google Drive để mở nhanh và tải tệp xuống.',
 },
 
 'quickLinksAddButton': {
@@ -118,6 +126,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajouter un lien',
   kr: '링크 추가',
   sa: 'إضافة رابط',
+  vi: 'Thêm liên kết',
 },
 
 'quickLinksNamePlaceholder': {
@@ -130,6 +139,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'p. ex. Mes documents',
   kr: '예: 내 자료',
   sa: 'مثال: موادي',
+  vi: 'vd: Tài liệu của tôi',
 },
 
 'quickLinksUrlPlaceholder': {
@@ -142,6 +152,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'https://drive.google.com/...',
   kr: 'https://drive.google.com/...',
   sa: 'https://drive.google.com/...',
+  vi: 'https://drive.google.com/...',
 },
 
 'quickLinksEmpty': {
@@ -154,6 +165,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun lien enregistré pour l’instant.',
   kr: '저장된 링크가 없습니다.',
   sa: 'لا توجد روابط محفوظة بعد.',
+  vi: 'Chưa lưu liên kết nào.',
 },
 
 'quickLinksInvalidUrl': {
@@ -166,6 +178,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Veuillez saisir un nom et un lien valide commençant par https://',
   kr: '이름과 https://로 시작하는 올바른 링크를 입력하세요',
   sa: 'يرجى إدخال اسم ورابط صالح يبدأ بـ https://',
+  vi: 'Vui lòng nhập tên và một liên kết hợp lệ bắt đầu bằng https://',
 },
 
 
@@ -180,6 +193,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Créer un livre',
   kr: '책 만들기',
   sa: 'إنشاء كتاب',
+  vi: 'Tạo sách',
 },
 
 
@@ -194,6 +208,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun livre pour le moment',
   kr: '아직 책이 없습니다',
   sa: 'لا توجد كتب بعد',
+  vi: 'Chưa có sách nào',
 },
 
 
@@ -208,6 +223,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Créez votre premier livre pour commencer',
   kr: '시작하려면 첫 번째 책을 만드세요',
   sa: 'أنشئ أول كتاب للبدء',
+  vi: 'Hãy tạo cuốn sách đầu tiên để bắt đầu',
 },
 
 
@@ -222,6 +238,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Importer',
   kr: '가져오기',
   sa: 'استيراد',
+  vi: 'Nhập',
 },
 
 
@@ -236,6 +253,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nouveau sujet',
   kr: '새 주제',
   sa: 'موضوع جديد',
+  vi: 'Chủ đề mới',
 },
 
 
@@ -250,6 +268,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Modifier',
   kr: '편집',
   sa: 'تعديل',
+  vi: 'Sửa',
 },
 
 
@@ -264,6 +283,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer',
   kr: '삭제',
   sa: 'حذف',
+  vi: 'Xóa',
 },
 
 
@@ -278,6 +298,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Copier',
   kr: '복사',
   sa: 'نسخ',
+  vi: 'Sao chép',
 },
 
 
@@ -292,6 +313,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Exporter',
   kr: '내보내기',
   sa: 'تصدير',
+  vi: 'Xuất',
 },
 
 
@@ -306,6 +328,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éléments',
   kr: '항목',
   sa: 'عناصر',
+  vi: 'Mục',
 },
 
 
@@ -320,6 +343,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun sujet ne correspond à votre recherche',
   kr: '검색과 일치하는 주제가 없습니다',
   sa: 'لا توجد مواضيع تطابق بحثك',
+  vi: 'Không có chủ đề nào khớp với tìm kiếm',
 },
 
 
@@ -334,6 +358,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Effacer la recherche',
   kr: '검색 지우기',
   sa: 'مسح البحث',
+  vi: 'Xóa tìm kiếm',
 },
 
 
@@ -348,6 +373,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Créer un sujet',
   kr: '주제 만들기',
   sa: 'إنشاء موضوع',
+  vi: 'Tạo chủ đề',
 },
 
 
@@ -362,6 +388,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nom du sujet',
   kr: '주제 이름',
   sa: 'اسم الموضوع',
+  vi: 'Tên chủ đề',
 },
 
 
@@ -376,6 +403,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Éléments',
   kr: '항목',
   sa: 'عناصر',
+  vi: 'Các mục',
 },
 
 
@@ -390,6 +418,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Image',
   kr: '이미지',
   sa: 'صورة',
+  vi: 'Hình ảnh',
 },
 
 
@@ -404,6 +433,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Enregistrement',
   kr: '녹음',
   sa: 'تسجيل',
+  vi: 'Ghi âm',
 },
 
 
@@ -418,6 +448,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Démarrage de l’enregistrement',
   kr: '녹음 시작 중',
   sa: 'جارٍ بدء التسجيل',
+  vi: 'Đang bắt đầu ghi âm',
 },
 
 
@@ -432,6 +463,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Arrêter l’enregistrement',
   kr: '녹음 중지',
   sa: 'إيقاف التسجيل',
+  vi: 'Dừng ghi âm',
 },
 
 
@@ -446,6 +478,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer l’audio',
   kr: '오디오 제거',
   sa: 'إزالة الصوت',
+  vi: 'Xóa âm thanh',
 },
 
 
@@ -460,6 +493,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Texte',
   kr: '텍스트',
   sa: 'النص',
+  vi: 'Văn bản',
 },
 
 
@@ -474,6 +508,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun audio. Enregistrez ou importez-en un.',
   kr: '오디오가 없습니다. 녹음하거나 업로드하세요.',
   sa: 'لا يوجد صوت. سجّل أو ارفع ملفاً.',
+  vi: 'Chưa có âm thanh. Hãy ghi âm hoặc tải lên.',
 },
 
 'voiceTextPlaceholder': {
@@ -486,6 +521,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Saisissez le texte à transformer en voix',
   kr: '음성으로 변환할 텍스트를 입력하세요',
   sa: 'اكتب النص لتحويله إلى كلام',
+  vi: 'Nhập văn bản để chuyển thành giọng nói',
 },
 
 'textToSpeech': {
@@ -498,6 +534,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Synthèse vocale',
   kr: '텍스트 음성 변환',
   sa: 'تحويل النص إلى كلام',
+  vi: 'Chuyển văn bản thành giọng nói',
 },
 
 'textToSpeechDesktopOnly': {
@@ -510,6 +547,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'La synthèse vocale est disponible dans l’application de bureau. Ici, vous pouvez toujours enregistrer ou importer un audio.',
   kr: '텍스트 음성 변환은 데스크톱 앱에서 사용할 수 있습니다. 여기서는 녹음하거나 오디오를 업로드할 수 있습니다.',
   sa: 'تحويل النص إلى كلام متاح في تطبيق سطح المكتب. يمكنك هنا تسجيل الصوت أو رفعه.',
+  vi: 'Chuyển văn bản thành giọng nói có trên ứng dụng máy tính. Ở đây bạn vẫn có thể ghi âm hoặc tải âm thanh lên.',
 },
 
 'voiceLanguage': {
@@ -522,6 +560,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Langue de la voix',
   kr: '음성 언어',
   sa: 'لغة الصوت',
+  vi: 'Ngôn ngữ giọng nói',
 },
 
 'generateVoice': {
@@ -534,6 +573,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Générer la voix',
   kr: '음성 생성',
   sa: 'إنشاء الصوت',
+  vi: 'Tạo giọng nói',
 },
 
 'voiceAdjustments': {
@@ -546,6 +586,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réglages de la voix',
   kr: '음성 조정',
   sa: 'ضبط الصوت',
+  vi: 'Điều chỉnh giọng nói',
 },
 
 'voicePitch': {
@@ -558,6 +599,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Hauteur',
   kr: '음높이',
   sa: 'النبرة',
+  vi: 'Cao độ',
 },
 
 'voiceSpeed': {
@@ -570,6 +612,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vitesse',
   kr: '속도',
   sa: 'السرعة',
+  vi: 'Tốc độ',
 },
 
 'resetVoice': {
@@ -582,6 +625,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réinitialiser',
   kr: '초기화',
   sa: 'إعادة ضبط',
+  vi: 'Đặt lại',
 },
 
 
@@ -596,6 +640,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: '+ Ajouter un élément',
   kr: '+ 항목 추가',
   sa: '+ إضافة عنصر',
+  vi: '+ Thêm mục',
 },
 
 
@@ -610,6 +655,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Enregistrer',
   kr: '저장',
   sa: 'حفظ',
+  vi: 'Lưu',
 },
 
 
@@ -624,6 +670,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Annuler',
   kr: '취소',
   sa: 'إلغاء',
+  vi: 'Hủy',
 },
 
 
@@ -638,6 +685,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rejouer',
   kr: '다시 플레이',
   sa: 'العب مرة أخرى',
+  vi: 'Chơi lại',
 },
 
 
@@ -652,6 +700,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'OK',
   kr: '확인',
   sa: 'موافق',
+  vi: 'OK',
 },
 
 
@@ -666,6 +715,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible de trouver les sujets sélectionnés. Veuillez réessayer.',
   kr: '선택한 주제를 찾을 수 없습니다. 다시 시도하세요.',
   sa: 'تعذر العثور على المواضيع المحددة. يرجى المحاولة مرة أخرى.',
+  vi: 'Không tìm thấy các chủ đề đã chọn. Vui lòng thử lại.',
 },
 
 
@@ -680,6 +730,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Perdu',
   kr: '패배',
   sa: 'خسارة',
+  vi: 'Thua',
 },
 
 
@@ -694,6 +745,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Incorrect !',
   kr: '틀렸습니다!',
   sa: 'خطأ!',
+  vi: 'Sai rồi!',
 },
 
 
@@ -708,6 +760,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Cet ordinateur n’est pas activé.\nCliquez sur le bouton « Demander une licence » pour générer un fichier d’ID machine, puis envoyez-le à :\n+993 61615699 ou tmoa10099@gmail.com',
   kr: '이 컴퓨터는 활성화되지 않았습니다.\n"라이선스 요청" 버튼을 클릭하여 기기 ID 파일을 생성한 후 다음 주소로 보내주세요:\n+993 61615699 또는 tmoa10099@gmail.com',
   sa: 'هذا الكمبيوتر غير مفعل.\nانقر على زر "طلب الترخيص" لإنشاء ملف معرف الجهاز، ثم أرسله إلى:\n+993 61615699 أو tmoa10099@gmail.com',
+  vi: 'Máy tính này chưa được kích hoạt.\nNhấn nút "Yêu cầu giấy phép" để tạo tệp mã máy, sau đó gửi tệp đến:\n+993 61615699 hoặc tmoa10099@gmail.com',
 },
 
 
@@ -722,6 +775,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Activation de licence',
   kr: '라이선스 활성화',
   sa: 'تفعيل الترخيص',
+  vi: 'Kích hoạt giấy phép',
 },
 
 
@@ -736,6 +790,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Demander une licence',
   kr: '라이선스 요청',
   sa: 'طلب الترخيص',
+  vi: 'Yêu cầu giấy phép',
 },
 
 
@@ -750,6 +805,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Saisir la licence',
   kr: '라이선스 입력',
   sa: 'إدخال الترخيص',
+  vi: 'Nhập giấy phép',
 },
 
 
@@ -764,6 +820,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Licence activée avec succès !',
   kr: '라이선스가 성공적으로 활성화되었습니다!',
   sa: 'تم تفعيل الترخيص بنجاح!',
+  vi: 'Kích hoạt giấy phép thành công!',
 },
 
 
@@ -778,6 +835,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Fichier de licence invalide.',
   kr: '잘못된 라이선스 파일입니다.',
   sa: 'ملف الترخيص غير صالح.',
+  vi: 'Tệp giấy phép không hợp lệ.',
 },
 
 
@@ -792,6 +850,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Appuyez ou déposez une image ici',
   kr: '여기를 탭하거나 이미지를 드롭하세요',
   sa: 'اضغط أو أسقط صورة هنا',
+  vi: 'Chạm hoặc thả hình ảnh vào đây',
 },
 
 
@@ -806,6 +865,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Google Images',
   kr: 'Google Images',
   sa: 'Google Images',
+  vi: 'Google Hình ảnh',
 },
 
 
@@ -820,6 +880,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rechercher dans Google Images',
   kr: 'Google Images 검색',
   sa: 'البحث في Google Images',
+  vi: 'Tìm trên Google Hình ảnh',
 },
 
 
@@ -834,6 +895,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ouvrez Google Images, copiez une image, revenez ici, puis collez-la.',
   kr: 'Google Images를 열고 이미지를 복사한 뒤 여기로 돌아와 붙여넣으세요.',
   sa: 'افتح Google Images، وانسخ صورة، ثم ارجع إلى هنا والصقها.',
+  vi: 'Mở Google Hình ảnh, sao chép một hình, quay lại đây rồi dán vào.',
 },
 
 
@@ -848,6 +910,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Collez une image copiée avec Ctrl+V. Si cela échoue, importez une capture.',
   kr: '복사한 이미지를 Ctrl+V로 붙여넣으세요. 실패하면 스크린샷을 업로드하세요.',
   sa: 'الصق الصورة المنسوخة باستخدام Ctrl+V. إذا فشل ذلك، فارفع لقطة شاشة.',
+  vi: 'Dán hình đã sao chép bằng Ctrl+V. Nếu không được, hãy tải lên ảnh chụp màn hình.',
 },
 
 
@@ -862,6 +925,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible de lire cette image. Copiez l’image elle-même, ou faites une capture/téléchargement puis utilisez Importer.',
   kr: '이미지를 읽을 수 없습니다. 이미지 자체를 복사하거나 스크린샷/다운로드 후 업로드를 사용하세요.',
   sa: 'تعذرت قراءة هذه الصورة. انسخ الصورة نفسها، أو التقط/نزّل صورة شاشة ثم استخدم الرفع.',
+  vi: 'Không đọc được hình ảnh đó. Hãy sao chép chính hình ảnh, hoặc chụp màn hình/tải xuống rồi dùng Tải lên.',
 },
 
 
@@ -876,6 +940,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Le collage automatique est bloqué ici. Appuyez sur Ctrl+V ou importez une capture.',
   kr: '여기서는 자동 붙여넣기가 차단되었습니다. Ctrl+V를 누르거나 스크린샷을 업로드하세요.',
   sa: 'اللصق التلقائي محظور هنا. اضغط Ctrl+V أو ارفع لقطة شاشة.',
+  vi: 'Dán tự động bị chặn ở đây. Nhấn Ctrl+V hoặc tải lên ảnh chụp màn hình.',
 },
 
 
@@ -890,6 +955,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Coller l’image copiée',
   kr: '복사한 이미지 붙여넣기',
   sa: 'لصق الصورة المنسوخة',
+  vi: 'Dán hình đã sao chép',
 },
 
 
@@ -904,6 +970,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Import de l’image...',
   kr: '이미지 가져오는 중...',
   sa: 'جارٍ استيراد الصورة...',
+  vi: 'Đang nhập hình ảnh...',
 },
 
 
@@ -918,6 +985,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Recherche...',
   kr: '검색 중...',
   sa: 'جارٍ البحث...',
+  vi: 'Đang tìm...',
 },
 
 
@@ -932,6 +1000,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'La recherche d’images a échoué. Réessayez plus tard.',
   kr: '이미지 검색에 실패했습니다. 나중에 다시 시도하세요.',
   sa: 'فشل البحث عن الصور. حاول مرة أخرى لاحقاً.',
+  vi: 'Tìm hình ảnh thất bại. Vui lòng thử lại sau.',
 },
 
 
@@ -946,6 +1015,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Importer',
   kr: '업로드',
   sa: 'رفع',
+  vi: 'Tải lên',
 },
 
 
@@ -960,6 +1030,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rechercher',
   kr: '검색',
   sa: 'بحث',
+  vi: 'Tìm kiếm',
 },
 
 
@@ -974,6 +1045,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ouvrir la caméra',
   kr: '카메라 열기',
   sa: 'فتح الكاميرا',
+  vi: 'Mở máy ảnh',
 },
 
 
@@ -988,6 +1060,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer l’image',
   kr: '이미지 제거',
   sa: 'إزالة الصورة',
+  vi: 'Xóa hình ảnh',
 },
 
 
@@ -1002,6 +1075,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Texte en image',
   kr: '텍스트를 이미지로',
   sa: 'النص كصورة',
+  vi: 'Chữ thành hình',
 },
 
 
@@ -1016,6 +1090,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Saisissez le texte à transformer en image',
   kr: '이미지로 만들 텍스트를 입력하세요',
   sa: 'اكتب النص لتحويله إلى صورة',
+  vi: 'Nhập chữ để chuyển thành hình ảnh',
 },
 
 
@@ -1030,6 +1105,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Créer l’image',
   kr: '이미지 만들기',
   sa: 'إنشاء صورة',
+  vi: 'Tạo hình ảnh',
 },
 
 
@@ -1044,6 +1120,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Couleur d’arrière-plan de l’image texte',
   kr: '텍스트 이미지 배경색',
   sa: 'لون خلفية صورة النص',
+  vi: 'Màu nền của hình chữ',
 },
 
 
@@ -1058,6 +1135,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisir une couleur personnalisée',
   kr: '사용자 지정 색상 선택',
   sa: 'اختيار لون مخصص',
+  vi: 'Chọn màu tùy chỉnh',
 },
 
 
@@ -1072,6 +1150,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Appliquer',
   kr: '적용',
   sa: 'تطبيق',
+  vi: 'Áp dụng',
 },
 
 
@@ -1086,6 +1165,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Arrière-plan',
   kr: '배경',
   sa: 'الخلفية',
+  vi: 'Hình nền',
 },
 
 
@@ -1100,6 +1180,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisissez une couleur ou enregistrez jusqu’à 10 arrière-plans personnalisés.',
   kr: '색상을 선택하거나 사용자 지정 배경을 최대 10개까지 저장하세요.',
   sa: 'اختر لوناً أو احفظ حتى 10 خلفيات مخصصة.',
+  vi: 'Chọn một màu hoặc lưu tối đa 10 hình nền tùy chỉnh.',
 },
 
 
@@ -1114,6 +1195,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Couleurs',
   kr: '색상',
   sa: 'الألوان',
+  vi: 'Màu sắc',
 },
 
 
@@ -1128,6 +1210,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Par défaut',
   kr: '기본값',
   sa: 'افتراضي',
+  vi: 'Mặc định',
 },
 
 
@@ -1142,6 +1225,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Couleur personnalisée',
   kr: '사용자 지정 색상',
   sa: 'لون مخصص',
+  vi: 'Màu tùy chỉnh',
 },
 
 
@@ -1156,6 +1240,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Personnalisé',
   kr: '사용자 지정',
   sa: 'مخصص',
+  vi: 'Tùy chỉnh',
 },
 
 
@@ -1170,6 +1255,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajout...',
   kr: '추가 중...',
   sa: 'جارٍ الإضافة...',
+  vi: 'Đang thêm...',
 },
 
 
@@ -1184,6 +1270,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer l’arrière-plan',
   kr: '배경 삭제',
   sa: 'حذف الخلفية',
+  vi: 'Xóa hình nền',
 },
 
 
@@ -1198,6 +1285,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'JPG, PNG, WebP, HEIC et HEIF peuvent faire jusqu’à 75 Mo. Les GIF jusqu’à 100 Mo. Les images larges remplissent mieux l’écran.',
   kr: 'JPG, PNG, WebP, HEIC, HEIF는 최대 75MB까지 가능합니다. GIF는 최대 100MB까지 가능합니다. 넓은 이미지가 화면을 가장 잘 채웁니다.',
   sa: 'يمكن أن يصل حجم JPG وPNG وWebP وHEIC وHEIF إلى 75 ميغابايت. ويمكن أن يصل GIF إلى 100 ميغابايت. الصور العريضة تملأ الشاشة بشكل أفضل.',
+  vi: 'Ảnh JPG, PNG, WebP, HEIC và HEIF tối đa 75 MB. Ảnh GIF tối đa 100 MB. Ảnh ngang sẽ phủ kín màn hình đẹp nhất.',
 },
 
 
@@ -1212,6 +1300,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Assombrir l’image',
   kr: '이미지 어둡게',
   sa: 'تعتيم الصورة',
+  vi: 'Làm tối hình',
 },
 
 
@@ -1226,6 +1315,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible d’ajouter l’arrière-plan.',
   kr: '배경을 추가할 수 없습니다.',
   sa: 'تعذرت إضافة الخلفية.',
+  vi: 'Không thể thêm hình nền.',
 },
 
 
@@ -1240,6 +1330,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vous pouvez enregistrer jusqu’à {count} arrière-plans. Supprimez-en un pour en ajouter un autre.',
   kr: '배경은 최대 {count}개까지 저장할 수 있습니다. 새로 추가하려면 하나를 삭제하세요.',
   sa: 'يمكنك حفظ ما يصل إلى {count} خلفيات. احذف واحدة لإضافة أخرى.',
+  vi: 'Bạn có thể lưu tối đa {count} hình nền. Hãy xóa bớt một hình để thêm hình khác.',
 },
 
 
@@ -1254,6 +1345,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Veuillez choisir une image JPG, PNG, WebP, HEIC/HEIF ou GIF.',
   kr: 'JPG, PNG, WebP, HEIC/HEIF 또는 GIF 이미지를 선택하세요.',
   sa: 'يرجى اختيار صورة JPG أو PNG أو WebP أو HEIC/HEIF أو GIF.',
+  vi: 'Vui lòng chọn ảnh JPG, PNG, WebP, HEIC/HEIF hoặc GIF.',
 },
 
 
@@ -1268,6 +1360,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Les arrière-plans GIF peuvent faire jusqu’à 100 Mo.',
   kr: 'GIF 배경은 최대 100MB까지 가능합니다.',
   sa: 'يمكن أن يصل حجم خلفيات GIF إلى 100 ميغابايت.',
+  vi: 'Hình nền GIF tối đa 100 MB.',
 },
 
 
@@ -1282,6 +1375,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Les images d’arrière-plan peuvent faire jusqu’à 75 Mo.',
   kr: '배경 이미지는 최대 75MB까지 가능합니다.',
   sa: 'يمكن أن يصل حجم صور الخلفية إلى 75 ميغابايت.',
+  vi: 'Hình nền tối đa 75 MB.',
 },
 
 
@@ -1296,6 +1390,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible de charger l’arrière-plan importé.',
   kr: '업로드한 배경을 불러올 수 없습니다.',
   sa: 'تعذر تحميل الخلفية المرفوعة.',
+  vi: 'Không thể tải hình nền đã tải lên.',
 },
 
 
@@ -1310,6 +1405,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Bleu',
   kr: '파란색',
   sa: 'أزرق',
+  vi: 'Xanh dương',
 },
 
 
@@ -1324,6 +1420,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Vert',
   kr: '초록색',
   sa: 'أخضر',
+  vi: 'Xanh lá',
 },
 
 
@@ -1338,6 +1435,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Violet',
   kr: '보라색',
   sa: 'بنفسجي',
+  vi: 'Tím',
 },
 
 
@@ -1352,6 +1450,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rose',
   kr: '분홍색',
   sa: 'وردي',
+  vi: 'Hồng',
 },
 
 
@@ -1366,6 +1465,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Soleil',
   kr: '햇살',
   sa: 'الشمس',
+  vi: 'Nắng',
 },
 
 
@@ -1380,6 +1480,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sombre',
   kr: '어두운 색',
   sa: 'داكن',
+  vi: 'Tối',
 },
 
 
@@ -1394,6 +1495,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prendre une photo',
   kr: '사진 찍기',
   sa: 'التقاط صورة',
+  vi: 'Chụp ảnh',
 },
 
 
@@ -1408,6 +1510,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Prendre et utiliser la photo',
   kr: '사진을 찍어 사용하기',
   sa: 'التقاط الصورة واستخدامها',
+  vi: 'Chụp và dùng ảnh',
 },
 
 
@@ -1422,6 +1525,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Capture...',
   kr: '촬영 중...',
   sa: 'جارٍ التقاط الصورة...',
+  vi: 'Đang chụp...',
 },
 
 
@@ -1436,6 +1540,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'La caméra n’est pas disponible sur cet appareil.',
   kr: '이 기기에서는 카메라를 사용할 수 없습니다.',
   sa: 'الكاميرا غير متاحة على هذا الجهاز.',
+  vi: 'Thiết bị này không có máy ảnh.',
 },
 
 
@@ -1450,6 +1555,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible d’accéder à la caméra. Autorisez les permissions et réessayez.',
   kr: '카메라에 접근할 수 없습니다. 권한을 허용한 후 다시 시도하세요.',
   sa: 'تعذر الوصول إلى الكاميرا. يرجى السماح بالأذونات والمحاولة مرة أخرى.',
+  vi: 'Không thể truy cập máy ảnh. Hãy cấp quyền rồi thử lại.',
 },
 
 
@@ -1464,6 +1570,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible de prendre une photo. Réessayez ou importez une image.',
   kr: '사진을 찍을 수 없습니다. 다시 시도하거나 이미지를 업로드하세요.',
   sa: 'تعذر التقاط صورة. حاول مرة أخرى أو ارفع صورة.',
+  vi: 'Không chụp được ảnh. Hãy thử lại hoặc tải hình ảnh lên.',
 },
 
 
@@ -1478,6 +1585,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Le collage depuis le presse-papiers n\'est pas pris en charge ici. Veuillez utiliser le champ URL pour importer une image.',
   kr: 'yeo gi seo neun keul lib bo deu but yeo neow gi ga ji won doe ji an seub ni da. URL pil deu reul sa yong ha yeo i mi ji reul ga jyeo o se yo.',
   sa: 'lasq al-hafizah ghair madoom huna. yurja istikhdaam haql al-rabat listawrad surah.',
+  vi: 'Không hỗ trợ dán từ bộ nhớ tạm ở đây. Vui lòng dùng ô URL để nhập hình ảnh.',
 },
 
 
@@ -1492,6 +1600,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aussi disponible sur :',
   kr: '다음에서도 이용 가능:',
   sa: 'متاح أيضًا على:',
+  vi: 'Cũng có trên:',
 },
 
 
@@ -1506,6 +1615,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Version Web',
   kr: '웹 버전',
   sa: 'النسخة الويب',
+  vi: 'Phiên bản web',
 },
 
 
@@ -1520,6 +1630,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Application Windows',
   kr: 'Windows 앱',
   sa: 'تطبيق ويندوز',
+  vi: 'Ứng dụng Windows',
 },
 
 
@@ -1534,6 +1645,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réinitialiser',
   kr: '재설정',
   sa: 'إعادة تعيين',
+  vi: 'Đặt lại',
 },
 
 
@@ -1548,6 +1660,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Recommencer',
   kr: '처음부터 다시 시작',
   sa: 'ابدأ من جديد',
+  vi: 'Bắt đầu lại',
 },
 
 
@@ -1562,6 +1675,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'En pause',
   kr: '일시 정지',
   sa: 'متوقف مؤقتاً',
+  vi: 'Tạm dừng',
 },
 
 
@@ -1576,6 +1690,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Révélation',
   kr: '공개 중',
   sa: 'جاري الكشف',
+  vi: 'Đang mở',
 },
 
 
@@ -1590,6 +1705,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Aucun élément avec texte trouvé dans ce sujet !',
   kr: '이 주제에서 텍스트가 있는 항목을 찾을 수 없습니다!',
   sa: 'لم يتم العثور على عناصر تحتوي على نص في هذا الموضوع!',
+  vi: 'Chủ đề này không có mục nào có văn bản!',
 },
 
 
@@ -1604,6 +1720,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'L’ID de la machine a été enregistré dans : {path}. Veuillez envoyer ce fichier à : {contact}.',
   kr: '기기 ID가 {path}에 저장되었습니다. 이 파일을 {contact}로 보내주세요.',
   sa: 'تم حفظ معرف الجهاز في: {path}. يرجى إرسال هذا الملف إلى: {contact}.',
+  vi: 'Đã lưu mã máy vào: {path}. Vui lòng gửi tệp này đến: {contact}.',
 },
 
 
@@ -1618,6 +1735,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Activer le minuteur',
   kr: '타이머 활성화',
   sa: 'تفعيل المؤقت',
+  vi: 'Bật hẹn giờ',
 },
 
 
@@ -1632,6 +1750,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sujets',
   kr: '주제',
   sa: 'المواضيع',
+  vi: 'Chủ đề',
 },
 
 
@@ -1646,6 +1765,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Page d’activités',
   kr: '활동 페이지',
   sa: 'صفحة الأنشطة',
+  vi: 'Trang hoạt động',
 },
 
 
@@ -1660,6 +1780,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Recommencer',
   kr: '처음부터 다시 시작',
   sa: 'ابدأ من جديد',
+  vi: 'Bắt đầu lại',
 },
 
 
@@ -1674,6 +1795,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Reprendre',
   kr: '계속하기',
   sa: 'متابعة',
+  vi: 'Tiếp tục',
 },
 
 
@@ -1688,6 +1810,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mettre le jeu en pause',
   kr: '게임 메뉴 일시 정지',
   sa: 'إيقاف قائمة اللعبة مؤقتاً',
+  vi: 'Menu tạm dừng trò chơi',
 },
 
 
@@ -1702,6 +1825,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Reprendre le jeu',
   kr: '게임 계속하기',
   sa: 'استئناف اللعبة',
+  vi: 'Tiếp tục trò chơi',
 },
 
 
@@ -1716,6 +1840,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Retour aux sujets',
   kr: '주제 목록으로 돌아가기',
   sa: 'العودة إلى المواضيع',
+  vi: 'Quay lại chủ đề',
 },
 
 
@@ -1730,6 +1855,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Êtes-vous sûr de vouloir supprimer ce sujet ? Cette action est irréversible.',
   kr: '이 주제를 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.',
   sa: 'هل أنت متأكد من رغبتك في حذف هذا الموضوع؟ لا يمكن التراجع عن هذا الإجراء.',
+  vi: 'Bạn có chắc muốn xóa chủ đề này? Không thể hoàn tác thao tác này.',
 },
 
 'deleteItem': {
@@ -1742,6 +1868,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer l’élément',
   kr: '항목 삭제',
   sa: 'حذف العنصر',
+  vi: 'Xóa mục',
 },
 
 'deleteItemConfirmation': {
@@ -1754,6 +1881,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer cet élément ? Son texte, son image, son audio et les scores enregistrés seront perdus après l’enregistrement.',
   kr: '이 항목을 삭제하시겠습니까? 저장하면 텍스트, 이미지, 오디오 및 기록된 점수가 사라집니다.',
   sa: 'هل تريد حذف هذا العنصر؟ سيتم فقدان نصه وصورته وصوته وأي نقاط مسجلة له بعد الحفظ.',
+  vi: 'Xóa mục này? Văn bản, hình ảnh, âm thanh và mọi điểm số đã ghi của mục sẽ mất khi bạn lưu.',
 },
 
 
@@ -1768,6 +1896,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'ex. : Animaux, Mathématiques, Histoire',
   kr: '예: 동물, 수학, 역사',
   sa: 'مثال: الحيوانات، الرياضيات، التاريخ',
+  vi: 'vd: Động vật, Toán, Lịch sử',
 },
 
 
@@ -1782,6 +1911,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Essayez un autre mot-clé',
   kr: '다른 키워드를 시도하세요',
   sa: 'جرب كلمة رئيسية مختلفة',
+  vi: 'Hãy thử từ khóa khác',
 },
 
 
@@ -1796,6 +1926,7 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Veuillez sélectionner au moins deux sujets à combiner.',
   kr: '결합하려면 최소 두 개의 주제를 선택하세요.',
   sa: 'يرجى تحديد موضوعين على الأقل للدمج.',
+  vi: 'Vui lòng chọn ít nhất hai chủ đề để gộp.',
 },
 
 
@@ -1810,5 +1941,45 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sur Android, copiez l\'URL de l\'image depuis Google Images, puis collez-la dans le champ URL ci-dessous.',
   kr: 'Android eseo Google i mi ji ui i mi ji URL eul bok sa han da eum a rae URL pil de e but yeo neow eu se yo.',
   sa: 'ala Android, insakh rabat al-surah min suwar Google, thumma ilsaqahu fi haql al-rabat adnahu.',
+  vi: 'Trên Android, hãy sao chép URL hình ảnh từ Google Hình ảnh rồi dán vào ô URL bên dưới.',
+},
+
+'topicNameRequired': {
+  en: 'Please give the topic a name.',
+  tk: 'Tema üçin at ýazyň.',
+  ru: 'Введите название темы.',
+  cn: '请为主题命名。',
+  cde: 'Bitte gib dem Thema einen Namen.',
+  es: 'Ponle un nombre al tema.',
+  fr: 'Veuillez donner un nom au sujet.',
+  kr: '주제 이름을 입력하세요.',
+  sa: 'يرجى إدخال اسم للموضوع.',
+  vi: 'Vui lòng đặt tên cho chủ đề.',
+},
+
+'topicNeedsOneItem': {
+  en: 'Add at least one item with text, a picture or audio.',
+  tk: 'Tekstli, suratly ýa-da sesli iň bolmanda bir element goşuň.',
+  ru: 'Добавьте хотя бы один элемент с текстом, картинкой или аудио.',
+  cn: '请至少添加一个包含文字、图片或音频的项目。',
+  cde: 'Füge mindestens ein Element mit Text, Bild oder Audio hinzu.',
+  es: 'Añade al menos un elemento con texto, imagen o audio.',
+  fr: 'Ajoutez au moins un élément avec du texte, une image ou un audio.',
+  kr: '텍스트, 그림 또는 오디오가 있는 항목을 하나 이상 추가하세요.',
+  sa: 'أضف عنصرًا واحدًا على الأقل يحتوي على نص أو صورة أو صوت.',
+  vi: 'Hãy thêm ít nhất một mục có văn bản, hình ảnh hoặc âm thanh.',
+},
+
+'topicSaveFailed': {
+  en: 'The topic could not be saved. Please try again.',
+  tk: 'Temany saklap bolmady. Täzeden synanyşyň.',
+  ru: 'Не удалось сохранить тему. Попробуйте ещё раз.',
+  cn: '无法保存主题，请重试。',
+  cde: 'Das Thema konnte nicht gespeichert werden. Bitte versuche es erneut.',
+  es: 'No se pudo guardar el tema. Inténtalo de nuevo.',
+  fr: 'Le sujet n’a pas pu être enregistré. Veuillez réessayer.',
+  kr: '주제를 저장하지 못했습니다. 다시 시도하세요.',
+  sa: 'تعذّر حفظ الموضوع. يرجى المحاولة مرة أخرى.',
+  vi: 'Không thể lưu chủ đề. Vui lòng thử lại.',
 },
 };

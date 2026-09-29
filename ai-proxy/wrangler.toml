@@ -1,0 +1,37 @@
+name = "noprep-ai-proxy"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Daily clean-up of old usage counters.
+[triggers]
+crons = ["0 3 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "noprep-ai-usage"
+# Paste the id printed by `npx wrangler d1 create noprep-ai-usage` (see docs/ai-topic-generator.md).
+database_id = "PASTE_D1_DATABASE_ID_HERE"
+
+[vars]
+# Cheapest vision-capable Gemini model at build time; change here without an app update.
+GEMINI_MODEL = "gemini-3.1-flash-lite"
+# Silent anti-abuse limits, far above normal classroom use.
+MACHINE_HOURLY_LIMIT = "40"
+MACHINE_DAILY_LIMIT = "150"
+# Safety net against many leaked licenses at once (~$0.004 per topic => ~$80/day worst case).
+GLOBAL_DAILY_LIMIT = "20000"
+MAX_BODY_BYTES = "12000000"
+# Public half of the license key pair (same as native/security-core/src/lib.rs). Safe to publish.
+LICENSE_PUBLIC_KEY = """
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwhznsvky8/6yz5K43wU4
+S/+RHXk5juHQMKdNCUX+iuYE/30+6lj6sNLG14g7Yw0ZyLVOJyOeXb3oVzS0+Ymk
+/adIjahOXEU/mvDK4urlxO3SqI891bnDT9XvyDugMnNx1EMV2BQW9c5jKHr0MhV/
+pTb6X9lRVLpOTLEpCHO2Yq7cLv1iQ0cVe54CuD8qGp0pDeU7FCaVvLQY+oDI9pmP
+Tri1qZhz3/d8xHgU2yjx1ZsC+z5PnUFYkriykC4+rFc9i3CmpPkGWE9YQHZ/f13a
+teZIdwakx0IzA0uU1H2tjrwL6liJ/FeoThSepClpnmG2Uj3c6knSa8e2x73VMaI9
+XwIDAQAB
+-----END PUBLIC KEY-----
+"""
+
+# GEMINI_API_KEY is a secret, never stored here:  npx wrangler secret put GEMINI_API_KEY

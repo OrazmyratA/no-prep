@@ -12,6 +12,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Classement de la classe',
   kr: '학급 리더보드',
   sa: 'لوحة صدارة الصف',
+  vi: 'Bảng xếp hạng lớp',
 },
 
 'randomPickerClose': {
@@ -24,6 +25,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Fermer',
   kr: '닫기',
   sa: 'إغلاق',
+  vi: 'Đóng',
 },
 
 'leaderboardChooseListTitle': {
@@ -36,6 +38,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Configurez votre classe',
   kr: '학급 설정하기',
   sa: 'جهّز صفك',
+  vi: 'Thiết lập lớp của bạn',
 },
 
 'leaderboardChooseListMessage': {
@@ -48,6 +51,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisissez une liste de classe pour démarrer le classement.',
   kr: '리더보드를 시작할 학급 명단을 고르세요.',
   sa: 'اختر قائمة صف لبدء لوحة الصدارة.',
+  vi: 'Chọn một danh sách lớp để bắt đầu bảng xếp hạng.',
 },
 
 'leaderboardChooseListButton': {
@@ -60,6 +64,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisir une liste de classe',
   kr: '학급 명단 선택',
   sa: 'اختيار قائمة الصف',
+  vi: 'Chọn danh sách lớp',
 },
 
 'leaderboardChangeList': {
@@ -72,6 +77,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Changer de liste',
   kr: '명단 변경',
   sa: 'تغيير القائمة',
+  vi: 'Đổi danh sách',
 },
 
 'leaderboardResetScores': {
@@ -84,6 +90,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réinitialiser les scores',
   kr: '점수 초기화',
   sa: 'إعادة ضبط النقاط',
+  vi: 'Đặt lại điểm',
 },
 
 'leaderboardShare': {
@@ -96,6 +103,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Partager l\'image des résultats',
   kr: '결과 이미지 공유',
   sa: 'مشاركة صورة النتائج',
+  vi: 'Chia sẻ ảnh kết quả',
 },
 
 'leaderboardShareTitle': {
@@ -108,6 +116,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Résultats de la classe',
   kr: '학급 결과',
   sa: 'نتائج الصف',
+  vi: 'Kết quả của lớp',
 },
 
 'leaderboardShareDone': {
@@ -120,6 +129,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Image des résultats enregistrée',
   kr: '결과 이미지가 저장되었습니다',
   sa: 'تم حفظ صورة النتائج',
+  vi: 'Đã lưu ảnh kết quả',
 },
 
 'leaderboardShareFailed': {
@@ -132,6 +142,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Impossible d\'enregistrer l\'image des résultats',
   kr: '결과 이미지를 저장하지 못했습니다',
   sa: 'تعذّر حفظ صورة النتائج',
+  vi: 'Không thể lưu ảnh kết quả',
 },
 
 'leaderboardUndo': {
@@ -144,6 +155,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Annuler la dernière action',
   kr: '마지막 동작 취소',
   sa: 'التراجع عن آخر إجراء',
+  vi: 'Hoàn tác thao tác cuối',
 },
 
 'leaderboardResetConfirm': {
@@ -156,6 +168,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réinitialiser les points de tous les élèves de cette liste de classe ? Cette action est irréversible.',
   kr: '이 학급 명단의 모든 학생 점수를 초기화할까요? 되돌릴 수 없습니다.',
   sa: 'هل تريد إعادة ضبط نقاط كل طالب في قائمة الصف هذه؟ لا يمكن التراجع عن ذلك.',
+  vi: 'Đặt lại điểm của tất cả học sinh trong danh sách lớp này? Không thể hoàn tác.',
 },
 
 'leaderboardSessionStart': {
@@ -168,6 +181,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Démarrer la séance du jour',
   kr: '오늘 수업 시작',
   sa: 'بدء جلسة اليوم',
+  vi: 'Bắt đầu buổi học hôm nay',
 },
 
 'leaderboardSessionEnd': {
@@ -180,6 +194,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Terminer la séance et enregistrer les totaux',
   kr: '수업 종료 및 총점 저장',
   sa: 'إنهاء الجلسة وحفظ المجاميع',
+  vi: 'Kết thúc buổi học & lưu tổng điểm',
 },
 
 'leaderboardSessionStartConfirm': {
@@ -192,6 +207,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Démarrer la séance du jour ? Le score de chacun s\'affichera à 0 jusqu\'à la fin de la séance, puis les points du jour seront ajoutés à son total.',
   kr: '오늘 수업을 시작할까요? 수업을 끝낼 때까지 모두의 점수가 0으로 표시되며, 끝나면 오늘 얻은 점수가 총점에 더해집니다.',
   sa: 'هل تريد بدء جلسة اليوم؟ ستظهر نقاط الجميع 0 إلى أن تنهي الجلسة، وعندها تُضاف نقاط اليوم إلى مجموع كل طالب.',
+  vi: 'Bắt đầu buổi học hôm nay? Điểm của mọi người sẽ hiện là 0 cho đến khi bạn kết thúc buổi học, khi đó điểm hôm nay sẽ được cộng vào tổng điểm.',
 },
 
 'leaderboardSessionBaselineHint': {
@@ -204,6 +220,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Total précédent, rajouté à la fin de la séance',
   kr: '이전 총점이며, 수업이 끝나면 다시 더해집니다',
   sa: 'المجموع السابق، يُضاف مجددًا عند انتهاء الجلسة',
+  vi: 'Tổng điểm trước đó, sẽ được cộng lại khi kết thúc buổi học',
 },
 
 'leaderboardRankingTitle': {
@@ -216,6 +233,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Classement',
   kr: '순위',
   sa: 'الترتيب',
+  vi: 'Xếp hạng',
 },
 
 'leaderboardNoItemsInTopic': {
@@ -228,6 +246,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Cette liste de classe ne contient pas encore d\'élèves.',
   kr: '이 학급 명단에는 아직 학생이 없습니다.',
   sa: 'لا يوجد طلاب في قائمة الصف هذه بعد.',
+  vi: 'Danh sách lớp này chưa có học sinh.',
 },
 
 'leaderboardHammerHint': {
@@ -240,6 +259,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Faites glisser sur un élève pour retirer un point',
   kr: '학생에게 끌어다 놓으면 1점이 빠집니다',
   sa: 'اسحبها إلى طالب لإزالة نقطة',
+  vi: 'Kéo thả lên một học sinh để trừ một điểm',
 },
 
 'leaderboardCorrect': {
@@ -252,6 +272,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Correct',
   kr: '정답',
   sa: 'صحيح',
+  vi: 'Đúng',
 },
 
 'leaderboardOops': {
@@ -264,6 +285,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Oups',
   kr: '틀림',
   sa: 'خطأ',
+  vi: 'Oops',
 },
 
 'leaderboardPickerBannerHint': {
@@ -276,6 +298,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Choisissez une liste de classe pour le classement',
   kr: '리더보드에 쓸 학급 명단을 고르세요',
   sa: 'اختر قائمة صف للوحة الصدارة',
+  vi: 'Chọn một danh sách lớp cho bảng xếp hạng',
 },
 
 'leaderboardPickerBannerCancel': {
@@ -288,6 +311,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Annuler',
   kr: '취소',
   sa: 'إلغاء',
+  vi: 'Hủy',
 },
 
 'leaderboardModeToggle': {
@@ -300,6 +324,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mode du classement',
   kr: '리더보드 모드',
   sa: 'وضع لوحة الصدارة',
+  vi: 'Chế độ bảng xếp hạng',
 },
 
 'leaderboardModeIndividual': {
@@ -312,6 +337,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Individuel',
   kr: '개인',
   sa: 'فردي',
+  vi: 'Cá nhân',
 },
 
 'leaderboardModeTeam': {
@@ -324,6 +350,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipes',
   kr: '팀',
   sa: 'الفرق',
+  vi: 'Đội',
 },
 
 'leaderboardTeamManage': {
@@ -336,6 +363,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Gérer les équipes',
   kr: '팀 관리',
   sa: 'إدارة الفرق',
+  vi: 'Quản lý đội',
 },
 
 'leaderboardTeamSetupTitle': {
@@ -348,6 +376,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Configurer les équipes',
   kr: '팀 설정',
   sa: 'إعداد الفرق',
+  vi: 'Thiết lập đội',
 },
 
 'leaderboardTeamSetupUnassigned': {
@@ -360,6 +389,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Élèves non assignés',
   kr: '배정되지 않은 학생',
   sa: 'الطلاب غير المُعيَّنين',
+  vi: 'Học sinh chưa có đội',
 },
 
 'leaderboardTeamAllAssigned': {
@@ -372,6 +402,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Tout le monde est dans une équipe',
   kr: '모두 팀에 배정되었습니다',
   sa: 'الجميع ضمن فريق',
+  vi: 'Mọi người đều đã có đội',
 },
 
 'leaderboardTeamTapHint': {
@@ -384,6 +415,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez des élèves pour les ajouter',
   kr: '학생을 눌러 추가하세요',
   sa: 'اضغط على الطلاب لإضافتهم',
+  vi: 'Chạm vào học sinh để thêm',
 },
 
 'leaderboardTeamPickTeamHint': {
@@ -396,6 +428,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez une équipe ci-dessous, puis des élèves pour les y ajouter',
   kr: '아래에서 팀을 누른 다음, 학생을 눌러 그 팀에 추가하세요',
   sa: 'اضغط على فريق أدناه ثم على الطلاب لإضافتهم إليه',
+  vi: 'Chạm vào một đội bên dưới, sau đó chạm vào học sinh để thêm vào đội',
 },
 
 'leaderboardTeamPickStudentsHint': {
@@ -408,6 +441,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Touchez des élèves pour les ajouter à',
   kr: '학생을 눌러 다음 팀에 추가:',
   sa: 'اضغط على الطلاب لإضافتهم إلى',
+  vi: 'Chạm vào học sinh để thêm vào',
 },
 
 'leaderboardTeamAddTeam': {
@@ -420,6 +454,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajouter une équipe',
   kr: '팀 추가',
   sa: 'إضافة فريق',
+  vi: 'Thêm đội',
 },
 
 'leaderboardTeamDefaultName': {
@@ -432,6 +467,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Équipe',
   kr: '팀',
   sa: 'فريق',
+  vi: 'Đội',
 },
 
 'leaderboardTeamNamePlaceholder': {
@@ -444,6 +480,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Nom de l\'équipe',
   kr: '팀 이름',
   sa: 'اسم الفريق',
+  vi: 'Tên đội',
 },
 
 'leaderboardTeamDelete': {
@@ -456,6 +493,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer l\'équipe',
   kr: '팀 삭제',
   sa: 'حذف الفريق',
+  vi: 'Xóa đội',
 },
 
 'leaderboardTeamDeleteConfirm': {
@@ -468,6 +506,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Supprimer cette équipe ? Ses membres retournent dans « Non assignés ».',
   kr: '이 팀을 삭제할까요? 팀원은 ‘배정되지 않음’으로 돌아갑니다.',
   sa: 'هل تريد إزالة هذا الفريق؟ سيعود أعضاؤه إلى «غير المُعيَّنين».',
+  vi: 'Xóa đội này? Các thành viên sẽ quay về nhóm Chưa có đội.',
 },
 
 'leaderboardTeamMinRequired': {
@@ -480,6 +519,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajoutez au moins 2 équipes avec 1 membre chacune pour commencer.',
   kr: '시작하려면 팀원이 1명 이상인 팀을 2개 이상 추가하세요.',
   sa: 'أضف فريقين على الأقل بعضو واحد في كل منهما للبدء.',
+  vi: 'Hãy thêm ít nhất 2 đội, mỗi đội 1 thành viên để bắt đầu.',
 },
 
 'leaderboardTeamStart': {
@@ -492,6 +532,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Enregistrer',
   kr: '저장',
   sa: 'حفظ',
+  vi: 'Lưu',
 },
 
 'leaderboardWheelToggle': {
@@ -504,6 +545,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher/masquer la roue',
   kr: '룰렛 표시/숨기기',
   sa: 'إظهار/إخفاء العجلة',
+  vi: 'Hiện/ẩn vòng quay',
 },
 
 'leaderboardTimerToggle': {
@@ -516,6 +558,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Afficher/masquer le compte à rebours',
   kr: '카운트다운 타이머 표시/숨기기',
   sa: 'إظهار/إخفاء مؤقت العد التنازلي',
+  vi: 'Hiện/ẩn đồng hồ đếm ngược',
 },
 
 'leaderboardTimerSetupTitle': {
@@ -528,6 +571,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Régler un minuteur',
   kr: '타이머 설정',
   sa: 'ضبط مؤقت',
+  vi: 'Đặt hẹn giờ',
 },
 
 'leaderboardTimerHours': {
@@ -540,6 +584,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Hr',
   kr: 'Hr',
   sa: 'Hr',
+  vi: 'Giờ',
 },
 
 'leaderboardTimerMinutes': {
@@ -552,6 +597,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Min',
   kr: 'Min',
   sa: 'Min',
+  vi: 'Phút',
 },
 
 'leaderboardTimerSeconds': {
@@ -564,6 +610,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Sec',
   kr: 'Sec',
   sa: 'Sec',
+  vi: 'Giây',
 },
 
 'leaderboardTimerStart': {
@@ -576,6 +623,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Démarrer',
   kr: '시작',
   sa: 'ابدأ',
+  vi: 'Bắt đầu',
 },
 
 'leaderboardTimerPause': {
@@ -588,6 +636,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mettre le minuteur en pause',
   kr: '타이머 일시정지',
   sa: 'إيقاف المؤقت مؤقتًا',
+  vi: 'Tạm dừng hẹn giờ',
 },
 
 'leaderboardTimerResume': {
@@ -600,6 +649,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Reprendre le minuteur',
   kr: '타이머 다시 시작',
   sa: 'استئناف المؤقت',
+  vi: 'Tiếp tục hẹn giờ',
 },
 
 'leaderboardTimerReset': {
@@ -612,6 +662,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réinitialiser le minuteur',
   kr: '타이머 초기화',
   sa: 'إعادة ضبط المؤقت',
+  vi: 'Đặt lại hẹn giờ',
 },
 
 'leaderboardTimerMute': {
@@ -624,6 +675,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Couper le son du minuteur',
   kr: '타이머 소리 끄기',
   sa: 'كتم صوت المؤقت',
+  vi: 'Tắt tiếng hẹn giờ',
 },
 
 'leaderboardTimerUnmute': {
@@ -636,6 +688,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réactiver le son du minuteur',
   kr: '타이머 소리 켜기',
   sa: 'تشغيل صوت المؤقت',
+  vi: 'Bật tiếng hẹn giờ',
 },
 
 'leaderboardCommitReorder': {
@@ -648,6 +701,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Mettre à jour le classement',
   kr: '순위 업데이트',
   sa: 'تحديث الترتيب',
+  vi: 'Cập nhật xếp hạng',
 },
 
 'leaderboardRestoreOrder': {
@@ -660,6 +714,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Rétablir l\'ordre d\'origine',
   kr: '원래 순서로 되돌리기',
   sa: 'استعادة الترتيب الأصلي',
+  vi: 'Khôi phục thứ tự ban đầu',
 },
 
 'leaderboardAddStudent': {
@@ -672,6 +727,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajouter un élève',
   kr: '학생 추가',
   sa: 'إضافة طالب',
+  vi: 'Thêm học sinh',
 },
 
 'leaderboardWheelReset': {
@@ -684,6 +740,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Réinitialiser la roue',
   kr: '룰렛 초기화',
   sa: 'إعادة ضبط العجلة',
+  vi: 'Đặt lại vòng quay',
 },
 
 'leaderboardAbsent': {
@@ -696,6 +753,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Absent',
   kr: '결석',
   sa: 'غائب',
+  vi: 'Vắng',
 },
 
 'leaderboardMarkAbsent': {
@@ -708,6 +766,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Marquer absent',
   kr: '결석 표시',
   sa: 'تحديد كغائب',
+  vi: 'Đánh dấu vắng',
 },
 
 'leaderboardMarkPresent': {
@@ -720,6 +779,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Marquer présent',
   kr: '출석 표시',
   sa: 'تحديد كحاضر',
+  vi: 'Đánh dấu có mặt',
 },
 
 'leaderboardAddPoint': {
@@ -732,6 +792,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Ajouter un point',
   kr: '점수 추가',
   sa: 'إضافة نقطة',
+  vi: 'Cộng một điểm',
 },
 
 'leaderboardRemovePoint': {
@@ -744,6 +805,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Retirer un point',
   kr: '점수 빼기',
   sa: 'إزالة نقطة',
+  vi: 'Trừ một điểm',
 },
 
 'leaderboardEntireTotal': {
@@ -756,6 +818,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Total :',
   kr: '합계:',
   sa: 'المجموع:',
+  vi: 'Tổng:',
 },
 
 'leaderboardGridColumns': {
@@ -768,6 +831,7 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   fr: 'Changer la disposition de la grille',
   kr: '격자 배치 변경',
   sa: 'تغيير تخطيط الشبكة',
+  vi: 'Đổi bố cục lưới',
 },
 
 };
