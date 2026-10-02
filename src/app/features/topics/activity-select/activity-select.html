@@ -26,7 +26,8 @@
            [style.z-index]="selectedGame === game && showSettings ? 15 : null">
         <!-- Game Icon -->
         <div class="h-32 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-          <span class="text-6xl">{{ game.icon }}</span>
+          <img *ngIf="game.iconImage" [src]="game.iconImage" alt="" class="h-20 w-20 object-contain drop-shadow-md">
+          <span *ngIf="!game.iconImage" class="text-6xl">{{ game.icon }}</span>
         </div>
         
         <!-- Game Info -->

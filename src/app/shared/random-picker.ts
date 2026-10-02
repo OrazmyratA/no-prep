@@ -127,6 +127,17 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // render, so wedge positions stay put mid-round instead of jumping around on unrelated clicks.
   private wheelOrder: number[] = [];
 
+  // ===== Team-mode wheel turn rotation =====
+  // Every wedge stays on the wheel (the spin still looks/feels the same), but in Team mode the
+  // winner is restricted to whichever team/group is "up" — so two spins in a row can't both land
+  // on the same team purely by chance. Students not yet placed on a team count as their own group
+  // (UNASSIGNED_WHEEL_GROUP) so nobody is silently skipped just for lacking a team. Regenerated
+  // in lockstep with wheelOrder (see reshuffleWheelOrder) — a fresh shuffled turn order each time
+  // the pool is freshly filled, not every render.
+  private static readonly UNASSIGNED_WHEEL_GROUP = -1;
+  private wheelTeamRotation: number[] = [];
+  private wheelTeamPointer = 0;
+
   // Session-only, like teams — resets on topic reload/app restart. An absent student is fully
   // locked out of scoring and the wheel (enforced in awardPoint/deductPoint/wheelEntries below).
   private absentItemIds = new Set<number>();
@@ -309,12 +320,12 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   private displayColumnsSignature: string | null = null;
   private displayColumnsResult: {
     columns: LeaderboardEntry[][];
-    labels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
+    labels: ({ name: string; color?: string; teamId?: number; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
   } | null = null;
 
   private buildDisplayColumns(): {
     columns: LeaderboardEntry[][];
-    labels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
+    labels: ({ name: string; color?: string; teamId?: number; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
   } {
     const buckets = this.mode === 'team' ? this.columnsTeam : this.columnsIndividual;
     const signature = this.displayColumnsSignatureFor(buckets);
@@ -350,35 +361,52 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private computeDisplayColumns(buckets: number[][], byId: Map<number, LeaderboardEntry>): {
     columns: LeaderboardEntry[][];
-    labels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
+    labels: ({ name: string; color?: string; teamId?: number; isUnassigned?: boolean; isAbsent?: boolean } | null)[];
   } {
     const entryBuckets = buckets.map(col => col.map(id => byId.get(id)).filter((e): e is LeaderboardEntry => !!e));
 
     // Ranked-flat team view (see applyScoreRanking) isn't grouped by team, so it gets no labels,
     // same as individual mode — matches the drawer-open, single-column case too.
     const showTeamLabels = this.mode === 'team' && !this.rankingAppliedTeam && !this.drawerOpen;
-    let mergedColumns: LeaderboardEntry[][];
-    let labels: ({ name: string; color?: string; isUnassigned?: boolean } | null)[];
+    let teamColumns: LeaderboardEntry[][];
+    let unassignedEntries: LeaderboardEntry[];
+    let labels: ({ name: string; color?: string; teamId?: number } | null)[];
 
     if (this.drawerOpen) {
-      mergedColumns = [entryBuckets.flat()];
+      teamColumns = [entryBuckets.flat()];
+      unassignedEntries = [];
       labels = [null];
     } else if (showTeamLabels) {
-      mergedColumns = entryBuckets;
-      labels = this.teams.map(t => ({ name: t.name, color: t.color }));
       // chunkByTeam() appends exactly one trailing bucket when entryBuckets has more entries than
-      // teams — mirror that off the actual bucket count instead of re-deriving the condition, so
-      // this can never drift out of sync with what's actually in entryBuckets.
-      if (entryBuckets.length > this.teams.length) labels.push({ name: '', isUnassigned: true });
+      // teams — students not yet on any team. Pulled into its own scrollable trailing column
+      // (same treatment as Absent below) instead of rendering it as a same-width team column,
+      // since reassigning it happens in Team Setup, not by scrolling past it in the main list.
+      teamColumns = entryBuckets.slice(0, this.teams.length);
+      unassignedEntries = entryBuckets.slice(this.teams.length).flat();
+      // teamId lets the header know which team a tap should dock a point from (see
+      // decrementTeamScores and leaderboard-ranking-list.ts's teamHeaderClick).
+      labels = this.teams.map(t => ({ name: t.name, color: t.color, teamId: t.id }));
     } else {
-      mergedColumns = entryBuckets;
+      teamColumns = entryBuckets;
+      unassignedEntries = [];
       labels = entryBuckets.map(() => null);
     }
 
-    const present = mergedColumns.map(col => col.filter(e => !e.absent));
-    const absent = mergedColumns.flat().filter(e => e.absent);
-    if (!absent.length) return { columns: present, labels };
-    return { columns: [...present, absent], labels: [...labels, { name: '', isAbsent: true }] };
+    const present = teamColumns.map(col => col.filter(e => !e.absent));
+    const absent = [...teamColumns.flat().filter(e => e.absent), ...unassignedEntries.filter(e => e.absent)];
+    const unassignedPresent = unassignedEntries.filter(e => !e.absent);
+
+    const columns = [...present];
+    const outLabels: ({ name: string; color?: string; teamId?: number; isUnassigned?: boolean; isAbsent?: boolean } | null)[] = [...labels];
+    if (unassignedPresent.length) {
+      columns.push(unassignedPresent);
+      outLabels.push({ name: '', isUnassigned: true });
+    }
+    if (absent.length) {
+      columns.push(absent);
+      outLabels.push({ name: '', isAbsent: true });
+    }
+    return { columns, labels: outLabels };
   }
 
   get activeColumns(): LeaderboardEntry[][] {
@@ -388,7 +416,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // One label per activeColumns entry (team name, "Unassigned", "Absent", or null for an
   // unlabeled column) — null wholesale when nothing in the current view needs a header at all
   // (plain individual mode with nobody absent), matching the original no-headers look.
-  get columnLabels(): ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[] | null {
+  get columnLabels(): ({ name: string; color?: string; teamId?: number; isUnassigned?: boolean; isAbsent?: boolean } | null)[] | null {
     const { labels } = this.buildDisplayColumns();
     return labels.some(label => label != null) ? labels : null;
   }
@@ -604,6 +632,47 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     return available.length ? available : orderedPool;
   }
 
+  // Restricts which wedge the wheel is allowed to actually land on, without touching which
+  // wedges are shown (leaderboard-wheel.ts's `entries` stays the full wheelEntries list either
+  // way) — individual mode, or a team-mode topic with no teams defined yet, returns null (no
+  // restriction, spins freely over everyone, same as before this feature existed). In Team mode
+  // this walks the shuffled group rotation starting at wheelTeamPointer and returns the first
+  // group that still has someone available this round, so a group that's already fully used just
+  // gets stepped over instead of blocking the spin.
+  get wheelEligibleItemIds(): number[] | null {
+    if (this.mode !== 'team' || !this.teams.length || !this.wheelTeamRotation.length) return null;
+    const available = new Set(this.wheelEntries.map(e => e.itemId));
+    for (let step = 0; step < this.wheelTeamRotation.length; step++) {
+      const groupId = this.wheelTeamRotation[(this.wheelTeamPointer + step) % this.wheelTeamRotation.length];
+      const eligible = this.wheelGroupMemberIds(groupId).filter(id => available.has(id));
+      if (eligible.length) return eligible;
+    }
+    return null;
+  }
+
+  private wheelGroupIdForItem(itemId: number): number {
+    const team = this.teams.find(t => t.memberItemIds.includes(itemId));
+    return team ? team.id : RandomPickerComponent.UNASSIGNED_WHEEL_GROUP;
+  }
+
+  private wheelGroupMemberIds(groupId: number): number[] {
+    if (groupId === RandomPickerComponent.UNASSIGNED_WHEEL_GROUP) {
+      const assigned = new Set(this.teams.flatMap(t => t.memberItemIds));
+      return this.roster.filter(i => i.id != null && !assigned.has(i.id!)).map(i => i.id!);
+    }
+    return this.teams.find(t => t.id === groupId)?.memberItemIds ?? [];
+  }
+
+  // One rotation slot per non-empty team, plus one for anyone not yet on a team — recomputed
+  // alongside wheelOrder (see reshuffleWheelOrder) so a fresh shuffled turn order starts whenever
+  // the wheel's pool is freshly filled (topic load, team changes, or a round fully using up).
+  private computeWheelGroupIds(): number[] {
+    const groups = this.teams.filter(t => t.memberItemIds.length > 0).map(t => t.id);
+    const assigned = new Set(this.teams.flatMap(t => t.memberItemIds));
+    const hasUnassigned = this.roster.some(i => i.id != null && !assigned.has(i.id!));
+    return hasUnassigned ? [...groups, RandomPickerComponent.UNASSIGNED_WHEEL_GROUP] : groups;
+  }
+
   private shuffle<T>(items: T[]): T[] {
     const result = [...items];
     for (let i = result.length - 1; i > 0; i--) {
@@ -695,7 +764,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.selectedEntry = null;
     // A new class list invalidates any teams built for the old one.
     this.teams = [];
-    this.wheelOrder = this.computeInterleavedWheelOrder();
+    this.reshuffleWheelOrder();
     this.absentItemIds = new Set();
     this.undoStack = [];
     this.entryCache.clear();
@@ -940,6 +1009,41 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  // Docks a point from a whole group in one tap — tapping the class name (the title next to the
+  // ranking button) docks everyone, tapping a team's header in Team mode docks just that team
+  // (see leaderboard-ranking-list.ts's teamHeaderClick). Confirmed and NOT routed through
+  // pushUndo/undoStack, same treatment as resetScores() above: a class of 30 would blow past
+  // maxUndoDepth instantly and still take 30 separate taps of Undo to walk back, so this is a
+  // deliberate, confirmed action instead, like Reset scores.
+  async decrementAllScores() {
+    if (this.selectedTopicId == null) return;
+    const confirmed = await this.confirmationService.confirm(this.langService.translate('leaderboardDecrementAllConfirm'));
+    if (!confirmed) return;
+    const itemIds = this.roster.filter(i => i.id != null && !this.absentItemIds.has(i.id!)).map(i => i.id!);
+    await this.bulkDecrement(itemIds);
+  }
+
+  async decrementTeamScores(teamId: number) {
+    if (this.selectedTopicId == null) return;
+    const team = this.teams.find(t => t.id === teamId);
+    if (!team) return;
+    const confirmed = await this.confirmationService.confirm(this.langService.translate('leaderboardDecrementTeamConfirm'));
+    if (!confirmed) return;
+    const itemIds = team.memberItemIds.filter(id => !this.absentItemIds.has(id));
+    await this.bulkDecrement(itemIds);
+  }
+
+  private async bulkDecrement(itemIds: number[]) {
+    if (this.selectedTopicId == null || !itemIds.length) return;
+    for (const itemId of itemIds) {
+      const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, -1);
+      if (this.destroyed) return;
+      this.scores.set(itemId, total);
+    }
+    this.playSound(this.hammerSound, 0.6);
+    this.cdr.detectChanges();
+  }
+
   // ===== Today's session =====
   // Lets a teacher separate "today's collected points" from the running total without losing
   // it: starting stashes each student's current total (baselinePoints, persisted on the DB row —
@@ -957,7 +1061,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     try {
       const blob = await renderLeaderboardImage(this.allActiveEntries, this.selectedTopicName, {
         title: this.langService.translate('leaderboardShareTitle'),
-        absent: this.langService.translate('leaderboardAbsent')
+        absent: this.langService.translate('leaderboardAbsent'),
+        attendance: this.langService.translate('leaderboardShareAttendance')
       });
       const date = new Date().toISOString().slice(0, 10);
       const name = `${this.selectedTopicName || 'class'}-results-${date}.png`;
@@ -1096,6 +1201,15 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private markWheelUsed(id: number) {
     this.usedWheelItemIds.add(id);
+    // Whoever's turn just finished, the NEXT spin should prefer a different group — advance past
+    // wherever that student's group sits in the rotation, regardless of whether this spin used
+    // the group wheelTeamPointer was already on or one it skipped ahead to (see
+    // wheelEligibleItemIds). A correct vs. "oops" answer doesn't matter here — a turn was taken.
+    if (this.mode === 'team' && this.wheelTeamRotation.length) {
+      const groupId = this.wheelGroupIdForItem(id);
+      const idx = this.wheelTeamRotation.indexOf(groupId);
+      if (idx !== -1) this.wheelTeamPointer = (idx + 1) % this.wheelTeamRotation.length;
+    }
     if (this.usedWheelItemIds.size >= this.roster.length) {
       this.usedWheelItemIds.clear();
       this.reshuffleWheelOrder();
@@ -1113,6 +1227,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private reshuffleWheelOrder() {
     this.wheelOrder = this.computeInterleavedWheelOrder();
+    this.wheelTeamRotation = this.shuffle(this.computeWheelGroupIds());
+    this.wheelTeamPointer = 0;
   }
 
   // Round-robins through each team (plus one bucket for anyone not on a team) instead of a flat

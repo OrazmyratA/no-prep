@@ -10,7 +10,8 @@ import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
-import { AiTopicDialogResult } from '../ai-topic-dialog/ai-topic-dialog';
+import { AiTopicDialogResult, LANGUAGE_NAMES } from '../ai-topic-dialog/ai-topic-dialog';
+import { AiTopicProviderId, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
 import { AiImageChoice, AiMediaResolverService } from '../../../core/ai-topic/ai-media-resolver';
 import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
 import { getStoredVoiceLanguage } from '../../../core/audio-voice';
@@ -61,6 +62,13 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   // Picture alternatives for AI-filled items, behind the "another picture" button.
   private aiImageChoices = new WeakMap<AbstractControl, AiImageChoice>();
   private swappingImages = new WeakSet<AbstractControl>();
+  private generatingImages = new WeakSet<AbstractControl>();
+  // The provider that produced the current AI fill, kept only so "Generate a picture" (own-key
+  // OpenAI/Gemini only) knows which key to use; irrelevant once the teacher edits items by hand.
+  private aiDraftProviderId: AiTopicProviderId | null = null;
+  aiImageGenerationAvailable = false;
+  // Per-item "✨": fills just this item's image + audio from its own text, no dialog needed.
+  private fillingItems = new WeakSet<AbstractControl>();
 
   constructor(
     private fb: FormBuilder,
@@ -73,6 +81,7 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     private langService: LanguageService,
     private confirmationService: ConfirmationService,
     private aiMedia: AiMediaResolverService,
+    private ai: AiTopicService,
     private zone: NgZone,
     private aiPageHandoff: AiPageHandoffService
   ) {
@@ -272,8 +281,10 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   async onAiDraft(result: AiTopicDialogResult) {
     this.closeAiDialog();
-    const { draft } = result;
+    const { draft, pages } = result;
     const runId = ++this.aiRunId;
+    this.aiDraftProviderId = result.providerId;
+    this.aiImageGenerationAvailable = result.imageGenerationAvailable;
     this.aiUndoSnapshot = { name: this.topicForm.value.name ?? '', controls: [...this.items.controls] };
 
     if (!String(this.topicForm.value.name || '').trim() && draft.topicName) {
@@ -308,7 +319,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         const index = next++;
         const item = draft.items[index];
         const [picture, audio] = await Promise.all([
-          this.aiMedia.resolveImage(item).catch(() => null),
+          this.aiMedia.resolveImage(item, pages).catch(() => null),
           this.aiMedia.resolveAudio(item.audioText, voiceLanguage)
         ]);
         // Compression resolves from a Web Worker, outside Angular's zone.
@@ -350,6 +361,75 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     return this.aiImageChoices.has(item);
   }
 
+  isFillingItem(item: AbstractControl): boolean {
+    return this.fillingItems.has(item);
+  }
+
+  canFillItemWithAi(item: AbstractControl): boolean {
+    return !!String(item.get('text')?.value || '').trim() && !this.fillingItems.has(item);
+  }
+
+  /**
+   * Per-item "✨": the teacher already typed this item's text by hand; this fills just its image
+   * and audio, the same per-item decision the bulk AI fill makes, without opening the dialog or
+   * touching any other item. Always asks for both media (unlike the bulk fill's Auto/On/Off), since
+   * clicking this one button is itself the teacher asking for both.
+   */
+  async fillItemWithAi(item: AbstractControl) {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    const text = String(item.get('text')?.value || '').trim();
+    if (!text || this.fillingItems.has(item)) return;
+    if (!this.ai.isAvailable) {
+      showAppNotification(this.langService.translate('aiTopicDesktopOnly'), 'error');
+      return;
+    }
+
+    this.fillingItems.add(item);
+    try {
+      const { start } = await this.ai.getStartProvider();
+      if (!start?.configured) {
+        showAppNotification(this.langService.translate('aiTopicFillItemNeedsLink'), 'error');
+        return;
+      }
+      const draft = await this.ai.generateDraft(start.id, {
+        prompt: '', pageCount: 0, itemCount: 1, images: 'on', audio: 'on',
+        existingItems: [], teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
+        singleItemText: text
+      }, []);
+      const itemDraft = draft.items[0];
+      if (!itemDraft) {
+        showAppNotification(this.langService.translate('aiTopicFillItemFailed'), 'error');
+        return;
+      }
+      const voiceLanguage = this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage());
+      const [picture, audio] = await Promise.all([
+        this.aiMedia.resolveImage(itemDraft, []).catch(() => null),
+        this.aiMedia.resolveAudio(itemDraft.audioText, voiceLanguage)
+      ]);
+      this.zone.run(() => {
+        if (picture?.choice) this.aiImageChoices.set(item, picture.choice);
+        if (picture?.blob) {
+          item.patchValue({ image: picture.blob });
+          this.expandedImageItems.add(item);
+        }
+        if (audio) {
+          item.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: itemDraft.audioText });
+          this.expandedAudioItems.add(item);
+        }
+        // So the follow-up "another picture"/"generate a picture" buttons work for this item too.
+        this.aiDraftProviderId = start.id;
+        this.aiImageGenerationAvailable = !!start.supportsImageGeneration;
+      });
+    } catch {
+      showAppNotification(this.langService.translate('aiTopicFillItemFailed'), 'error');
+    } finally {
+      this.zone.run(() => this.fillingItems.delete(item));
+    }
+  }
+
   isSwappingImage(item: AbstractControl): boolean {
     return this.swappingImages.has(item);
   }
@@ -366,6 +446,30 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       });
     } finally {
       this.zone.run(() => this.swappingImages.delete(item));
+    }
+  }
+
+  isGeneratingAiImage(item: AbstractControl): boolean {
+    return this.generatingImages.has(item);
+  }
+
+  /**
+   * "Generate a picture" on an AI item: always draws a fresh one (never reused from cache),
+   * since the teacher clicking this again is asking for something different. Unlike
+   * swapAiImage/"another picture", this is the only path that costs the teacher's AI quota, so
+   * it is never called automatically — only from this explicit button.
+   */
+  async generateAiImage(item: AbstractControl) {
+    const choice = this.aiImageChoices.get(item);
+    if (!choice || !this.aiDraftProviderId || this.generatingImages.has(item)) return;
+    this.generatingImages.add(item);
+    try {
+      const blob = await this.aiMedia.generateImage(choice, this.aiDraftProviderId);
+      this.zone.run(() => {
+        if (blob && this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob });
+      });
+    } finally {
+      this.zone.run(() => this.generatingImages.delete(item));
     }
   }
 

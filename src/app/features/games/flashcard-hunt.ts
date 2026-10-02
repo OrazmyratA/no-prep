@@ -54,6 +54,8 @@ interface HuntTeam {
   frozenUntil: number;
   frozen: boolean;
   freezeLeft: number;
+  lives: number;
+  eliminated: boolean;
   lastShotAt: number;
   targetX: number;
   targetY: number;
@@ -128,12 +130,13 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   speedLevel = 2;
   timerEnabled = false;
   timerMinutes = 3;
+  livesPerTeam = 3;
   aitOrder: AitType[] = [...AIT_DEFAULT_ORDER];
   forceSimpleMode = true;
 
   teams: HuntTeam[] = [];
   boardCards: BoardCard[] = [];
-  huntEndReason: 'cleared' | 'timeout' = 'cleared';
+  huntEndReason: 'cleared' | 'timeout' | 'eliminated' = 'cleared';
   timeLeftMs = 0;
   frenzy = false;
   stageShaking = false;
@@ -217,6 +220,12 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     return this.aitBackType !== null;
   }
 
+  // One heart icon per life, rendered in team order on the tray - just a loop count,
+  // not tied to a specific team's current lives.
+  get heartIndexes(): number[] {
+    return Array.from({ length: this.livesPerTeam }, (_, i) => i);
+  }
+
   get cardsRemaining(): number {
     return this.deck.length + this.boardCards.filter(c => c.item && (c.state === 'idle' || c.state === 'entering')).length;
   }
@@ -247,6 +256,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     this.speedLevel = Math.min(4, Math.max(1, Number(q['targetSpeed']) || 2));
     this.timerEnabled = q['enableTimer'] === 'true' || q['enableTimer'] === true;
     this.timerMinutes = Math.min(59, Math.max(1, Number(q['timerMinutes']) || 3));
+    this.livesPerTeam = Math.min(5, Math.max(1, Number(q['lives']) || 3));
     this.buildKeyboardShortcuts();
 
     this.loadSound('shoot', 'assets/sound/pop.mp3');
@@ -346,6 +356,8 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
         frozenUntil: 0,
         frozen: false,
         freezeLeft: 0,
+        lives: this.livesPerTeam,
+        eliminated: false,
         lastShotAt: 0,
         targetX: start.x,
         targetY: start.y,
@@ -507,7 +519,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     const els = this.targetEls?.toArray() ?? [];
 
     for (const team of this.teams) {
-      if (now >= team.frozenUntil) {
+      if (now >= team.frozenUntil && !team.eliminated) {
         // Smooth wander: the turn rate itself random-walks, so paths curve and swing
         // rather than jitter, then bounce off the board frame.
         team.turn += (Math.random() - 0.5) * level.jitter * dt;
@@ -591,7 +603,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   shoot(teamId: number) {
     if (this.phase !== 'hunt' || this.paused) return;
     const team = this.teams[teamId];
-    if (!team) return;
+    if (!team || team.eliminated) return;
     const now = performance.now();
     if (now < team.frozenUntil) return;
     if (now - team.lastShotAt < SHOT_COOLDOWN_MS) return;
@@ -740,6 +752,13 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     this.playSound('explode', 0.9, true);
     this.setGameTimeout(() => this.playSound('freeze', 0.6, true), 250);
     this.stageShaking = true;
+
+    team.lives = Math.max(0, team.lives - 1);
+    if (team.lives === 0) {
+      team.eliminated = true;
+      this.showTeamLabel(team, this.langService?.translate('flashcardHuntTeamEliminated') ?? 'No lives left!');
+      this.checkElimination();
+    }
     this.cdr.detectChanges();
 
     this.setGameTimeout(() => {
@@ -775,7 +794,14 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     if (cardsLeft === 0) this.endHunt('cleared');
   }
 
-  private endHunt(reason: 'cleared' | 'timeout') {
+  // With one team left standing the hunt just continues solo - only when every team is
+  // out of hearts is there nobody left to hunt, so the hunt ends right away.
+  private checkElimination() {
+    if (this.phase !== 'hunt') return;
+    if (this.teams.every(t => t.eliminated)) this.endHunt('eliminated');
+  }
+
+  private endHunt(reason: 'cleared' | 'timeout' | 'eliminated') {
     if (this.phase !== 'hunt') return;
     this.phase = 'transition';
     this.huntEndReason = reason;

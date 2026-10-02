@@ -41,7 +41,7 @@
              class="hunt-card-audio" src="assets/images/book/audio.png" alt="" draggable="false">
         <div *ngIf="aitQuestionType === 'image' && !item.image" class="hunt-card-text">?</div>
       </ng-container>
-      <img *ngIf="card.bomb" class="hunt-card-bomb" src="assets/images/boomb.png" alt="" draggable="false">
+      <img *ngIf="card.bomb" class="hunt-card-bomb" src="assets/images/ice-bomb.png" alt="" draggable="false">
       <div *ngIf="card.golden" class="hunt-golden-face">
         <span class="hunt-golden-star">⭐</span>
         <span class="hunt-golden-points">+2</span>
@@ -61,7 +61,7 @@
          class="hunt-target"
          [ngClass]="'team-' + team.color"
          [class.frozen]="team.frozen"
-         [class.hidden]="phase !== 'countdown' && phase !== 'hunt'">
+         [class.hidden]="(phase !== 'countdown' && phase !== 'hunt') || team.eliminated">
       <img [src]="team.targetSrc" alt="" draggable="false">
       <div *ngIf="team.frozen" class="hunt-ice">❄️</div>
     </div>
@@ -72,8 +72,12 @@
          [ngClass]="'team-' + team.color"
          [class.right]="team.id === 1"
          [class.bump]="team.trayBump"
+         [class.eliminated]="team.eliminated && phase === 'hunt'"
          [class.active]="showQuiz && quizAnswerTeam === team.id">
       <div class="hunt-tray-label">{{ team.nameKey | translate }}</div>
+      <div class="hunt-tray-lives">
+        <span *ngFor="let i of heartIndexes" class="hunt-heart" [class.lost]="i >= team.lives">♥</span>
+      </div>
       <div class="hunt-tray-body">
         <div class="hunt-tray-stack">
           <div *ngFor="let item of trayPreview(team); let i = index"
@@ -99,7 +103,8 @@
          [attr.aria-label]="(team.nameKey | translate) + ' - shoot'"
          [ngClass]="'team-' + team.color"
          [class.frozen]="team.frozen"
-         [class.disabled]="phase !== 'hunt'"
+         [class.disabled]="phase !== 'hunt' || team.eliminated"
+         [class.eliminated]="team.eliminated"
          [class.offstage]="phase === 'quiz' || phase === 'finished'"
          [style.left.%]="pilePosition(team).x * 100"
          [style.top.%]="pilePosition(team).y * 100"
@@ -120,7 +125,7 @@
     <div *ngIf="phase === 'transition'" class="hunt-banner hunt-banner-dim">
       <div class="hunt-transition">
         <div class="hunt-transition-reason">
-          {{ (huntEndReason === 'timeout' ? 'flashcardHuntTimeUp' : 'flashcardHuntAllCollected') | translate }}
+          {{ (huntEndReason === 'timeout' ? 'flashcardHuntTimeUp' : huntEndReason === 'eliminated' ? 'flashcardHuntOutOfLives' : 'flashcardHuntAllCollected') | translate }}
         </div>
         <div class="hunt-transition-title">{{ 'flashcardHuntTimeToAnswer' | translate }}</div>
       </div>

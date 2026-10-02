@@ -238,6 +238,17 @@
   border-top: 1px dashed #e5e7eb;
 }
 
+/* Only rendered when .lb-row-name is actually clipped by its own ellipsis right now (see
+   nameTruncated in the component) — a narrow team/grid column is the usual case. */
+.lb-row-full-name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1f2937;
+  white-space: normal;
+  word-break: break-word;
+}
+
 .lb-row-toggle {
   display: flex;
   align-items: center;

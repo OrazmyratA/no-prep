@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output } from '@angular/core';
 
+type HammerTargetKind = 'student' | 'team' | 'all';
+
 @Component({
   selector: 'app-leaderboard-hammer',
   standalone: false,
@@ -8,7 +10,14 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, On
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LeaderboardHammerComponent implements OnDestroy {
+  // Single student (unchanged), a whole team (dropped on that team's header in the ranking
+  // list), or the whole class (dropped on the class name next to the ranking button) — see
+  // updateHoveredRow()'s target-kind detection below. Team/class hits are the same confirmed
+  // bulk actions the equivalent header/title click already triggers (random-picker.ts's
+  // decrementTeamScores/decrementAllScores), not a separate code path.
   @Output() hit = new EventEmitter<number>();
+  @Output() hitTeam = new EventEmitter<number>();
+  @Output() hitAll = new EventEmitter<void>();
 
   dragging = false;
   dragLeft: number | null = null;
@@ -16,13 +25,18 @@ export class LeaderboardHammerComponent implements OnDestroy {
 
   private readonly dragThreshold = 4;
   private readonly hoverClass = 'lb-row-hammer-hover';
+  // Team headers and the class title aren't student rows, so they get their own generic
+  // "about to be smashed" look instead of .lb-row-hammer-hover (see random-picker.css and
+  // leaderboard-ranking-list.css for the two places this class is styled).
+  private readonly hoverTargetClass = 'lb-hammer-hover-target';
   private dragPointerId: number | null = null;
   private dragStartClientX = 0;
   private dragStartClientY = 0;
   private homeLeft = 0;
   private homeTop = 0;
   private dragMoved = false;
-  private hoveredRowEl: HTMLElement | null = null;
+  private hoveredEl: HTMLElement | null = null;
+  private hoveredKind: HammerTargetKind | null = null;
   private documentListenersAttached = false;
 
   // document.elementFromPoint() forces a synchronous layout — calling it on every raw
@@ -75,9 +89,16 @@ export class LeaderboardHammerComponent implements OnDestroy {
     this.dragPointerId = null;
     this.dragging = false;
     this.cancelHoverCheck();
-    if (this.dragMoved && this.hoveredRowEl) {
-      const itemId = Number(this.hoveredRowEl.dataset['itemId']);
-      if (!Number.isNaN(itemId)) this.hit.emit(itemId);
+    if (this.dragMoved && this.hoveredEl) {
+      if (this.hoveredKind === 'student') {
+        const itemId = Number(this.hoveredEl.dataset['itemId']);
+        if (!Number.isNaN(itemId)) this.hit.emit(itemId);
+      } else if (this.hoveredKind === 'team') {
+        const teamId = Number(this.hoveredEl.dataset['teamId']);
+        if (!Number.isNaN(teamId)) this.hitTeam.emit(teamId);
+      } else if (this.hoveredKind === 'all') {
+        this.hitAll.emit();
+      }
     }
     this.clearHover();
     this.dragLeft = null;
@@ -134,16 +155,25 @@ export class LeaderboardHammerComponent implements OnDestroy {
 
   private updateHoveredRow(clientX: number, clientY: number) {
     const el = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
-    const row = el?.closest('[data-student-row]') as HTMLElement | null;
-    if (row !== this.hoveredRowEl) {
-      this.hoveredRowEl?.classList.remove(this.hoverClass);
-      if (row) row.classList.add(this.hoverClass);
-      this.hoveredRowEl = row;
-    }
+    const target = el?.closest(
+      '[data-student-row], [data-team-header], [data-bulk-target="all"]'
+    ) as HTMLElement | null;
+    if (target === this.hoveredEl) return;
+    this.clearHover();
+    if (!target) return;
+    const kind: HammerTargetKind = target.hasAttribute('data-student-row')
+      ? 'student'
+      : target.hasAttribute('data-team-header')
+      ? 'team'
+      : 'all';
+    target.classList.add(kind === 'student' ? this.hoverClass : this.hoverTargetClass);
+    this.hoveredEl = target;
+    this.hoveredKind = kind;
   }
 
   private clearHover() {
-    this.hoveredRowEl?.classList.remove(this.hoverClass);
-    this.hoveredRowEl = null;
+    if (this.hoveredEl) this.hoveredEl.classList.remove(this.hoverClass, this.hoverTargetClass);
+    this.hoveredEl = null;
+    this.hoveredKind = null;
   }
 }

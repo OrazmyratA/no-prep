@@ -17,6 +17,15 @@ const PROVIDERS = {
 
 const REQUEST_TIMEOUT_MS = 180000;
 
+// "Generate a picture" (explicit, teacher-triggered — never automatic; see ai-media-resolver.ts).
+// Only these two providers can generate images; Anthropic and Groq have no image-gen API, and the
+// NoPrep AI proxy has no image endpoint yet (same "not built yet" state as Android TTS).
+// Model IDs checked 2026-09-29; providers rename/retire image models often — re-check before release.
+const IMAGE_PROVIDERS = {
+  openai: { model: 'gpt-image-1' },
+  gemini: { model: 'gemini-3-flash-image' }
+};
+
 function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '', fetchImpl }) {
   const doFetch = fetchImpl || fetch;
   const proxyBase = String(proxyUrl || '').replace(/\/+$/, '');
@@ -34,7 +43,8 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
         .map(([id, info]) => ({
           id,
           configured: isConfigured(id),
-          maxImages: info.maxImages
+          maxImages: info.maxImages,
+          supportsImageGeneration: !!IMAGE_PROVIDERS[id]
         }))
     };
   }
@@ -297,7 +307,61 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return { text };
   }
 
-  return { getStatus, generateDraft };
+  function normalizeImageInput(input) {
+    const provider = String(input?.provider || '');
+    if (!IMAGE_PROVIDERS[provider]) {
+      throw new Error('This AI cannot generate pictures. Link OpenAI or Gemini for that.');
+    }
+    const apiKey = String(getApiKey(provider) || '').trim();
+    if (!apiKey) {
+      throw new Error('This AI is not linked yet. Paste your API key first.');
+    }
+    const prompt = String(input?.prompt || '').trim().slice(0, 500);
+    if (!prompt) {
+      throw new Error('Nothing to draw.');
+    }
+    return { provider, apiKey, model: IMAGE_PROVIDERS[provider].model, prompt };
+  }
+
+  async function generateImageWithOpenAi(req) {
+    const data = await postJson('https://api.openai.com/v1/images/generations', {
+      Authorization: `Bearer ${req.apiKey}`
+    }, {
+      model: req.model,
+      prompt: req.prompt,
+      size: '1024x1024',
+      n: 1
+    });
+    const entry = data?.data?.[0];
+    if (!entry?.b64_json) {
+      throw new Error('The AI did not return a picture. Please try again.');
+    }
+    return { imageBase64: entry.b64_json, mimeType: 'image/png' };
+  }
+
+  async function generateImageWithGemini(req) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
+    const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, {
+      contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+      generationConfig: { responseModalities: ['IMAGE'] }
+    });
+    const candidate = data?.candidates?.[0];
+    if (!candidate || candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
+      throw new Error('The AI declined this request. Try a different picture description.');
+    }
+    const part = (candidate.content?.parts || []).find((p) => p?.inlineData?.data);
+    if (!part) {
+      throw new Error('The AI did not return a picture. Please try again.');
+    }
+    return { imageBase64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
+  }
+
+  async function generateImage(input) {
+    const req = normalizeImageInput(input);
+    return req.provider === 'openai' ? generateImageWithOpenAi(req) : generateImageWithGemini(req);
+  }
+
+  return { getStatus, generateDraft, generateImage };
 }
 
 module.exports = { createAiTopicService, AI_TOPIC_PROVIDERS: PROVIDERS };

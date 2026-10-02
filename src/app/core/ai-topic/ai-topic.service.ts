@@ -17,6 +17,8 @@ export interface AiTopicProviderInfo {
 export interface AiTopicProviderStatus extends AiTopicProviderInfo {
   configured: boolean;
   maxImages: number;
+  /** Only OpenAI and Gemini can generate images today; see "Generate a picture" in the item form. */
+  supportsImageGeneration: boolean;
 }
 
 export const AI_TOPIC_PROVIDERS: AiTopicProviderInfo[] = [
@@ -43,15 +45,20 @@ export class AiTopicService {
   }
 
   async getProviders(): Promise<AiTopicProviderStatus[]> {
-    const statuses = await this.invoke<{ providers: { id: string; configured: boolean; maxImages: number }[] }>(
-      'aiTopicGetStatus'
-    ).catch(() => ({ providers: [] }));
+    const statuses = await this.invoke<{
+      providers: { id: string; configured: boolean; maxImages: number; supportsImageGeneration?: boolean }[]
+    }>('aiTopicGetStatus').catch(() => ({ providers: [] }));
     return AI_TOPIC_PROVIDERS
       // NoPrep AI is listed only when the app reports it (i.e. the proxy is deployed).
       .filter(info => info.id !== 'builtin' || statuses.providers.some(p => p.id === 'builtin'))
       .map(info => {
         const status = statuses.providers.find(p => p.id === info.id);
-        return { ...info, configured: !!status?.configured, maxImages: status?.maxImages ?? 3 };
+        return {
+          ...info,
+          configured: !!status?.configured,
+          maxImages: status?.maxImages ?? 3,
+          supportsImageGeneration: !!status?.supportsImageGeneration
+        };
       });
   }
 
@@ -117,6 +124,22 @@ export class AiTopicService {
     } catch {
       throw new AiTopicError('The AI answer could not be read. Please try again.');
     }
+  }
+
+  /** Explicit, teacher-triggered only — see the "Generate a picture" button, never automatic. */
+  async generateImage(provider: AiTopicProviderId, prompt: string): Promise<Blob> {
+    const result = await this.invoke<{ imageBase64: string; mimeType: string }>('aiTopicGenerateImage', {
+      provider,
+      prompt
+    });
+    return this.base64ToBlob(result.imageBase64, result.mimeType || 'image/png');
+  }
+
+  private base64ToBlob(base64: string, mimeType: string): Blob {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mimeType });
   }
 
   private async pageToBase64(page: Blob): Promise<{ mimeType: string; base64: string }> {

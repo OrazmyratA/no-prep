@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { LeaderboardEntry } from './leaderboard.model';
 
 @Component({
@@ -38,6 +38,10 @@ export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
   imageUrl: string | null = null;
   private objectUrl: string | null = null;
 
+  // .lb-row-name always renders (it's never hidden behind the dropdown), so it's measurable the
+  // moment a click asks to open the controls panel — no need to wait or re-measure on open.
+  @ViewChild('nameEl') nameEl?: ElementRef<HTMLSpanElement>;
+
   constructor(public elementRef: ElementRef<HTMLElement>) {}
 
   ngOnChanges(changes: SimpleChanges) {
@@ -72,6 +76,15 @@ export class LeaderboardStudentRowComponent implements OnChanges, OnDestroy {
 
   get initial(): string {
     return (this.entry?.text || '?').charAt(0).toUpperCase();
+  }
+
+  // Whether the name is actually being clipped by its own ellipsis right now — driven by a live
+  // measurement, not just "is it a long name", so it adapts to whatever width this column
+  // happens to have (narrow team columns clip sooner than a full-width single column). The
+  // dropdown controls panel shows the untruncated name only when this is true.
+  get nameTruncated(): boolean {
+    const el = this.nameEl?.nativeElement;
+    return !!el && el.scrollWidth > el.clientWidth + 1;
   }
 
   onStarClick() {

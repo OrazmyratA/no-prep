@@ -1331,6 +1331,12 @@
   text-align: center;
 }
 
+.game-activity-option-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  object-fit: contain;
+}
+
 .game-activity-option small {
   min-width: 0;
   overflow: hidden;

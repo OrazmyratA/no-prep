@@ -1458,6 +1458,32 @@ export const GAME_TEAM_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   vi: 'Đã bắt được tất cả các thẻ!',
 },
 
+'flashcardHuntOutOfLives': {
+  en: 'Out of lives!',
+  tk: 'Out of lives!',
+  ru: 'Out of lives!',
+  cn: 'Out of lives!',
+  cde: 'Out of lives!',
+  es: 'Out of lives!',
+  fr: 'Out of lives!',
+  kr: 'Out of lives!',
+  sa: 'Out of lives!',
+  vi: 'Out of lives!',
+},
+
+'flashcardHuntTeamEliminated': {
+  en: 'No lives left!',
+  tk: 'No lives left!',
+  ru: 'No lives left!',
+  cn: 'No lives left!',
+  cde: 'No lives left!',
+  es: 'No lives left!',
+  fr: 'No lives left!',
+  kr: 'No lives left!',
+  sa: 'No lives left!',
+  vi: 'No lives left!',
+},
+
 'flashcardHuntTimeToAnswer': {
   en: 'Time to answer!',
   tk: 'Jogap berer wagty!',

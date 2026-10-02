@@ -12,7 +12,7 @@
   aria-label="Hide pages">
   <img class="drawer-toggle-icon page-strip-hide-icon" src="assets/images/book/sidebar.png" alt="">
 </button>
-<aside class="page-strip page-lanes" [class.open]="creator.pageStripOpen" (scroll)="creator.onCreatorThumbScroll($event)">
+<aside #pageStripEl class="page-strip page-lanes" [class.open]="creator.pageStripOpen" (scroll)="creator.onCreatorThumbScroll($event)">
   <section class="page-lane" [class.active-lane]="creator.activePageSource === 'main'">
     <div class="lane-header">
       <span>{{ 'studentBookLabel' | translate }}</span>
@@ -22,6 +22,7 @@
     <div
       *ngFor="let item of creator.mainVirtualPages; trackBy: creator.trackByVirtualPageId"
       class="page-thumb a4-thumb"
+      [attr.data-page-index]="item.index"
       role="button"
       tabindex="0"
       draggable="true"
@@ -84,6 +85,7 @@
     <div
       *ngFor="let item of creator.workbookVirtualPages; trackBy: creator.trackByVirtualPageId"
       class="page-thumb a4-thumb"
+      [attr.data-page-index]="item.index"
       role="button"
       tabindex="0"
       draggable="true"

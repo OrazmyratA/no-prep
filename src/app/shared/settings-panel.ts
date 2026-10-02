@@ -464,6 +464,7 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
           ait: [[...AIT_DEFAULT_ORDER]],
           simpleMode: [AIT_DEFAULT_ORDER.length <= 1],
           targetSpeed: [2],
+          lives: [3],
           enableTimer: [false],
           timerMinutes: [2]
         });

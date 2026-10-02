@@ -57,6 +57,15 @@ function registerAiTopicIpc({
       return operationError('AI_TOPIC_FAILED', error?.message || 'The AI could not create the topic.');
     }
   });
+
+  ipcMain.handle('ai-topic:generate-image', async (_event, input) => {
+    try {
+      return operationResult(await aiTopicService.generateImage(input));
+    } catch (error) {
+      console.error('ai-topic:generate-image error:', error);
+      return operationError('AI_TOPIC_IMAGE_FAILED', error?.message || 'The AI could not create the picture.');
+    }
+  });
 }
 
 module.exports = {

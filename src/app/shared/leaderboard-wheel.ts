@@ -11,6 +11,12 @@ export class LeaderboardWheelComponent implements OnInit, OnChanges, AfterViewCh
   @ViewChild('wheelCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
 
   @Input() entries: LeaderboardEntry[] = [];
+  // Restricts which wedge can actually win, without touching what's drawn — every entry still
+  // renders as a wedge (see random-picker.ts's wheelEligibleItemIds for why: Team mode rotates
+  // whose turn it is to be picked, but the wheel itself keeps showing the whole class every
+  // spin). Null/empty means no restriction — spins freely over every wedge, same as before this
+  // input existed.
+  @Input() eligibleItemIds: number[] | null = null;
   @Output() landed = new EventEmitter<LeaderboardEntry>();
 
   spinning = false;
@@ -80,7 +86,15 @@ export class LeaderboardWheelComponent implements OnInit, OnChanges, AfterViewCh
 
     const count = items.length;
     const segmentAngle = (2 * Math.PI) / count;
-    const targetIndex = Math.floor(Math.random() * count);
+
+    const eligibleSet = this.eligibleItemIds?.length ? new Set(this.eligibleItemIds) : null;
+    const candidateIndices = eligibleSet
+      ? items.reduce<number[]>((acc, entry, i) => (eligibleSet.has(entry.itemId) ? [...acc, i] : acc), [])
+      : null;
+    // Falls back to every wedge if the restriction somehow leaves nothing eligible — same
+    // never-leave-0-options principle as wheelEntries' own fallback in random-picker.ts.
+    const pickFrom = candidateIndices?.length ? candidateIndices : items.map((_, i) => i);
+    const targetIndex = pickFrom[Math.floor(Math.random() * pickFrom.length)];
     const landedEntry = items[targetIndex];
 
     let targetRotation = -Math.PI / 2 - (targetIndex * segmentAngle + segmentAngle / 2);

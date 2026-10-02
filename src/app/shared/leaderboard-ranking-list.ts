@@ -24,7 +24,7 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   @ViewChildren('row') rowComponents?: QueryList<LeaderboardRow>;
 
   @Input() columnBuckets: LeaderboardEntry[][] = [[]];
-  @Input() columnLabels: ({ name: string; color?: string; isUnassigned?: boolean; isAbsent?: boolean } | null)[] | null = null;
+  @Input() columnLabels: ({ name: string; color?: string; teamId?: number; isUnassigned?: boolean; isAbsent?: boolean } | null)[] | null = null;
   @Input() lockColumnMembership = false;
   @Input() rankByItemId: Map<number, number> = new Map();
   @Input() rankingApplied = false;
@@ -33,6 +33,7 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   @Input() openControlsItemId: number | null = null;
 
   @Output() starClick = new EventEmitter<number>();
+  @Output() teamHeaderClick = new EventEmitter<number>();
   @Output() addStudent = new EventEmitter<void>();
   @Output() toggleAbsent = new EventEmitter<number>();
   @Output() columnsChange = new EventEmitter<number[][]>();
@@ -128,26 +129,49 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
   }
 
   connectedColumnIds(index: number): string[] {
-    // The absent column is synthesized at display time (random-picker.ts's buildDisplayColumns
-    // filters real columns by entry.absent, it isn't one of the actual stored buckets) — dragging
-    // a student into it wouldn't actually mark them absent, and dragging out of it would silently
-    // turn that synthetic grouping into a real stored column. Never connect it to anything.
-    if (this.lockColumnMembership || this.isAbsentColumn(index)) return [];
+    // Absent and Unassigned columns are synthesized at display time (random-picker.ts's
+    // buildDisplayColumns pulls them out of the real team/individual buckets, neither is one of
+    // the actual stored columns) — dragging a student into either wouldn't actually mark them
+    // absent or assign them to a team, and dragging out would silently turn that synthetic
+    // grouping into a real stored column. Never connect them to anything.
+    if (this.lockColumnMembership || this.isTrailingColumn(index)) return [];
     return this.columnBuckets
       .map((_, i) => this.columnListId(i))
-      .filter((id, i) => id !== this.columnListId(index) && !this.isAbsentColumn(i));
+      .filter((id, i) => id !== this.columnListId(index) && !this.isTrailingColumn(i));
   }
 
   isAbsentColumn(index: number): boolean {
     return this.columnLabels?.[index]?.isAbsent === true;
   }
 
-  // The absent column is always the trailing bucket buildDisplayColumns appends (see
-  // random-picker.ts) — never interleaved with the real columns — so everything before it is
-  // "main" and its own index is stable regardless of gridColumns/team-column count.
+  // Only a real team's header carries a teamId (Absent/Unassigned never do) — tapping it docks a
+  // point from that whole team in one go, the team-scoped version of the class-name tap in
+  // random-picker.html. stopPropagation keeps it from also toggling any open row's controls via
+  // onBackgroundClick above.
+  onColumnHeaderClick(index: number, event: MouseEvent) {
+    const teamId = this.columnLabels?.[index]?.teamId;
+    if (teamId == null) return;
+    event.stopPropagation();
+    this.teamHeaderClick.emit(teamId);
+  }
+
+  isUnassignedColumn(index: number): boolean {
+    return this.columnLabels?.[index]?.isUnassigned === true;
+  }
+
+  // Absent and Unassigned ("not yet on a team") are both pushed to the scrollable trailing side —
+  // reachable by swiping/scrolling right, same idea, never interleaved with the real columns (see
+  // buildDisplayColumns in random-picker.ts) — so this is true for either.
+  isTrailingColumn(index: number): boolean {
+    return this.isAbsentColumn(index) || this.isUnassignedColumn(index);
+  }
+
+  // Trailing columns always land at the end, in a stable order — so everything before the first
+  // one is "main" and its own index is stable regardless of gridColumns/team-column count.
   get mainColumnCount(): number {
-    const last = this.columnBuckets.length - 1;
-    return Math.max(1, this.isAbsentColumn(last) ? last : this.columnBuckets.length);
+    let count = this.columnBuckets.length;
+    while (count > 0 && this.isTrailingColumn(count - 1)) count--;
+    return Math.max(1, count);
   }
 
   trackByColumnIndex(index: number): number {
@@ -156,13 +180,6 @@ export class LeaderboardRankingListComponent implements OnInit, OnChanges, After
 
   get hasAnyEntries(): boolean {
     return this.columnBuckets.some(col => col.length > 0);
-  }
-
-  // The "+ Add student" tile always belongs with the real list, never inside the synthetic
-  // trailing absent column.
-  get addStudentColumnIndex(): number {
-    const lastIndex = this.columnBuckets.length - 1;
-    return this.isAbsentColumn(lastIndex) ? Math.max(0, lastIndex - 1) : lastIndex;
   }
 
   // A row's own click stops propagation before it reaches here (see leaderboard-student-row.ts's

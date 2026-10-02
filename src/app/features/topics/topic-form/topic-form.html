@@ -98,11 +98,21 @@
               
               <!-- Text input -->
               <div class="md:col-span-4">
-                <input type="text" formControlName="text"
-                       (pointerdown)="$event.stopPropagation()"
-                       (click)="$event.stopPropagation()"
-                       class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                       [placeholder]="'textOptional' | translate">
+                <div class="relative">
+                  <input type="text" formControlName="text"
+                         (pointerdown)="$event.stopPropagation()"
+                         (click)="$event.stopPropagation()"
+                         class="w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                         [placeholder]="'textOptional' | translate">
+                  <button type="button" class="item-ai-fill-btn"
+                          (pointerdown)="$event.stopPropagation()"
+                          (click)="$event.stopPropagation(); fillItemWithAi(item)"
+                          [disabled]="!canFillItemWithAi(item)"
+                          [attr.title]="'aiTopicFillItem' | translate"
+                          [attr.aria-label]="'aiTopicFillItem' | translate">
+                    <span [class.ai-swap-spin]="isFillingItem(item)">✨</span>
+                  </button>
+                </div>
               </div>
 
               <!-- Image uploader -->
@@ -128,6 +138,14 @@
                         [disabled]="isSwappingImage(item)">
                   <span [class.ai-swap-spin]="isSwappingImage(item)">↻</span>
                   {{ 'aiTopicSwapPicture' | translate }}
+                </button>
+                <button *ngIf="aiImageGenerationAvailable && hasAiImageChoice(item) && item.get('image')?.value"
+                        type="button" class="ai-swap-btn ai-generate-btn"
+                        (pointerdown)="$event.stopPropagation()"
+                        (click)="generateAiImage(item)"
+                        [disabled]="isGeneratingAiImage(item)">
+                  <span [class.ai-swap-spin]="isGeneratingAiImage(item)">✨</span>
+                  {{ 'aiTopicGeneratePicture' | translate }}
                 </button>
               </div>
 

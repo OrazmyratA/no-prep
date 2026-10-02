@@ -419,6 +419,31 @@
   letter-spacing: 0.05em;
 }
 
+.hunt-tray-lives {
+  display: flex;
+  gap: 0.25cqw;
+  margin-top: 0.1cqw;
+}
+
+.hunt-heart {
+  font-size: 1.3cqw;
+  line-height: 1;
+  color: #ef4444;
+  text-shadow: 0 0.1cqw 0.15cqw rgba(0, 0, 0, 0.3);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.hunt-heart.lost {
+  color: transparent;
+  -webkit-text-stroke: 0.08cqw #9ca3af;
+  text-shadow: none;
+}
+
+.hunt-tray.eliminated {
+  opacity: 0.55;
+  filter: grayscale(0.45);
+}
+
 .hunt-tray-body {
   flex: 1;
   display: flex;
@@ -548,6 +573,14 @@
 }
 
 .hunt-pile.frozen img {
+  animation: none;
+}
+
+.hunt-pile.eliminated {
+  filter: saturate(0.2) brightness(0.8);
+}
+
+.hunt-pile.eliminated img {
   animation: none;
 }
 

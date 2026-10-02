@@ -10,6 +10,13 @@ export interface AiTopicRequest {
   audio: AiMediaMode;
   existingItems: string[];      // texts already in the topic (append mode), to avoid duplicates
   teacherLanguage: string;      // app UI language name, used for the notes
+  /**
+   * The per-item "✨" fill (topic-form.fillItemWithAi): the teacher already wrote this item's
+   * text by hand. When set, every other field above except images/audio/teacherLanguage is
+   * ignored — buildAiTopicUserText asks for exactly this one item back, text unchanged, with
+   * only its image and audio decided.
+   */
+  singleItemText?: string;
 }
 
 // Versioned so changes to the instructions are easy to trace in support reports.
@@ -30,9 +37,11 @@ Default shape (use unless the teacher asks for something else):
 - Vocabulary: "text" is the clean word or short phrase exactly as students should learn it (correct spelling, natural capitalisation, no numbering, no translations, no articles unless the teacher's material uses them).
 - "audioText" is the same word, so students hear the pronunciation.
 - Choose the image per item:
-  - "search" when the word can be shown clearly in a picture (apple, bus, run, happy). "imageQuery" is 1-4 simple ENGLISH search words that find that picture on a stock photo site, whatever the topic language. "imageStyle" is "photo" for real things and "illustration" for actions, feelings or things photos show badly.
+  - "pageCrop" ONLY when you can clearly see, yourself, a picture of exactly this word on an attached page, on its own (not one illustration shared by several words in a row or grid). If you are not sure, or the page has no such picture, use "search" instead — do not guess a location. Set "imagePage" to the 0-based index of that attached photo (0 = the first attached photo) and "imageBox" to [ymin, xmin, ymax, xmax], the standard 4-number bounding box on a 0-1000 scale of that photo's height/width, drawn tightly around just that picture. Still fill "imageQuery" with search words as in "search" below, as a fallback in case the crop does not work out.
+  - "search" when the word can be shown clearly in a picture (apple, bus, run, happy) and no usable picture of it is already on an attached page. "imageQuery" is 1-4 simple ENGLISH search words that find that picture on a stock photo site, whatever the topic language. "imageStyle" is "photo" for real things and "illustration" for actions, feelings or things photos show badly.
   - "wordCard" when a picture would be random or misleading (however, although, vs, grammar words, abstract ideas). "imageQuery" is the exact word(s) to draw on the card.
   - "none" when neither helps.
+  - When imageKind is not "pageCrop", set imagePage to -1 and imageBox to [0, 0, 0, 0].
 
 The teacher's request always wins over the defaults. Examples:
 - "make a sentence with each word and leave its place empty, put the word as the image": text = the sentence with "____" in place of the word, imageKind = "wordCard", imageQuery = the missing word, audioText = the full sentence with the word.
@@ -69,6 +78,17 @@ function mediaInstruction(label: string, mode: AiMediaMode): string {
 }
 
 export function buildAiTopicUserText(request: AiTopicRequest): string {
+  if (request.singleItemText != null) {
+    return [
+      'This is ONE item already written by the teacher for a topic. Do not create a topic or add other items.',
+      'Return exactly one item in "items", with "text" copied EXACTLY as given below (same spelling, same wording, unchanged) — only decide its image and audio using the rules above.',
+      '',
+      `Teacher's language for notes: ${request.teacherLanguage}`,
+      mediaInstruction('Images', request.images),
+      mediaInstruction('Audio', request.audio),
+      `Item text: ${JSON.stringify(request.singleItemText)}`
+    ].join('\n');
+  }
   const lines = [
     `Teacher's request: ${request.prompt.trim() || '(no text - use the attached pages)'}`,
     '',

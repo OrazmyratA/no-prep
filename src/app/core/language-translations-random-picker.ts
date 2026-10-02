@@ -119,6 +119,19 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   vi: 'Kết quả của lớp',
 },
 
+'leaderboardShareAttendance': {
+  en: 'Attendance',
+  tk: 'Gatnaşyk',
+  ru: 'Посещаемость',
+  cn: '出勤',
+  cde: 'Anwesenheit',
+  es: 'Asistencia',
+  fr: 'Présence',
+  kr: '출석',
+  sa: 'الحضور',
+  vi: 'Điểm danh',
+},
+
 'leaderboardShareDone': {
   en: 'Results image saved',
   tk: 'Netije suraty ýatda saklandy',
@@ -156,6 +169,58 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   kr: '마지막 동작 취소',
   sa: 'التراجع عن آخر إجراء',
   vi: 'Hoàn tác thao tác cuối',
+},
+
+'leaderboardDecrementAllHint': {
+  en: 'Tap to take 1 point from every active student',
+  tk: 'Tap to take 1 point from every active student',
+  ru: 'Tap to take 1 point from every active student',
+  cn: 'Tap to take 1 point from every active student',
+  cde: 'Tap to take 1 point from every active student',
+  es: 'Tap to take 1 point from every active student',
+  fr: 'Tap to take 1 point from every active student',
+  kr: 'Tap to take 1 point from every active student',
+  sa: 'Tap to take 1 point from every active student',
+  vi: 'Tap to take 1 point from every active student',
+},
+
+'leaderboardDecrementAllConfirm': {
+  en: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  tk: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  ru: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  cn: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  cde: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  es: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  fr: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  kr: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  sa: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+  vi: 'Take 1 point away from every active student in this class list? This cannot be undone with the Undo button.',
+},
+
+'leaderboardTeamHeaderDockHint': {
+  en: 'Tap to take 1 point from every member of this team',
+  tk: 'Tap to take 1 point from every member of this team',
+  ru: 'Tap to take 1 point from every member of this team',
+  cn: 'Tap to take 1 point from every member of this team',
+  cde: 'Tap to take 1 point from every member of this team',
+  es: 'Tap to take 1 point from every member of this team',
+  fr: 'Tap to take 1 point from every member of this team',
+  kr: 'Tap to take 1 point from every member of this team',
+  sa: 'Tap to take 1 point from every member of this team',
+  vi: 'Tap to take 1 point from every member of this team',
+},
+
+'leaderboardDecrementTeamConfirm': {
+  en: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  tk: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  ru: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  cn: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  cde: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  es: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  fr: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  kr: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  sa: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
+  vi: 'Take 1 point away from every active member of this team? This cannot be undone with the Undo button.',
 },
 
 'leaderboardResetConfirm': {

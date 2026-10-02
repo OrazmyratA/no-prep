@@ -225,6 +225,32 @@
   white-space: nowrap;
 }
 
+/* Tapping the class name docks a point from every active student (see decrementAllScores) — a
+   quick affordance so it doesn't just look like a plain, non-interactive label. */
+.lb-header-title-clickable {
+  cursor: pointer;
+  border-radius: 0.4rem;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.lb-header-title-clickable:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.lb-header-title-clickable:active {
+  transform: scale(0.98);
+}
+
+/* The hammer can be dragged onto the class name too (see leaderboard-hammer.ts), docking the
+   same confirmed whole-class point as tapping it — this is the "about to be smashed" highlight
+   while it's hovering, dropped the instant the pointer is released elsewhere. */
+.lb-header-title-clickable.lb-hammer-hover-target {
+  background: rgba(239, 68, 68, 0.16);
+  outline: 2px dashed #ef4444;
+  outline-offset: 2px;
+  transform: scale(1.02);
+}
+
 .lb-header-actions {
   display: flex;
   align-items: center;

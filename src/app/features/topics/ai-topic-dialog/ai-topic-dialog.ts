@@ -15,6 +15,11 @@ export interface AiTopicDialogResult {
   mode: 'append' | 'replace';
   /** 'auto' = follow the language the AI detected. */
   voiceLanguage: string;
+  /** The attached page photos, same order as items' `imagePage` refers to — needed to crop them. */
+  pages: Blob[];
+  providerId: AiTopicProviderId;
+  /** Whether providerId can do "Generate a picture" (OpenAI/Gemini only). */
+  imageGenerationAvailable: boolean;
 }
 
 interface PagePhoto {
@@ -39,7 +44,8 @@ const PROMPT_CHIPS: PromptChip[] = [
   { id: 'sentences', icon: '🧩', labelKey: 'aiTopicChipSentences', promptKey: 'aiTopicChipSentencesPrompt' }
 ];
 
-const LANGUAGE_NAMES: Record<string, string> = {
+// Also used by topic-form's per-item "✨" fill, for the same reason.
+export const LANGUAGE_NAMES: Record<string, string> = {
   en: 'English', tk: 'Turkmen', ru: 'Russian', cn: 'Chinese', cde: 'German',
   es: 'Spanish', fr: 'French', kr: 'Korean', sa: 'Arabic', vi: 'Vietnamese'
 };
@@ -249,7 +255,10 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
       this.generated.emit({
         draft,
         mode: this.hasExistingItems ? this.mode : 'replace',
-        voiceLanguage: this.voiceLanguage
+        voiceLanguage: this.voiceLanguage,
+        pages: this.pages.map(page => page.blob),
+        providerId: this.providerId,
+        imageGenerationAvailable: !!this.provider?.supportsImageGeneration
       });
     } catch (error) {
       this.showError('aiTopicFailed', error);

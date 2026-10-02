@@ -602,7 +602,8 @@
             (click)="creator.toggleGameActivity(element, game.id)"
             [title]="game.nameKey | translate"
             [attr.aria-pressed]="creator.isGameActivityAllowed(element, game.id)">
-            <span aria-hidden="true">{{ game.icon }}</span>
+            <img *ngIf="game.iconImage" [src]="game.iconImage" alt="" class="game-activity-option-icon">
+            <span *ngIf="!game.iconImage" aria-hidden="true">{{ game.icon }}</span>
             <small>{{ game.nameKey | translate }}</small>
           </button>
         </div>

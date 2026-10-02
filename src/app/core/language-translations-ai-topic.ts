@@ -535,6 +535,58 @@ export const AI_TOPIC_TRANSLATIONS: TranslationDictionary = {
   vi: 'Hình khác',
 },
 
+'aiTopicGeneratePicture': {
+  en: 'Generate a picture',
+  tk: 'Surat döret',
+  ru: 'Создать картинку',
+  cn: '生成图片',
+  cde: 'Bild erzeugen',
+  es: 'Generar una imagen',
+  fr: 'Générer une image',
+  kr: '그림 생성',
+  sa: 'إنشاء صورة',
+  vi: 'Tạo hình ảnh',
+},
+
+'aiTopicFillItem': {
+  en: 'Fill image & audio with AI',
+  tk: 'Surat we sesi AI bilen dolduryň',
+  ru: 'Заполнить картинку и звук с помощью ИИ',
+  cn: '用 AI 填充图片和音频',
+  cde: 'Bild & Audio mit KI ausfüllen',
+  es: 'Completar imagen y audio con IA',
+  fr: 'Remplir l’image et l’audio avec l’IA',
+  kr: 'AI로 그림과 오디오 채우기',
+  sa: 'تعبئة الصورة والصوت بالذكاء الاصطناعي',
+  vi: 'Điền hình ảnh & âm thanh bằng AI',
+},
+
+'aiTopicFillItemNeedsLink': {
+  en: 'Link an AI first (✨ button above).',
+  tk: 'Öňürti AI baglaň (ýokardaky ✨ düwme).',
+  ru: 'Сначала подключите ИИ (кнопка ✨ выше).',
+  cn: '请先链接 AI（上方的 ✨ 按钮）。',
+  cde: 'Zuerst eine KI verknüpfen (✨ Schaltfläche oben).',
+  es: 'Vincula primero una IA (botón ✨ arriba).',
+  fr: 'Liez d’abord une IA (bouton ✨ ci-dessus).',
+  kr: '먼저 AI를 연결하세요 (위의 ✨ 버튼).',
+  sa: 'اربط الذكاء الاصطناعي أولاً (الزر ✨ أعلاه).',
+  vi: 'Hãy liên kết AI trước (nút ✨ ở trên).',
+},
+
+'aiTopicFillItemFailed': {
+  en: 'Could not prepare this item’s image or audio.',
+  tk: 'Bu elementiň suratyny ýa-da sesini taýýarlap bolmady.',
+  ru: 'Не удалось подготовить картинку или звук для этого элемента.',
+  cn: '无法为该项准备图片或音频。',
+  cde: 'Bild oder Audio für dieses Element konnte nicht vorbereitet werden.',
+  es: 'No se pudo preparar la imagen o el audio de este elemento.',
+  fr: 'Impossible de préparer l’image ou l’audio de cet élément.',
+  kr: '이 항목의 그림이나 오디오를 준비할 수 없습니다.',
+  sa: 'تعذّر تجهيز صورة أو صوت هذا العنصر.',
+  vi: 'Không thể chuẩn bị hình ảnh hoặc âm thanh cho mục này.',
+},
+
 'aiTopicChipPages': {
   en: 'Words from book pages',
   tk: 'Kitap sahypalaryndan sözler',

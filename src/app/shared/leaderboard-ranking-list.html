@@ -4,6 +4,7 @@
 <div class="lb-columns-wrap" [style.--lb-main-cols]="mainColumnCount" (click)="onBackgroundClick()">
   <div
     class="lb-list-rows"
+    [class.lb-list-rows-trailing]="isTrailingColumn(colIndex)"
     [class.lb-list-rows-absent]="isAbsentColumn(colIndex)"
     *ngFor="let column of columnBuckets; let colIndex = index; trackBy: trackByColumnIndex"
     cdkDropList
@@ -13,8 +14,13 @@
     (cdkDropListDropped)="onColumnDrop($event)">
     <div
       class="lb-column-header"
+      [class.lb-column-header-clickable]="label.teamId != null"
       *ngIf="columnLabels && columnLabels[colIndex] as label"
-      [style.--team-color]="label.color || '#94a3b8'">
+      [style.--team-color]="label.color || '#94a3b8'"
+      [attr.title]="label.teamId != null ? ('leaderboardTeamHeaderDockHint' | translate) : null"
+      [attr.data-team-header]="label.teamId != null ? '' : null"
+      [attr.data-team-id]="label.teamId"
+      (click)="onColumnHeaderClick(colIndex, $event)">
       <span class="lb-column-header-name">
         {{ label.isAbsent ? ('leaderboardAbsent' | translate) : (label.isUnassigned ? ('leaderboardTeamSetupUnassigned' | translate) : label.name) }}
       </span>
@@ -24,7 +30,7 @@
         #row
         cdkDrag
         [cdkDragStartDelay]="500"
-        [cdkDragDisabled]="isAbsentColumn(colIndex)"
+        [cdkDragDisabled]="isTrailingColumn(colIndex)"
         (cdkDragStarted)="onDragStarted()"
         (cdkDragEnded)="onDragEnded()"
         [entry]="entry"
@@ -41,12 +47,13 @@
         (setPoints)="setPoints.emit($event)">
       </app-leaderboard-student-row>
     </ng-container>
+  </div>
 
-    <button
-      type="button"
-      class="lb-add-student-tile"
-      *ngIf="colIndex === addStudentColumnIndex && hasAnyEntries"
-      (click)="addStudent.emit()">
+  <!-- Always its own trailing column, after every real/Unassigned/Absent column — reached by
+       scrolling right like the others, never squeezed in under whichever column happens to be
+       last (see .lb-list-rows-trailing in the CSS for the shared sizing). -->
+  <div class="lb-list-rows lb-list-rows-trailing lb-list-rows-add" *ngIf="hasAnyEntries">
+    <button type="button" class="lb-add-student-tile" (click)="addStudent.emit()">
       <span class="lb-add-student-plus" aria-hidden="true">+</span>
       <span class="lb-add-student-label">{{ 'leaderboardAddStudent' | translate }}</span>
     </button>

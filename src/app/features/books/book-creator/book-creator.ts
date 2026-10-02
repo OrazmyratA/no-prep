@@ -61,6 +61,7 @@ import { GAMES } from '../../topics/games.config';
 import { BookCreatorElementController } from './book-creator-element-controller';
 import { BookCreatorTracingController, TracingSegmentHandle } from './book-creator-tracing-controller';
 import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface';
+import { BookCreatorPageStripComponent } from './book-creator-page-strip';
 import { BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
@@ -90,6 +91,11 @@ import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.ser
 })
 export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(BookCreatorEditorSurfaceComponent) editorSurface?: BookCreatorEditorSurfaceComponent;
+  @ViewChild(BookCreatorPageStripComponent) pageStripComponent?: BookCreatorPageStripComponent;
+
+  get pageStripScrollElement(): HTMLElement | undefined {
+    return this.pageStripComponent?.pageStripEl?.nativeElement;
+  }
 
   get editorCanvas(): ElementRef<HTMLElement> | undefined {
     return this.editorSurface?.editorCanvas;
@@ -506,6 +512,10 @@ Tomorrow I will help my mom.`;
 
   onCreatorThumbScroll(event: Event): void {
     this.virtualPageController.onCreatorThumbScroll(event);
+  }
+
+  scrollPageStripToSelection(): void {
+    this.virtualPageController.scrollSelectionIntoView();
   }
 
   selectMainPage(index: number): void {

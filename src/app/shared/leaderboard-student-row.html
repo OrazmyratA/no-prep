@@ -8,7 +8,7 @@
     <img *ngIf="imageUrl" [src]="imageUrl" [alt]="entry.text">
     <span *ngIf="!imageUrl" class="lb-row-avatar-initial">{{ initial }}</span>
   </div>
-  <span class="lb-row-name">{{ entry.text }}</span>
+  <span class="lb-row-name" #nameEl>{{ entry.text }}</span>
   <span *ngIf="entry.absent" class="lb-row-absent-badge">{{ 'leaderboardAbsent' | translate }}</span>
 </div>
 
@@ -24,6 +24,8 @@
 
 <div class="lb-row-controls-wrap" [class.lb-row-controls-open]="controlsOpen">
   <div class="lb-row-controls" (click)="$event.stopPropagation()">
+    <p *ngIf="nameTruncated" class="lb-row-full-name">{{ entry.text }}</p>
+
     <label class="lb-row-toggle">
       <input
         type="checkbox"

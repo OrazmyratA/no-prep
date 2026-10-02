@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild } from '@angular/core';
 
 @Component({
   selector: 'app-book-creator-page-strip',
@@ -8,4 +8,5 @@ import { Component, Input } from '@angular/core';
 })
 export class BookCreatorPageStripComponent {
   @Input({ required: true }) creator!: any;
+  @ViewChild('pageStripEl') pageStripEl?: ElementRef<HTMLElement>;
 }

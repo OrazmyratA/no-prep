@@ -58,7 +58,12 @@
               class="lb-list-title-icon"
               alt="">
           </button>
-          <h2 class="rp-title lb-header-title">{{ selectedTopicName }}</h2>
+          <h2
+            class="rp-title lb-header-title lb-header-title-clickable"
+            data-bulk-target="all"
+            (click)="decrementAllScores()"
+            [attr.title]="'leaderboardDecrementAllHint' | translate"
+            [attr.aria-label]="'leaderboardDecrementAllHint' | translate">{{ selectedTopicName }}</h2>
         </div>
         <div class="lb-header-actions">
           <!-- Group 1: mode — picking Individual/Team first decides everything else below. -->
@@ -129,7 +134,11 @@
           <span class="lb-header-divider" aria-hidden="true"></span>
 
           <!-- Group 3: scoring actions. -->
-          <app-leaderboard-hammer (hit)="onHammerHit($event)"></app-leaderboard-hammer>
+          <app-leaderboard-hammer
+            (hit)="onHammerHit($event)"
+            (hitTeam)="decrementTeamScores($event)"
+            (hitAll)="decrementAllScores()">
+          </app-leaderboard-hammer>
           <button
             type="button"
             class="lb-header-btn lb-icon-btn lb-icon-btn-img lb-undo-btn"
@@ -203,6 +212,7 @@
             [hammerHitItemId]="hammerHitItemId"
             [openControlsItemId]="openControlsItemId"
             (starClick)="onStarClick($event)"
+            (teamHeaderClick)="decrementTeamScores($event)"
             (addStudent)="addStudent()"
             (toggleAbsent)="toggleAbsent($event)"
             (columnsChange)="onColumnsChange($event)"
@@ -238,6 +248,7 @@
               *ngIf="showWheel"
               class="lb-split-wheel"
               [entries]="wheelEntries"
+              [eligibleItemIds]="wheelEligibleItemIds"
               (landed)="onWheelLanded($event)">
             </app-leaderboard-wheel>
 

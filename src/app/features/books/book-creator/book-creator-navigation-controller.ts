@@ -12,6 +12,7 @@ export class BookCreatorNavigationController {
     }
     this.creator.pageJumpValue = String(index + 1);
     this.creator.refreshSelectedPageRender();
+    this.creator.scrollPageStripToSelection();
   }
 
   rotateSelectedPage(): void {
@@ -32,6 +33,7 @@ export class BookCreatorNavigationController {
     this.creator.selectedPageIndex = index;
     this.creator.pageJumpValue = String(index + 1);
     this.creator.refreshSelectedPageRender();
+    this.creator.scrollPageStripToSelection();
   }
 
   selectWorkbookPage(workbook: BookWorkbook, index: number, event?: Event): void {
@@ -45,6 +47,7 @@ export class BookCreatorNavigationController {
     this.creator.selectedWorkbookPageIndex = index;
     this.creator.pageJumpValue = String(index + 1);
     this.creator.refreshSelectedPageRender();
+    this.creator.scrollPageStripToSelection();
   }
 
   selectWorkbookPlaceholder(event?: Event): void {

@@ -24,14 +24,54 @@ export class BookCreatorVirtualPageController {
       const scrollTarget = this.pendingScrollTarget;
       this.pendingScrollTarget = null;
       if (!scrollTarget) return;
-      this.creator.creatorThumbScrollTop = scrollTarget.scrollTop;
-      this.creator.creatorThumbViewportHeight = scrollTarget.clientHeight || this.creator.creatorThumbViewportHeight;
-      const firstThumb = scrollTarget.querySelector<HTMLElement>('.page-thumb');
-      if (firstThumb?.offsetHeight) {
-        this.creator.creatorThumbItemHeight = firstThumb.offsetHeight + 8;
-      }
-      this.creator.cdr.detectChanges();
+      this.measureScrollState(scrollTarget);
     });
+  }
+
+  private measureScrollState(container: HTMLElement): void {
+    this.creator.creatorThumbScrollTop = container.scrollTop;
+    this.creator.creatorThumbViewportHeight = container.clientHeight || this.creator.creatorThumbViewportHeight;
+    const firstThumb = container.querySelector<HTMLElement>('.page-thumb');
+    if (firstThumb?.offsetHeight) {
+      this.creator.creatorThumbItemHeight = firstThumb.offsetHeight + 8;
+    }
+    this.creator.cdr.detectChanges();
+  }
+
+  // Keeps the page-strip sidebar showing wherever the editor currently is - typing a page number,
+  // stepping with the arrows, or a keyboard shortcut should all bring that thumbnail into view,
+  // in whichever lane (student book or workbook) is active, same as clicking it directly would.
+  scrollSelectionIntoView(): void {
+    const container = this.creator.pageStripScrollElement as HTMLElement | undefined;
+    if (!container) return;
+
+    const inWorkbook = this.creator.activePageSource === 'workbook';
+    const index = inWorkbook ? this.creator.selectedWorkbookPageIndex : this.creator.selectedPageIndex;
+    if (!Number.isInteger(index) || index < 0) return;
+
+    const laneSelector = inWorkbook ? '.workbook-lane' : '.page-lane:not(.workbook-lane)';
+    const findThumb = () => container.querySelector<HTMLElement>(`${laneSelector} [data-page-index="${index}"]`);
+
+    const alreadyRendered = findThumb();
+    if (alreadyRendered) {
+      alreadyRendered.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+
+    // Not rendered: the target is outside the virtualized window (e.g. a page number typed far
+    // from the current scroll position), so it doesn't exist in the DOM yet. The student book and
+    // workbook lanes are side-by-side grid columns sharing one scrollbar (not stacked), so index N
+    // sits at roughly the same vertical offset in either lane - a rough estimate (a guessed sticky
+    // header height, then N rows down) is enough to land the scroll position within the virtual
+    // buffer; measuring synchronously recomputes the window before the fine pass below looks for
+    // the now-rendered thumbnail and settles on its exact spot.
+    const itemHeight = this.creator.creatorThumbItemHeight;
+    const laneHeaderEstimate = 48;
+    const estimatedOffset = laneHeaderEstimate + index * itemHeight;
+    container.scrollTop = this.creator.clamp(estimatedOffset, 0, container.scrollHeight);
+    this.measureScrollState(container);
+
+    requestAnimationFrame(() => findThumb()?.scrollIntoView({ block: 'nearest' }));
   }
 
   getVirtualPages(pages: BookPage[]): Array<{ page: BookPage; index: number }> {

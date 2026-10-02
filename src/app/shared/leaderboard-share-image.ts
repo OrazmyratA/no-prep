@@ -3,6 +3,7 @@ import { LeaderboardEntry } from './leaderboard.model';
 export interface LeaderboardShareLabels {
   title: string;
   absent: string;
+  attendance: string;
 }
 
 const WIDTH = 900;
@@ -39,6 +40,12 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+function attendanceColors(rate: number): { bg: string; fg: string } {
+  if (rate >= 90) return { bg: '#dcfce7', fg: '#15803d' };
+  if (rate >= 75) return { bg: '#fef3c7', fg: '#b45309' };
+  return { bg: '#fee2e2', fg: '#b91c1c' };
 }
 
 function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
@@ -201,6 +208,29 @@ export async function renderLeaderboardImage(
   ctx.font = `600 22px ${FONT}`;
   const date = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
   ctx.fillText(`${labels.title}  ·  ${date}`, PADDING, 108);
+
+  // Attendance rate — right-aligned pill on the same row as the date, colored by how high the
+  // rate is, so it reads at a glance rather than blending into the plain header text.
+  const totalCount = entries.length;
+  if (totalCount > 0) {
+    const presentCount = entries.filter(e => !e.absent).length;
+    const rate = Math.round((presentCount / totalCount) * 100);
+    const attendanceText = `${labels.attendance}: ${rate}% (${presentCount}/${totalCount})`;
+    const { bg, fg } = attendanceColors(rate);
+    ctx.font = `800 20px ${FONT}`;
+    const padX = 16;
+    const pillH = 32;
+    const pillW = ctx.measureText(attendanceText).width + padX * 2;
+    const pillX = WIDTH - PADDING - pillW;
+    const pillY = 108 - 25;
+    roundRect(ctx, pillX, pillY, pillW, pillH, pillH / 2);
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.fillStyle = fg;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(attendanceText, pillX + padX, pillY + pillH / 2 + 1);
+  }
 
   let y = HEADER_HEIGHT;
   present.forEach(({ entry, rank }) => {

@@ -4,6 +4,7 @@ export interface GameConfig {
   nameKey: string;        // translation key for game name
   descKey: string;        // translation key for description
   icon: string;
+  iconImage?: string;     // optional image path; takes priority over the emoji icon when set
   requiresSettings: boolean;
   // For backward compatibility, we can keep name/description but they will not be used in template.
   name?: string;
@@ -142,6 +143,7 @@ export const GAMES: GameConfig[] = [
     nameKey: 'gameSquidGameName',
     descKey: 'gameSquidGameDesc',
     icon: '\u{1F991}',
+    iconImage: 'assets/images/characters/squid-icon.png',
     requiresSettings: true,
   },
   {

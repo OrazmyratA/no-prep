@@ -1245,6 +1245,32 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   vi: 'Siêu tốc',
 },
 
+'settingsFlashcardHuntLives': {
+  en: 'Lives',
+  tk: 'Lives',
+  ru: 'Lives',
+  cn: 'Lives',
+  cde: 'Lives',
+  es: 'Lives',
+  fr: 'Lives',
+  kr: 'Lives',
+  sa: 'Lives',
+  vi: 'Lives',
+},
+
+'settingsFlashcardHuntLivesHint': {
+  en: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  tk: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  ru: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  cn: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  cde: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  es: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  fr: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  kr: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  sa: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+  vi: 'Each team starts with this many hearts. Hitting a bomb costs a heart (and still freezes them) - a team with no hearts left can no longer shoot, but the other team keeps hunting.',
+},
+
 'settingsFlashcardHuntTimerHint': {
   en: 'Limits the shooting round. Without a timer, it ends when every card is caught.',
   tk: 'Atyş tapgyryny çäklendirýär. Taýmer bolmasa, ähli kartlar tutulanda gutarýar.',

@@ -2,7 +2,10 @@
 
 Status: **phases 1a and 1b implemented** (desktop app). 1b = "NoPrep AI", the built-in mode:
 code done and tested, **not deployed yet** — follow [Setting up NoPrep AI](#setting-up-noprep-ai)
-below. Also done: prompt chips and "Another picture". Phases 2–3 not started.
+below. Also done: prompt chips, "Another picture", page-photo cropping (now using Gemini's own
+bounding-box convention after an accuracy fix), own-key "Generate a picture" (OpenAI/Gemini only
+— see §6), and a per-item **✨** fill (topic-form, no dialog) — see §12. Phase 2 not started;
+phase 3 (AI images) is now half-done.
 
 Phase 1b code map:
 - `ai-proxy/` — the Cloudflare Worker (not part of the app build or installer): checks the license
@@ -163,6 +166,22 @@ It must teach the model:
 
 Runs after the draft arrives, max 3 items in parallel, reports progress.
 
+- **pageCrop** → the AI found the word's own picture on an attached page photo and returned
+  `imagePage` (0-based, into the attached photos) + `imageBox`: **`[ymin, xmin, ymax, xmax]` on a
+  0-1000 scale — Gemini's own documented bounding-box convention**, not an invented shape. First
+  shipped as an arbitrary `{x, y, width, height}` 0-1 schema (2026-09-29); teacher testing showed
+  wrong/off-center crops, since asking a spatial-grounding model to translate its answer into an
+  unfamiliar format degrades accuracy. Fixed the same day by matching Gemini's own format instead.
+  `normalizeCropBox()` (`ai-topic-draft.ts`) converts the wire `imageBox` into the internal
+  `AiCropBox {x, y, width, height}` (0-1 fractions) the resolver uses; it also detects a model that
+  answers with 0-1 fractions anyway (a real 0-1000-scale box never has all four corners ≤ 1) and
+  uses it as given. `cropPageImage()` decodes the page with `createImageBitmap`, crops the box
+  (padded 6%, since the AI's box is still approximate, not pixel-perfect) onto a canvas, and
+  compresses it the same way a downloaded picture is — all on-device, no network call. A missing
+  page, a sliver of a box (<2% of the page), or a crop under 32px falls back to `search` (using the
+  item's `imageQuery` as a fallback) and then a word card, same chain a failed search already had.
+  The prompt also now tells the AI to use `search` instead whenever it isn't sure a picture is
+  really on the page, to cut down on "cropped something unrelated" cases.
 - **search** → `PixabayService.searchImages(query, { safeSearch: true, imageType: style,
   perPage: 3 })` → download first hit → compress to the same size the image uploader uses →
   `Blob`. No hit → fall back to a word card.
@@ -172,6 +191,25 @@ Runs after the draft arrives, max 3 items in parallel, reports progress.
   `onVoiceChange()` does today (`audio` + `audioSource`, pitch 0, speed 1, `audioText`), so the
   teacher can still adjust the voice later. **Android has no TTS today** → skipped with a note in
   phase 1, served by the proxy in phase 2.
+
+**"Generate a picture" (explicit, never automatic):** unlike pageCrop/search/wordCard, an
+AI-generated image costs real money per call, so it is never part of the automatic resolve or the
+free "another picture" cycle — only the item form's **✨ Generate a picture** button
+(`topic-form.generateAiImage()`) triggers it, once per click, always fresh (not cached-then-reused
+the way the first pick is). Once generated it's stashed on the item's `AiImageChoice.generated` and
+folded into the "another picture" cycle for free re-viewing (no repeat charge to look at it again).
+- Renderer: `AiMediaResolverService.generateImage(choice, provider)` builds a short prompt from the
+  item's word/style, calls `AiTopicService.generateImage()` → `ai-topic:generate-image` IPC →
+  `ai-topic-service.js generateImage()`, then compresses the result like any other item picture.
+- Main process: **OpenAI** (`images/generations`, model `gpt-image-1`, returns `b64_json`) and
+  **Gemini** (`generateContent` with `responseModalities: ['IMAGE']`, reads `inlineData`) — same
+  per-provider API-key storage as `generateDraft`. **Anthropic and Groq cannot generate images** —
+  `AiTopicProviderStatus.supportsImageGeneration` is false for both, and the button is hidden.
+  **NoPrep AI (builtin) has no image endpoint yet** — same "not built" state as Android TTS.
+  Model IDs are a 2026-09-29 guess; re-check provider docs before relying on them in release.
+- The dialog reports `imageGenerationAvailable` (from the chosen provider's status) and the
+  attached `pages: Blob[]` in `AiTopicDialogResult`, so `topic-form.ts` knows whether to show the
+  button and can pass the page photos into `resolveImage(item, pages)` for cropping.
 
 ## 7. AI access
 
@@ -260,3 +298,26 @@ Still open for phase 1b:
    (similar to the AI Speaking note in `docs/ai-speaking.md`).
 6. **Model IDs** in `ai-topic-service.js` were checked against provider docs on 2026-09-28;
    providers retire models, so re-check them before each release.
+
+## 12. Per-item "✨" fill (topic-form, no dialog)
+
+A teacher who types one item by hand (no AI draft at all) can click a small **✨** inside that
+item's text input to fill just its image and audio — same per-item image/audio decision the bulk
+AI fill makes, scoped to one item, with no dialog and no pages attached.
+
+- `topic-form.fillItemWithAi(item)`: reads the item's own text, picks up whichever provider is
+  already configured (`AiTopicService.getStartProvider()` — the teacher's last-used AI, same one
+  the ✨ dialog remembers), then calls the **same** `generateDraft()` used for full topics, with
+  a new `AiTopicRequest.singleItemText` field.
+- `buildAiTopicUserText()` (`ai-topic-prompt.ts`) branches on `singleItemText`: instead of the
+  normal prompt/pages/item-count framing, it asks for exactly one item back with `text` copied
+  unchanged (defense in depth — the resolved item's returned `image`/`audio` are used, but the
+  teacher's own typed text is never overwritten even if the model ignores that instruction) and
+  `images`/`audio` both forced to `'on'` (clicking ✨ is itself asking for both, unlike the bulk
+  fill's Auto/On/Off). No schema, system-prompt, IPC or Electron-main changes needed — 100% reuse.
+- Media resolution reuses `resolveImage(itemDraft, [])` / `resolveAudio()` exactly as the bulk fill
+  does (so pageCrop still gracefully degrades to search/wordCard, since no pages are passed), and
+  stores the result's `AiImageChoice` so "Another picture"/"Generate a picture" work afterward too.
+- Not configured yet → toast pointing at the ✨ AI button; not the desktop app → reuses the
+  dialog's existing `aiTopicDesktopOnly` message; any other failure → generic toast. Gated behind
+  `licenseService.fullAccess` like every other item action.
