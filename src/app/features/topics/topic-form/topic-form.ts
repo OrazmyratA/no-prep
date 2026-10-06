@@ -3,7 +3,7 @@ import { FormArray, FormBuilder, FormGroup, Validators, ValidatorFn, AbstractCon
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { DbService } from '../../../core/db';
-import { db, Item } from '../../../core/db.model'; // import db and Item
+import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel } from '../../../core/db.model'; // import db and Item
 import { LicenseService } from '../../../core/license';
 import { BookLibraryService } from '../../../core/book-library';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
@@ -16,6 +16,8 @@ import { AiImageChoice, AiMediaResolverService } from '../../../core/ai-topic/ai
 import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
 import { getStoredVoiceLanguage } from '../../../core/audio-voice';
 import { GAMES } from '../games.config';
+import { isHeading, isRemovedSentence, isTaskItem, paragraphColor, paragraphIndexes, startsParagraph } from '../../games/writing-text';
+import { parseTaskItem } from '../../games/reading-tasks';
 import { showAppNotification } from '../../../core/notification';
 import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
 
@@ -56,7 +58,8 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   aiProgress: { done: number; total: number } | null = null;
   aiResult: AiFillResult | null = null;
   // The form as it was before the last AI fill, for "Undo AI fill".
-  private aiUndoSnapshot: { name: string; controls: AbstractControl[] } | null = null;
+  private aiUndoSnapshot: { name: string; level: string; controls: AbstractControl[] } | null = null;
+  readonly cefrLevels = CEFR_LEVELS;
   // Bumped on every fill/undo so media still loading for an older fill is dropped.
   private aiRunId = 0;
   // Picture alternatives for AI-filled items, behind the "another picture" button.
@@ -87,12 +90,88 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   ) {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
+      level: [''],
       items: this.fb.array([], this.minOneItemValidator())
     });
   }
 
   get items(): FormArray {
     return this.topicForm.get('items') as FormArray;
+  }
+
+  get topicLevel(): CefrLevel | '' {
+    return normalizeCefrLevel(this.topicForm.value.level) ?? '';
+  }
+
+  setTopicLevel(level: CefrLevel | '') {
+    this.topicForm.patchValue({ level });
+  }
+
+  /** The item text box is multi-line to read, but games expect one line: pasted line breaks become spaces. */
+  keepItemTextOnOneLine(item: AbstractControl, event: Event) {
+    const box = event.target as HTMLTextAreaElement;
+    if (!/[\r\n]/.test(box.value)) return;
+    const caret = box.selectionStart;
+    const value = box.value.replace(/[ \t]*\r?\n[ \t]*/g, ' ');
+    box.value = value;
+    box.setSelectionRange(caret, caret);
+    item.get('text')?.setValue(value);
+  }
+
+  private writingMarksKey = '';
+  private writingMarks: { paragraphs: number[]; used: boolean } = { paragraphs: [], used: false };
+
+  /** Writing Workshop / Reading Detective marks in the item texts: paragraph per item, and whether any `*`/`#`/`_`/`[ ]` is used. */
+  private get writingMarksState(): { paragraphs: number[]; used: boolean } {
+    const texts = this.items.controls.map(control => String(control.get('text')?.value ?? ''));
+    const key = texts.join('\u0000');
+    if (key !== this.writingMarksKey) {
+      this.writingMarksKey = key;
+      this.writingMarks = {
+        paragraphs: paragraphIndexes(texts),
+        used: texts.some(text => startsParagraph(text) || isHeading(text) || /(^|\s)\S*_/.test(text) || /\[[^\]]+\]/.test(text))
+      };
+    }
+    return this.writingMarks;
+  }
+
+  get usesWritingMarks(): boolean {
+    return this.writingMarksState.used;
+  }
+
+  /** The item's paragraph (0-based) when the topic uses `*` paragraph marks, else null. */
+  itemParagraph(index: number): number | null {
+    const state = this.writingMarksState;
+    return state.paragraphs.some(p => p > 0) ? state.paragraphs[index] ?? 0 : null;
+  }
+
+  /** A small label for Reading Detective items: heading, taken-out sentence, or a task (by its tag). */
+  itemBadge(index: number): { kind: string; key: string; literal: string } | null {
+    const text = String(this.items.at(index)?.get('text')?.value ?? '');
+    if (isHeading(text)) return { kind: 'heading', key: 'topicFormBadgeHeading', literal: '' };
+    if (isRemovedSentence(text)) return { kind: 'gap', key: 'readingDetectiveStage_gapped', literal: '' };
+    if (!isTaskItem(text)) return null;
+    const task = parseTaskItem(text);
+    switch (task?.tag) {
+      case 'TFNG': return { kind: 'task', key: '', literal: 'T / F / NG' };
+      case 'YNNG': return { kind: 'task', key: '', literal: 'Y / N / NG' };
+      case 'MC': return { kind: 'task', key: 'readingDetectiveStage_choice', literal: '' };
+      case 'WORD': return { kind: 'task', key: 'readingDetectiveStage_word', literal: '' };
+      case 'EXTRA': return { kind: 'gap', key: 'topicFormBadgeExtra', literal: '' };
+      default: return { kind: 'unknown', key: 'topicFormBadgeUnknown', literal: '' };
+    }
+  }
+
+  /** Some item is a Reading Detective task or a taken-out sentence. */
+  get usesReadingTasks(): boolean {
+    return this.items.controls.some(control => {
+      const text = String(control.get('text')?.value ?? '');
+      return isTaskItem(text) || isRemovedSentence(text);
+    });
+  }
+
+  itemParagraphColor(index: number): string {
+    return paragraphColor(this.itemParagraph(index) ?? 0);
   }
 
   ngOnInit() {
@@ -125,6 +204,17 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     this.aiInitialPages = [];
   }
 
+  /** The lesson pack makes several new topics, so only a new, empty topic outside a book offers it. */
+  get lessonPackAvailable(): boolean {
+    return !this.topicId && !this.returnToBookId && !this.aiInitialPages.length && !this.hasFilledItems;
+  }
+
+  onLessonPackSaved(count: number) {
+    this.closeAiDialog();
+    showAppNotification(this.langService.translate('aiPackSaved', { n: count }), 'success');
+    this.router.navigate(['/topics']);
+  }
+
   ngAfterViewInit(): void {
     window.setTimeout(() => this.topicNameInput?.nativeElement.focus(), 60);
   }
@@ -132,7 +222,7 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
 async loadTopic(id: number) {
   const topic = await db.topics.get(id);
   if (topic) {
-    this.topicForm.patchValue({ name: topic.name });
+    this.topicForm.patchValue({ name: topic.name, level: topic.level ?? '' });
     const items = await db.items.where('topicId').equals(id).sortBy('order');
     items.forEach((item: Item) => {
     this.items.push(this.createItemFormGroup(item.id ?? null, item.text, item.image, item.audio, {
@@ -285,11 +375,12 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     const runId = ++this.aiRunId;
     this.aiDraftProviderId = result.providerId;
     this.aiImageGenerationAvailable = result.imageGenerationAvailable;
-    this.aiUndoSnapshot = { name: this.topicForm.value.name ?? '', controls: [...this.items.controls] };
+    this.aiUndoSnapshot = { name: this.topicForm.value.name ?? '', level: this.topicForm.value.level ?? '', controls: [...this.items.controls] };
 
     if (!String(this.topicForm.value.name || '').trim() && draft.topicName) {
       this.topicForm.patchValue({ name: draft.topicName });
     }
+    if (result.level) this.topicForm.patchValue({ level: result.level });
     if (result.mode === 'replace') {
       this.items.clear();
     } else {
@@ -300,6 +391,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     }
     const groups = draft.items.map(item => this.createItemFormGroup(null, item.text));
     groups.forEach(group => this.items.push(group));
+    const cardColors = groups.map(group => this.paragraphCardColor(group));
 
     const poorIds = new Set(findPoorlySuitedGames(draft.items));
     this.aiResult = {
@@ -319,7 +411,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         const index = next++;
         const item = draft.items[index];
         const [picture, audio] = await Promise.all([
-          this.aiMedia.resolveImage(item, pages).catch(() => null),
+          this.aiMedia.resolveImage(item, pages, cardColors[index]).catch(() => null),
           this.aiMedia.resolveAudio(item.audioText, voiceLanguage)
         ]);
         // Compression resolves from a Web Worker, outside Angular's zone.
@@ -341,12 +433,18 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     });
   }
 
+  /** Word card colour for an item: its Writing Workshop paragraph (leading `*` marks), blue without marks. */
+  private paragraphCardColor(item: AbstractControl): string {
+    const texts = this.items.controls.map(control => String(control.get('text')?.value ?? ''));
+    return paragraphColor(paragraphIndexes(texts)[this.items.controls.indexOf(item)] ?? 0);
+  }
+
   undoAiFill() {
     if (!this.aiUndoSnapshot) return;
     this.aiRunId++;
     this.items.clear();
     this.aiUndoSnapshot.controls.forEach(control => this.items.push(control));
-    this.topicForm.patchValue({ name: this.aiUndoSnapshot.name });
+    this.topicForm.patchValue({ name: this.aiUndoSnapshot.name, level: this.aiUndoSnapshot.level });
     this.aiUndoSnapshot = null;
     this.aiResult = null;
     this.aiProgress = null;
@@ -406,7 +504,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       }
       const voiceLanguage = this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage());
       const [picture, audio] = await Promise.all([
-        this.aiMedia.resolveImage(itemDraft, []).catch(() => null),
+        this.aiMedia.resolveImage(itemDraft, [], this.paragraphCardColor(item)).catch(() => null),
         this.aiMedia.resolveAudio(itemDraft.audioText, voiceLanguage)
       ]);
       this.zone.run(() => {
@@ -515,6 +613,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.saving = true;
     try {
       const name = this.topicForm.value.name;
+      const level = this.topicLevel || null;
       const items = await Promise.all(this.items.controls.map(c => c.value).map(async (item: any) => ({
         id: item.id ?? undefined,
         text: item.text,
@@ -528,11 +627,11 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
       let savedTopicId = this.topicId || 0;
       if (this.isEdit && this.topicId) {
-        await this.dbService.updateTopic(this.topicId, name);
+        await this.dbService.updateTopic(this.topicId, name, level);
         await this.dbService.updateItems(this.topicId, items);
         savedTopicId = this.topicId;
       } else {
-        const newId = await this.dbService.createTopic(name);
+        const newId = await this.dbService.createTopic(name, level ?? undefined);
         // From here on a retry must update this topic, not create a second copy.
         this.isEdit = true;
         this.topicId = newId;
@@ -595,6 +694,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       topic: {
         id: topic.id,
         name: topic.name,
+        ...(topic.level ? { level: topic.level } : {}),
         createdAt: topic.createdAt,
         updatedAt: topic.updatedAt
       },

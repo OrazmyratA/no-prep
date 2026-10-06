@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import imageCompression from 'browser-image-compression';
-import { PixabayImage, PixabayService } from '../pixabay';
+import { PixabayImage, PixabaySearchOptions, PixabayService } from '../pixabay';
 import { AudioVoiceService, VOICE_LANGUAGES } from '../audio-voice';
 import { renderTextImage } from '../../shared/text-image';
 import { AiCropBox, AiItemDraft } from './ai-topic-draft';
@@ -16,8 +16,13 @@ const WORD_CARD_HEIGHT = 360;
 const WORD_CARD_BACKGROUND = '#1d4ed8';
 // Save stays disabled while media loads, so one stuck request must not block it for good.
 const MEDIA_TIMEOUT_MS = 20000;
-// Search results kept per item for "another picture".
+// Search results kept per item for "another picture" — split between the AI's preferred style
+// (shown first, so the initial pick still honours its judgment) and a flat cartoon/vector pool
+// (Pixabay's own 'vector' category — distinct from 'illustration', which can be painterly/3D),
+// always fetched too so a cartoon alternative is reliably there to cycle to, not just hoped for.
 const SEARCH_RESULTS = 6;
+const STYLE_SEARCH_RESULTS = 4;
+const VECTOR_SEARCH_RESULTS = 3;
 const WORD_CARD_INDEX = -1;
 const PAGE_CROP_INDEX = -2;
 const GENERATED_INDEX = -3;
@@ -37,6 +42,7 @@ export interface AiImageChoice {
   query: string;
   style: 'photo' | 'illustration';
   cardText: string;
+  cardBackground: string;           // word card colour (Writing Workshop paragraphs get their own)
   pageCrop: PageCropSource | null;  // set only when the AI found the picture on an attached page
   hits: PixabayImage[] | null;      // null = not searched yet
   generated: Blob | null;           // set once "Generate a picture" has been used, then cached
@@ -91,9 +97,13 @@ export class AiMediaResolverService {
    * attached (same order as `imagePage` refers to); pass [] when there were none. A failed page
    * crop or search falls back down the chain to a word card. The returned choice remembers the
    * other options so `nextImage` can offer "another picture" and `generateImage` can cache a
-   * generated one alongside them.
+   * generated one alongside them. `cardBackground` colours the word card (default blue).
    */
-  async resolveImage(item: AiItemDraft, pages: Blob[] = []): Promise<{ blob: Blob | null; choice: AiImageChoice | null }> {
+  async resolveImage(
+    item: AiItemDraft,
+    pages: Blob[] = [],
+    cardBackground = WORD_CARD_BACKGROUND
+  ): Promise<{ blob: Blob | null; choice: AiImageChoice | null }> {
     if (item.imageKind === 'none') return { blob: null, choice: null };
     const cardText = item.imageKind === 'wordCard' ? item.imageQuery : item.text;
     const pageCrop: PageCropSource | null =
@@ -104,6 +114,7 @@ export class AiMediaResolverService {
       query: item.imageKind === 'wordCard' ? cardText : item.imageQuery,
       style: item.imageStyle,
       cardText,
+      cardBackground,
       pageCrop,
       hits: null,
       generated: null,
@@ -126,7 +137,7 @@ export class AiMediaResolverService {
         }
       }
     }
-    return { blob: cardText ? await this.renderWordCard(cardText) : null, choice };
+    return { blob: cardText ? await this.renderWordCard(cardText, cardBackground) : null, choice };
   }
 
   /**
@@ -156,7 +167,7 @@ export class AiMediaResolverService {
   }
 
   private resolveByIndex(choice: AiImageChoice, index: number): Promise<Blob | null> {
-    if (index === WORD_CARD_INDEX) return this.renderWordCard(choice.cardText);
+    if (index === WORD_CARD_INDEX) return this.renderWordCard(choice.cardText, choice.cardBackground);
     if (index === PAGE_CROP_INDEX) {
       return choice.pageCrop ? this.cropPageImage(choice.pageCrop.blob, choice.pageCrop.box) : Promise.resolve(null);
     }
@@ -185,17 +196,32 @@ export class AiMediaResolverService {
   }
 
   private async searchHits(choice: AiImageChoice): Promise<PixabayImage[]> {
-    const search = firstValueFrom(this.pixabay.searchImages(choice.query, {
-      imageType: choice.style,
-      safeSearch: true,
-      perPage: SEARCH_RESULTS
-    }));
-    const response = await withTimeout(search, MEDIA_TIMEOUT_MS);
-    const hits = response?.hits ?? [];
-    if (!hits.length) {
+    const [styleHits, vectorHits] = await Promise.all([
+      this.searchPixabay(choice.query, choice.style, STYLE_SEARCH_RESULTS),
+      this.searchPixabay(choice.query, 'vector', VECTOR_SEARCH_RESULTS)
+    ]);
+    const merged: PixabayImage[] = [];
+    const seenIds = new Set<number>();
+    for (const hit of [...styleHits, ...vectorHits]) {
+      if (seenIds.has(hit.id)) continue;
+      seenIds.add(hit.id);
+      merged.push(hit);
+      if (merged.length >= SEARCH_RESULTS) break;
+    }
+    if (!merged.length) {
       console.warn(`AI topic: no picture found for "${choice.query}", using a word card instead.`);
     }
-    return hits;
+    return merged;
+  }
+
+  private async searchPixabay(
+    query: string,
+    imageType: PixabaySearchOptions['imageType'],
+    perPage: number
+  ): Promise<PixabayImage[]> {
+    const search = firstValueFrom(this.pixabay.searchImages(query, { imageType, safeSearch: true, perPage }));
+    const response = await withTimeout(search, MEDIA_TIMEOUT_MS);
+    return response?.hits ?? [];
   }
 
   private downloadHit(hit: PixabayImage): Promise<Blob | null> {
@@ -261,11 +287,11 @@ export class AiMediaResolverService {
     });
   }
 
-  private renderWordCard(text: string): Promise<Blob> {
+  private renderWordCard(text: string, background = WORD_CARD_BACKGROUND): Promise<Blob> {
     return renderTextImage(text, {
       width: WORD_CARD_WIDTH,
       height: WORD_CARD_HEIGHT,
-      background: WORD_CARD_BACKGROUND
+      background
     });
   }
 }

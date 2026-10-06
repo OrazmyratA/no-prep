@@ -55,8 +55,9 @@ export class FlipTilesComponent implements OnInit, AfterViewInit, OnDestroy {
   private keyboardNumberBuffer = '';
   private keyboardNumberTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Text visibility: when true, card texts are hidden until revealed per card
-  hideTexts = false;
+  // Text visibility: when true, card texts are hidden until revealed per card. Games open
+  // in this mode; the teacher can switch it off with the button or H.
+  hideTexts = true;
 
   // Sound Quiz Mode state
   soundQuizActive = false;

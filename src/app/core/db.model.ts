@@ -7,6 +7,17 @@ export interface Topic {
   createdAt: Date;
   updatedAt: Date;
   itemCount?: number;
+  /** CEFR level of the topic's text (Reading Detective speed/timer, AI difficulty). Not indexed. */
+  level?: CefrLevel;
+}
+
+export const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
+export type CefrLevel = typeof CEFR_LEVELS[number];
+
+/** A stored or imported level, or undefined when it is not one of CEFR_LEVELS. */
+export function normalizeCefrLevel(value: unknown): CefrLevel | undefined {
+  const level = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return (CEFR_LEVELS as readonly string[]).includes(level) ? level as CefrLevel : undefined;
 }
 
 export interface Item {

@@ -214,6 +214,26 @@
   box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
 }
 
+.download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.9rem;
+}
+
+.download-btn-android {
+  background: linear-gradient(135deg, #059669, #0d9488);
+  box-shadow: 0 6px 24px rgba(5, 150, 105, 0.35);
+}
+
+.download-btn-android:hover {
+  box-shadow: 0 10px 32px rgba(5, 150, 105, 0.45);
+}
+
+.download-btn-android:active {
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.3);
+}
+
 .download-hint {
   font-size: 0.78rem;
   color: #9ca3af;

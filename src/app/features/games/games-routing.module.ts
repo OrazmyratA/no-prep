@@ -8,6 +8,8 @@ import { BallSortComponent } from './ball-sort';
 import { WatchMemorizeComponent } from './watch-memorize';
 import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
+import { WritingWorkshopComponent } from './writing-workshop';
+import { ReadingDetectiveComponent } from './reading-detective';
 import { WordSearchComponent } from './word-search';
 import { PopBalloonComponent } from './pop-balloon';
 import { SpotlightComponent } from './spotlight';
@@ -32,6 +34,8 @@ const routes: Routes = [
   { path: 'watch-memorize', component: WatchMemorizeComponent },
   { path: 'anagram', component: AnagramComponent },
   { path: 'unjumble', component: UnjumbleComponent },
+  { path: 'writing-workshop', component: WritingWorkshopComponent },
+  { path: 'reading-detective', component: ReadingDetectiveComponent },
   { path: 'word-search', component: WordSearchComponent },
   { path: 'pop-balloon', component: PopBalloonComponent },
   { path: 'spotlight', component: SpotlightComponent },

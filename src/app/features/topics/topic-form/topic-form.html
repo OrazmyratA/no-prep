@@ -28,6 +28,19 @@
          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
          [class.topic-name-missing]="nameMissingShown && topicForm.get('name')?.invalid"
          [placeholder]="'topicNamePlaceholder' | translate">
+  <!-- CEFR level: Reading Detective's reading speed and timer. Shown for reading/writing texts. -->
+  <div *ngIf="usesWritingMarks || topicLevel" class="topic-level-row">
+    <span class="topic-level-label">{{ 'topicFormLevel' | translate }}</span>
+    <div class="topic-level-chips" role="radiogroup" [attr.aria-label]="'topicFormLevel' | translate">
+      <button type="button" class="topic-level-chip" role="radio"
+              [class.topic-level-chip-active]="!topicLevel" [attr.aria-checked]="!topicLevel"
+              (click)="setTopicLevel('')">—</button>
+      <button *ngFor="let level of cefrLevels" type="button" class="topic-level-chip" role="radio"
+              [class.topic-level-chip-active]="topicLevel === level" [attr.aria-checked]="topicLevel === level"
+              (click)="setTopicLevel(level)">{{ level }}</button>
+    </div>
+    <span class="topic-level-hint">{{ 'topicFormLevelHint' | translate }}</span>
+  </div>
 </div>
 
     <!-- Items section -->
@@ -59,6 +72,9 @@
         </div>
       </div>
 
+      <p *ngIf="usesWritingMarks" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}</p>
+      <p *ngIf="usesReadingTasks" class="writing-marks-hint">🕵️ {{ 'topicFormReadingTasksHint' | translate }}</p>
+
       <div formArrayName="items">
         <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-4 pt-4">
           <div *ngFor="let item of items.controls; let i = index; let last = last"
@@ -82,6 +98,11 @@
               <div class="insert-zone-line"></div>
             </div>
 
+            <!-- Writing Workshop paragraph colour (only when the topic uses * marks) -->
+            <div *ngIf="itemParagraph(i) !== null" class="item-paragraph-stripe"
+                 [style.background]="itemParagraphColor(i)"
+                 [attr.title]="'writingWorkshopParagraph' | translate: { n: itemParagraph(i)! + 1 }"></div>
+
             <!-- Drag handle + order badge -->
             <div cdkDragHandle class="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center cursor-grab active:cursor-grabbing bg-gray-50 rounded-l-2xl border-r border-gray-100">
               <div class="item-order-badge">{{ i + 1 }}</div>
@@ -98,12 +119,19 @@
               
               <!-- Text input -->
               <div class="md:col-span-4">
+                <span *ngIf="itemBadge(i) as badge" class="item-task-badge" [attr.data-kind]="badge.kind">
+                  {{ badge.literal || (badge.key | translate) }}
+                </span>
                 <div class="relative">
-                  <input type="text" formControlName="text"
-                         (pointerdown)="$event.stopPropagation()"
-                         (click)="$event.stopPropagation()"
-                         class="w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                         [placeholder]="'textOptional' | translate">
+                  <!-- Grows with the text (a whole sentence stays readable), scrolls when very long.
+                       Still one line of item text: Enter and pasted line breaks become spaces. -->
+                  <textarea formControlName="text" rows="2"
+                            (pointerdown)="$event.stopPropagation()"
+                            (click)="$event.stopPropagation()"
+                            (keydown.enter)="$event.preventDefault()"
+                            (input)="keepItemTextOnOneLine(item, $event)"
+                            class="item-text-input w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            [placeholder]="'textOptional' | translate"></textarea>
                   <button type="button" class="item-ai-fill-btn"
                           (pointerdown)="$event.stopPropagation()"
                           (click)="$event.stopPropagation(); fillItemWithAi(item)"
@@ -193,7 +221,9 @@
                        [existingItemTexts]="aiExistingItemTexts"
                        [hasExistingItems]="hasFilledItems"
                        [initialPages]="aiInitialPages"
+                       [packAvailable]="lessonPackAvailable"
                        (generated)="onAiDraft($event)"
+                       (packSaved)="onLessonPackSaved($event)"
                        (closed)="closeAiDialog()">
   </app-ai-topic-dialog>
   <!-- Floating action button: always visible bottom-right -->

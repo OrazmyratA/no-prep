@@ -182,9 +182,15 @@ Runs after the draft arrives, max 3 items in parallel, reports progress.
   item's `imageQuery` as a fallback) and then a word card, same chain a failed search already had.
   The prompt also now tells the AI to use `search` instead whenever it isn't sure a picture is
   really on the page, to cut down on "cropped something unrelated" cases.
-- **search** → `PixabayService.searchImages(query, { safeSearch: true, imageType: style,
-  perPage: 3 })` → download first hit → compress to the same size the image uploader uses →
-  `Blob`. No hit → fall back to a word card.
+- **search** → `searchHits()` now fetches **two** Pixabay pools in parallel and merges them
+  (style hits first, then vector, deduped by id, capped at 6 total): the AI's preferred
+  `imageStyle` (`photo`/`illustration`, 4 results) **and** Pixabay's own `vector` category (3
+  results) — flat cartoon/clipart art, distinct from `illustration` (which can be painterly/3D).
+  Added 2026-10-04 so a genuine cartoon/vector alternative is reliably in the "another picture"
+  pool, not just hoped for from an `imageType: 'all'` search. The first/default pick still honours
+  the AI's preferred style (style hits are tried first); the vector pool only ever surfaces via
+  "another picture". Download first hit that succeeds → compress to the same size the image
+  uploader uses → `Blob`. No hit at all → fall back to a word card.
 - **wordCard** → new `word-card-renderer.ts`: draws the text centered on a canvas (auto font
   size, supports RTL/CJK, app's card style) → PNG `Blob`. Offline and free.
 - **audio** → `AudioVoiceService.synthesize(text, voiceLanguage)`; stored the same way
@@ -321,3 +327,29 @@ AI fill makes, scoped to one item, with no dialog and no pages attached.
 - Not configured yet → toast pointing at the ✨ AI button; not the desktop app → reuses the
   dialog's existing `aiTopicDesktopOnly` message; any other failure → generic toast. Gated behind
   `licenseService.fullAccess` like every other item action.
+
+## 13. "📓 Writing model" chip (Writing Workshop) — prompt v2
+
+For the Writing Workshop activity (plan: `docs/writing-workshop.md`). The teacher picks the chip
+and pastes a model text after its prompt.
+
+- `ai-topic-prompt.ts` (`AI_TOPIC_PROMPT_VERSION = 2`) has one more teacher-request example: one
+  item per sentence, in order, text copied exactly; a leading `* ` on the first sentence of every
+  paragraph after the first; `wordCard` with a short question as `imageQuery`; `audioText` = the
+  sentence without the star; no `_` gaps (the teacher adds them).
+- Word cards are drawn in the paragraph's colour: `resolveImage(item, pages, cardBackground)`,
+  remembered on `AiImageChoice.cardBackground` so "Another picture" keeps it. `topic-form`
+  computes the colour from the `*` marks of all form items (`paragraphIndexes`/`paragraphColor`
+  from `features/games/writing-text.ts`); with no marks it is the usual blue. The per-item ✨ fill
+  uses the item's paragraph colour too. Colours are fixed at generation time; moving a `*` later
+  does not repaint existing cards.
+- `ai-topic-games.ts` counts `writing-workshop` with the sentence games for the "won't work well"
+  hint.
+
+## 14. "📖 Reading text" chip (Reading Detective) and level — prompt v3
+
+Added 2026-10-06, see docs/reading-detective.md §3. The dialog has CEFR level chips (Auto, A1…C2)
+under the prompt; the level goes into the user text (`Level: A2 (Cambridge A2 Key (KET))`) and back
+in `AiTopicDialogResult.level`, which topic-form saves as `Topic.level`. The Reading chip asks for
+`# heading` items before each paragraph, sentences copied exactly with `[key words]`, paraphrased
+question word cards and 1–2 distractor headings. `AI_TOPIC_MAX_ITEMS` is now 60 (was 40).

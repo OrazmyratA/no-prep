@@ -53,6 +53,9 @@ export class DownloadComponent implements OnInit {
   downloadUrl = this.releasesUrl;
   installerName = '.exe installer';
   installerSize = '';
+  apkDownloadUrl = this.releasesUrl;
+  apkName = 'Android APK';
+  apkSize = '';
   releaseStatus = 'Checking GitHub Releases...';
   releaseLoaded = false;
   releaseLoadFailed = false;
@@ -78,16 +81,21 @@ export class DownloadComponent implements OnInit {
     try {
       const release = await firstValueFrom(this.http.get<GithubRelease>(this.latestReleaseApiUrl));
       const installer = this.findInstallerAsset(release.assets);
+      const apk = release.assets.find(asset => /\.apk$/i.test(asset.name));
 
       this.versions = [this.toVersionEntry(release, installer)];
       this.downloadUrl = installer?.browser_download_url || release.html_url || this.releasesUrl;
       this.installerName = installer?.name || '.exe installer';
       this.installerSize = installer ? this.formatBytes(installer.size) : '';
+      this.apkDownloadUrl = apk?.browser_download_url || release.html_url || this.releasesUrl;
+      this.apkName = apk?.name || 'Android APK';
+      this.apkSize = apk ? this.formatBytes(apk.size) : '';
       this.releaseStatus = 'Latest release loaded from GitHub';
       this.releaseLoaded = true;
       this.releaseLoadFailed = false;
     } catch {
       this.downloadUrl = this.releasesUrl;
+      this.apkDownloadUrl = this.releasesUrl;
       this.releaseStatus = 'Could not load live release details. Opening GitHub will still show the latest release.';
       this.releaseLoaded = false;
       this.releaseLoadFailed = true;

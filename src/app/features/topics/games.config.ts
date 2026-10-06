@@ -104,6 +104,20 @@ export const GAMES: GameConfig[] = [
     requiresSettings: false,
   },
   {
+    id: 'writing-workshop',
+    nameKey: 'gameWritingWorkshopName',
+    descKey: 'gameWritingWorkshopDesc',
+    icon: '\u{1F4D3}',
+    requiresSettings: false,
+  },
+  {
+    id: 'reading-detective',
+    nameKey: 'gameReadingDetectiveName',
+    descKey: 'gameReadingDetectiveDesc',
+    icon: '\u{1F575}\u{FE0F}',
+    requiresSettings: false,
+  },
+  {
     id: 'team-tug',
     nameKey: 'gameTeamTugName',
     descKey: 'gameTeamTugDesc',

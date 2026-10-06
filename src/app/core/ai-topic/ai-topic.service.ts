@@ -2,6 +2,14 @@ import { Injectable } from '@angular/core';
 import imageCompression from 'browser-image-compression';
 import { AI_TOPIC_DRAFT_SCHEMA, AiTopicDraft, parseAiTopicDraft } from './ai-topic-draft';
 import { AiTopicRequest, buildAiTopicSystemPrompt, buildAiTopicUserText } from './ai-topic-prompt';
+import {
+  WRITING_CHECK_SCHEMA,
+  WritingCheckRequest,
+  WritingCheckResult,
+  buildWritingCheckSystemPrompt,
+  buildWritingCheckUserText,
+  parseWritingCheck
+} from './writing-check';
 
 declare const window: any;
 
@@ -121,6 +129,22 @@ export class AiTopicService {
     });
     try {
       return parseAiTopicDraft(result.text);
+    } catch {
+      throw new AiTopicError('The AI answer could not be read. Please try again.');
+    }
+  }
+
+  /** Writing Workshop "Check": reuses the draft IPC, which takes any instructions and schema. */
+  async checkWriting(provider: AiTopicProviderId, request: WritingCheckRequest, gapCounts: readonly number[]): Promise<WritingCheckResult> {
+    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+      provider,
+      systemPrompt: buildWritingCheckSystemPrompt(),
+      userText: buildWritingCheckUserText(request),
+      schema: WRITING_CHECK_SCHEMA,
+      images: []
+    });
+    try {
+      return parseWritingCheck(result.text, gapCounts);
     } catch {
       throw new AiTopicError('The AI answer could not be read. Please try again.');
     }

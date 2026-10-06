@@ -358,3 +358,233 @@
 .ai-chip:disabled {
   opacity: 0.5;
 }
+
+/* CEFR level under the prompt */
+.ai-levels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+.ai-levels-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.ai-level-chips {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: #f1f5f9;
+}
+
+.ai-level {
+  min-width: 2.3rem;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-level:hover:not(:disabled) { background: #e2e8f0; }
+
+.ai-level-active,
+.ai-level-active:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+}
+
+/* Reading Detective tasks */
+.ai-reading-tasks {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.ai-task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+
+.ai-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  font-size: 0.85rem;
+  color: #334155;
+  cursor: pointer;
+}
+
+.ai-task input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #4f46e5;
+}
+
+.ai-task-count {
+  width: 3.4rem;
+  margin-left: auto;
+  padding: 2px 6px;
+  font-size: 0.85rem;
+}
+
+.ai-levels-exam {
+  font-size: 0.78rem;
+  color: #6b7280;
+}
+
+/* ---------- Lesson pack (docs/lesson-pack.md) ---------- */
+
+.ai-pack {
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eef2ff, #fdf4ff);
+  border: 1px solid #e0e7ff;
+}
+
+.ai-pack-boxes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .ai-pack-boxes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.ai-pack-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 2px solid #e0e7ff;
+  background: #fff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ai-pack-box input { accent-color: #4f46e5; }
+
+.ai-pack-box-on {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.ai-pack-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 560px) {
+  .ai-pack-cards { grid-template-columns: 1fr; }
+}
+
+.ai-pack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 2px solid #e0e7ff;
+  background: #f8fafc;
+}
+
+.ai-pack-card-ready { border-color: #86efac; background: #f0fdf4; }
+.ai-pack-card-failed { border-color: #fca5a5; background: #fef2f2; }
+
+.ai-pack-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-pack-card-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1e293b;
+}
+
+.ai-pack-remove {
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.ai-pack-remove:hover:not(:disabled) { background: #fee2e2; color: #b91c1c; }
+
+.ai-pack-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.ai-pack-status .ai-working { margin-right: 0; }
+
+.ai-pack-bar {
+  flex: 1 1 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  overflow: hidden;
+}
+
+.ai-pack-bar span {
+  display: block;
+  height: 100%;
+  background: #6366f1;
+  transition: width 0.3s ease;
+}
+
+.ai-pack-ready { color: #15803d; font-weight: 700; }
+.ai-pack-failed { color: #b91c1c; font-weight: 700; }
+.ai-pack-error { flex: 1 1 100%; font-size: 0.8rem; color: #7f1d1d; }
+.ai-pack-retry { padding: 4px 12px; font-size: 0.85rem; }
+
+.ai-pack-preview {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #334155;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ai-pack-notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: #92400e;
+}

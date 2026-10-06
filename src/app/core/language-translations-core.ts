@@ -496,6 +496,45 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Văn bản',
 },
 
+'topicFormWritingHint': {
+  en: 'Writing Workshop and Reading Detective: # starts a paragraph with a heading, * starts a new paragraph, [key words] are key words to find (and gaps with an answer in Writing Workshop), _ makes a gap students fill in.',
+  tk: 'Ýazuw ussahanasy we Okaýan detektiw: # sözbaşyly abzas başlaýar, * täze abzas başlaýar, [esasy sözler] tapylmaly esasy sözlerdir (Ýazuw ussahanasynda jogaply boşluk), _ okuwçylaryň doldurýan boşlugyny döredýär.',
+  ru: 'Мастерская письма и Детектив чтения: # начинает абзац с заголовком, * начинает новый абзац, [ключевые слова] нужно найти (в Мастерской письма это пропуски с ответом), _ — пропуск, который заполняют ученики.',
+  cn: '写作工坊和阅读侦探：# 开始一个带标题的段落，* 开始新段落，[关键词] 是要找的关键词（在写作工坊中是有答案的空白），_ 是学生要填写的空白。',
+  cde: 'Schreibwerkstatt und Lesedetektiv: # beginnt einen Absatz mit Überschrift, * beginnt einen neuen Absatz, [Schlüsselwörter] werden gesucht (in der Schreibwerkstatt Lücken mit Lösung), _ ist eine Lücke, die die Schüler ausfüllen.',
+  es: 'Taller de escritura y Detective de lectura: # empieza un párrafo con título, * empieza un párrafo nuevo, [palabras clave] son las palabras que hay que encontrar (en el Taller, huecos con respuesta), _ es un hueco que completan los alumnos.',
+  fr: 'Atelier d’écriture et Détective de lecture : # commence un paragraphe avec un titre, * commence un nouveau paragraphe, [mots-clés] sont les mots à trouver (dans l’Atelier, des trous avec réponse), _ est un trou que les élèves complètent.',
+  kr: '글쓰기 워크숍과 읽기 탐정: #은 제목이 있는 문단을 시작하고, *는 새 문단을 시작하며, [핵심어]는 찾을 핵심어(글쓰기 워크숍에서는 정답이 있는 빈칸), _는 학생이 채우는 빈칸입니다.',
+  sa: 'ورشة الكتابة ومحقق القراءة: # يبدأ فقرة بعنوان، و* يبدأ فقرة جديدة، و[الكلمات المفتاحية] كلمات يجب العثور عليها (وفي ورشة الكتابة فراغات لها إجابة)، و_ فراغ يملؤه الطلاب.',
+  vi: 'Xưởng viết và Thám tử đọc hiểu: # bắt đầu một đoạn có tiêu đề, * bắt đầu đoạn mới, [từ khóa] là các từ cần tìm (trong Xưởng viết là chỗ trống có đáp án), _ là chỗ trống để học sinh điền.',
+},
+
+'topicFormLevel': {
+  en: 'Level',
+  tk: 'Dereje',
+  ru: 'Уровень',
+  cn: '级别',
+  cde: 'Niveau',
+  es: 'Nivel',
+  fr: 'Niveau',
+  kr: '레벨',
+  sa: 'المستوى',
+  vi: 'Trình độ',
+},
+
+'topicFormLevelHint': {
+  en: 'Sets the reading speed and timer in Reading Detective.',
+  tk: 'Okaýan detektiwde okamak tizligini we wagt ölçeýjini kesgitleýär.',
+  ru: 'Задаёт скорость чтения и таймер в «Детективе чтения».',
+  cn: '决定“阅读侦探”中的阅读速度和计时。',
+  cde: 'Legt Lesetempo und Timer im Lesedetektiv fest.',
+  es: 'Define la velocidad de lectura y el temporizador en Detective de lectura.',
+  fr: 'Règle la vitesse de lecture et le minuteur dans Détective de lecture.',
+  kr: '읽기 탐정의 읽기 속도와 타이머를 정합니다.',
+  sa: 'يحدد سرعة القراءة والمؤقت في محقق القراءة.',
+  vi: 'Quyết định tốc độ đọc và thời gian trong Thám tử đọc hiểu.',
+},
+
 
 
 'noAudioRecordOrUpload': {
@@ -1982,4 +2021,56 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   sa: 'تعذّر حفظ الموضوع. يرجى المحاولة مرة أخرى.',
   vi: 'Không thể lưu chủ đề. Vui lòng thử lại.',
 },
+'topicFormBadgeHeading': {
+  en: 'Heading',
+  tk: 'Sözbaşy',
+  ru: 'Заголовок',
+  cn: '标题',
+  cde: 'Überschrift',
+  es: 'Título',
+  fr: 'Titre',
+  kr: '제목',
+  sa: 'عنوان',
+  vi: 'Tiêu đề',
+},
+
+'topicFormBadgeExtra': {
+  en: 'Extra sentence',
+  tk: 'Artykmaç sözlem',
+  ru: 'Лишнее предложение',
+  cn: '多余的句子',
+  cde: 'Zusätzlicher Satz',
+  es: 'Oración extra',
+  fr: 'Phrase en trop',
+  kr: '여분 문장',
+  sa: 'جملة زائدة',
+  vi: 'Câu thừa',
+},
+
+'topicFormBadgeUnknown': {
+  en: 'Unknown task - check the tag',
+  tk: 'Näbelli tabşyryk - belligi barlaň',
+  ru: 'Неизвестное задание - проверьте метку',
+  cn: '未知任务——请检查标签',
+  cde: 'Unbekannte Aufgabe - prüfe die Kennung',
+  es: 'Tarea desconocida: revisa la etiqueta',
+  fr: 'Tâche inconnue : vérifiez l’étiquette',
+  kr: '알 수 없는 과제 - 태그를 확인하세요',
+  sa: 'مهمة غير معروفة - تحقق من الوسم',
+  vi: 'Bài tập không rõ - hãy kiểm tra nhãn',
+},
+
+'topicFormReadingTasksHint': {
+  en: 'Reading Detective tasks: ? TFNG / ? YNNG / ? MC / ? WORD with the answer in { } and the proof as a "quote"; ~ takes a sentence out for Gapped text, ? EXTRA adds a wrong extra sentence.',
+  tk: 'Okaýan detektiwiň tabşyryklary: ? TFNG / ? YNNG / ? MC / ? WORD, jogaby { } içinde, subutnamasy "sitata" görnüşinde; ~ Boşlukly tekst üçin sözlemi aýyrýar, ? EXTRA artykmaç nädogry sözlem goşýar.',
+  ru: 'Задания Детектива чтения: ? TFNG / ? YNNG / ? MC / ? WORD, ответ в { }, доказательство в виде "цитаты"; ~ убирает предложение для Текста с пропусками, ? EXTRA добавляет лишнее предложение.',
+  cn: '阅读侦探任务：? TFNG / ? YNNG / ? MC / ? WORD，答案写在 { } 中，证据写成 "引文"；~ 表示句子填空中被拿走的句子，? EXTRA 添加一个多余的错误句子。',
+  cde: 'Lesedetektiv-Aufgaben: ? TFNG / ? YNNG / ? MC / ? WORD, die Antwort in { }, der Beweis als "Zitat"; ~ nimmt einen Satz für den Lückentext heraus, ? EXTRA fügt einen falschen Zusatzsatz hinzu.',
+  es: 'Tareas de Detective de lectura: ? TFNG / ? YNNG / ? MC / ? WORD con la respuesta entre { } y la prueba como "cita"; ~ quita una oración para el Texto con huecos, ? EXTRA añade una oración extra incorrecta.',
+  fr: 'Tâches de Détective de lecture : ? TFNG / ? YNNG / ? MC / ? WORD, la réponse entre { } et la preuve en "citation" ; ~ retire une phrase pour le Texte à trous, ? EXTRA ajoute une phrase en trop.',
+  kr: '읽기 탐정 과제: ? TFNG / ? YNNG / ? MC / ? WORD, 정답은 { } 안에, 증거는 "인용"으로; ~는 빈칸 문장 넣기에서 문장을 빼고, ? EXTRA는 여분의 오답 문장을 더합니다.',
+  sa: 'مهام محقق القراءة: ? TFNG / ? YNNG / ? MC / ? WORD والإجابة بين { } والدليل "اقتباس"؛ ~ يحذف جملة لنص الفراغات، و? EXTRA يضيف جملة زائدة خاطئة.',
+  vi: 'Bài tập Thám tử đọc hiểu: ? TFNG / ? YNNG / ? MC / ? WORD, đáp án trong { } và bằng chứng là "trích dẫn"; ~ lấy một câu ra cho phần Điền câu, ? EXTRA thêm một câu thừa sai.',
+},
+
 };

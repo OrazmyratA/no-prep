@@ -116,7 +116,9 @@ body.app-theme-active:not(.app-theme-excluded) .h-screen.bg-gradient-to-br,
 body.app-theme-active:not(.app-theme-excluded) .game-container,
 body.app-theme-active:not(.app-theme-excluded) .cup-clash-board,
 body.app-theme-active:not(.app-theme-excluded) .ball-sort-shell,
-body.app-theme-active:not(.app-theme-excluded) app-reveal-game {
+body.app-theme-active:not(.app-theme-excluded) app-reveal-game,
+body.app-theme-active:not(.app-theme-excluded) .ws-root,
+body.app-theme-active:not(.app-theme-excluded) .rd-root {
   background: transparent !important;
 }
 

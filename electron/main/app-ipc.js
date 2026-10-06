@@ -3,6 +3,10 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   'www.youtube-nocookie.com', 'youtube-nocookie.com',
   'www.google.com', 'google.com', 'images.google.com',
   'noprep.netlify.app',
+  // "Get my API key" pages of the AI providers (AI_TOPIC_PROVIDERS in ai-topic.service.ts).
+  'aistudio.google.com',
+  'platform.openai.com',
+  'platform.claude.com',
   'console.groq.com'
 ]);
 

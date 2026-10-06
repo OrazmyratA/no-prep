@@ -846,6 +846,11 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   resetGame() {
     this.stopActiveAudio();
     this.startGame();
+    // The game board (and its floating areas) is removed when a round ends and rebuilt here,
+    // so the teams must point at the new elements - otherwise the animation sees 0-size
+    // containers and the tiles stay frozen.
+    this.teams.left.containerEl = this.leftContainer?.nativeElement ?? null;
+    this.teams.right.containerEl = this.singleTeamMode ? null : this.rightContainer?.nativeElement ?? null;
     if (this.teams.left.containerEl && (this.singleTeamMode || this.teams.right.containerEl)) {
       this.startAnimation();
       this.resizeService.requestLayoutRefresh();

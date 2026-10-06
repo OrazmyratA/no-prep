@@ -12,6 +12,8 @@ import { BallSortComponent } from './ball-sort';
 import { WatchMemorizeComponent } from './watch-memorize';
 import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
+import { WritingWorkshopComponent } from './writing-workshop';
+import { ReadingDetectiveComponent } from './reading-detective';
 import { WordSearchComponent } from './word-search';
 import { PopBalloonComponent } from './pop-balloon';
 import { SpotlightComponent } from './spotlight';
@@ -38,6 +40,8 @@ import { FlashcardHuntComponent } from './flashcard-hunt';
     WatchMemorizeComponent,
     AnagramComponent,
     UnjumbleComponent,
+    WritingWorkshopComponent,
+    ReadingDetectiveComponent,
     WordSearchComponent,
     PopBalloonComponent,
     SpotlightComponent,

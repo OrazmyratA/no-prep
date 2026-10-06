@@ -9,7 +9,7 @@
 
     <p *ngIf="!available" class="ai-info">{{ 'aiTopicDesktopOnly' | translate }}</p>
 
-    <ng-container *ngIf="available">
+    <ng-container *ngIf="available && !packRun">
       <!-- Which AI -->
       <div class="ai-section">
         <label class="ai-label">{{ 'aiTopicAiSource' | translate }}</label>
@@ -50,6 +50,18 @@
         </div>
       </div>
 
+      <!-- Lesson pack: one topic per ticked box -->
+      <div *ngIf="packAvailable" class="ai-section ai-pack">
+        <span class="ai-label">{{ 'aiPackTitle' | translate }}</span>
+        <div class="ai-pack-boxes">
+          <label *ngFor="let box of packBoxes" class="ai-pack-box" [class.ai-pack-box-on]="packTicked.has(box.id)">
+            <input type="checkbox" [checked]="packTicked.has(box.id)" [disabled]="generating" (change)="togglePackBox(box)">
+            <span aria-hidden="true">{{ box.icon }}</span> {{ box.labelKey | translate }}
+          </label>
+        </div>
+        <p class="ai-hint">{{ 'aiPackHint' | translate }}</p>
+      </div>
+
       <!-- Prompt -->
       <div class="ai-section">
         <label class="ai-label" for="aiTopicPrompt">{{ 'aiTopicPromptLabel' | translate }}</label>
@@ -61,7 +73,37 @@
         </div>
         <textarea #promptInput id="aiTopicPrompt" class="ai-input ai-prompt" rows="4" [disabled]="generating"
                   [value]="prompt" (input)="prompt = $any($event.target).value"
-                  [placeholder]="'aiTopicPromptPlaceholder' | translate"></textarea>
+                  [placeholder]="(packMode ? 'aiPackNotePlaceholder' : 'aiTopicPromptPlaceholder') | translate"></textarea>
+        <div class="ai-levels">
+          <span class="ai-levels-label">{{ 'aiTopicLevel' | translate }}</span>
+          <div class="ai-level-chips" role="radiogroup" [attr.aria-label]="'aiTopicLevel' | translate">
+            <button type="button" class="ai-level" role="radio" [disabled]="generating"
+                    [class.ai-level-active]="!level" [attr.aria-checked]="!level"
+                    (click)="level = null">{{ 'aiTopicAuto' | translate }}</button>
+            <button *ngFor="let l of cefrLevels" type="button" class="ai-level" role="radio" [disabled]="generating"
+                    [class.ai-level-active]="level === l" [attr.aria-checked]="level === l"
+                    [title]="cefrExamNames[l]" (click)="level = l">{{ l }}</button>
+          </div>
+          <span *ngIf="level" class="ai-levels-exam">{{ cefrExamNames[level] }}</span>
+        </div>
+
+        <!-- Reading Detective: which parts and tasks the AI makes -->
+        <div *ngIf="showReadingTasks" class="ai-reading-tasks">
+          <span class="ai-levels-label">📖 {{ 'aiTopicReadingTasks' | translate }}</span>
+          <div class="ai-task-grid">
+            <label *ngFor="let part of readingParts" class="ai-task">
+              <input type="checkbox" [checked]="readingTasks[part]" [disabled]="generating" (change)="toggleReadingPart(part)">
+              <span>{{ readingPartLabel(part) | translate }}</span>
+            </label>
+            <label *ngFor="let task of readingCounted" class="ai-task">
+              <input type="checkbox" [checked]="readingCount(task.key) > 0" [disabled]="generating" (change)="toggleReadingTask(task)">
+              <span>{{ task.labelKey | translate }}</span>
+              <input *ngIf="readingCount(task.key) > 0" type="number" min="1" max="10" class="ai-input ai-task-count"
+                     [disabled]="generating" [value]="readingCount(task.key)"
+                     (input)="setReadingCount(task.key, $any($event.target).value)">
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- Page photos -->
@@ -90,9 +132,9 @@
           {{ optionsOpen ? '▾' : '▸' }} {{ 'aiTopicOptions' | translate }}
         </button>
         <div *ngIf="optionsOpen" class="ai-options">
-          <label>
+          <label *ngIf="!packMode">
             <span>{{ 'aiTopicItemCount' | translate }}</span>
-            <input type="number" min="1" max="40" class="ai-input ai-number" [disabled]="generating"
+            <input type="number" min="1" [max]="maxItems" class="ai-input ai-number" [disabled]="generating"
                    [value]="itemCount ?? ''" (input)="setItemCount($any($event.target).value)"
                    [placeholder]="'aiTopicAuto' | translate">
           </label>
@@ -132,7 +174,61 @@
         <span *ngIf="generating" class="ai-working"><span class="ai-spinner"></span>{{ 'aiTopicGenerating' | translate }}</span>
         <button type="button" class="ai-secondary" (click)="close()" [disabled]="generating">{{ 'cancel' | translate }}</button>
         <button type="button" class="ai-primary" (click)="generate()" [disabled]="!canGenerate"
-                title="Ctrl+Enter">✨ {{ 'aiTopicGenerate' | translate }}</button>
+                title="Ctrl+Enter">✨ {{ packMode ? ('aiPackCreate' | translate: { n: packTicked.size }) : ('aiTopicGenerate' | translate) }}</button>
+      </div>
+    </ng-container>
+
+    <!-- Lesson pack review: one card per topic -->
+    <ng-container *ngIf="available && packRun as run">
+      <div class="ai-section">
+        <label class="ai-label" for="aiPackLessonName">{{ 'aiPackLessonName' | translate }}</label>
+        <input id="aiPackLessonName" class="ai-input" [value]="lessonNameValue" [disabled]="savingPack"
+               (input)="setLessonName($any($event.target).value)">
+      </div>
+
+      <div class="ai-pack-cards">
+        <div *ngFor="let card of run.activeCards" class="ai-pack-card"
+             [class.ai-pack-card-ready]="card.status === 'ready'"
+             [class.ai-pack-card-failed]="card.status === 'failed'">
+          <div class="ai-pack-card-head">
+            <span aria-hidden="true">{{ card.box.icon }}</span>
+            <strong>{{ packTopicName(card) }}</strong>
+            <button type="button" class="ai-pack-remove" (click)="removePackCard(card)" [disabled]="savingPack"
+                    [title]="'aiPackRemove' | translate" [attr.aria-label]="'aiPackRemove' | translate">✕</button>
+          </div>
+
+          <div class="ai-pack-status" [ngSwitch]="card.status">
+            <span *ngSwitchCase="'generating'" class="ai-working"><span class="ai-spinner"></span>{{ 'aiPackStatusGenerating' | translate }}</span>
+            <ng-container *ngSwitchCase="'media'">
+              <span>{{ 'aiPackStatusMedia' | translate: { done: card.mediaDone, total: card.items.length } }}</span>
+              <span class="ai-pack-bar"><span [style.width.%]="card.items.length ? card.mediaDone * 100 / card.items.length : 0"></span></span>
+            </ng-container>
+            <span *ngSwitchCase="'ready'" class="ai-pack-ready">✓ {{ 'aiPackItems' | translate: { n: card.items.length } }}</span>
+            <ng-container *ngSwitchCase="'failed'">
+              <span class="ai-pack-failed">⚠ {{ 'aiTopicFailed' | translate }}</span>
+              <span *ngIf="card.error" class="ai-pack-error">{{ card.error }}</span>
+              <button type="button" class="ai-secondary ai-pack-retry" (click)="retryPackCard(card)">↻ {{ 'aiPackRetry' | translate }}</button>
+            </ng-container>
+          </div>
+
+          <p *ngIf="card.items.length" class="ai-pack-preview">{{ packPreview(card) }}</p>
+          <ul *ngIf="card.notes.length" class="ai-pack-notes">
+            <li *ngFor="let note of card.notes">💡 {{ note }}</li>
+          </ul>
+        </div>
+      </div>
+      <p *ngIf="!run.activeCards.length" class="ai-info">{{ 'aiPackNothingLeft' | translate }}</p>
+
+      <div *ngIf="errorKey" class="ai-error" role="alert">
+        <strong>{{ errorKey | translate }}</strong>
+        <span *ngIf="errorDetail">{{ errorDetail }}</span>
+      </div>
+
+      <div class="ai-footer">
+        <span *ngIf="savingPack" class="ai-working"><span class="ai-spinner"></span>{{ 'aiPackSaving' | translate }}</span>
+        <button type="button" class="ai-secondary" (click)="backToSetup()" [disabled]="savingPack">← {{ 'aiPackBack' | translate }}</button>
+        <button type="button" class="ai-primary" (click)="savePack()" [disabled]="!run.canSave || savingPack"
+                title="Ctrl+Enter">💾 {{ 'aiPackSaveAll' | translate: { n: run.activeCards.length } }}</button>
       </div>
     </ng-container>
   </div>

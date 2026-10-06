@@ -1,6 +1,8 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { AiTopicDraft } from '../../../core/ai-topic/ai-topic-draft';
-import { AiMediaMode } from '../../../core/ai-topic/ai-topic-prompt';
+import { AiMediaMode, CEFR_EXAM_NAMES, DEFAULT_READING_TASKS, ReadingTasksRequest } from '../../../core/ai-topic/ai-topic-prompt';
+import { AI_TOPIC_MAX_ITEMS } from '../../../core/ai-topic/ai-topic-draft';
+import { CEFR_LEVELS, CefrLevel } from '../../../core/db.model';
 import {
   AiTopicError,
   AiTopicProviderId,
@@ -9,6 +11,9 @@ import {
 } from '../../../core/ai-topic/ai-topic.service';
 import { VOICE_LANGUAGES } from '../../../core/audio-voice';
 import { LanguageService } from '../../../core/language';
+import { AI_TOPIC_RECIPES, AiTopicRecipe, LESSON_PACK_BOXES, LessonPackBox, LessonPackBoxId } from '../../../core/ai-topic/ai-topic-recipes';
+import { LessonPackCard, LessonPackRun, LessonPackService } from '../../../core/ai-topic/lesson-pack.service';
+import { paragraphColor, paragraphIndexes, plainText } from '../../games/writing-text';
 
 export interface AiTopicDialogResult {
   draft: AiTopicDraft;
@@ -20,6 +25,8 @@ export interface AiTopicDialogResult {
   providerId: AiTopicProviderId;
   /** Whether providerId can do "Generate a picture" (OpenAI/Gemini only). */
   imageGenerationAvailable: boolean;
+  /** The level the teacher picked (saved on the topic), or null for "auto". */
+  level: CefrLevel | null;
 }
 
 interface PagePhoto {
@@ -27,22 +34,9 @@ interface PagePhoto {
   url: string;
 }
 
-// Ready-made prompts: teachers who write only a word or two get much weaker topics.
-interface PromptChip {
-  id: string;
-  icon: string;
-  labelKey: string;
-  promptKey: string;
-}
-
-const PROMPT_CHIPS: PromptChip[] = [
-  { id: 'pages', icon: '📷', labelKey: 'aiTopicChipPages', promptKey: 'aiTopicChipPagesPrompt' },
-  { id: 'gapFill', icon: '✏️', labelKey: 'aiTopicChipGapFill', promptKey: 'aiTopicChipGapFillPrompt' },
-  { id: 'qa', icon: '❓', labelKey: 'aiTopicChipQa', promptKey: 'aiTopicChipQaPrompt' },
-  { id: 'pictures', icon: '🖼️', labelKey: 'aiTopicChipPictures', promptKey: 'aiTopicChipPicturesPrompt' },
-  { id: 'opposites', icon: '🔤', labelKey: 'aiTopicChipOpposites', promptKey: 'aiTopicChipOppositesPrompt' },
-  { id: 'sentences', icon: '🧩', labelKey: 'aiTopicChipSentences', promptKey: 'aiTopicChipSentencesPrompt' }
-];
+// Ready-made prompts (teachers who write only a word or two get much weaker topics). Each chip is
+// a recipe whose expert rules go to the AI with the request - see ai-topic-recipes.ts.
+type PromptChip = AiTopicRecipe;
 
 // Also used by topic-form's per-item "✨" fill, for the same reason.
 export const LANGUAGE_NAMES: Record<string, string> = {
@@ -62,15 +56,23 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   @Input() hasExistingItems = false;
   /** Book pages to start with (from a book's game marker). */
   @Input() initialPages: Blob[] = [];
+  /** Offer the lesson pack (one topic per box) - only on a new, empty topic. */
+  @Input() packAvailable = false;
   @Output() generated = new EventEmitter<AiTopicDialogResult>();
+  /** The lesson pack was saved as this many new topics. */
+  @Output() packSaved = new EventEmitter<number>();
   @Output() closed = new EventEmitter<void>();
 
   @ViewChild('promptInput') promptInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('pagesInput') pagesInput?: ElementRef<HTMLInputElement>;
 
-  readonly promptChips = PROMPT_CHIPS;
+  readonly promptChips: PromptChip[] = AI_TOPIC_RECIPES;
+  readonly packBoxes = LESSON_PACK_BOXES;
   readonly voiceLanguages = VOICE_LANGUAGES;
   readonly mediaModes: AiMediaMode[] = ['auto', 'on', 'off'];
+  readonly cefrLevels = CEFR_LEVELS;
+  readonly cefrExamNames = CEFR_EXAM_NAMES;
+  readonly maxItems = AI_TOPIC_MAX_ITEMS;
 
   available = false;
   providers: AiTopicProviderStatus[] = [];
@@ -87,15 +89,39 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   audioMode: AiMediaMode = 'auto';
   voiceLanguage = 'auto';
   mode: 'append' | 'replace' = 'append';
+  level: CefrLevel | null = null;
+  /** Reading Detective mode (the 📖 chip): which parts and tasks the AI makes. */
+  readingMode = false;
+  readingTasks: ReadingTasksRequest = { ...DEFAULT_READING_TASKS };
+  readonly readingParts: (keyof ReadingTasksRequest)[] = ['keys', 'questions', 'headings'];
+  readonly readingCounted: { key: keyof ReadingTasksRequest; labelKey: string; fallback: number }[] = [
+    { key: 'statements', labelKey: 'readingDetectiveStage_statements', fallback: 5 },
+    { key: 'choice', labelKey: 'readingDetectiveStage_choice', fallback: 4 },
+    { key: 'gapped', labelKey: 'readingDetectiveStage_gapped', fallback: 3 },
+    { key: 'word', labelKey: 'readingDetectiveStage_word', fallback: 4 }
+  ];
+
+  /** Lesson pack: the ticked boxes, the running pack (review screen) and its lesson name. */
+  packTicked = new Set<LessonPackBoxId>();
+  packRun: LessonPackRun | null = null;
+  lessonName = '';
+  lessonNameEdited = false;
+  savingPack = false;
 
   generating = false;
   errorKey = '';
   errorDetail = '';
   dragOver = false;
 
-  constructor(private ai: AiTopicService, private langService: LanguageService) {}
+  constructor(
+    private ai: AiTopicService,
+    private langService: LanguageService,
+    private lessonPack: LessonPackService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   async ngOnInit(): Promise<void> {
+    if (this.packAvailable) this.packBoxes.forEach(box => this.packTicked.add(box.id));
     this.available = this.ai.isAvailable;
     if (!this.available) return;
     const { providers, start } = await this.ai.getStartProvider();
@@ -120,6 +146,7 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.packRun?.cancel();
     this.pages.forEach(page => URL.revokeObjectURL(page.url));
   }
 
@@ -129,6 +156,29 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
 
   get maxPages(): number {
     return this.provider?.maxImages ?? 3;
+  }
+
+  /** At least one lesson pack box is ticked: Generate makes one topic per box. */
+  get packMode(): boolean {
+    return this.packAvailable && this.packTicked.size > 0;
+  }
+
+  get showReadingTasks(): boolean {
+    return this.packMode ? this.packTicked.has('reading') : this.readingMode;
+  }
+
+  togglePackBox(box: LessonPackBox): void {
+    if (this.packTicked.has(box.id)) {
+      this.packTicked.delete(box.id);
+    } else {
+      // Back from a chip to the pack: the chip's prompt doesn't belong in the pack's note.
+      if (!this.packTicked.size) {
+        this.prompt = this.withoutChipPrompt(this.prompt);
+        this.readingMode = false;
+      }
+      this.packTicked.add(box.id);
+    }
+    this.clearError();
   }
 
   get canGenerate(): boolean {
@@ -152,13 +202,10 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
    * topic, and the page-photo chip also opens the photo picker.
    */
   applyChip(chip: PromptChip): void {
+    // A chip means "just this one topic": the lesson pack steps aside.
+    this.packTicked.clear();
     const template = this.langService.translate(chip.promptKey);
-    const chipPrompts = this.promptChips.map(c => this.langService.translate(c.promptKey));
-    let own = this.prompt;
-    for (const text of chipPrompts) {
-      if (own.startsWith(text)) own = own.slice(text.length);
-    }
-    own = own.trim();
+    const own = this.withoutChipPrompt(this.prompt);
     this.prompt = own ? `${template}\n${own}` : template;
     this.clearError();
     const textarea = this.promptInput?.nativeElement;
@@ -167,9 +214,51 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
       textarea.focus();
       textarea.setSelectionRange(this.prompt.length, this.prompt.length);
     }
+    // Reading Detective needs a level for its reading speed: KET unless the teacher picks another.
+    if (chip.id === 'reading' && !this.level) this.level = 'A2';
+    this.readingMode = chip.id === 'reading';
     if (chip.id === 'pages' && !this.pages.length) {
       this.pagesInput?.nativeElement.click();
     }
+  }
+
+  /** The prompt without a chip prompt at its start: what the teacher wrote themselves. */
+  private withoutChipPrompt(prompt: string): string {
+    let own = prompt;
+    for (const chip of this.promptChips) {
+      const text = this.langService.translate(chip.promptKey);
+      if (own.startsWith(text)) own = own.slice(text.length);
+    }
+    return own.trim();
+  }
+
+  /** The chip whose prompt still starts the text box - its recipe goes with the request. */
+  private currentRecipe(): PromptChip | undefined {
+    const prompt = this.prompt.trim();
+    return this.promptChips.find(chip => prompt.startsWith(this.langService.translate(chip.promptKey)));
+  }
+
+  readingPartLabel(part: keyof ReadingTasksRequest): string {
+    return part === 'headings' ? 'aiTopicTaskHeadings' : `readingDetectiveStage_${part}`;
+  }
+
+  toggleReadingPart(part: keyof ReadingTasksRequest): void {
+    (this.readingTasks as unknown as Record<string, boolean>)[part] = !this.readingTasks[part];
+  }
+
+  /** A counted task: ticking it uses its usual count, unticking sets 0. */
+  toggleReadingTask(task: { key: keyof ReadingTasksRequest; fallback: number }): void {
+    const counts = this.readingTasks as unknown as Record<string, number>;
+    counts[task.key] = counts[task.key] ? 0 : task.fallback;
+  }
+
+  setReadingCount(key: keyof ReadingTasksRequest, value: string): void {
+    const count = Math.round(Number(value));
+    (this.readingTasks as unknown as Record<string, number>)[key] = Number.isFinite(count) ? Math.max(0, Math.min(10, count)) : 0;
+  }
+
+  readingCount(key: keyof ReadingTasksRequest): number {
+    return Number(this.readingTasks[key]) || 0;
   }
 
   openKeyPage(): void {
@@ -232,12 +321,16 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
 
   setItemCount(value: string): void {
     const count = Math.round(Number(value));
-    this.itemCount = Number.isFinite(count) && count > 0 ? Math.min(count, 40) : null;
+    this.itemCount = Number.isFinite(count) && count > 0 ? Math.min(count, AI_TOPIC_MAX_ITEMS) : null;
   }
 
   async generate(): Promise<void> {
     if (!this.canGenerate) {
       if (!this.prompt.trim() && !this.pages.length) this.errorKey = 'aiTopicNeedPromptOrPages';
+      return;
+    }
+    if (this.packMode) {
+      this.startPack();
       return;
     }
     this.generating = true;
@@ -250,7 +343,10 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
         images: this.imagesMode,
         audio: this.audioMode,
         existingItems: this.hasExistingItems && this.mode === 'append' ? this.existingItemTexts : [],
-        teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English'
+        teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
+        level: this.level,
+        readingTasks: this.readingMode ? { ...this.readingTasks } : null,
+        recipe: this.currentRecipe()?.id ?? null
       }, this.pages.map(page => page.blob));
       this.generated.emit({
         draft,
@@ -258,7 +354,8 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
         voiceLanguage: this.voiceLanguage,
         pages: this.pages.map(page => page.blob),
         providerId: this.providerId,
-        imageGenerationAvailable: !!this.provider?.supportsImageGeneration
+        imageGenerationAvailable: !!this.provider?.supportsImageGeneration,
+        level: this.level
       });
     } catch (error) {
       this.showError('aiTopicFailed', error);
@@ -267,8 +364,94 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ---- Lesson pack ----
+
+  private startPack(): void {
+    // Reading Detective needs a level for its reading speed: KET unless the teacher picks another.
+    if (this.packTicked.has('reading') && !this.level) this.level = 'A2';
+    const note = this.prompt.trim();
+    this.clearError();
+    this.lessonName = '';
+    this.lessonNameEdited = false;
+    this.packRun = this.lessonPack.start(
+      this.packBoxes.filter(box => this.packTicked.has(box.id)),
+      {
+        provider: this.providerId,
+        pages: this.pages.map(page => page.blob),
+        level: this.level,
+        teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
+        images: this.imagesMode,
+        audio: this.audioMode,
+        voiceLanguage: this.voiceLanguage,
+        readingTasks: { ...this.readingTasks },
+        promptFor: box => {
+          const chip = this.promptChips.find(c => c.id === box.recipe);
+          const chipPrompt = chip ? this.langService.translate(chip.promptKey) : '';
+          return note ? `${chipPrompt}\n${note}` : chipPrompt;
+        },
+        cardColors: texts => paragraphIndexes(texts).map(paragraphColor)
+      },
+      () => this.cdr.detectChanges()
+    );
+  }
+
+  get lessonNameValue(): string {
+    return this.lessonNameEdited ? this.lessonName : (this.packRun?.suggestedName ?? '');
+  }
+
+  setLessonName(value: string): void {
+    this.lessonName = value;
+    this.lessonNameEdited = true;
+  }
+
+  packTopicName(card: LessonPackCard): string {
+    const lesson = this.lessonNameValue.trim() || card.topicName || this.langService.translate('aiTopicTitle');
+    return `${lesson} · ${this.langService.translate(card.box.labelKey)}`;
+  }
+
+  /** The first few items, as students will read them. */
+  packPreview(card: LessonPackCard): string {
+    return card.items
+      .map(item => plainText(item.text) || item.audioText)
+      .filter(Boolean)
+      .slice(0, 4)
+      .join(' · ');
+  }
+
+  retryPackCard(card: LessonPackCard): void {
+    this.packRun?.retry(card);
+  }
+
+  removePackCard(card: LessonPackCard): void {
+    this.packRun?.remove(card);
+  }
+
+  /** Back to the settings: the running pack is dropped. */
+  backToSetup(): void {
+    this.packRun?.cancel();
+    this.packRun = null;
+  }
+
+  async savePack(): Promise<void> {
+    const run = this.packRun;
+    if (!run?.canSave || this.savingPack) return;
+    this.savingPack = true;
+    this.clearError();
+    try {
+      const entries = run.activeCards.map(card => ({ card, name: this.packTopicName(card) }));
+      const ids = await this.lessonPack.save(entries, this.level);
+      this.packSaved.emit(ids.length);
+    } catch (error) {
+      this.showError('aiPackSaveFailed', error);
+    } finally {
+      this.savingPack = false;
+    }
+  }
+
   close(): void {
-    if (!this.generating) this.closed.emit();
+    if (this.generating || this.savingPack) return;
+    this.packRun?.cancel();
+    this.closed.emit();
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -278,7 +461,7 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
       this.close();
     } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
-      void this.generate();
+      void (this.packRun ? this.savePack() : this.generate());
     }
   }
 

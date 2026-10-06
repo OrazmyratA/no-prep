@@ -1,0 +1,485 @@
+<div class="rd-root" [style.--rd-scale]="textScale">
+  <app-game-keyboard-help
+    class="rd-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <div *ngIf="loading" class="rd-loading">
+    <div class="rd-spinner"></div>
+  </div>
+
+  <!-- Stage icons -->
+  <ng-template #stageIcon let-stage="stage"><ng-container [ngSwitch]="stage"><span *ngSwitchCase="'gapped'">🧩</span><span *ngSwitchCase="'keys'">🔍</span><span *ngSwitchCase="'questions'">❓</span><span *ngSwitchCase="'statements'">⚖️</span><span *ngSwitchCase="'choice'">🔘</span><span *ngSwitchCase="'word'">🔎</span><span *ngSwitchDefault>📖</span></ng-container></ng-template>
+
+  <!-- The whole text on a sheet of paper (every stage but Read & head, and the final review) -->
+  <ng-template #articleTpl let-review="review">
+    <article class="rd-paper"
+             [class.rd-mode-words]="!review && articleMode === 'words'"
+             [class.rd-mode-sentences]="!review && articleMode === 'sentences'"
+             [class.rd-mode-review]="review">
+      <header class="rd-paper-head">
+        <span class="rd-paper-tab"><span aria-hidden="true">📁</span> {{ topicName || ('gameReadingDetectiveName' | translate) }}</span>
+        <div class="rd-size" role="group" aria-label="Text size">
+          <button type="button" class="rd-size-btn" (click)="changeScale(-1)" aria-label="Smaller text">A−</button>
+          <button type="button" class="rd-size-btn rd-size-big" (click)="changeScale(1)" aria-label="Bigger text">A+</button>
+        </div>
+      </header>
+      <div class="rd-paper-body">
+        <section *ngFor="let paragraph of text.paragraphs; trackBy: trackById" class="rd-para" [class.rd-para-hint]="hintParagraph === paragraph.id">
+          <h3 *ngIf="review && headingFor(paragraph) as heading" class="rd-review-heading">{{ heading.text }}</h3>
+          <p class="rd-para-text">
+            <ng-container *ngFor="let sentence of paragraph.sentences; trackBy: trackById">
+              <!-- Gapped text: a numbered gap until the right sentence is put back -->
+              <span *ngIf="!review && isOpenGap(sentence); else sentenceText"
+                    class="rd-gap-slot"
+                    [class.rd-gap-current]="currentGap === sentence">
+                <span class="rd-gap-number">{{ gapNumber(sentence) }}</span>
+                <span class="rd-gap-line" aria-hidden="true"></span>
+              </span>
+              <ng-template #sentenceText>
+                <span class="rd-sent"
+                      [class.rd-sent-answered]="answered.has(sentence.id)"
+                      [class.rd-sent-proved]="proved.has(sentence.id)"
+                      [class.rd-sent-filled]="!review && stage === 'gapped' && filledGaps.has(sentence.id)"
+                      [class.rd-sent-fresh]="justAnswered === sentence.id || justProved === sentence.id"
+                      [class.rd-sent-wrong]="wrongSentence === sentence.id"
+                      (click)="!review && articleMode === 'sentences' && onSentenceClick(sentence)"><span
+                        *ngIf="answered.get(sentence.id) as number" class="rd-sent-badge">{{ number }}</span><span
+                        *ngIf="proved.has(sentence.id)" class="rd-sent-badge rd-proof-badge">🔍</span><span
+                        *ngFor="let word of sentence.words; trackBy: trackById"
+                        class="rd-word"
+                        [class.rd-word-found]="foundWords.has(word.id) || (review && word.key >= 0)"
+                        [class.rd-word-hit]="wordHits.has(word.id)"
+                        [class.rd-word-fresh]="freshWords.has(word.id)"
+                        [class.rd-word-wrong]="wrongWord === word.id"
+                        (click)="!review && articleMode === 'words' && onWordClick(word)">{{ word.text }}</span></span>
+              </ng-template>
+            </ng-container>
+          </p>
+        </section>
+      </div>
+    </article>
+  </ng-template>
+
+  <!-- ============ Intro ============ -->
+  <div *ngIf="!loading && view === 'intro'" class="rd-intro">
+    <div class="rd-hero">
+      <div class="rd-emblem" aria-hidden="true">
+        <span class="rd-emblem-lens"><span class="rd-emblem-face">🕵️</span></span>
+        <span class="rd-emblem-handle"></span>
+      </div>
+      <div class="rd-hero-text">
+        <h1 class="rd-title">{{ 'gameReadingDetectiveName' | translate }}</h1>
+        <p *ngIf="topicName" class="rd-case-name"><span aria-hidden="true">📁</span> {{ topicName }}</p>
+      </div>
+    </div>
+
+    <!-- Only the stages this topic has; a tap switches one off for today's lesson -->
+    <div class="rd-stage-cards" [class.rd-stage-cards-many]="availableStages.length > 3">
+      <button *ngFor="let s of availableStages; let i = index" type="button"
+              class="rd-stage-card"
+              [class.rd-stage-card-off]="!isStageOn(s)"
+              [attr.data-stage]="s"
+              [attr.aria-pressed]="isStageOn(s)"
+              [attr.title]="('readingDetectiveStageDesc_' + s) | translate"
+              (click)="toggleStage(s)">
+        <span class="rd-stage-card-number">{{ i + 1 }}</span>
+        <span class="rd-stage-switch" [class.rd-stage-switch-on]="isStageOn(s)">
+          {{ (isStageOn(s) ? 'readingDetectiveOn' : 'readingDetectiveOff') | translate }}
+        </span>
+        <span class="rd-stage-card-icon"><ng-container *ngTemplateOutlet="stageIcon; context: { stage: s }"></ng-container></span>
+        <span class="rd-stage-card-name">{{ ('readingDetectiveStage_' + s) | translate }}</span>
+        <span class="rd-stage-card-desc">{{ ('readingDetectiveStageDesc_' + s) | translate }}</span>
+        <span class="rd-stage-card-count">
+          <ng-container *ngIf="s !== 'reading'">{{ ('readingDetectiveCount_' + s) | translate: { n: stageCount(s) } }}</ng-container>
+          <ng-container *ngIf="s === 'reading'">{{ 'readingDetectiveCount_reading' | translate: { n: stageCount(s), h: headingCount } }}</ng-container>
+        </span>
+      </button>
+    </div>
+    <p *ngIf="availableStages.length > 1" class="rd-stage-cards-hint">{{ 'readingDetectiveToggleHint' | translate }}</p>
+
+    <div class="rd-intro-level">
+      <span class="rd-intro-level-label">{{ 'readingDetectiveLevel' | translate }}</span>
+      <div class="rd-levels" role="radiogroup" [attr.aria-label]="'readingDetectiveLevel' | translate">
+        <button *ngFor="let l of cefrLevels" type="button" class="rd-level" role="radio"
+                [class.rd-level-active]="level === l" [attr.aria-checked]="level === l"
+                (click)="setLevel(l)">{{ l }}</button>
+      </div>
+      <span class="rd-wpm-note">📖 {{ 'readingDetectiveWpm' | translate: { n: wpm } }}</span>
+    </div>
+
+    <button type="button" class="rd-btn rd-btn-start" (click)="start()">
+      {{ 'readingDetectiveStart' | translate }} <span aria-hidden="true">▶</span>
+    </button>
+  </div>
+
+  <!-- ============ Top bar (stage stepper) ============ -->
+  <div *ngIf="!loading && view !== 'intro'" class="rd-top">
+    <div class="rd-stepper" [class.rd-stepper-many]="activeStages.length > 4">
+      <ng-container *ngFor="let s of activeStages; let last = last">
+        <div class="rd-step" [attr.data-state]="stageState(s)" [attr.title]="('readingDetectiveStage_' + s) | translate">
+          <span class="rd-step-dot">
+            <span *ngIf="stageState(s) === 'done'; else stepIcon">✓</span>
+            <ng-template #stepIcon><ng-container *ngTemplateOutlet="stageIcon; context: { stage: s }"></ng-container></ng-template>
+          </span>
+          <span class="rd-step-label">{{ ('readingDetectiveStage_' + s) | translate }}</span>
+        </div>
+        <span *ngIf="!last" class="rd-step-line" [class.rd-step-line-done]="stageState(s) === 'done'"></span>
+      </ng-container>
+    </div>
+    <div class="rd-top-score" [attr.title]="'readingDetectiveFirstTryTitle' | translate">
+      <span aria-hidden="true">⭐</span> {{ totalScore.got }}
+    </div>
+  </div>
+
+  <!-- ============ Every stage but Read & head: mission card + text ============ -->
+  <div *ngIf="!loading && view === 'play' && stage !== 'reading'" class="rd-play" [class.rd-play-gapped]="stage === 'gapped'" [attr.data-phase]="taskPhase">
+    <aside class="rd-mission" [class.rd-shake]="missionShake" [attr.data-stage]="stage">
+      <!-- Gapped text -->
+      <ng-container *ngIf="stage === 'gapped' && currentGap as gap">
+        <p class="rd-kicker">🧩 {{ 'readingDetectiveWhichGap' | translate: { n: gapNumber(gap) } }}</p>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(filledGaps.size / text.gaps.length) * 100"></span></div>
+          <span class="rd-progress-text">{{ gapIndex + 1 }} / {{ text.gaps.length }}</span>
+        </div>
+        <div class="rd-card-bank">
+          <button *ngFor="let card of gapCards; let i = index; trackBy: trackById"
+                  type="button"
+                  class="rd-bank-card"
+                  [class.rd-bank-card-used]="usedCards.has(card.id)"
+                  [class.rd-shake]="wrongCard === card.id"
+                  [class.rd-bank-card-wrong]="wrongCard === card.id"
+                  [disabled]="usedCards.has(card.id)"
+                  (click)="chooseGapCard(card)">
+            <span class="rd-option-letter">{{ usedCards.has(card.id) ? '✓' : letters[i] }}</span>
+            <span class="rd-bank-text">{{ card.text }}</span>
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- Key words -->
+      <ng-container *ngIf="stage === 'keys'">
+        <p class="rd-kicker">🔍 {{ 'readingDetectiveFindKey' | translate }}</p>
+        <ng-container *ngFor="let key of currentKey ? [currentKey] : []; trackBy: trackById">
+          <div class="rd-clue" [class.rd-clue-found]="busy">
+            <span class="rd-clue-text">{{ key.text }}</span>
+            <span *ngIf="busy" class="rd-clue-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(keyIndex / text.keys.length) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskNumber }} / {{ text.keys.length }}</span>
+        </div>
+        <div *ngIf="keyIndex > 0" class="rd-clue-board">
+          <span *ngFor="let key of text.keys | slice: 0 : keyIndex" class="rd-clue-chip">{{ key.text }}</span>
+        </div>
+      </ng-container>
+
+      <!-- Questions -->
+      <ng-container *ngIf="stage === 'questions'">
+        <p class="rd-kicker">❓ {{ 'readingDetectiveFindSentence' | translate }}</p>
+        <ng-container *ngFor="let question of currentQuestion ? [currentQuestion] : []; trackBy: trackById">
+          <div class="rd-qcard" [class.rd-qcard-done]="busy">
+            <span class="rd-qcard-number">{{ questionIndex + 1 }}</span>
+            <img *ngIf="questionImage(question) as url; else noImage" [src]="url" alt="">
+            <ng-template #noImage><span class="rd-qcard-empty">?</span></ng-template>
+            <span *ngIf="busy" class="rd-qcard-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(answered.size / questions.length) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskNumber }} / {{ questions.length }}</span>
+        </div>
+      </ng-container>
+
+      <!-- True / False / Not given, Yes / No / Not given -->
+      <ng-container *ngIf="stage === 'statements' && currentStatement as statement">
+        <p class="rd-kicker">
+          <ng-container *ngIf="taskPhase === 'answer' || currentProof < 0">⚖️ {{ (statement.kind === 'ynng' ? 'readingDetectiveJudgeYN' : 'readingDetectiveJudgeTF') | translate }}</ng-container>
+          <ng-container *ngIf="taskPhase !== 'answer' && currentProof >= 0">🔍 {{ 'readingDetectiveProveIt' | translate }}</ng-container>
+        </p>
+        <ng-container *ngFor="let s of [statement]; trackBy: trackById">
+          <div class="rd-task-card" [class.rd-task-card-done]="taskPhase === 'done'">
+            <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
+            <span class="rd-task-tag">{{ s.kind === 'ynng' ? 'Y / N / NG' : 'T / F / NG' }}</span>
+            <p class="rd-task-text">{{ s.text }}</p>
+            <span *ngIf="taskPhase === 'done'" class="rd-qcard-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-verdicts">
+          <button *ngFor="let verdict of verdicts; let i = index" type="button"
+                  class="rd-verdict"
+                  [attr.data-verdict]="verdict"
+                  [class.rd-verdict-chosen]="chosenOption === i"
+                  [class.rd-verdict-faded]="chosenOption >= 0 && chosenOption !== i"
+                  [class.rd-shake]="wrongOption === i"
+                  [class.rd-verdict-wrong]="wrongOption === i"
+                  [disabled]="taskPhase !== 'answer'"
+                  (click)="answerStatement(verdict)">
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ i + 1 }}</span>
+            {{ verdictKey(verdict) | translate }}
+          </button>
+        </div>
+        <p *ngIf="taskPhase === 'done' && statement.answer === 'ng'" class="rd-note">💡 {{ 'readingDetectiveNotGivenNote' | translate }}</p>
+        <p *ngIf="ruleTipShown && taskPhase === 'answer'" class="rd-rule-tip">{{ ruleTipKey | translate }}</p>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
+        </div>
+      </ng-container>
+
+      <!-- Multiple choice -->
+      <ng-container *ngIf="stage === 'choice' && currentChoice as choice">
+        <p class="rd-kicker">
+          <ng-container *ngIf="taskPhase === 'answer' || currentProof < 0">🔘 {{ 'readingDetectiveChooseAnswer' | translate }}</ng-container>
+          <ng-container *ngIf="taskPhase !== 'answer' && currentProof >= 0">🔍 {{ 'readingDetectiveProveIt' | translate }}</ng-container>
+        </p>
+        <ng-container *ngFor="let c of [choice]; trackBy: trackById">
+          <div class="rd-task-card" [class.rd-task-card-done]="taskPhase === 'done'">
+            <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
+            <p class="rd-task-text">{{ c.question }}</p>
+            <span *ngIf="taskPhase === 'done'" class="rd-qcard-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-options">
+          <button *ngFor="let option of currentOptions; let i = index" type="button"
+                  class="rd-option"
+                  [class.rd-option-chosen]="chosenOption === i"
+                  [class.rd-option-faded]="chosenOption >= 0 && chosenOption !== i"
+                  [class.rd-shake]="wrongOption === i"
+                  [class.rd-option-wrong]="wrongOption === i"
+                  [disabled]="taskPhase !== 'answer'"
+                  (click)="chooseOption(i)">
+            <span class="rd-option-letter">{{ letters[i] }}</span>
+            <span class="rd-option-text">{{ option.text }}</span>
+          </button>
+        </div>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
+        </div>
+      </ng-container>
+
+      <!-- Find the word -->
+      <ng-container *ngIf="stage === 'word' && currentWordTask as wordTask">
+        <p class="rd-kicker">🔎 {{ 'readingDetectiveFindWord' | translate }}</p>
+        <ng-container *ngFor="let w of [wordTask]; trackBy: trackById">
+          <div class="rd-clue rd-clue-word" [class.rd-clue-found]="busy">
+            <span class="rd-clue-text rd-clue-sentence">{{ w.clue }}</span>
+            <span *ngIf="busy" class="rd-clue-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
+        </div>
+      </ng-container>
+
+      <p *ngIf="hintParagraph >= 0" class="rd-hint">💡 {{ 'readingDetectiveHint' | translate }}</p>
+
+      <button type="button" class="rd-link rd-skip" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭</button>
+    </aside>
+
+    <main class="rd-text-area">
+      <ng-container *ngTemplateOutlet="articleTpl; context: { review: false }"></ng-container>
+    </main>
+  </div>
+
+  <!-- ============ Stage 3: read & head ============ -->
+  <div *ngIf="!loading && view === 'play' && stage === 'reading' && readParagraph as paragraph" class="rd-play rd-play-reading">
+    <aside class="rd-sheet">
+      <p class="rd-sheet-title">📝 {{ 'readingDetectiveAnswerSheet' | translate }}</p>
+      <ol class="rd-sheet-list">
+        <li *ngFor="let p of text.paragraphs; let i = index; trackBy: trackById"
+            class="rd-sheet-row"
+            [class.rd-sheet-current]="i === readIndex"
+            [class.rd-sheet-ok]="headingResult(p)?.firstTry"
+            [class.rd-sheet-late]="headingResult(p) && !headingResult(p)!.firstTry && !headingResult(p)!.missed"
+            [class.rd-sheet-missed]="headingResult(p)?.missed">
+          <span class="rd-sheet-num">{{ i + 1 }}</span>
+          <span class="rd-sheet-text">
+            <ng-container *ngIf="headingResult(p) as result; else notYet">{{ text.headings[result.heading].text }}</ng-container>
+            <ng-template #notYet>
+              <span class="rd-sheet-blank">{{ p.heading >= 0 ? '…' : (i < readIndex ? '✓' : '') }}</span>
+            </ng-template>
+          </span>
+        </li>
+      </ol>
+
+      <div class="rd-speed">
+        <span class="rd-speed-label">{{ 'readingDetectiveSpeed' | translate }}</span>
+        <div class="rd-speed-row">
+          <button type="button" class="rd-round" (click)="changeSpeed(-1)" aria-label="Slower">−</button>
+          <span class="rd-speed-value">{{ wpm }}<small>{{ 'readingDetectiveWpmShort' | translate }}</small></span>
+          <button type="button" class="rd-round" (click)="changeSpeed(1)" aria-label="Faster">+</button>
+        </div>
+        <div class="rd-speed-row">
+          <button type="button" class="rd-btn rd-btn-soft rd-btn-small" [disabled]="!isReadingLive" (click)="togglePause()">
+            {{ (paused ? 'readingDetectiveResume' : 'readingDetectivePause') | translate }}
+          </button>
+          <button *ngIf="phase === 'reading'" type="button" class="rd-btn rd-btn-soft rd-btn-small" (click)="revealAll()">
+            {{ 'readingDetectiveShowAll' | translate }} ⏩
+          </button>
+        </div>
+      </div>
+
+      <button type="button" class="rd-link rd-skip" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭</button>
+    </aside>
+
+    <main class="rd-read-main">
+      <!-- Headings: hidden while the paragraph is being read -->
+      <section class="rd-headings" [attr.data-phase]="phase">
+        <ng-container *ngIf="phase === 'reading'">
+          <p class="rd-headings-wait"><span class="rd-pulse-dot"></span> {{ 'readingDetectiveReadNow' | translate }}</p>
+        </ng-container>
+
+        <ng-container *ngIf="phase !== 'reading' && readHeading">
+          <div class="rd-headings-top">
+            <div class="rd-timer" [class.rd-timer-low]="phase === 'choosing' && timerSeconds <= 5" [class.rd-timer-paused]="paused">
+              <svg viewBox="0 0 44 44" aria-hidden="true">
+                <circle class="rd-timer-track" cx="22" cy="22" r="19"></circle>
+                <circle *ngIf="timerFraction > 0" class="rd-timer-fill" cx="22" cy="22" r="19" pathLength="100"
+                        [style.stroke-dashoffset]="100 - timerFraction * 100"></circle>
+              </svg>
+              <span class="rd-timer-num">{{ timerSeconds }}</span>
+            </div>
+            <p class="rd-headings-ask" [ngSwitch]="phase">
+              <span *ngSwitchCase="'matched'" class="rd-ok-text">🎉 {{ 'readingDetectiveWellDone' | translate }}</span>
+              <span *ngSwitchCase="'missed'" class="rd-missed-text">⏰ {{ 'readingDetectiveTimeUp' | translate }}</span>
+              <span *ngSwitchDefault>{{ 'readingDetectiveChooseHeading' | translate }}</span>
+            </p>
+          </div>
+          <div class="rd-heading-grid">
+            <button *ngFor="let heading of headingOptions; let i = index; trackBy: trackById"
+                    type="button"
+                    class="rd-heading"
+                    [class.rd-heading-used]="usedHeadings.has(heading.id) && heading.paragraph !== paragraph.id"
+                    [class.rd-heading-right]="(phase === 'matched' || phase === 'missed') && heading.paragraph === paragraph.id"
+                    [class.rd-heading-missed]="phase === 'missed' && heading.paragraph === paragraph.id"
+                    [class.rd-shake]="wrongHeading === heading.id"
+                    [class.rd-heading-wrong]="wrongHeading === heading.id"
+                    [disabled]="usedHeadings.has(heading.id) && heading.paragraph !== paragraph.id"
+                    (click)="chooseHeading(heading)">
+              <span class="rd-heading-letter">{{ letters[i] }}</span>
+              <span class="rd-heading-text">{{ heading.text }}</span>
+              <span *ngIf="keyboardHintsVisible && i < 9" class="game-keyboard-hint-badge">{{ i + 1 }}</span>
+            </button>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="phase === 'done'">
+          <div class="rd-headings-done">
+            <p>✓ {{ 'readingDetectiveParagraphRead' | translate }}</p>
+            <button type="button" class="rd-btn rd-btn-primary" (click)="nextParagraph()">{{ 'readingDetectiveNext' | translate }} ⏎</button>
+          </div>
+        </ng-container>
+      </section>
+
+      <!-- The paragraph, appearing word by word -->
+      <article class="rd-read-paper" [class.rd-read-paused]="paused">
+        <header class="rd-read-head">
+          <span class="rd-read-count">{{ 'readingDetectiveParagraphOf' | translate: { n: readIndex + 1, total: text.paragraphs.length } }}</span>
+          <span *ngIf="paused" class="rd-paused-badge">⏸ {{ 'readingDetectivePaused' | translate }}</span>
+          <div class="rd-size" role="group" aria-label="Text size">
+            <button type="button" class="rd-size-btn" (click)="changeScale(-1)" aria-label="Smaller text">A−</button>
+            <button type="button" class="rd-size-btn rd-size-big" (click)="changeScale(1)" aria-label="Bigger text">A+</button>
+          </div>
+        </header>
+        <div *ngIf="readHeading" class="rd-title-slot" [attr.data-phase]="phase">
+          <span *ngIf="phase === 'matched' || phase === 'missed'; else slotEmpty" class="rd-title-text">{{ readHeading.text }}</span>
+          <ng-template #slotEmpty><span class="rd-title-placeholder">{{ 'readingDetectiveHeadingSlot' | translate }}</span></ng-template>
+        </div>
+        <p class="rd-read-text">
+          <span *ngFor="let word of paragraph.words; let i = index; trackBy: trackById"
+                class="rd-rword"
+                [class.rd-rword-on]="i < revealed"
+                [class.rd-rword-new]="i === revealed - 1 && phase === 'reading'">{{ word.text }}</span>
+        </p>
+      </article>
+    </main>
+  </div>
+
+  <!-- ============ Between stages ============ -->
+  <div *ngIf="!loading && view === 'between'" class="rd-center">
+    <div class="rd-card rd-between">
+      <div class="rd-badge-big" aria-hidden="true">✓</div>
+      <h2 class="rd-card-title">{{ ('readingDetectiveStage_' + stage) | translate }} · {{ 'readingDetectiveStageDone' | translate }}</h2>
+      <p *ngIf="scores[stage].played && scores[stage].total" class="rd-between-score">
+        {{ 'readingDetectiveFirstTry' | translate: { got: scores[stage].got, total: scores[stage].total } }}
+      </p>
+
+      <div *ngIf="stage === 'keys'" class="rd-story">
+        <p class="rd-story-title">{{ 'readingDetectiveCluesTell' | translate }}</p>
+        <div class="rd-story-chips">
+          <ng-container *ngFor="let key of text.keys; let last = last">
+            <span class="rd-clue-chip rd-clue-chip-big">{{ key.text }}</span>
+            <span *ngIf="!last" class="rd-story-arrow" aria-hidden="true">→</span>
+          </ng-container>
+        </div>
+      </div>
+
+      <div *ngIf="nextStage() as next" class="rd-next">
+        <span class="rd-next-label">{{ 'readingDetectiveNextUp' | translate }}</span>
+        <span class="rd-next-icon"><ng-container *ngTemplateOutlet="stageIcon; context: { stage: next }"></ng-container></span>
+        <span class="rd-next-text">
+          <strong>{{ ('readingDetectiveStage_' + next) | translate }}</strong>
+          <small>{{ ('readingDetectiveStageDesc_' + next) | translate }}</small>
+        </span>
+      </div>
+
+      <button type="button" class="rd-btn rd-btn-primary rd-btn-wide" (click)="continueToNext()">
+        {{ 'readingDetectiveContinue' | translate }} ⏎
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ Results ============ -->
+  <div *ngIf="!loading && view === 'results'" class="rd-center">
+    <div class="rd-card rd-results">
+      <div class="rd-stars" [attr.aria-label]="stars + ' / 3'">
+        <span *ngFor="let n of [1, 2, 3]" class="rd-star" [class.rd-star-on]="n <= stars" [style.animation-delay.ms]="n * 180">★</span>
+      </div>
+      <h2 class="rd-card-title rd-results-title">{{ 'readingDetectiveCaseClosed' | translate }}</h2>
+      <p class="rd-rank">{{ rankKey | translate }}</p>
+
+      <div class="rd-result-rows">
+        <div *ngFor="let s of activeStages" class="rd-result-row" [class.rd-result-off]="!scores[s].played">
+          <span class="rd-result-icon"><ng-container *ngTemplateOutlet="stageIcon; context: { stage: s }"></ng-container></span>
+          <span class="rd-result-name">{{ ('readingDetectiveStage_' + s) | translate }}</span>
+          <ng-container *ngIf="scores[s].played && scores[s].total; else noScore">
+            <span class="rd-result-bar"><span [style.width.%]="scorePercent(s)"></span></span>
+            <span class="rd-result-score">
+              {{ scores[s].got }} / {{ scores[s].total }}
+              <small *ngIf="scores[s].proofTotal" class="rd-result-proofs" [attr.title]="'readingDetectiveProofsTitle' | translate">🔍 {{ scores[s].proofGot }} / {{ scores[s].proofTotal }}</small>
+            </span>
+          </ng-container>
+          <ng-template #noScore>
+            <span class="rd-result-bar rd-result-bar-empty"></span>
+            <span class="rd-result-score">{{ scores[s].played ? '✓' : ('readingDetectiveSkipped' | translate) }}</span>
+          </ng-template>
+        </div>
+      </div>
+      <p class="rd-results-note">{{ 'readingDetectiveFirstTryTitle' | translate }}</p>
+
+      <div class="rd-controls">
+        <button type="button" class="rd-btn rd-btn-soft" (click)="openReview()">📄 {{ 'readingDetectiveReadAll' | translate }}</button>
+        <button type="button" class="rd-btn rd-btn-primary" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+        <button type="button" class="rd-btn rd-btn-soft" (click)="onMenuAction('activity')">{{ 'backToActivities' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ The whole text, with headings ============ -->
+  <div *ngIf="!loading && view === 'review'" class="rd-review">
+    <div class="rd-text-area rd-review-area">
+      <ng-container *ngTemplateOutlet="articleTpl; context: { review: true }"></ng-container>
+    </div>
+    <div class="rd-controls">
+      <button type="button" class="rd-btn rd-btn-soft" (click)="closeReview()">← {{ 'readingDetectiveBackToResults' | translate }}</button>
+    </div>
+  </div>
+
+  <app-sandwich-menu (action)="onMenuAction($event)" (menuOpenChange)="onMenuOpenChange($event)"></app-sandwich-menu>
+</div>

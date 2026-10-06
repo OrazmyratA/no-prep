@@ -3,10 +3,11 @@ import { AiItemDraft } from './ai-topic-draft';
 // Games that spell or search the item text letter by letter.
 const SPELLING_GAMES = ['anagram', 'spelling-check', 'word-search', 'tracing'];
 // Games that split the item text into words to put in order.
-const SENTENCE_GAMES = ['unjumble', 'team-sentence'];
+const SENTENCE_GAMES = ['unjumble', 'team-sentence', 'writing-workshop', 'reading-detective'];
 
 function wordCount(text: string): number {
-  return text.split(/\s+/).filter(Boolean).length;
+  // Paragraph (*), heading (#) and key-word ([ ]) marks are not words.
+  return text.replace(/^\s*[*#]\s*/, '').replace(/[[\]]/g, '').split(/\s+/).filter(Boolean).length;
 }
 
 /**

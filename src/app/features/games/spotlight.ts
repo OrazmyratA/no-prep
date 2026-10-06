@@ -42,17 +42,6 @@ export class SpotlightComponent implements OnInit, OnDestroy {
   ];
 
   currentHasAudio = false;
-  // Collection timer
-  private collectionTimer: any;
-  private readonly collectDelay = 1000; // 1 second hold to collect
-  private isNearItem = false;
-  // The spotlight follows the pointer, so clicking or tapping on the item's spot puts the
-  // pointer there and then rests it — which used to satisfy the 1-second hold and jump to
-  // the next item. A press cancels any pending collection and, for this long afterwards,
-  // the spot has to be moved onto the item again before the hold can start.
-  private ignoreProximityUntil = 0;
-  private static readonly PRESS_QUIET_MS = 1200;
-
   // Image handling
   private objectUrls: string[] = [];
   private imageUrls = new Map<number, string>();
@@ -142,7 +131,6 @@ export class SpotlightComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.destroyed = true;
-    this.clearTimer();
     this.clearRevealTimer();
     this.clearStartTimer();
     this.stopActiveAudio();
@@ -178,11 +166,11 @@ private loadItem(index: number) {
 }
 
   private centerSpotlight() {
-    this.moveSpotlightToCorner('center', false);
+    this.moveSpotlightToCorner('center');
   }
 
   private startSpotlightJourney() {
-    this.moveSpotlightToCorner('top-left', false);
+    this.moveSpotlightToCorner('top-left');
   }
 
   playCurrentItemSound() {
@@ -192,7 +180,7 @@ private loadItem(index: number) {
   private stopActiveAudio() {
     this.trackedAudio.stop();
   }
-  private moveSpotlightToCorner(corner: 'center' | 'top-left', runChecks = true) {
+  private moveSpotlightToCorner(corner: 'center' | 'top-left') {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
@@ -204,7 +192,7 @@ private loadItem(index: number) {
     const cssY = corner === 'center' ? rect.height / 2 : marginY;
     const scaleX = rect.width ? canvas.width / rect.width : 1;
     const scaleY = rect.height ? canvas.height / rect.height : 1;
-    this.setSpotlightPosition(cssX * scaleX, cssY * scaleY, cssX, cssY, runChecks);
+    this.setSpotlightPosition(cssX * scaleX, cssY * scaleY, cssX, cssY);
   }
 
   private recalculateLayout() {
@@ -236,15 +224,7 @@ private loadItem(index: number) {
     return baseRadius * (canvas.width / SpotlightComponent.SPOTLIGHT_REFERENCE_WIDTH);
   }
 
-  // A mouse click or a tap on the game area. It only positions the spotlight; it must never
-  // count as "holding the spot on the item".
-  onCanvasPress() {
-    this.cancelPendingAdvance();
-    this.ignoreProximityUntil = performance.now() + SpotlightComponent.PRESS_QUIET_MS;
-  }
-
   onTouchStart(event: TouchEvent) {
-    this.onCanvasPress();
     this.onTouchMove(event);
   }
 
@@ -340,7 +320,7 @@ private loadItem(index: number) {
     this.cdr.detectChanges();
   }
 
-  private setSpotlightPosition(canvasX: number, canvasY: number, cssX: number, cssY: number, runChecks = true) {
+  private setSpotlightPosition(canvasX: number, canvasY: number, cssX: number, cssY: number) {
     const canvas = this.canvasRef?.nativeElement;
     if (!canvas) return;
     this.spotlightX = Math.min(Math.max(0, canvasX), canvas.width);
@@ -349,9 +329,6 @@ private loadItem(index: number) {
     this.pointerLeft = Math.min(Math.max(0, cssX), rect.width);
     this.pointerTop = Math.min(Math.max(0, cssY), rect.height);
     this.scheduleDraw();
-    if (runChecks && this.currentItem) {
-      this.checkProximity();
-    }
   }
 
   private scheduleDraw() {
@@ -437,63 +414,6 @@ private loadItem(index: number) {
     };
   }
 
-  private checkProximity() {
-    if (!this.currentItem) return;
-    // Get item container element position
-    const itemEl = document.querySelector('.item-display') as HTMLElement;
-    if (!itemEl) return;
-
-    const rect = itemEl.getBoundingClientRect();
-    const canvasRect = this.canvasRef.nativeElement.getBoundingClientRect();
-
-    // Item center in canvas pixels (the screen-pixel offset scaled up to the backing size)
-    const scaleX = canvasRect.width ? this.canvasRef.nativeElement.width / canvasRect.width : 1;
-    const scaleY = canvasRect.height ? this.canvasRef.nativeElement.height / canvasRect.height : 1;
-    const itemCenterX = (rect.left + rect.width / 2 - canvasRect.left) * scaleX;
-    const itemCenterY = (rect.top + rect.height / 2 - canvasRect.top) * scaleY;
-
-    const distance = Math.hypot(this.spotlightX - itemCenterX, this.spotlightY - itemCenterY);
-    const threshold = this.spotlightRadius;
-
-    if (distance <= threshold) {
-      // Right after a click/tap the spot just rests where it was pressed — don't start
-      // collecting until it has been moved again once the quiet period is over.
-      if (!this.isNearItem && performance.now() >= this.ignoreProximityUntil) {
-        this.isNearItem = true;
-        this.startCollectionTimer();
-      }
-    } else {
-      if (this.isNearItem) {
-        this.isNearItem = false;
-        this.clearTimer();
-      }
-    }
-  }
-
-  private startCollectionTimer() {
-    this.clearTimer();
-    this.collectionTimer = setTimeout(() => {
-      this.currentIndex++;
-      this.loadItem(this.currentIndex); // wraps via modulo
-      this.startSpotlightJourney();
-      this.cdr.detectChanges();
-    }, this.collectDelay);
-  }
-
-  private clearTimer() {
-    if (this.collectionTimer) {
-      clearTimeout(this.collectionTimer);
-      this.collectionTimer = null;
-    }
-  }
-
-  // Cancels a pending auto-advance from a held collection timer before we
-  // navigate away, so it can't fire against whatever item we land on next.
-  private cancelPendingAdvance() {
-    this.isNearItem = false;
-    this.clearTimer();
-  }
-
   revealAllScreen() {
     this.clearRevealTimer();
     this.revealAll = true;
@@ -508,8 +428,7 @@ private loadItem(index: number) {
 
   previousItem() {
     if (this.currentIndex > 0) {
-      this.cancelPendingAdvance();
-      this.currentIndex--;
+        this.currentIndex--;
       this.loadItem(this.currentIndex);
       this.startSpotlightJourney();
     }
@@ -517,8 +436,7 @@ private loadItem(index: number) {
 
   nextItem() {
     if (this.currentIndex < this.items.length - 1) {
-      this.cancelPendingAdvance();
-      this.currentIndex++;
+        this.currentIndex++;
       this.loadItem(this.currentIndex);
       this.startSpotlightJourney();
     }
@@ -526,7 +444,6 @@ private loadItem(index: number) {
 
   randomItem() {
     if (this.items.length === 0) return;
-    this.cancelPendingAdvance();
     if (this.items.length === 1) {
       this.loadItem(0);
       this.startSpotlightJourney();
@@ -557,7 +474,6 @@ private loadItem(index: number) {
   }
 
   resetGame() {
-    this.cancelPendingAdvance();
     this.currentIndex = 0;
     this.loadItem(0);
     this.startSpotlightJourney();
@@ -572,6 +488,6 @@ private loadItem(index: number) {
   }
 
   get poppedCount(): number {
-    return this.currentIndex; // since we collect sequentially
+    return this.currentIndex;
   }
 }

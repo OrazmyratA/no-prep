@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { db, Topic, Item, LeaderboardScore } from './db.model';
+import { db, Topic, Item, LeaderboardScore, CefrLevel } from './db.model';
 
 @Injectable({ providedIn: 'root' })
 export class DbService {
@@ -28,15 +28,19 @@ export class DbService {
     await this.refreshTopics();
   }
 
-  async createTopic(name: string): Promise<number> {
+  async createTopic(name: string, level?: CefrLevel): Promise<number> {
     const now = new Date();
-    const id = await db.topics.add({ name, createdAt: now, updatedAt: now });
+    const id = await db.topics.add({ name, createdAt: now, updatedAt: now, ...(level ? { level } : {}) });
     await this.refreshTopics();
     return id;
   }
 
-  async updateTopic(id: number, name: string): Promise<void> {
-    await db.topics.update(id, { name, updatedAt: new Date() });
+  /** `level`: undefined = keep it, null = remove it. */
+  async updateTopic(id: number, name: string, level?: CefrLevel | null): Promise<void> {
+    const changes: Partial<Topic> = { name, updatedAt: new Date() };
+    // Dexie deletes a property whose new value is undefined.
+    if (level !== undefined) changes.level = level ?? undefined;
+    await db.topics.update(id, changes);
     await this.refreshTopics();
   }
 
@@ -104,7 +108,7 @@ async duplicateTopic(topicId: number): Promise<number | null> {
   if (!topic) return null;
   const items = await db.items.where('topicId').equals(topicId).sortBy('order');
   const copyName = `${topic.name} (Copy)`;
-  const newTopicId = await this.createTopic(copyName);
+  const newTopicId = await this.createTopic(copyName, topic.level);
   await this.addItems(newTopicId, items.map(item => ({
     text: item.text,
     image: item.image ?? undefined,

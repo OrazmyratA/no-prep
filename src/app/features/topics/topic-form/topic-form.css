@@ -204,11 +204,41 @@
 }
 
 /* Per-item ✨: fills just this item's image + audio, sitting inside the text input. */
+/* Reading Detective item label above the text box */
+.item-task-badge {
+  display: inline-block;
+  margin-bottom: 0.3rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.item-task-badge[data-kind='heading'] { background: #fef3c7; color: #92400e; }
+.item-task-badge[data-kind='gap'] { background: #dcfce7; color: #166534; }
+.item-task-badge[data-kind='unknown'] { background: #fee2e2; color: #b91c1c; }
+
+/* Item text: a box that grows with the sentence (2 lines up to about 8, then it scrolls). */
+.item-text-input {
+  display: block;
+  field-sizing: content; /* Chromium 123+; older WebViews keep rows="2" and the resize handle */
+  min-height: 3.6rem;
+  max-height: 13rem;
+  overflow-y: auto;
+  resize: vertical;
+  font-size: 1rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .item-ai-fill-btn {
   position: absolute;
-  top: 50%;
+  top: 6px;
   right: 4px;
-  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -349,4 +379,75 @@
 
 .ai-generate-btn:hover:not(:disabled) {
   background: #fae8ff;
+}
+
+/* Writing Workshop: paragraph colour beside each item, and the * / _ hint above the list */
+.item-paragraph-stripe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 1;
+  border-radius: 1rem 0 0 1rem;
+  pointer-events: none;
+}
+
+/* CEFR level chips under the topic name */
+.topic-level-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.topic-level-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.topic-level-chips {
+  display: inline-flex;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: #f1f5f9;
+  gap: 0.15rem;
+}
+
+.topic-level-chip {
+  min-width: 2.6rem;
+  padding: 0.3rem 0.65rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.topic-level-chip:hover { background: #e2e8f0; }
+
+.topic-level-chip-active,
+.topic-level-chip-active:hover {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.35);
+}
+
+.topic-level-hint {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.writing-marks-hint {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.75rem;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.9rem;
 }

@@ -41,19 +41,32 @@
         <span class="platform-badge">Windows 10 - 64-bit - Free</span>
       </div>
 
-      <button class="download-btn" (click)="openUrl(downloadUrl)">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-        Download {{ installerName }}
-      </button>
+      <div class="download-actions">
+        <button class="download-btn" (click)="openUrl(downloadUrl)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download {{ installerName }}
+        </button>
+
+        <button class="download-btn download-btn-android" (click)="openUrl(apkDownloadUrl)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.14-.52.38.38 0 0 0-.52.14l-1.86 3.22A11.4 11.4 0 0 0 12 8.5a11.4 11.4 0 0 0-5.92 1.64L4.22 6.92a.38.38 0 0 0-.52-.14.38.38 0 0 0-.14.52L5.4 9.48A10.86 10.86 0 0 0 0 18h24a10.86 10.86 0 0 0-6.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/>
+          </svg>
+          Download {{ apkName }}
+        </button>
+      </div>
 
       <p class="download-hint" [class.download-hint-warning]="releaseLoadFailed">
         <span>{{ releaseStatus }}</span>
         <span *ngIf="installerSize"> - {{ installerSize }}</span>
+        <span *ngIf="apkSize"> - APK {{ apkSize }}</span>
+      </p>
+      <p class="download-hint">
+        On Android, allow installs from this source when your phone asks (Settings → Install unknown apps).
       </p>
 
       <ul class="feature-list">

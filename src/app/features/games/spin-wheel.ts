@@ -110,6 +110,18 @@ export class SpinWheelComponent implements OnInit, OnDestroy {
     return this.aitBackType !== null;
   }
 
+  // The wheel only holds items that can actually produce a card of the picked type, so the
+  // landed item always has its content. With a quiz (not OK/Oops) and a different options
+  // type, it also needs options content - otherwise a landed item without it fell back to
+  // OK/Oops. If too few items qualify, the wheel keeps the wider pool rather than going empty.
+  private playableItems(): Item[] {
+    const withQuestion = this.items.filter(item => itemHasAitContent(item, this.aitQuestionType));
+    const base = withQuestion.length ? withQuestion : [...this.items];
+    if (this.forceSimpleMode || this.aitOptionsType === this.aitQuestionType) return base;
+    const withOptions = base.filter(item => itemHasAitContent(item, this.aitOptionsType));
+    return withOptions.length >= 2 ? withOptions : base;
+  }
+
 async ngOnInit() {
   const idParam =
     this.route.snapshot.paramMap.get('id') ??
@@ -123,7 +135,7 @@ async ngOnInit() {
 
   try {
     this.items = await db.items.where('topicId').equals(this.topicId).sortBy('order');
-    this.currentItems = [...this.items];
+    this.currentItems = this.playableItems();
     this.items.forEach(item => {
       if (item.image && item.id) {
         this.loadImageForItem(item);
@@ -766,7 +778,7 @@ onQuizAnswer(selected: Item) {
     this.spinning = false;
     this.clearVictoryTimeout();
     this.gameFinished = false;
-    this.currentItems = [...this.items];
+    this.currentItems = this.playableItems();
     this.rotation = 0;
     this.selectedItem = null;
     this.simpleConfirmMode = false;

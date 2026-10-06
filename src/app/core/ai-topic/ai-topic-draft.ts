@@ -29,7 +29,9 @@ export interface AiTopicDraft {
   items: AiItemDraft[];
 }
 
-export const AI_TOPIC_MAX_ITEMS = 40;
+// 80 so a PET/IELTS reading text (sentences, a heading per paragraph and the Reading Detective
+// tasks) fits in one topic.
+export const AI_TOPIC_MAX_ITEMS = 80;
 
 // Flat and fully required on purpose: every provider's structured-output mode accepts it.
 export const AI_TOPIC_DRAFT_SCHEMA = {
@@ -66,7 +68,7 @@ function cleanString(value: unknown, max: number): string {
   return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '';
 }
 
-function parseJsonLoosely(raw: string): unknown {
+export function parseJsonLoosely(raw: string): unknown {
   const trimmed = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
   try {
     return JSON.parse(trimmed);
@@ -112,7 +114,7 @@ const EMPTY_CROP: AiCropBox = { x: 0, y: 0, width: 0, height: 0 };
 function normalizeItem(value: unknown): AiItemDraft | null {
   if (!value || typeof value !== 'object') return null;
   const raw = value as Record<string, unknown>;
-  const text = cleanString(raw['text'], 300);
+  const text = cleanString(raw['text'], 400); // a multiple-choice task item is long
   const audioText = cleanString(raw['audioText'], 500);
   let imageQuery = cleanString(raw['imageQuery'], 120);
   let imageKind: AiImageKind =

@@ -1,0 +1,194 @@
+<div class="ws-root">
+  <app-game-keyboard-help
+    class="ws-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <h2 class="ws-title">{{ 'gameWritingWorkshopName' | translate }}</h2>
+
+  <div *ngIf="loading" class="flex justify-center items-center h-64">
+    <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+  </div>
+
+  <!-- One sentence on the notebook page: words as text, gaps as typing boxes. -->
+  <ng-template #sentenceLine let-sentence="sentence" let-p="p" let-s="s" let-tokens="tokens">
+    <span class="nb-sentence" [class.nb-sentence-active]="!sentence.solved">
+      <ng-container *ngFor="let token of tokens; let t = index">
+        <span *ngIf="token.kind === 'word'" class="nb-word">{{ token.text }}</span>
+        <span *ngIf="token.kind === 'gap'" class="nb-word nb-gap-wrap">{{ token.prefix }}<input
+            class="nb-gap"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            [id]="gapInputId(p, s, sentence.gapIndexes[t])"
+            [class.nb-gap-empty]="!sentence.answers[sentence.gapIndexes[t]]?.trim()"
+            [class.nb-gap-ok]="gapFeedback(p, s, sentence.gapIndexes[t])?.ok === true"
+            [class.nb-gap-fix]="gapFeedback(p, s, sentence.gapIndexes[t])?.ok === false"
+            [value]="sentence.answers[sentence.gapIndexes[t]]"
+            [style.width.ch]="(sentence.answers[sentence.gapIndexes[t]]?.length || 0) + 4"
+            (input)="onGapInput(sentence, sentence.gapIndexes[t], $event)"
+            (keydown)="onGapKeydown($event)"><span
+            *ngIf="gapFeedback(p, s, sentence.gapIndexes[t]) as feedback"
+            class="nb-mark"
+            [class.nb-mark-ok]="feedback.ok"
+            [class.nb-mark-fix]="!feedback.ok"
+            [title]="feedback.why">{{ feedback.ok ? '✓' : feedback.suggestion }}</span>{{ token.suffix }}</span>
+      </ng-container>
+    </span>
+  </ng-template>
+
+  <!-- Screen 1: paragraph map -->
+  <div *ngIf="!loading && view === 'map'" class="ws-map">
+    <p class="ws-map-hint">{{ 'writingWorkshopPickParagraph' | translate }}</p>
+    <div class="ws-map-path">
+      <ng-container *ngFor="let paragraph of paragraphs; let p = index; let last = last">
+        <button
+          type="button"
+          class="ws-dot"
+          [class.ws-dot-done]="paragraphState(p) === 'done'"
+          [class.ws-dot-current]="paragraphState(p) === 'current'"
+          [class.ws-dot-locked]="paragraphState(p) === 'locked'"
+          [style.--ws-color]="paragraph.color"
+          [attr.aria-label]="'writingWorkshopParagraph' | translate: { n: p + 1 }"
+          (click)="openParagraphBoard(p)">
+          <span class="ws-dot-number">{{ p + 1 }}</span>
+          <span *ngIf="paragraphState(p) === 'done'" class="ws-dot-badge">✓</span>
+          <span *ngIf="paragraphState(p) === 'locked'" class="ws-dot-badge">🔒</span>
+          <span *ngIf="paragraph.heading" class="ws-dot-heading">{{ paragraph.heading }}</span>
+        </button>
+        <span *ngIf="!last" class="ws-link" [class.ws-link-done]="p < doneParagraphs"></span>
+      </ng-container>
+    </div>
+    <button *ngIf="doneParagraphs >= paragraphs.length" type="button" class="ws-btn ws-btn-primary" (click)="showNotebook()">
+      {{ 'writingWorkshopMyText' | translate }}
+    </button>
+  </div>
+
+  <!-- Screen 2: paragraph board -->
+  <div *ngIf="!loading && view === 'board' && paragraph as par" class="ws-board" [style.--ws-color]="par.color">
+    <div class="ws-board-top">
+      <button type="button" class="ws-back" (click)="backToMap()" [attr.aria-label]="'writingWorkshopBackToMap' | translate">
+        ← {{ 'writingWorkshopParagraph' | translate: { n: openParagraph + 1 } }}
+      </button>
+    </div>
+
+    <div class="ws-cards">
+      <div
+        *ngFor="let sentence of par.sentences; let s = index"
+        class="ws-card"
+        [class.ws-card-solved]="cardState(sentence) === 'solved'"
+        [class.ws-card-active]="cardState(sentence) === 'active'"
+        [class.ws-card-locked]="cardState(sentence) === 'locked'"
+        [class.flipped]="sentence.flipped || sentence.solved"
+        (click)="onCardClick(sentence)">
+        <span class="ws-card-face ws-card-front">
+          <span class="ws-card-number">{{ s + 1 }}</span>
+        </span>
+        <span class="ws-card-face ws-card-back">
+          <img *ngIf="imageUrl(sentence.item) as url; else noQuestion" [src]="url" alt="">
+          <ng-template #noQuestion><span class="ws-card-noimage">?</span></ng-template>
+          <button
+            *ngIf="sentence.item.audio && cardState(sentence) === 'active'"
+            type="button"
+            class="ws-speaker"
+            (click)="$event.stopPropagation(); playAudio(sentence)"
+            aria-label="Play item audio">🔊</button>
+          <span *ngIf="sentence.solved" class="ws-card-tick">✓</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="ws-paper">
+      <h3 *ngIf="par.heading" class="ws-paper-heading">{{ par.heading }}</h3>
+      <p class="ws-paper-text">
+        <ng-container *ngFor="let sentence of par.sentences; let s = index">
+          <ng-container *ngIf="sentence.placed > 0">
+            <ng-container *ngTemplateOutlet="sentenceLine; context: { sentence: sentence, p: openParagraph, s: s, tokens: shownTokens(sentence) }"></ng-container>
+          </ng-container>
+        </ng-container>
+      </p>
+    </div>
+
+    <div class="ws-bottom">
+      <p *ngIf="waitingForGaps" class="ws-gap-hint">{{ 'writingWorkshopFillGaps' | translate }}</p>
+      <p *ngIf="activeSentence && !activeSentence.flipped" class="ws-gap-hint">{{ 'writingWorkshopFlipCard' | translate }}</p>
+
+      <div *ngIf="bank.length" class="ws-bank">
+        <button
+          *ngFor="let tile of bank; let i = index; trackBy: trackByTileId"
+          type="button"
+          class="ws-tile"
+          [class.ws-tile-gap]="tile.isGap"
+          [class.keyboard-selected]="isKeyboardSelected(i)"
+          [class.animate-fade]="isAnimating(tile, 'fade')"
+          [class.animate-shake]="isAnimating(tile, 'shake')"
+          (click)="selectTile(tile, i)">
+          <span *ngIf="keyboardHintsVisible && i < 10" class="game-keyboard-hint-badge">{{ i === 9 ? 0 : i + 1 }}</span>
+          {{ tile.label }}
+        </button>
+      </div>
+
+      <div *ngIf="activeSentence?.flipped" class="ws-controls">
+        <button type="button" class="ws-btn ws-btn-soft" (click)="shuffle()">{{ 'shuffle' | translate }}</button>
+      </div>
+
+      <button *ngIf="paragraphComplete" type="button" class="ws-btn ws-btn-primary ws-ok" (click)="finishParagraph()">
+        {{ 'ok' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen 3: the finished text -->
+  <div *ngIf="!loading && view === 'notebook'" class="ws-final">
+    <p class="ws-final-title">🎉 {{ 'writingWorkshopAllDone' | translate }}</p>
+    <div class="ws-final-body">
+      <div class="ws-paper ws-paper-final">
+        <ng-container *ngFor="let paragraph of paragraphs; let p = index">
+          <h3 *ngIf="paragraph.heading" class="ws-paper-heading" [style.--ws-color]="paragraph.color">{{ paragraph.heading }}</h3>
+          <p class="ws-paper-text ws-final-paragraph" [style.--ws-color]="paragraph.color">
+            <ng-container *ngFor="let sentence of paragraph.sentences; let s = index">
+              <ng-container *ngTemplateOutlet="sentenceLine; context: { sentence: sentence, p: p, s: s, tokens: sentence.tokens }"></ng-container>
+            </ng-container>
+          </p>
+        </ng-container>
+      </div>
+
+      <!-- AI feedback, beside the text (landscape) -->
+      <aside *ngIf="checkResult" class="ws-feedback">
+        <p *ngIf="checkResult.overall" class="ws-feedback-overall">🤖 {{ checkResult.overall }}</p>
+        <p *ngIf="!corrections.length" class="ws-feedback-allgood">✓ {{ 'writingWorkshopAllCorrect' | translate }}</p>
+        <ng-container *ngIf="corrections.length">
+          <p class="ws-feedback-heading">{{ 'writingWorkshopToFix' | translate }}</p>
+          <ul class="ws-feedback-list">
+            <li *ngFor="let correction of corrections">
+              <span class="ws-feedback-words">
+                <s>{{ correction.answer || '…' }}</s> → <strong>{{ correction.feedback.suggestion }}</strong>
+              </span>
+              <span *ngIf="correction.feedback.why" class="ws-feedback-why">{{ correction.feedback.why }}</span>
+            </li>
+          </ul>
+        </ng-container>
+      </aside>
+    </div>
+
+    <p *ngIf="aiAvailable && hasOpenGaps && !checkProvider" class="ws-gap-hint">{{ 'writingWorkshopCheckNeedsAi' | translate }}</p>
+    <div class="ws-controls">
+      <button
+        *ngIf="canCheck"
+        type="button"
+        class="ws-btn ws-btn-check"
+        [disabled]="checking"
+        (click)="checkWriting()">
+        <span *ngIf="checking" class="ws-spinner" aria-hidden="true"></span>
+        {{ (checking ? 'writingWorkshopChecking' : checkResult ? 'writingWorkshopCheckAgain' : 'writingWorkshopCheck') | translate }}
+      </button>
+      <button type="button" class="ws-btn ws-btn-soft" (click)="view = 'map'">{{ 'writingWorkshopBackToMap' | translate }}</button>
+      <button type="button" class="ws-btn ws-btn-soft" (click)="resetGame()">{{ 'playAgain' | translate }}</button>
+      <button type="button" class="ws-btn ws-btn-soft" (click)="onMenuAction('activity')">{{ 'backToActivities' | translate }}</button>
+    </div>
+  </div>
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

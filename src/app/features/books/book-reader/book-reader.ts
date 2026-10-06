@@ -8,6 +8,7 @@ import { Subscription } from 'rxjs';
 import { BookLibraryService } from '../../../core/book-library';
 import { GuidePitchService } from '../../../core/guide-pitch';
 import { DbService } from '../../../core/db';
+import { normalizeCefrLevel } from '../../../core/db.model';
 import { LanguageService } from '../../../core/language';
 import { showAppNotification } from '../../../core/notification';
 import { PlatformFileService } from '../../../core/platform-file';
@@ -1830,7 +1831,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (Number.isFinite(topicId) && topicId > 0 && await this.doesTopicMatchSnapshot(topicId, name, snapshotItems)) {
         return topicId;
       }
-      const newTopicId = await this.db.createTopic(name);
+      const newTopicId = await this.db.createTopic(name, normalizeCefrLevel(snapshot?.topic?.level));
       const items = snapshotItems
         ? await Promise.all(snapshotItems.map(async (item: any) => ({
             text: String(item?.text || ''),
