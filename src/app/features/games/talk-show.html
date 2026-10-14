@@ -1,0 +1,565 @@
+<div class="ts-root" [class.ts-young]="profile.young" [class.ts-live]="onAir" [attr.data-view]="view">
+  <app-game-keyboard-help
+    class="ts-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <!-- Studio spotlights -->
+  <div class="ts-lights" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <div *ngIf="loading" class="ts-loading"><div class="ts-spinner"></div></div>
+
+  <!-- ===== Start screen ===== -->
+  <div *ngIf="!loading && view === 'intro'" class="ts-intro">
+    <div class="ts-hero">
+      <div class="ts-sign" aria-hidden="true"><span class="ts-sign-dot"></span>ON AIR</div>
+      <h1 class="ts-title"><span class="ts-title-icon" aria-hidden="true">🎙️</span><span class="ts-title-text">{{ 'gameTalkShowName' | translate }}</span></h1>
+      <p *ngIf="topicName" class="ts-topic">{{ topicName }}</p>
+    </div>
+
+    <div class="ts-setup">
+      <section class="ts-panel">
+        <h2 class="ts-panel-title">{{ 'talkShowExam' | translate }}</h2>
+        <div class="ts-exams" role="radiogroup" [attr.aria-label]="'talkShowExam' | translate">
+          <button *ngFor="let e of exams" type="button" class="ts-exam" role="radio"
+                  [class.ts-exam-active]="exam === e.id" [class.ts-exam-young]="e.young"
+                  [attr.aria-checked]="exam === e.id" [title]="e.name" (click)="setExam(e.id)">
+            <strong>{{ e.short }}</strong>
+            <small>{{ e.level === 'A1' && e.id === 'starters' ? 'pre-A1' : e.level }}</small>
+          </button>
+        </div>
+        <p class="ts-exam-name">{{ profile.name }}</p>
+      </section>
+
+      <section class="ts-panel">
+        <h2 class="ts-panel-title">{{ 'talkShowCandidates' | translate }}</h2>
+        <div class="ts-candidates">
+          <label *ngFor="let c of candidateIndexes" class="ts-candidate">
+            <span class="ts-candidate-badge">{{ c === 0 ? 'A' : 'B' }}</span>
+            <input class="ts-input" maxlength="40" [value]="candidateNames[c]" list="tsKnownNames" autocomplete="off"
+                   (input)="setCandidateName(c, $any($event.target).value)"
+                   [placeholder]="(c === 0 ? 'talkShowCandidateA' : 'talkShowCandidateB') | translate">
+          </label>
+          <datalist id="tsKnownNames">
+            <option *ngFor="let name of knownNames" [value]="name"></option>
+          </datalist>
+          <button type="button" class="ts-link" (click)="twoCandidates = !twoCandidates">
+            {{ (twoCandidates ? 'talkShowOneCandidate' : 'talkShowTwoCandidates') | translate }}
+          </button>
+        </div>
+        <div class="ts-switches">
+          <button type="button" class="ts-switch" [class.ts-switch-on]="voiceOn" [attr.aria-pressed]="voiceOn" (click)="setVoice(!voiceOn)">
+            <span aria-hidden="true">🔊</span> {{ 'talkShowVoice' | translate }}
+            <span class="ts-switch-knob"></span>
+          </button>
+          <button type="button" class="ts-switch" [class.ts-switch-on]="recordOn" [attr.aria-pressed]="recordOn"
+                  [disabled]="!recordAvailable" (click)="setRecordOn(!recordOn)"
+                  [title]="(recordAvailable ? 'talkShowRecordHint' : 'talkShowRecordUnavailable') | translate">
+            <span aria-hidden="true">⏺️</span> {{ 'talkShowRecord' | translate }}
+            <span class="ts-switch-knob"></span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div class="ts-part-cards">
+      <button *ngFor="let p of parts; let i = index" type="button" class="ts-part-card"
+              [class.ts-part-card-off]="!isPartOn(i)" [attr.aria-pressed]="isPartOn(i)" (click)="togglePart(i)">
+        <span class="ts-part-card-icon" aria-hidden="true">{{ taskIcons[p.type] }}</span>
+        <span class="ts-part-card-name">{{ ('talkShowTask_' + p.type) | translate }}</span>
+        <span *ngIf="p.title" class="ts-part-card-title">{{ p.title }}</span>
+        <span class="ts-part-card-count">{{ 'talkShowTurns' | translate: { n: p.turns.length } }}</span>
+        <span class="ts-part-card-switch">{{ (isPartOn(i) ? 'readingDetectiveOn' : 'readingDetectiveOff') | translate }}</span>
+      </button>
+    </div>
+    <p *ngIf="missingTasks.length" class="ts-missing">💡 {{ 'talkShowMissing' | translate: { exam: profile.short, parts: missingTaskNames } }}</p>
+
+    <button type="button" class="ts-btn ts-btn-start" (click)="start()">
+      {{ 'talkShowStart' | translate }} <span aria-hidden="true">▶</span>
+    </button>
+    <button type="button" class="ts-link ts-history-link" (click)="openHistory()">📋 {{ 'talkShowPastResults' | translate }}</button>
+  </div>
+
+  <!-- ===== Header while the test runs ===== -->
+  <header *ngIf="!loading && (view === 'part' || view === 'turn' || view === 'closing')" class="ts-bar">
+    <div class="ts-sign ts-sign-small" [class.ts-sign-on]="onAir" aria-hidden="true"><span class="ts-sign-dot"></span>ON AIR</div>
+    <ol class="ts-stepper">
+      <li *ngFor="let p of playParts; let i = index" class="ts-step" [attr.data-state]="partState(i)">
+        <span class="ts-step-icon" aria-hidden="true">{{ taskIcons[p.type] }}</span>
+        <span class="ts-step-label">{{ 'talkShowPart' | translate: { n: i + 1 } }}</span>
+      </li>
+    </ol>
+    <span class="ts-exam-badge">{{ profile.short }}</span>
+  </header>
+
+  <!-- ===== Part card: the examiner's instructions ===== -->
+  <div *ngIf="!loading && view === 'part' && part" class="ts-center">
+    <div class="ts-part-intro">
+      <span class="ts-kicker">{{ 'talkShowPart' | translate: { n: partIndex + 1 } }}</span>
+      <span class="ts-part-intro-icon" aria-hidden="true">{{ taskIcons[part.type] }}</span>
+      <h2 class="ts-part-intro-name">{{ ('talkShowTask_' + part.type) | translate }}</h2>
+      <p *ngIf="part.title" class="ts-part-intro-title">{{ part.title }}</p>
+      <div class="ts-examiner" [class.ts-examiner-talking]="examinerSpeaking">
+        <span class="ts-examiner-avatar" aria-hidden="true">🧑</span>
+        <p class="ts-examiner-line">{{ partIntro }}</p>
+      </div>
+      <div class="ts-actions">
+        <button type="button" class="ts-btn ts-btn-soft" (click)="repeat()" title="R">🔁 {{ 'talkShowRepeat' | translate }}</button>
+        <button type="button" class="ts-btn ts-btn-primary" (click)="beginPart()" title="Enter">{{ 'talkShowBegin' | translate }} ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== A turn ===== -->
+  <div *ngIf="!loading && view === 'turn' && part && turn" class="ts-studio" [attr.data-type]="part.type">
+    <main class="ts-stage">
+      <div class="ts-who">
+        <span class="ts-who-badge">{{ turnCandidate < 0 ? 'A + B' : (turnCandidate === 0 ? 'A' : 'B') }}</span>
+        <span class="ts-who-name">{{ turnCandidateLabel }}</span>
+        <span class="ts-who-task">{{ ('talkShowTask_' + part.type) | translate }}<ng-container *ngIf="part.turns.length > 1"> · {{ turnIndex + 1 }}/{{ part.turns.length }}</ng-container></span>
+      </div>
+
+      <ng-container [ngSwitch]="part.type">
+        <!-- Picture story: a strip, the current picture big -->
+        <div *ngSwitchCase="'STORY'" class="ts-story">
+          <p *ngIf="turn.prompt" class="ts-bubble ts-bubble-examiner">“{{ turn.prompt }}”</p>
+          <div class="ts-story-big">
+            <img *ngIf="imageUrl(turn.pictures[storyIndex]) as src" [src]="src" alt="">
+            <span class="ts-story-number">{{ storyIndex + 1 }}</span>
+          </div>
+          <p *ngIf="answerShown && turn.captions[storyIndex]" class="ts-hint">💡 {{ turn.captions[storyIndex] }}</p>
+          <div class="ts-story-strip">
+            <button *ngFor="let picture of turn.pictures; let i = index" type="button" class="ts-story-thumb"
+                    [class.ts-story-thumb-on]="i === storyIndex" [class.ts-story-thumb-done]="i < storyIndex"
+                    (click)="goToStoryPicture(i)">
+              <img *ngIf="imageUrl(picture) as src" [src]="src" alt="">
+              <span>{{ i + 1 }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Find the differences -->
+        <div *ngSwitchCase="'DIFF'" class="ts-diff">
+          <div class="ts-diff-pictures">
+            <figure *ngFor="let picture of turn.pictures; let i = index" class="ts-diff-picture">
+              <img *ngIf="imageUrl(picture) as src" [src]="src" alt="">
+              <figcaption>{{ (i === 0 ? 'talkShowExaminerPicture' : 'talkShowCandidatePicture') | translate }}</figcaption>
+            </figure>
+          </div>
+          <ol *ngIf="askedFollowUps.length" class="ts-diff-list">
+            <li *ngFor="let statement of askedFollowUps; let i = index">
+              <button type="button" class="ts-diff-row" [class.ts-diff-found]="isDiffFound(i)" (click)="toggleDiff(i)">
+                <span class="ts-diff-number">{{ i + 1 }}</span>
+                <span class="ts-diff-text">“{{ statement }}”</span>
+                <span *ngIf="answerShown && turn.differences[i]?.answer" class="ts-diff-answer">→ {{ turn.differences[i].answer }}</span>
+                <span class="ts-diff-tick" aria-hidden="true">{{ isDiffFound(i) ? '✓' : '' }}</span>
+              </button>
+            </li>
+          </ol>
+        </div>
+
+        <!-- Odd one out -->
+        <div *ngSwitchCase="'ODD'" class="ts-odd">
+          <div *ngIf="imageUrl(turn.item) as src" class="ts-picture ts-picture-small"><img [src]="src" alt=""></div>
+          <p class="ts-bubble ts-bubble-examiner">{{ turn.prompt }}</p>
+          <div *ngIf="turn.options.length" class="ts-odd-cards">
+            <button *ngFor="let option of turn.options; let i = index" type="button" class="ts-odd-card"
+                    [class.ts-odd-right]="isOddChosen(i)" [class.ts-odd-wrong]="wrongOption === i"
+                    [class.ts-odd-reveal]="answerShown && option.odd && !isOddChosen(i)"
+                    (click)="chooseOdd(i)">
+              <span class="ts-odd-number">{{ i + 1 }}</span>{{ option.text }}
+            </button>
+          </div>
+          <p *ngIf="answerShown && turn.answer" class="ts-hint">💡 {{ turn.answer }}</p>
+        </div>
+
+        <!-- Point & place (Starters Part 1): tap the scene, or drag the object card onto it -->
+        <div *ngSwitchCase="'POINT'" class="ts-point">
+          <p class="ts-bubble ts-bubble-examiner">{{ turn.prompt }}</p>
+          <div class="ts-point-body">
+            <div class="ts-scene-frame">
+              <div class="ts-scene" [class.ts-scene-tap]="!turn.card && !pointAnswer?.correct" (click)="tapScene($event)">
+                <img #sceneImage *ngIf="imageUrl(turn.item) as src" [src]="src" alt="" draggable="false">
+                <span *ngIf="answerShown && turn.area as area" class="ts-scene-area"
+                      [style.left.%]="area.x * 100" [style.top.%]="area.y * 100"
+                      [style.width.%]="area.width * 100" [style.height.%]="area.height * 100"></span>
+                <span *ngIf="pointAnswer as answer" class="ts-scene-pin"
+                      [class.ts-pin-right]="answer.correct === true" [class.ts-pin-wait]="answer.correct === null"
+                      [style.left.%]="answer.x * 100" [style.top.%]="answer.y * 100">
+                  <img *ngIf="turn.card && imageUrl(turn.card) as src" [src]="src" alt="" class="ts-pin-card">
+                  <span *ngIf="!turn.card" aria-hidden="true">📍</span>
+                </span>
+                <span *ngIf="pointMiss as miss" class="ts-scene-miss" [style.left.%]="miss.x * 100" [style.top.%]="miss.y * 100">✗</span>
+              </div>
+            </div>
+            <div class="ts-point-side">
+              <button *ngIf="turn.card && imageUrl(turn.card) as src" type="button" class="ts-object-card"
+                      [class.ts-object-card-used]="pointAnswer?.correct" (pointerdown)="startDrag($event)">
+                <img [src]="src" alt="" draggable="false">
+              </button>
+              <p class="ts-point-hint">{{ (turn.card ? 'talkShowPlaceDrag' : 'talkShowPointTap') | translate }}</p>
+              <div *ngIf="pointAnswer && pointAnswer.correct === null" class="ts-judge">
+                <button type="button" class="ts-btn ts-btn-small ts-judge-right" (click)="judgePoint(true)" title="1">✓ {{ 'talkShowJudgeRight' | translate }}</button>
+                <button type="button" class="ts-btn ts-btn-small ts-judge-wrong" (click)="judgePoint(false)" title="2">✗ {{ 'talkShowJudgeWrong' | translate }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Discuss and decide -->
+        <div *ngSwitchCase="'DECIDE'" class="ts-decide">
+          <p class="ts-decide-question">{{ turn.prompt }}</p>
+          <div class="ts-decide-grid" [class.ts-decide-grid-many]="turn.pictures.length > 4">
+            <figure *ngFor="let picture of turn.pictures; let i = index" class="ts-decide-option">
+              <img *ngIf="imageUrl(picture) as src" [src]="src" alt="">
+              <figcaption *ngIf="turn.captions[i]">{{ turn.captions[i] }}</figcaption>
+            </figure>
+          </div>
+        </div>
+
+        <!-- Cue card -->
+        <div *ngSwitchCase="'CUE'" class="ts-cue">
+          <div class="ts-cue-card">
+            <p class="ts-cue-task">{{ turn.prompt }}</p>
+            <p *ngIf="turn.points.length" class="ts-cue-say">You should say:</p>
+            <ul class="ts-cue-points">
+              <li *ngFor="let point of turn.points">{{ point }}</li>
+            </ul>
+          </div>
+          <p *ngIf="phase === 'prep'" class="ts-prep-note">📝 {{ 'talkShowPrepNote' | translate }}</p>
+        </div>
+
+        <!-- Questions, picture questions, photos, information exchange -->
+        <div *ngSwitchDefault class="ts-question" [class.ts-question-with-picture]="!!imageUrl(turn.item)">
+          <div *ngIf="imageUrl(turn.item) as src" class="ts-picture"><img [src]="src" alt=""></div>
+          <div class="ts-question-text">
+            <span *ngIf="part.type === 'INFO' && turn.role === 'ask'" class="ts-kicker ts-kicker-ask">🙋 {{ 'talkShowCandidateAsks' | translate }}</span>
+            <p class="ts-bubble" [class.ts-bubble-examiner]="!(part.type === 'INFO' && turn.role === 'ask')"
+               [class.ts-bubble-candidate]="part.type === 'INFO' && turn.role === 'ask'">{{ turn.prompt }}</p>
+            <p *ngIf="answerShown && turn.answer" class="ts-bubble ts-bubble-answer">
+              {{ part.type === 'INFO' && turn.role === 'ask' ? '🧑' : '💡' }} {{ turn.answer }}
+            </p>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Follow-ups asked so far (not for the differences: they are listed above) -->
+      <div *ngIf="part.type !== 'DIFF' && askedFollowUps.length" class="ts-followups">
+        <p *ngFor="let line of askedFollowUps" class="ts-bubble ts-bubble-examiner ts-bubble-small">➕ {{ line }}</p>
+      </div>
+    </main>
+
+    <!-- The examiner's desk -->
+    <aside class="ts-desk">
+      <div class="ts-clock" [attr.data-phase]="paused ? 'paused' : phase">
+        <svg viewBox="0 0 100 100" class="ts-clock-ring" aria-hidden="true">
+          <circle cx="50" cy="50" r="44" class="ts-clock-track"></circle>
+          <circle cx="50" cy="50" r="44" class="ts-clock-fill"
+                  [style.stroke-dashoffset]="276.46 * (1 - (phase === 'asking' ? 1 : timerFraction))"></circle>
+        </svg>
+        <div class="ts-clock-center">
+          <strong class="ts-clock-time">{{ phase === 'asking' ? '—' : timerLabel }}</strong>
+          <span class="ts-clock-phase">
+            <ng-container [ngSwitch]="paused ? 'paused' : phase">
+              <ng-container *ngSwitchCase="'paused'">{{ 'talkShowPaused' | translate }}</ng-container>
+              <ng-container *ngSwitchCase="'prep'">{{ 'talkShowPrep' | translate }}</ng-container>
+              <ng-container *ngSwitchCase="'live'">ON AIR</ng-container>
+              <ng-container *ngSwitchCase="'over'">{{ 'talkShowTimeUp' | translate }}</ng-container>
+              <ng-container *ngSwitchDefault>{{ (examinerSpeaking ? 'talkShowExaminerSpeaking' : 'talkShowReady') | translate }}</ng-container>
+            </ng-container>
+          </span>
+        </div>
+        <span *ngIf="isRecording" class="ts-rec">● REC</span>
+      </div>
+
+      <div class="ts-desk-main">
+        <button *ngIf="phase === 'asking'" type="button" class="ts-btn ts-btn-live" (click)="goLive()" title="Space">
+          🎙️ {{ 'talkShowStartTalking' | translate }}
+        </button>
+        <button *ngIf="phase === 'prep'" type="button" class="ts-btn ts-btn-live" (click)="endPrep()" title="Space">
+          🎙️ {{ 'talkShowSkipPrep' | translate }}
+        </button>
+        <button *ngIf="phase === 'live'" type="button" class="ts-btn ts-btn-soft" (click)="togglePause()" title="Space">
+          {{ paused ? '▶ ' + ('talkShowResume' | translate) : '⏸ ' + ('talkShowPause' | translate) }}
+        </button>
+        <button type="button" class="ts-btn ts-btn-primary" (click)="next()" title="Enter / →">
+          {{ (part.type === 'STORY' && phase !== 'asking' && storyIndex < turn.pictures.length - 1 ? 'talkShowNextPicture' : 'talkShowNext') | translate }} ▶
+        </button>
+      </div>
+
+      <div class="ts-desk-tools">
+        <button type="button" class="ts-tool" (click)="repeat()" title="R">🔁 <span>{{ 'talkShowRepeat' | translate }}</span></button>
+        <button type="button" class="ts-tool" (click)="askFollowUp()" [disabled]="!hasMoreFollowUps" title="F">
+          ➕ <span>{{ (part.type === 'DIFF' ? 'talkShowNextStatement' : 'talkShowFollowUp') | translate }}</span>
+          <small *ngIf="followUps.length">{{ followUps.length - followUpsAsked }}</small>
+        </button>
+        <button type="button" class="ts-tool" [class.ts-tool-on]="answerShown" (click)="toggleAnswer()" [disabled]="!canShowAnswer" title="A">
+          💡 <span>{{ (part.type === 'INFO' && turn.role === 'ask' ? 'talkShowExaminerAnswers' : 'talkShowAnswer') | translate }}</span>
+        </button>
+      </div>
+
+      <div *ngIf="part.powerWords.length" class="ts-power">
+        <span class="ts-desk-label">⚡ {{ 'talkShowPowerWords' | translate }}</span>
+        <div class="ts-power-chips">
+          <button *ngFor="let word of part.powerWords" type="button" class="ts-power-chip"
+                  [class.ts-power-heard]="isHeard(word)" [attr.aria-pressed]="isHeard(word)" (click)="toggleHeard(word)">
+            {{ word }}
+          </button>
+        </div>
+        <span class="ts-desk-hint">{{ 'talkShowPowerHint' | translate }}</span>
+      </div>
+    </aside>
+  </div>
+
+  <!-- The object card while it is being dragged -->
+  <img *ngIf="dragPos && turn?.card && imageUrl(turn?.card) as src" class="ts-drag-ghost" [src]="src" alt=""
+       [style.left.px]="dragPos.x" [style.top.px]="dragPos.y">
+
+  <!-- ===== End of the test ===== -->
+  <div *ngIf="!loading && view === 'closing'" class="ts-center">
+    <div class="ts-part-intro">
+      <span class="ts-part-intro-icon" aria-hidden="true">🎬</span>
+      <div class="ts-examiner" [class.ts-examiner-talking]="examinerSpeaking">
+        <span class="ts-examiner-avatar" aria-hidden="true">🧑</span>
+        <p class="ts-examiner-line">{{ closingLine }}</p>
+      </div>
+      <div class="ts-actions">
+        <button type="button" class="ts-btn ts-btn-primary" (click)="next()">📝 {{ 'talkShowMarkSheet' | translate }} ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Mark sheet ===== -->
+  <div *ngIf="!loading && view === 'marks'" class="ts-sheet-wrap">
+    <div class="ts-sheet">
+      <h2 class="ts-sheet-title">📝 {{ 'talkShowMarkSheet' | translate }} <span class="ts-exam-badge">{{ profile.name }}</span></h2>
+      <p class="ts-sheet-hint">{{ 'talkShowMarkHint' | translate }}</p>
+      <!-- ✨ The AI suggests marks from the transcripts (never pronunciation) -->
+      <div class="ts-suggest">
+        <button type="button" class="ts-btn ts-btn-ai" [disabled]="!canSuggest" (click)="suggestMarks()">
+          <span *ngIf="suggesting" class="ts-btn-spinner"></span>
+          ✨ {{ (suggesting ? 'talkShowSuggesting' : feedback[0] ? 'talkShowSuggestAgain' : 'talkShowSuggest') | translate }}
+        </button>
+        <span *ngIf="suggestHintKey" class="ts-suggest-hint">{{ suggestHintKey | translate }}</span>
+        <span *ngIf="!suggestHintKey && feedback[0]" class="ts-suggest-hint">{{ 'talkShowSuggestReview' | translate }}</span>
+      </div>
+      <div class="ts-sheet-candidates" [class.ts-sheet-two]="twoCandidates">
+        <section *ngFor="let c of candidateIndexes" class="ts-sheet-candidate">
+          <h3><span class="ts-candidate-badge">{{ c === 0 ? 'A' : 'B' }}</span> {{ candidateLabel(c) }}</h3>
+          <div *ngFor="let criterion of profile.criteria; let k = index" class="ts-mark-row">
+            <span class="ts-mark-name">{{ criterionKey(criterion) | translate }}</span>
+            <div class="ts-mark-scale" role="radiogroup" [attr.aria-label]="criterionKey(criterion) | translate">
+              <button *ngFor="let value of scaleValues" type="button" class="ts-mark" role="radio"
+                      [class.ts-mark-on]="marks[c][k] === value" [class.ts-mark-ai]="marks[c][k] === value && isAiMark(c, k)"
+                      [attr.aria-checked]="marks[c][k] === value"
+                      (click)="setMark(c, k, value)">{{ value }}</button>
+            </div>
+            <p *ngIf="aiReason(c, k)" class="ts-mark-reason">✨ {{ aiMark(c, k) }} · {{ aiReason(c, k) }}</p>
+            <p *ngIf="feedback[c] && criterion === 'pronunciation'" class="ts-mark-reason ts-mark-reason-ear">🎧 {{ 'talkShowPronunciationNote' | translate }}</p>
+          </div>
+          <div *ngIf="feedback[c] as fb" class="ts-ai-points">
+            <div *ngIf="fb.strengths.length">
+              <span class="ts-mark-name">👍 {{ 'talkShowStrengths' | translate }}</span>
+              <ul><li *ngFor="let point of fb.strengths">{{ point }}</li></ul>
+            </div>
+            <div *ngIf="fb.tips.length">
+              <span class="ts-mark-name">🎯 {{ 'talkShowTips' | translate }}</span>
+              <ul><li *ngFor="let point of fb.tips">{{ point }}</li></ul>
+            </div>
+          </div>
+          <p class="ts-sheet-stats">
+            ⚡ {{ 'talkShowPowerUsed' | translate: { n: powerScore(c).got, total: powerScore(c).total } }}
+          </p>
+          <label class="ts-comment">
+            <span class="ts-mark-name">{{ 'talkShowComment' | translate }}</span>
+            <textarea class="ts-input ts-comment-input" rows="2" maxlength="1000" [value]="comments[c]"
+                      [placeholder]="'talkShowCommentPlaceholder' | translate"
+                      (input)="setComment(c, $any($event.target).value)"></textarea>
+          </label>
+        </section>
+      </div>
+      <div class="ts-actions">
+        <button type="button" class="ts-btn ts-btn-primary" (click)="next()">🏆 {{ 'talkShowSeeResults' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Results ===== -->
+  <div *ngIf="!loading && view === 'results'" class="ts-sheet-wrap">
+    <div class="ts-results">
+      <h2 class="ts-results-title">🏆 {{ 'talkShowResults' | translate }} <span class="ts-exam-badge">{{ profile.name }}</span></h2>
+      <div class="ts-result-cards" [class.ts-sheet-two]="twoCandidates">
+        <section *ngFor="let c of candidateIndexes" class="ts-result-card">
+          <h3><span class="ts-candidate-badge">{{ c === 0 ? 'A' : 'B' }}</span> {{ candidateLabel(c) }}</h3>
+          <div class="ts-overall" [ngSwitch]="overall(c) === null ? 'none' : profile.scoreStyle">
+            <span *ngSwitchCase="'none'" class="ts-overall-none">{{ 'talkShowNoMarks' | translate }}</span>
+            <span *ngSwitchCase="'shields'" class="ts-shields" [attr.aria-label]="'talkShowShields' | translate: { n: overall(c) }">
+              <span *ngFor="let on of shieldList(c)" class="ts-shield" [class.ts-shield-on]="on">🛡️</span>
+            </span>
+            <span *ngSwitchCase="'ielts'" class="ts-band">{{ 'talkShowBand' | translate: { n: overall(c) } }}</span>
+            <span *ngSwitchDefault class="ts-band">{{ overall(c) }}<small> / {{ maxTotal }}</small></span>
+          </div>
+          <ul class="ts-criteria">
+            <li *ngFor="let criterion of profile.criteria; let k = index">
+              <span>{{ criterionKey(criterion) | translate }}</span>
+              <span class="ts-criterion-bar"><span [style.width.%]="marks[c][k] != null ? (marks[c][k]! / profile.scale[1]) * 100 : 0"></span></span>
+              <strong>{{ marks[c][k] ?? '–' }}</strong>
+            </li>
+          </ul>
+          <p class="ts-result-stat">⚡ {{ 'talkShowPowerUsed' | translate: { n: powerScore(c).got, total: powerScore(c).total } }}</p>
+          <p *ngIf="comments[c].trim()" class="ts-result-comment">“{{ comments[c].trim() }}”</p>
+          <button *ngIf="lastResult" type="button" class="ts-btn ts-btn-soft ts-btn-small" [disabled]="exporting"
+                  (click)="exportReport(lastResult, c)">📄 {{ 'talkShowReportPdf' | translate }}</button>
+        </section>
+      </div>
+      <div class="ts-result-extras">
+        <span *ngIf="diffScore.total" class="ts-result-stat">🔍 {{ 'talkShowDiffFound' | translate: { n: diffScore.got, total: diffScore.total } }}</span>
+        <span *ngIf="oddScore.total" class="ts-result-stat">🧩 {{ 'talkShowOddScore' | translate: { n: oddScore.got, total: oddScore.total } }}</span>
+        <span *ngIf="pointScore.total" class="ts-result-stat">👆 {{ 'talkShowPointScore' | translate: { n: pointScore.got, total: pointScore.total } }}</span>
+      </div>
+
+      <section *ngIf="recordings.length" class="ts-recordings">
+        <h3>⏺️ {{ 'talkShowRecordings' | translate }}</h3>
+        <div *ngFor="let recording of recordings" class="ts-recording">
+          <div class="ts-recording-head">
+            <span class="ts-candidate-badge">{{ recording.candidate < 0 ? 'A+B' : (recording.candidate === 0 ? 'A' : 'B') }}</span>
+            <span class="ts-recording-part">{{ partLabel(recording.part) }}</span>
+            <span class="ts-recording-prompt">{{ recording.prompt }}</span>
+          </div>
+          <audio controls preload="none" [src]="recording.url"></audio>
+          <p *ngIf="recording.transcribing" class="ts-transcript ts-transcript-wait">{{ 'talkShowTranscribing' | translate }}</p>
+          <p *ngIf="recording.transcript" class="ts-transcript">“{{ recording.transcript }}”</p>
+        </div>
+      </section>
+
+      <p class="ts-saved-note" [class.ts-saved-failed]="saveFailed">
+        {{ (saveFailed ? 'talkShowSaveFailed' : recordings.length ? 'talkShowSaved' : 'talkShowSavedPlain') | translate }}
+      </p>
+
+      <div class="ts-actions">
+        <button type="button" class="ts-btn ts-btn-soft" (click)="openHistory()">📋 {{ 'talkShowPastResults' | translate }}</button>
+        <button type="button" class="ts-btn ts-btn-soft" (click)="backToMarks()">📝 {{ 'talkShowEditMarks' | translate }}</button>
+        <button type="button" class="ts-btn ts-btn-soft" (click)="backToActivities()">← {{ 'talkShowBackToActivities' | translate }}</button>
+        <button type="button" class="ts-btn ts-btn-primary" (click)="playAgain()">🔁 {{ 'talkShowPlayAgain' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Past results ===== -->
+  <div *ngIf="!loading && view === 'history'" class="ts-sheet-wrap">
+    <div class="ts-results">
+      <h2 class="ts-results-title">📋 {{ 'talkShowPastResults' | translate }}</h2>
+      <div class="ts-history-tools">
+        <div class="ts-scope" role="radiogroup">
+          <button type="button" class="ts-scope-btn" role="radio" [class.ts-scope-on]="!historyAllTopics"
+                  [attr.aria-checked]="!historyAllTopics" (click)="historyAllTopics = false">{{ 'talkShowThisTopic' | translate }}</button>
+          <button type="button" class="ts-scope-btn" role="radio" [class.ts-scope-on]="historyAllTopics"
+                  [attr.aria-checked]="historyAllTopics" (click)="historyAllTopics = true">{{ 'talkShowAllTopics' | translate }}</button>
+        </div>
+        <input class="ts-input ts-history-filter" list="tsKnownNames" autocomplete="off" [value]="historyFilter"
+               (input)="historyFilter = $any($event.target).value" [placeholder]="'talkShowFilterStudent' | translate">
+        <button type="button" class="ts-btn ts-btn-soft ts-btn-small" [disabled]="!shownHistory.length" (click)="exportCsv()">
+          📊 {{ 'talkShowExportCsv' | translate }}
+        </button>
+      </div>
+
+      <!-- One student's progress over their tests -->
+      <section *ngIf="progressPoints.length" class="ts-progress">
+        <h3>📈 {{ 'talkShowProgress' | translate: { name: historyFilter.trim() } }}</h3>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="ts-progress-chart" aria-hidden="true">
+          <line x1="0" y1="90" x2="100" y2="90" class="ts-progress-base"></line>
+          <polyline [attr.points]="progressLine" class="ts-progress-line"></polyline>
+        </svg>
+        <ol class="ts-progress-points">
+          <li *ngFor="let point of progressPoints" [style.left.%]="point.x" [style.top.%]="point.y">
+            <span class="ts-progress-dot"></span>
+            <strong>{{ point.label }}</strong>
+            <small>{{ point.date | date: 'd MMM' }}</small>
+          </li>
+        </ol>
+      </section>
+
+      <p *ngIf="!shownHistory.length" class="ts-empty">{{ 'talkShowNoResults' | translate }}</p>
+      <div class="ts-history-list">
+        <button *ngFor="let result of shownHistory; trackBy: trackById" type="button" class="ts-history-row" (click)="openResult(result)">
+          <span class="ts-history-date">{{ result.createdAt | date: 'd MMM y, HH:mm' }}</span>
+          <span class="ts-exam-badge">{{ examProfile(result).short }}</span>
+          <span class="ts-history-names">
+            <span *ngFor="let c of result.candidates; let i = index" class="ts-history-student">
+              {{ resultCandidateLabel(result, i) }} · <strong>{{ resultOverall(result, i) }}</strong>
+            </span>
+          </span>
+          <span *ngIf="historyAllTopics" class="ts-history-topic">{{ result.topicName }}</span>
+          <span *ngIf="result.recordings.length" class="ts-history-rec">⏺️ {{ result.recordings.length }}</span>
+        </button>
+      </div>
+
+      <div class="ts-actions">
+        <button type="button" class="ts-btn ts-btn-primary" (click)="closeHistory()">← {{ 'talkShowBack' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== A saved test ===== -->
+  <div *ngIf="!loading && view === 'saved' && openedResult as result" class="ts-sheet-wrap">
+    <div class="ts-results">
+      <h2 class="ts-results-title">🏆 {{ result.topicName }} <span class="ts-exam-badge">{{ examProfile(result).name }}</span></h2>
+      <p class="ts-sheet-hint">{{ result.createdAt | date: 'd MMMM y, HH:mm' }}</p>
+      <div class="ts-result-cards" [class.ts-sheet-two]="result.candidates.length > 1">
+        <section *ngFor="let candidate of result.candidates; let c = index" class="ts-result-card">
+          <h3><span class="ts-candidate-badge">{{ c === 0 ? 'A' : 'B' }}</span> {{ resultCandidateLabel(result, c) }}</h3>
+          <div class="ts-overall"><span class="ts-band">{{ resultOverall(result, c) }}</span></div>
+          <ul class="ts-criteria">
+            <li *ngFor="let criterion of examProfile(result).criteria; let k = index">
+              <span>{{ criterionKey(criterion) | translate }}</span>
+              <span class="ts-criterion-bar"><span [style.width.%]="candidate.marks[k] != null ? (candidate.marks[k]! / examProfile(result).scale[1]) * 100 : 0"></span></span>
+              <strong>{{ candidate.marks[k] ?? '–' }}</strong>
+            </li>
+          </ul>
+          <p class="ts-result-stat">⚡ {{ 'talkShowPowerUsed' | translate: { n: candidate.powerGot, total: candidate.powerTotal } }}</p>
+          <p *ngIf="candidate.comment" class="ts-result-comment">“{{ candidate.comment }}”</p>
+          <div *ngIf="candidate.ai && (candidate.ai.strengths.length || candidate.ai.tips.length)" class="ts-ai-points">
+            <div *ngIf="candidate.ai.strengths.length">
+              <span class="ts-mark-name">👍 {{ 'talkShowStrengths' | translate }}</span>
+              <ul><li *ngFor="let point of candidate.ai.strengths">{{ point }}</li></ul>
+            </div>
+            <div *ngIf="candidate.ai.tips.length">
+              <span class="ts-mark-name">🎯 {{ 'talkShowTips' | translate }}</span>
+              <ul><li *ngFor="let point of candidate.ai.tips">{{ point }}</li></ul>
+            </div>
+          </div>
+          <button type="button" class="ts-btn ts-btn-soft ts-btn-small" [disabled]="exporting" (click)="exportReport(result, c)">
+            📄 {{ 'talkShowReportPdf' | translate }}
+          </button>
+        </section>
+      </div>
+      <div class="ts-result-extras">
+        <span *ngIf="result.diffTotal" class="ts-result-stat">🔍 {{ 'talkShowDiffFound' | translate: { n: result.diffGot, total: result.diffTotal } }}</span>
+        <span *ngIf="result.oddTotal" class="ts-result-stat">🧩 {{ 'talkShowOddScore' | translate: { n: result.oddGot, total: result.oddTotal } }}</span>
+        <span *ngIf="result.pointTotal" class="ts-result-stat">👆 {{ 'talkShowPointScore' | translate: { n: result.pointGot ?? 0, total: result.pointTotal } }}</span>
+      </div>
+
+      <section *ngIf="result.recordings.length" class="ts-recordings">
+        <h3>⏺️ {{ 'talkShowRecordings' | translate }}</h3>
+        <div *ngFor="let recording of result.recordings; let i = index" class="ts-recording">
+          <div class="ts-recording-head">
+            <span class="ts-candidate-badge">{{ recording.candidate < 0 ? 'A+B' : (recording.candidate === 0 ? 'A' : 'B') }}</span>
+            <span class="ts-recording-part">{{ recording.partLabel }}</span>
+            <span class="ts-recording-prompt">{{ recording.prompt }}</span>
+          </div>
+          <audio controls preload="none" [src]="openedUrls[i]"></audio>
+          <p *ngIf="recording.transcript" class="ts-transcript">“{{ recording.transcript }}”</p>
+        </div>
+      </section>
+
+      <div class="ts-actions">
+        <button type="button" class="ts-btn ts-btn-soft ts-btn-danger" (click)="deleteResult(result)">🗑 {{ 'talkShowDelete' | translate }}</button>
+        <button type="button" class="ts-btn ts-btn-primary" (click)="backToHistory()">← {{ 'talkShowPastResults' | translate }}</button>
+      </div>
+    </div>
+  </div>
+
+  <app-sandwich-menu (action)="onMenuAction($event)" (menuOpenChange)="onMenuOpenChange($event)"></app-sandwich-menu>
+</div>

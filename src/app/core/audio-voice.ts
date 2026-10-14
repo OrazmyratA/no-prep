@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AiSpeakingRuntimeService } from './ai-speaking-runtime';
+import { hasWebTtsProvider, synthesizeSpeechWeb } from './audio-voice-web-bridge';
 
 const PROCESSOR_URL = 'assets/soundtouch/soundtouch-processor.js';
 
@@ -46,13 +47,22 @@ export function storeVoiceLanguage(code: string): void {
 export class AudioVoiceService {
   constructor(private aiSpeaking: AiSpeakingRuntimeService) {}
 
-  /** Text-to-speech that returns a real clip is only wired up in the desktop app. */
+  /**
+   * The desktop app's free text-to-speech (Microsoft Edge's unofficial speech service) is
+   * Electron-only — it has no CORS allowance for a browser to call it directly. On the web (and
+   * Android), this falls back to the teacher's own linked OpenAI/Gemini key instead (see
+   * audio-voice-web-bridge.ts), so it's available there once one of those is linked.
+   */
   get canSynthesize(): boolean {
-    return typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function';
+    return typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function' || hasWebTtsProvider();
   }
 
   async synthesize(text: string, language: string): Promise<Blob | null> {
-    const result = await this.aiSpeaking.synthesizeSpeechAudio(text, language);
+    if (typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function') {
+      const result = await this.aiSpeaking.synthesizeSpeechAudio(text, language);
+      return result?.blob ?? null;
+    }
+    const result = await synthesizeSpeechWeb(text, language);
     return result?.blob ?? null;
   }
 

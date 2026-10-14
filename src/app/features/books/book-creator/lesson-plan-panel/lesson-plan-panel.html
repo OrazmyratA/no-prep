@@ -1,0 +1,323 @@
+<section class="lp" [class.lp-open]="planner.open">
+  <button type="button" class="lp-toggle" (click)="planner.toggle()" [attr.aria-expanded]="planner.open">
+    <span>✨ {{ 'lessonPlanTitle' | translate }}</span>
+    <span class="lp-chevron" aria-hidden="true">{{ planner.open ? '▾' : '▸' }}</span>
+  </button>
+
+  <ng-container *ngIf="planner.open">
+    <!-- 1. What to plan -->
+    <div *ngIf="!plan" class="lp-form">
+      <!-- Plans kept in this book -->
+      <div *ngIf="planner.savedPlans.length" class="lp-saved">
+        <h4>{{ 'lessonPlanSavedPlans' | translate }}</h4>
+        <ul>
+          <li *ngFor="let stored of planner.savedPlans" class="lp-saved-row">
+            <button type="button" class="lp-saved-open" (click)="planner.openPlan(stored)" [disabled]="planner.analysing">
+              <strong>{{ stored.plan.unit || ('lessonPlanTitle' | translate) }}</strong>
+              <small>
+                <ng-container *ngIf="planner.savedPlanPages(stored) as pages">{{ 'lessonPlanPage' | translate: { n: pages } }} · </ng-container>{{ stored.updatedAt | date: 'mediumDate' }}
+              </small>
+            </button>
+            <button type="button" class="lp-icon-btn lp-danger" (click)="planner.deletePlan(stored.id)" [disabled]="planner.analysing"
+                    [attr.aria-label]="'lessonPlanDelete' | translate" [title]="'lessonPlanDelete' | translate">🗑</button>
+          </li>
+        </ul>
+      </div>
+      <p class="lp-hint">{{ 'lessonPlanHint' | translate }}</p>
+      <!-- Which AI: shared with the topic form's ✨ AI window, where keys are linked -->
+      <label *ngIf="planner.providers.length" class="lp-field">
+        <span>{{ 'lessonPlanAi' | translate }}</span>
+        <select (change)="planner.selectProvider($any($event.target).value)" [disabled]="planner.analysing || planner.creating">
+          <option *ngFor="let p of planner.providers" [value]="p.id" [selected]="p.id === planner.providerId" [disabled]="!p.configured">
+            {{ planner.providerLabel(p) }}{{ p.configured ? '' : ' (' + ('aiTopicNotLinked' | translate) + ')' }}
+          </option>
+        </select>
+        <small *ngIf="!planner.anyProviderLinked">{{ 'lessonPlanAiNone' | translate }}</small>
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanPages' | translate }}</span>
+        <input type="text" inputmode="numeric" spellcheck="false" [value]="planner.pagesValue"
+               (input)="planner.pagesText = $any($event.target).value" [disabled]="planner.analysing">
+        <small>{{ 'creatorAiPagesHint' | translate: { max: creator.aiPageLimit } }}</small>
+      </label>
+
+      <!-- Saved classes -->
+      <div class="lp-class">
+        <label class="lp-field">
+          <span>{{ 'lessonPlanClass' | translate }}</span>
+          <div class="lp-class-row">
+            <select (change)="planner.pickProfile($any($event.target).value)" [disabled]="planner.analysing">
+              <option value="">{{ 'lessonPlanClassNone' | translate }}</option>
+              <option *ngFor="let profile of planner.profiles" [value]="profile.id" [selected]="planner.profileId === profile.id">{{ profile.name }}</option>
+            </select>
+            <button *ngIf="planner.profile" type="button" class="lp-icon-btn lp-danger" (click)="planner.deleteProfile()" [disabled]="planner.analysing"
+                    [attr.aria-label]="'lessonPlanDeleteClass' | translate" [title]="'lessonPlanDeleteClass' | translate">🗑</button>
+          </div>
+        </label>
+        <div *ngIf="planner.naming; else classActions" class="lp-class-row">
+          <input type="text" maxlength="30" [value]="planner.profileName" [placeholder]="'lessonPlanClassName' | translate"
+                 [attr.aria-label]="'lessonPlanClassName' | translate"
+                 (input)="planner.profileName = $any($event.target).value" (keydown.enter)="planner.saveProfile()">
+          <button type="button" class="lp-secondary" (click)="planner.saveProfile()" [disabled]="!planner.profileName.trim()">{{ 'lessonPlanSaveClassOk' | translate }}</button>
+          <button type="button" class="lp-link" (click)="planner.naming = false">{{ 'lessonPlanCancel' | translate }}</button>
+        </div>
+        <ng-template #classActions>
+          <button *ngIf="planner.profileChanged" type="button" class="lp-link" (click)="planner.updateProfile()" [disabled]="planner.analysing">
+            💾 {{ 'lessonPlanUpdateClass' | translate: { name: planner.profile?.name ?? '' } }}
+          </button>
+          <button *ngIf="!planner.profile" type="button" class="lp-link" (click)="planner.startNaming()" [disabled]="planner.analysing">
+            + {{ 'lessonPlanSaveClass' | translate }}
+          </button>
+        </ng-template>
+      </div>
+
+      <div class="lp-grid">
+        <label class="lp-field">
+          <span>{{ 'lessonPlanLevel' | translate }}</span>
+          <select (change)="planner.setLevel($any($event.target).value)" [disabled]="planner.analysing">
+            <option value="">{{ 'lessonPlanLevelAuto' | translate }}</option>
+            <option *ngFor="let level of planner.levels" [value]="level" [selected]="planner.klass.level === level">{{ level }}</option>
+          </select>
+        </label>
+        <label class="lp-field">
+          <span>{{ 'lessonPlanAge' | translate }}</span>
+          <input type="text" [value]="planner.klass.age" placeholder="10-11"
+                 (change)="planner.setClassText('age', $any($event.target).value)" [disabled]="planner.analysing">
+        </label>
+        <label class="lp-field">
+          <span>{{ 'lessonPlanMinutes' | translate }}</span>
+          <input type="number" min="10" max="240" [value]="planner.klass.minutes"
+                 (change)="planner.setClassNumber('minutes', $any($event.target).value)" [disabled]="planner.analysing">
+        </label>
+        <label class="lp-field">
+          <span>{{ 'lessonPlanStudents' | translate }}</span>
+          <input type="number" min="1" max="200" [value]="planner.klass.students || ''"
+                 (change)="planner.setClassNumber('students', $any($event.target).value)" [disabled]="planner.analysing">
+        </label>
+      </div>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanFirstLanguage' | translate }}</span>
+        <input type="text" [value]="planner.klass.firstLanguage"
+               (change)="planner.setClassText('firstLanguage', $any($event.target).value)" [disabled]="planner.analysing">
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanGoal' | translate }}</span>
+        <textarea rows="2" [value]="planner.goal" [placeholder]="'lessonPlanGoalPlaceholder' | translate"
+                  (input)="planner.goal = $any($event.target).value" [disabled]="planner.analysing"></textarea>
+      </label>
+      <label class="lp-check">
+        <input type="checkbox" [checked]="planner.english" (change)="planner.english = $any($event.target).checked"
+               [disabled]="planner.analysing">
+        {{ 'lessonPlanEnglish' | translate }}
+      </label>
+      <ng-container *ngTemplateOutlet="aboutYou"></ng-container>
+      <button type="button" class="lp-primary" (click)="planner.analyse()" [disabled]="planner.analysing">
+        ✨ {{ (planner.analysing ? 'lessonPlanAnalysing' : 'lessonPlanAnalyse') | translate }}
+      </button>
+    </div>
+
+    <p *ngIf="planner.error as error" class="lp-error" role="alert">
+      {{ error.key | translate: error.params }}
+      <small *ngIf="error.detail">{{ error.detail }}</small>
+      <small *ngIf="error.key === 'lessonPlanFailed' && planner.providers.length > 1">{{ 'lessonPlanAiTryOther' | translate }}</small>
+    </p>
+
+    <!-- 2. The plan, editable -->
+    <div *ngIf="planner.plan as plan" class="lp-plan" [class.lp-busy]="planner.analysing" (change)="planner.touch()">
+      <div class="lp-head">
+        <strong>{{ plan.unit }}</strong>
+        <span>
+          {{ plan.level || planner.klass.level || '' }}
+          · <span [class.lp-warn]="planner.minutes !== planner.klass.minutes">
+              {{ 'lessonPlanMinutesTotal' | translate: { n: planner.minutes, total: planner.klass.minutes } }}
+            </span>
+        </span>
+        <small>{{ ('lessonPlanShape_' + plan.shape) | translate }}<ng-container *ngIf="plan.shapeReason"> — {{ plan.shapeReason }}</ng-container></small>
+      </div>
+
+      <label class="lp-field">
+        <span>{{ 'lessonPlanObjectives' | translate }}</span>
+        <textarea rows="3" [value]="joinLines(plan.objectives)" (change)="planner.setObjectives($any($event.target).value)"></textarea>
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanVocabulary' | translate }}</span>
+        <textarea rows="2" [value]="plan.vocabulary.join(', ')" (change)="setVocabulary($any($event.target).value)"></textarea>
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanGrammar' | translate }}</span>
+        <input type="text" [value]="plan.grammar" (change)="plan.grammar = $any($event.target).value">
+      </label>
+
+      <!-- Stages -->
+      <h4>{{ 'lessonPlanStages' | translate }}</h4>
+      <ol class="lp-stages">
+        <li *ngFor="let stage of plan.stages; let i = index; let first = first; let last = last" class="lp-stage">
+          <div class="lp-stage-top">
+            <input type="number" class="lp-min" min="1" max="120" [value]="stage.minutes"
+                   (change)="planner.setStageMinutes(stage, $any($event.target).value)"
+                   [attr.aria-label]="'lessonPlanMinutes' | translate">
+            <span class="lp-min-unit">{{ 'lessonPlanMin' | translate }}</span>
+            <span class="lp-spacer"></span>
+            <button type="button" class="lp-icon-btn" (click)="planner.moveStage(i, -1)" [disabled]="first" aria-label="Up">↑</button>
+            <button type="button" class="lp-icon-btn" (click)="planner.moveStage(i, 1)" [disabled]="last" aria-label="Down">↓</button>
+            <button type="button" class="lp-icon-btn lp-danger" (click)="planner.removeStage(i)"
+                    [attr.aria-label]="'lessonPlanRemoveStage' | translate">✕</button>
+          </div>
+          <input type="text" class="lp-stage-name" [value]="stage.name" (change)="stage.name = $any($event.target).value"
+                 [attr.aria-label]="'lessonPlanStageName' | translate">
+          <textarea rows="2" [value]="stage.activity" (change)="stage.activity = $any($event.target).value"
+                    [attr.aria-label]="'lessonPlanActivity' | translate"></textarea>
+          <div class="lp-stage-bottom">
+            <select (change)="stage.gameId = $any($event.target).value || null"
+                    [attr.aria-label]="'lessonPlanGame' | translate">
+              <option value="">{{ 'lessonPlanNoGame' | translate }}</option>
+              <option *ngFor="let id of planner.stageGames(stage)" [value]="id" [selected]="stage.gameId === id">{{ game(id)?.icon }} {{ (game(id)?.nameKey || id) | translate }}</option>
+            </select>
+            <select (change)="stage.interaction = $any($event.target).value"
+                    [attr.aria-label]="'lessonPlanInteraction' | translate">
+              <option *ngFor="let kind of planner.interactions" [value]="kind" [selected]="stage.interaction === kind">{{ ('lessonPlanInteraction_' + kind) | translate }}</option>
+            </select>
+          </div>
+          <small *ngIf="stage.sectionId" class="lp-stage-section">📍 {{ planner.sectionTitle(stage.sectionId) }}</small>
+        </li>
+      </ol>
+      <button type="button" class="lp-link" (click)="planner.addStage()">+ {{ 'lessonPlanAddStage' | translate }}</button>
+
+      <!-- Sections = game icons on the pages -->
+      <h4>{{ 'lessonPlanIcons' | translate }}</h4>
+      <p class="lp-hint">
+        {{ 'lessonPlanIconsHint' | translate: { n: planner.iconCount, total: planner.iconSections } }}
+        <button type="button" class="lp-link" (click)="planner.placeIcons()">↺ {{ 'lessonPlanPlaceAgain' | translate }}</button>
+      </p>
+      <ul class="lp-sections">
+        <li *ngFor="let section of plan.sections" class="lp-section" [class.lp-section-plain]="!section.topicId">
+          <div class="lp-section-head">
+            <span class="lp-skill">{{ ('lessonPlanSkill_' + section.skill) | translate }}</span>
+            <strong>{{ 'lessonPlanPage' | translate: { n: planner.sectionPage(section.page) } }} · {{ section.title }}</strong>
+          </div>
+          <ng-container *ngIf="section.topicId; else noIcon">
+            <small>🎮 {{ planner.topicName(section.topicId) }}</small>
+            <div class="lp-icon-state">
+              <ng-container *ngIf="planner.iconFor(section.id); else iconRemoved">
+                <button type="button" class="lp-link" (click)="planner.showSection(section.id)">📍 {{ 'lessonPlanShowIcon' | translate }}</button>
+              </ng-container>
+              <ng-template #iconRemoved>
+                <ng-container *ngIf="planner.linkedMarkerFor(section.id) as linked; else noMarker">
+                  <span class="lp-has-game">✓ {{ 'lessonPlanHasGame' | translate: { name: linked.data['topicName'] || linked.data['label'] } }}</span>
+                </ng-container>
+                <ng-template #noMarker>
+                  <span class="lp-muted">{{ 'lessonPlanIconRemoved' | translate }}</span>
+                  <button type="button" class="lp-link" (click)="planner.restoreIcon(section.id)">{{ 'lessonPlanPutBack' | translate }}</button>
+                </ng-template>
+              </ng-template>
+            </div>
+            <div class="lp-games">
+              <button type="button" *ngFor="let id of shownChoices(section)" class="lp-game"
+                      [class.lp-game-on]="section.games.includes(id)" [attr.aria-pressed]="section.games.includes(id)"
+                      (click)="planner.toggleSectionGame(section.id, id)" [title]="(game(id)?.nameKey || id) | translate">
+                <img *ngIf="game(id)?.iconImage" [src]="game(id)?.iconImage" alt="">
+                <span *ngIf="!game(id)?.iconImage" aria-hidden="true">{{ game(id)?.icon }}</span>
+                <small>{{ (game(id)?.nameKey || id) | translate }}</small>
+              </button>
+              <button type="button" *ngIf="planner.sectionChoices(section.id).length > section.games.length" class="lp-link lp-more"
+                      (click)="toggleMore(section.id)" [attr.aria-expanded]="moreOpen === section.id">
+                {{ moreOpen === section.id ? ('lessonPlanFewerGames' | translate) : ('lessonPlanMoreGames' | translate: { n: planner.sectionChoices(section.id).length - section.games.length }) }}
+              </button>
+            </div>
+          </ng-container>
+          <ng-template #noIcon><small class="lp-muted">{{ 'lessonPlanNoIcon' | translate }}</small></ng-template>
+        </li>
+      </ul>
+
+      <!-- Topics to generate -->
+      <h4>{{ 'lessonPlanTopics' | translate: { n: plan.topics.length } }}</h4>
+      <ul class="lp-topics">
+        <li *ngFor="let topic of plan.topics">
+          <input type="text" [value]="topic.name" (change)="topic.name = $any($event.target).value"
+                 [attr.aria-label]="'lessonPlanTopicName' | translate">
+          <small>{{ recipeLabel(topic) | translate }}<ng-container *ngIf="topic.exam"> · {{ topic.exam.toUpperCase() }}</ng-container></small>
+          <span *ngIf="planner.topicStatus(topic.id) as status" class="lp-status" [class]="'lp-status lp-status-' + status" role="status">
+            {{ ('lessonPlanTopic_' + status) | translate }}
+            <button *ngIf="status === 'failed' && !planner.creating" type="button" class="lp-link" (click)="planner.retryTopic(topic.id)">
+              ↻ {{ 'lessonPlanRetry' | translate }}
+            </button>
+          </span>
+          <small *ngIf="planner.topicError(topic.id) as reason" class="lp-topic-error">{{ reason }}</small>
+        </li>
+      </ul>
+
+      <label class="lp-field">
+        <span>{{ 'lessonPlanStronger' | translate }}</span>
+        <textarea rows="2" [value]="plan.stronger" (change)="plan.stronger = $any($event.target).value"></textarea>
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanWeaker' | translate }}</span>
+        <textarea rows="2" [value]="plan.weaker" (change)="plan.weaker = $any($event.target).value"></textarea>
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanAssessment' | translate }}</span>
+        <textarea rows="2" [value]="plan.assessment" (change)="plan.assessment = $any($event.target).value"></textarea>
+      </label>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanHomework' | translate }}</span>
+        <textarea rows="2" [value]="plan.homework" (change)="plan.homework = $any($event.target).value"></textarea>
+      </label>
+      <ul *ngIf="plan.notes.length" class="lp-notes">
+        <li *ngFor="let note of plan.notes">⚠ {{ note }}</li>
+      </ul>
+
+      <!-- Create -->
+      <p *ngIf="planner.createdAll" class="lp-done" role="status">✓ {{ 'lessonPlanCreated' | translate: { n: planner.createdTopics.size } }}</p>
+      <button *ngIf="planner.topicsToCreate.length || planner.creating" type="button" class="lp-primary lp-create"
+              (click)="planner.create()" [disabled]="planner.creating || planner.analysing">
+        ✨ {{ planner.creating ? ('lessonPlanCreating' | translate) : ('lessonPlanCreate' | translate: { n: planner.topicsToCreate.length }) }}
+      </button>
+      <small *ngIf="!planner.creating && planner.topicsToCreate.length" class="lp-hint">{{ 'lessonPlanCreateHint' | translate }}</small>
+
+      <!-- Re-plan -->
+      <div class="lp-replan">
+        <input type="text" [value]="planner.change" [placeholder]="'lessonPlanChangePlaceholder' | translate"
+               (input)="planner.change = $any($event.target).value" (keydown.enter)="planner.analyse(true)"
+               [disabled]="planner.analysing || planner.creating">
+        <button type="button" class="lp-secondary" (click)="planner.analyse(true)" [disabled]="planner.analysing || planner.creating">
+          ↻ {{ (planner.analysing ? 'lessonPlanAnalysing' : 'lessonPlanReplan') | translate }}
+        </button>
+      </div>
+      <!-- Download to share -->
+      <ng-container *ngTemplateOutlet="aboutYou"></ng-container>
+      <div class="lp-download">
+        <button type="button" class="lp-secondary" (click)="planner.download('pdf')" [disabled]="planner.downloading || planner.analysing">
+          ⬇ {{ 'lessonPlanDownloadPdf' | translate }}
+        </button>
+        <button type="button" class="lp-secondary" (click)="planner.download('word')" [disabled]="planner.downloading || planner.analysing">
+          ⬇ {{ 'lessonPlanDownloadWord' | translate }}
+        </button>
+      </div>
+
+      <p class="lp-hint">💾 {{ 'lessonPlanKept' | translate }}</p>
+      <div class="lp-end">
+        <button type="button" class="lp-link" (click)="planner.close()" [disabled]="planner.analysing || planner.creating">
+          ← {{ 'lessonPlanClose' | translate }}
+        </button>
+        <button type="button" class="lp-link lp-danger" (click)="planner.deletePlan(planner.planId!)" [disabled]="planner.analysing || planner.creating || !planner.planId">
+          {{ 'lessonPlanDelete' | translate }}
+        </button>
+      </div>
+    </div>
+  </ng-container>
+</section>
+
+<!-- Typed once, printed on every plan -->
+<ng-template #aboutYou>
+  <details class="lp-about" (change)="$event.stopPropagation()">
+    <summary>👤 {{ 'lessonPlanAboutYou' | translate }}<small *ngIf="planner.teacher.name || planner.teacher.school">: {{ planner.teacher.name || planner.teacher.school }}</small></summary>
+    <label class="lp-field">
+      <span>{{ 'lessonPlanTeacher' | translate }}</span>
+      <input type="text" maxlength="80" [value]="planner.teacher.name" (change)="planner.setTeacher('name', $any($event.target).value)">
+    </label>
+    <label class="lp-field">
+      <span>{{ 'lessonPlanSchool' | translate }}</span>
+      <input type="text" maxlength="80" [value]="planner.teacher.school" (change)="planner.setTeacher('school', $any($event.target).value)">
+    </label>
+  </details>
+</ng-template>

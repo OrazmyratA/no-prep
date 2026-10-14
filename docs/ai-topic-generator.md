@@ -217,6 +217,13 @@ folded into the "another picture" cycle for free re-viewing (no repeat charge to
   attached `pages: Blob[]` in `AiTopicDialogResult`, so `topic-form.ts` knows whether to show the
   button and can pass the page photos into `resolveImage(item, pages)` for cropping.
 
+**Manual crop fallback (2026-10-13):** since the AI's crop box is sometimes still off, `topic-form`
+now keeps the dialog's `pages` around after the fill (`aiAttachedPages: Blob[]`, overwritten only
+when a run actually attaches new pages) and passes them into every item's `app-image-uploader` as
+`[pageSources]`. See `shared/image-crop-dialog.ts` for the generic manual-crop component this
+feeds (📖 crop-from-a-page + ✂️ adjust-crop-on-current-image) — it's a shared UI piece, not
+AI-specific, documented with the component itself.
+
 ## 7. AI access
 
 ### 7a. Built-in: "NoPrep AI" (default; paid by NoPrep, covered by the license price)

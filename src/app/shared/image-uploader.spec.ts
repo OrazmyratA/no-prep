@@ -162,4 +162,64 @@ describe('ImageUploaderComponent', () => {
 
     expect(openExternalUrl).toHaveBeenCalledWith('https://www.google.com/imghp');
   });
+
+  describe('manual crop', () => {
+    // Both entry points must offer the SAME full set (current picture + every attached page):
+    // the AI's pick might not be from a page even when pages exist, and a page-sourced pick's
+    // original page must stay reachable — neither button may show a partial picture.
+    const clickEvent = () => new MouseEvent('click');
+
+    it('puts the current picture first, with every attached page after it, labelled', () => {
+      (component as any).previewSource = new Blob(['current']);
+      component.pageSources = [new Blob(['p1']), new Blob(['p2'])];
+
+      component.openCrop(clickEvent());
+
+      expect(component.cropDialogOpen).toBe(true);
+      expect(component.cropImages).toEqual([(component as any).previewSource, ...component.pageSources]);
+      expect(component.cropLabels).toEqual(['Current picture', 'Page 1', 'Page 2']);
+      expect(component.cropStartIndex).toBe(0);
+    });
+
+    it('offers just the pages when there is no current picture', () => {
+      (component as any).previewSource = null;
+      component.pageSources = [new Blob(['p1'])];
+
+      component.openCrop(clickEvent());
+
+      expect(component.cropImages).toEqual(component.pageSources);
+      expect(component.cropLabels).toEqual(['Page 1']);
+    });
+
+    it('does nothing when there is neither a current picture nor any attached pages', () => {
+      (component as any).previewSource = null;
+      component.pageSources = [];
+      component.openCrop(clickEvent());
+      expect(component.cropDialogOpen).toBe(false);
+    });
+
+    it('emits the cropped result on its own event, not imageSelected', () => {
+      // A crop refines the current picture, it isn't the teacher rejecting it the way picking a
+      // different image/upload is — topic-form relies on this distinction to keep its
+      // "another picture"/"generate a picture" buttons working after a crop.
+      const cropped = new Blob(['cropped']);
+      const onImageSelected: (Blob | null)[] = [];
+      const onImageCropped: Blob[] = [];
+      component.imageSelected.subscribe(b => onImageSelected.push(b));
+      component.imageCropped.subscribe(b => onImageCropped.push(b));
+
+      component.cropDialogOpen = true;
+      component.onCropped(cropped);
+
+      expect(component.cropDialogOpen).toBe(false);
+      expect(onImageCropped).toEqual([cropped]);
+      expect(onImageSelected).toEqual([]);
+    });
+
+    it('closes without changing the image when the crop is cancelled', () => {
+      component.cropDialogOpen = true;
+      component.onCropCancelled();
+      expect(component.cropDialogOpen).toBe(false);
+    });
+  });
 });

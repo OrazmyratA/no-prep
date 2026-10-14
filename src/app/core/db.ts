@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { db, Topic, Item, LeaderboardScore, CefrLevel } from './db.model';
+import { db, Topic, Item, LeaderboardScore, CefrLevel, SpeakingExam } from './db.model';
 
 @Injectable({ providedIn: 'root' })
 export class DbService {
@@ -28,24 +28,26 @@ export class DbService {
     await this.refreshTopics();
   }
 
-  async createTopic(name: string, level?: CefrLevel): Promise<number> {
+  async createTopic(name: string, level?: CefrLevel, exam?: SpeakingExam): Promise<number> {
     const now = new Date();
-    const id = await db.topics.add({ name, createdAt: now, updatedAt: now, ...(level ? { level } : {}) });
+    const id = await db.topics.add({ name, createdAt: now, updatedAt: now, ...(level ? { level } : {}), ...(exam ? { exam } : {}) });
     await this.refreshTopics();
     return id;
   }
 
-  /** `level`: undefined = keep it, null = remove it. */
-  async updateTopic(id: number, name: string, level?: CefrLevel | null): Promise<void> {
+  /** `level` / `exam`: undefined = keep it, null = remove it. */
+  async updateTopic(id: number, name: string, level?: CefrLevel | null, exam?: SpeakingExam | null): Promise<void> {
     const changes: Partial<Topic> = { name, updatedAt: new Date() };
     // Dexie deletes a property whose new value is undefined.
     if (level !== undefined) changes.level = level ?? undefined;
+    if (exam !== undefined) changes.exam = exam ?? undefined;
     await db.topics.update(id, changes);
     await this.refreshTopics();
   }
 
   async deleteTopic(id: number): Promise<void> {
     await db.items.where('topicId').equals(id).delete();
+    await db.speakingResults.where('topicId').equals(id).delete();
     await db.topics.delete(id);
     await this.refreshTopics();
   }
@@ -108,7 +110,7 @@ async duplicateTopic(topicId: number): Promise<number | null> {
   if (!topic) return null;
   const items = await db.items.where('topicId').equals(topicId).sortBy('order');
   const copyName = `${topic.name} (Copy)`;
-  const newTopicId = await this.createTopic(copyName, topic.level);
+  const newTopicId = await this.createTopic(copyName, topic.level, topic.exam);
   await this.addItems(newTopicId, items.map(item => ({
     text: item.text,
     image: item.image ?? undefined,

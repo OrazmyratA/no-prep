@@ -37,7 +37,16 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   @Input() textImageWidth = 640;
   @Input() textImageHeight = 360;
   @Input() compactSearchPanel = false;
+  // Book pages the parent has attached this session (e.g. topic-form's ✨ AI dialog) — when
+  // non-empty, a 📖 button lets the teacher crop straight from one of them instead of uploading.
+  @Input() pageSources: Blob[] = [];
   @Output() imageSelected = new EventEmitter<Blob | null>();
+  // Separate from imageSelected: a crop refines whatever picture was already there, it isn't the
+  // teacher rejecting it the way picking a different image/upload is — topic-form listens to
+  // this one instead so its "another picture"/"generate a picture" buttons survive a crop.
+  // Parents that don't care about that distinction (book-creator, theme-picker) can just bind
+  // this to the same handler as imageSelected.
+  @Output() imageCropped = new EventEmitter<Blob>();
   // Makes this uploader the target of Ctrl+V as soon as it appears, instead of only after the
   // user clicks inside it. Set by parents that open the uploader from a click (e.g. the + card).
   @Input() autoPasteTarget = false;
@@ -69,6 +78,12 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   isImportingPastedImage = false;
   pasteImportError: string | null = null;
   canLoadMore = false;
+  // Manual crop (✂️ on the current image, 📖 from an attached page) — one-shot, same as every
+  // other image source here: once cropped, the pre-crop version is forgotten.
+  cropDialogOpen = false;
+  cropImages: Blob[] = [];
+  cropLabels: string[] = [];
+  cropStartIndex = 0;
   private readonly perPage = 24;
   private searchPage = 1;
   private totalHits = 0;
@@ -498,6 +513,38 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     this.clearPreview();
     this.selectedImageId = null;
     this.imageSelected.emit(null);
+  }
+
+  /**
+   * One crop button, one dialog: the current picture (if any) plus every attached page, always
+   * shown together — the AI's pick might not be from a page even when pages exist, and a
+   * page-sourced pick's original page stays reachable as just another thumbnail, not a separate
+   * button. (Previously a second 📖 button opened pages only; merged away since both ended up
+   * needing to show everything anyway.)
+   */
+  openCrop(event: MouseEvent) {
+    event.stopPropagation();
+    if (!this.previewSource && !this.pageSources.length) return;
+    const current = this.previewSource ? [this.previewSource] : [];
+    this.cropImages = [...current, ...this.pageSources];
+    this.cropLabels = [
+      ...(current.length ? [this.langService.translate('currentPicture')] : []),
+      ...this.pageSources.map((_, i) => this.langService.translate('pageNumber', { number: i + 1 }))
+    ];
+    this.cropStartIndex = 0;
+    this.cropDialogOpen = true;
+  }
+
+  onCropped(blob: Blob) {
+    this.cropDialogOpen = false;
+    this.zone.run(() => {
+      this.setPreview(blob);
+      this.imageCropped.emit(blob);
+    });
+  }
+
+  onCropCancelled() {
+    this.cropDialogOpen = false;
   }
 
   private async compressImage(file: File): Promise<Blob> {

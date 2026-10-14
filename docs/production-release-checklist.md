@@ -92,6 +92,13 @@ See `docs/ai-speaking.md` for the full picture. The short version for a release 
   (opens `console.groq.com/keys` via `shell.openExternal`) plus a field to paste the key back in.
   The key is written to `app.getPath('userData')/ai-config.json`, never bundled in the installer.
 
+## 5a. AI Lesson Planner Smoke Check
+
+See `docs/ai-lesson-planner.md` (§9 has the full check). With a real book and a real AI key on
+the desktop build: Analyse two pages, Create, play one linked marker in the reader, then
+download the plan as PDF (save dialog) and as Word (the `.doc` opens in Word with the same
+layout, non-Latin text intact).
+
 ## 6. Final Pre-Upload Check
 
 - No local AppData book folders are copied into the repo.

@@ -468,6 +468,7 @@ registerAppIpc({
   ipcMain,
   shell,
   app,
+  BrowserWindow,
   dialog,
   fsp,
   path,

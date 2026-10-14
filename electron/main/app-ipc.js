@@ -10,10 +10,14 @@ const ALLOWED_EXTERNAL_HOSTS = new Set([
   'console.groq.com'
 ]);
 
+// Reports (Talk Show's per-student PDF) are app-generated HTML; anything bigger is not a report.
+const MAX_REPORT_HTML_CHARS = 5000000;
+
 function registerAppIpc({
   ipcMain,
   shell,
   app,
+  BrowserWindow,
   dialog,
   fsp,
   path,
@@ -101,6 +105,44 @@ function registerAppIpc({
     } catch (error) {
       console.error('app:capture-page-screenshot error:', error);
       return operationError('SCREENSHOT_FAILED', error?.message || 'Could not save screenshot.');
+    }
+  });
+
+  // Saves app-generated HTML as a PDF: the teacher picks where, a hidden window with scripts off
+  // draws it, and Chromium's own PDF printer keeps every script (Arabic, Chinese...) intact.
+  ipcMain.handle('app:save-html-as-pdf', async (_event, input) => {
+    let win = null;
+    let tempFile = '';
+    try {
+      const html = String(input?.html || '');
+      if (!html || html.length > MAX_REPORT_HTML_CHARS) {
+        return operationError('INVALID_INPUT', 'There is nothing to save.');
+      }
+      const requested = sanitizeName(String(input?.fileName || 'NoPrep report.pdf'), 'NoPrep report.pdf');
+      const fileName = requested.toLowerCase().endsWith('.pdf') ? requested : `${requested}.pdf`;
+      const mainWindow = getMainWindow();
+      const choice = await dialog.showSaveDialog(mainWindow, {
+        defaultPath: path.join(app.getPath('documents'), fileName),
+        filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      });
+      if (choice.canceled || !choice.filePath) return operationResult({ cancelled: true });
+
+      tempFile = path.join(app.getPath('temp'), `noprep-report-${Date.now()}.html`);
+      await fsp.writeFile(tempFile, html, 'utf8');
+      win = new BrowserWindow({
+        show: false,
+        webPreferences: { javascript: false, sandbox: true, contextIsolation: true, nodeIntegration: false }
+      });
+      await win.loadFile(tempFile);
+      const pdf = await win.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true });
+      await fsp.writeFile(choice.filePath, pdf);
+      return operationResult({ filePath: choice.filePath });
+    } catch (error) {
+      console.error('app:save-html-as-pdf error:', error);
+      return operationError('PDF_FAILED', error?.message || 'Could not save the PDF.');
+    } finally {
+      if (win && !win.isDestroyed()) win.destroy();
+      if (tempFile) await fsp.unlink(tempFile).catch(() => {});
     }
   });
 

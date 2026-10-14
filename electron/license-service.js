@@ -174,11 +174,36 @@ function saveLicense(licenseData) {
   fs.writeFileSync(getLicensePath(), JSON.stringify(licenseData, null, 2));
 }
 
+function getMachineIdTargetDirs() {
+  const dirs = [];
+  // app.getPath resolves redirected folders (e.g. OneDrive Desktop), unlike a hardcoded ~/Desktop.
+  for (const name of ['desktop', 'documents', 'downloads']) {
+    try {
+      if (app?.getPath) {
+        dirs.push(app.getPath(name));
+      }
+    } catch {
+      // Folder not available on this machine; try the next one.
+    }
+  }
+  dirs.push(path.join(os.homedir(), 'Desktop'), os.homedir(), getAppDataPath());
+  return [...new Set(dirs)];
+}
+
 function writeMachineIdToDesktop() {
-  const desktopPath = path.join(os.homedir(), 'Desktop', 'machine-id.txt');
   const fingerprint = getMachineFingerprint();
-  fs.writeFileSync(desktopPath, fingerprint);
-  return desktopPath;
+  let lastError = null;
+  for (const dir of getMachineIdTargetDirs()) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const filePath = path.join(dir, 'machine-id.txt');
+      fs.writeFileSync(filePath, fingerprint);
+      return filePath;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error('Could not write machine-id.txt');
 }
 
 function activateLicenseContent(content) {

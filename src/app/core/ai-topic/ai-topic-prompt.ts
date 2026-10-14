@@ -1,6 +1,7 @@
 import { AI_TOPIC_MAX_ITEMS } from './ai-topic-draft';
-import { CefrLevel } from '../db.model';
-import { AiRecipeId, findRecipe } from './ai-topic-recipes';
+import { CefrLevel, SpeakingExam } from '../db.model';
+import { SPEAKING_EXAMS, SpeakingTaskType } from '../speaking-exams';
+import { AiRecipeId, AiRecipeVariantId, findRecipe, recipeInstructions } from './ai-topic-recipes';
 
 export type AiMediaMode = 'auto' | 'on' | 'off';
 
@@ -15,8 +16,12 @@ export interface AiTopicRequest {
   level?: CefrLevel | null;     // CEFR level the teacher picked; null/absent = not given
   /** Reading Detective mode: which parts and tasks to make (counts: 0 = none). */
   readingTasks?: ReadingTasksRequest | null;
+  /** Talk Show mode: the exam and the parts to make, in order. */
+  speakingTest?: SpeakingTestRequest | null;
   /** The chip (ready-made task) the request was made with: its expert rules are added. */
   recipe?: AiRecipeId | null;
+  /** For two-sided chips (gap-fill, Q&A): which side students get; absent = the chip's default. */
+  recipeVariant?: AiRecipeVariantId | null;
   /**
    * The per-item "✨" fill (topic-form.fillItemWithAi): the teacher already wrote this item's
    * text by hand. When set, every other field above except images/audio/teacherLanguage is
@@ -36,12 +41,25 @@ export interface ReadingTasksRequest {
   word: number;        // ? WORD
 }
 
+export interface SpeakingTestRequest {
+  exam: SpeakingExam;
+  /** fromMaterials: take it from the pages / script; otherwise the AI writes it. */
+  parts: { type: SpeakingTaskType; count: number; fromMaterials: boolean }[];
+}
+
+/** What a speaking part's count counts (for the AI). */
+export const SPEAKING_COUNT_UNITS: Record<SpeakingTaskType, string> = {
+  POINT: 'instructions (point to / put the card)', ASK: 'questions', PICTURE: 'questions', DIFF: 'differences', STORY: 'pictures', ODD: 'sets',
+  INFO: 'question prompts for the candidate (and as many for the examiner)', PHOTO: 'photos',
+  DECIDE: 'options', CUE: 'cue cards', DISCUSS: 'questions'
+};
+
 export const DEFAULT_READING_TASKS: ReadingTasksRequest = {
   keys: true, questions: true, headings: true, statements: 5, choice: 0, gapped: 0, word: 0
 };
 
 // Versioned so changes to the instructions are easy to trace in support reports.
-export const AI_TOPIC_PROMPT_VERSION = 5;
+export const AI_TOPIC_PROMPT_VERSION = 7;
 
 // The Cambridge exams teachers know each level by.
 export const CEFR_EXAM_NAMES: Record<CefrLevel, string> = {
@@ -63,6 +81,7 @@ How the games use items:
 - Unjumble, Team Sentence and Writing Workshop split the item text into words that students put in order. They need full sentences.
 - Reading Detective shows a whole reading text built from sentence items, with "# " heading items and [key words] (see the reading text example below).
 - Line Trace Match, Match Pairs, Flip Tiles, Pop Balloon, Spotlight and similar games pair or reveal the text and the image of the same item. Here the image is often the answer to the text, or the text is the answer to the image.
+- Talk Show is a speaking mock exam built from "# TAG" part headings and the items under them (the speaking test rules say how, when they are given).
 - The audio is played to students (listening, pronunciation). It may say more than the text shows.
 
 Default shape (use unless the teacher asks for something else):
@@ -149,7 +168,7 @@ export function buildAiTopicUserText(request: AiTopicRequest): string {
   }
   const recipe = findRecipe(request.recipe);
   if (recipe) {
-    lines.push('', "The teacher picked a ready-made task. Follow these rules for it (the teacher's own words above still win):", recipe.instructions);
+    lines.push('', "The teacher picked a ready-made task. Follow these rules for it (the teacher's own words above still win):", recipeInstructions(recipe, request.recipeVariant));
   }
   const tasks = request.readingTasks;
   if (tasks) {
@@ -164,6 +183,15 @@ export function buildAiTopicUserText(request: AiTopicRequest): string {
       `- Multiple choice (MC): ${count(tasks.choice, 'questions')}`,
       `- Gapped text: ${count(tasks.gapped, 'sentences taken out with "~ " + one EXTRA')}`,
       `- Find the word (WORD): ${count(tasks.word, 'words')}`
+    );
+  }
+  const speaking = request.speakingTest;
+  if (speaking?.parts.length) {
+    lines.push(
+      '',
+      `Speaking test (Talk Show) for ${SPEAKING_EXAMS[speaking.exam].name}. Make exactly these parts, in this order, each starting with its "# TAG" heading item:`,
+      ...speaking.parts.map(part =>
+        `- ${part.type}: ${part.count} ${SPEAKING_COUNT_UNITS[part.type]} (${part.fromMaterials ? 'from the materials' : 'write it'})`)
     );
   }
   if (request.existingItems.length) {

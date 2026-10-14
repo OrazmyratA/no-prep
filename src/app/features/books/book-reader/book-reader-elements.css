@@ -820,3 +820,8 @@
   box-shadow: 0 2px 6px rgba(41, 37, 36, 0.35);
   pointer-events: none;
 }
+
+/* A see-through icon of an unfinished AI lesson plan: not for students yet. */
+.reader-element.plan-draft {
+  display: none !important;
+}

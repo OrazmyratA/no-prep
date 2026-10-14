@@ -1,0 +1,28 @@
+<div appBodyPortal class="pa-overlay" (click)="close()">
+  <div class="pa-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'topicFormAreaTitle' | translate"
+       (click)="$event.stopPropagation()">
+    <div class="pa-head">
+      <h2>🎯 {{ 'topicFormAreaTitle' | translate }}</h2>
+      <button type="button" class="pa-close" (click)="close()" [attr.aria-label]="'cancel' | translate">✕</button>
+    </div>
+    <p *ngIf="instruction" class="pa-instruction">“{{ instruction }}”</p>
+    <p class="pa-hint">{{ 'topicFormAreaHint' | translate }}</p>
+
+    <div class="pa-stage">
+      <div class="pa-scene" (pointerdown)="onPointerDown($event)" (pointermove)="onPointerMove($event)"
+           (pointerup)="onPointerUp()" (pointercancel)="onPointerUp()">
+        <img #picture [src]="sceneUrl" alt="" draggable="false">
+        <span *ngIf="box && box.width > 0" class="pa-box"
+              [style.left.%]="box.x * 100" [style.top.%]="box.y * 100"
+              [style.width.%]="box.width * 100" [style.height.%]="box.height * 100"></span>
+      </div>
+    </div>
+
+    <div class="pa-footer">
+      <button type="button" class="pa-link" (click)="clear()" [disabled]="!box">{{ 'topicFormAreaClear' | translate }}</button>
+      <span class="pa-spacer"></span>
+      <button type="button" class="pa-secondary" (click)="close()">{{ 'cancel' | translate }}</button>
+      <button type="button" class="pa-primary" (click)="save()">{{ 'topicFormAreaSave' | translate }}</button>
+    </div>
+  </div>
+</div>

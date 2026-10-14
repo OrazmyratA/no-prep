@@ -1,3 +1,5 @@
+import type { LessonClass, LessonPlan } from './ai-topic/lesson-plan';
+
 export type BookPageType = 'pdf' | 'blank' | 'progressMap';
 export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note' | 'answerKey' | 'speakingAi' | 'ink' | 'highlighter' | 'text' | 'textTask' | 'choiceTask' | 'circleTask' | 'matchTask' | 'tracingTask';
 
@@ -163,8 +165,31 @@ export interface InteractiveBook {
   pages: BookPage[];
   workbooks?: BookWorkbook[];
   workbookLinks?: Record<string, WorkbookLink[]>;
+  /** AI lesson plans made from this book's pages (docs/ai-lesson-planner.md). */
+  lessonPlans?: StoredLessonPlan[];
   createdAt: string;
   updatedAt: string;
+}
+
+/** An AI lesson plan kept in the book, to reopen and download without a new AI call. */
+export interface StoredLessonPlan {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  plan: LessonPlan;
+  /** The pages it was made from: the student book or one workbook, by page id. */
+  pageSource: 'main' | 'workbook';
+  workbookId: string | null;
+  pageIds: string[];
+  /** Height / width of each page, for placing icons. */
+  ratios: number[];
+  klass: LessonClass;
+  /** The saved class it was made for ("5A"); empty when the details were typed in. */
+  className?: string;
+  goal: string;
+  english: boolean;
+  /** Plan topic id → the library topic made for it. */
+  topics: Record<string, number>;
 }
 
 export interface BookRegistryItem {

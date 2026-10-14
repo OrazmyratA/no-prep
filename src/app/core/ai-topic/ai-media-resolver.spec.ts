@@ -231,11 +231,17 @@ describe('AiMediaResolverService', () => {
       expect(calls).toBe(1);
     });
 
-    it('returns null and leaves the choice untouched when generation fails', async () => {
+    it('propagates the error (so the caller can tell the teacher) and leaves the choice untouched', async () => {
       const s = service as any;
       s.aiTopic = { generateImage: async () => { throw new Error('quota'); } };
       const choice = baseChoice();
-      expect(await service.generateImage(choice, 'openai')).toBeNull();
+      let caught: unknown = null;
+      try {
+        await service.generateImage(choice, 'openai');
+      } catch (error) {
+        caught = error;
+      }
+      expect((caught as Error)?.message).toBe('quota');
       expect(choice.generated).toBeNull();
     });
   });

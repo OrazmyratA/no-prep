@@ -9,6 +9,8 @@ export interface Topic {
   itemCount?: number;
   /** CEFR level of the topic's text (Reading Detective speed/timer, AI difficulty). Not indexed. */
   level?: CefrLevel;
+  /** The speaking exam the topic is a mock test for (Talk Show). Not indexed. */
+  exam?: SpeakingExam;
 }
 
 export const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
@@ -18,6 +20,15 @@ export type CefrLevel = typeof CEFR_LEVELS[number];
 export function normalizeCefrLevel(value: unknown): CefrLevel | undefined {
   const level = typeof value === 'string' ? value.trim().toUpperCase() : '';
   return (CEFR_LEVELS as readonly string[]).includes(level) ? level as CefrLevel : undefined;
+}
+
+export const SPEAKING_EXAM_IDS = ['starters', 'movers', 'flyers', 'ket', 'pet', 'ielts'] as const;
+export type SpeakingExam = typeof SPEAKING_EXAM_IDS[number];
+
+/** A stored or imported exam, or undefined when it is not one of SPEAKING_EXAM_IDS. */
+export function normalizeSpeakingExam(value: unknown): SpeakingExam | undefined {
+  const exam = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return (SPEAKING_EXAM_IDS as readonly string[]).includes(exam) ? exam as SpeakingExam : undefined;
 }
 
 export interface Item {
@@ -73,6 +84,57 @@ export interface LeaderboardScore {
   updatedAt: Date;
 }
 
+/** One student's marks in a saved Talk Show test (docs/talk-show.md §6). */
+export interface SpeakingResultCandidate {
+  name: string;
+  /** Marks per criterion of the exam, in SPEAKING_EXAMS[exam].criteria order; null = not given. */
+  marks: (number | null)[];
+  overall: number | null;
+  powerGot: number;
+  powerTotal: number;
+  /** The teacher's comment for the report. */
+  comment: string;
+  /** The AI's suggestions (Talk Show "Suggest marks"), when asked for. */
+  ai?: {
+    marks: (number | null)[];
+    reasons: string[];
+    strengths: string[];
+    tips: string[];
+  };
+}
+
+export interface SpeakingResultRecording {
+  /** Candidate index, or -1 when both talked together. */
+  candidate: number;
+  partLabel: string;
+  prompt: string;
+  audio: Blob;
+  transcript: string;
+  /** How long the candidate spoke (pauses not counted). */
+  seconds?: number;
+}
+
+/** A finished Talk Show test, kept on this device. Not exported with topics. */
+export interface SpeakingResult {
+  id?: number;
+  topicId: number;
+  topicName: string;
+  exam: SpeakingExam;
+  createdAt: Date;
+  updatedAt: Date;
+  candidates: SpeakingResultCandidate[];
+  /** Lower-case names, indexed (multiEntry) to find a student's tests. */
+  studentNames: string[];
+  diffGot: number;
+  diffTotal: number;
+  oddGot: number;
+  oddTotal: number;
+  /** Point & place (Starters Part 1); absent in results saved before it existed. */
+  pointGot?: number;
+  pointTotal?: number;
+  recordings: SpeakingResultRecording[];
+}
+
 export class AppDatabase extends Dexie {
   topics!: Table<Topic, number>;
   items!: Table<Item, number>;
@@ -84,6 +146,7 @@ export class AppDatabase extends Dexie {
   leaderboardScores!: Table<LeaderboardScore, number>;
   bookLessonProgress!: Table<BookLessonProgress, string>;
   bookLastPosition!: Table<BookLastPosition, string>;
+  speakingResults!: Table<SpeakingResult, number>;
 
   constructor() {
     super('NoPrepDB');
@@ -177,6 +240,21 @@ export class AppDatabase extends Dexie {
       leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
       bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
       bookLastPosition: 'key, profileId, bookId, updatedAt'
+    });
+    this.version(10).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
+      bookLastPosition: 'key, profileId, bookId, updatedAt',
+      speakingResults: '++id, topicId, createdAt, *studentNames'
     });
   }
 }

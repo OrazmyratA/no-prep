@@ -223,7 +223,12 @@ button.quiz-option.keyboard-selected:not(.fade-out) {
 
 .quiz-inner {
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: 100dvh;
+  /* Reserve the scrollbar's space always, so option hover/correct-flash transforms
+     (which count toward scrollable overflow even though they don't change layout)
+     don't make a scrollbar flicker in and out and shift the content. */
+  scrollbar-gutter: stable;
 }
 
 @media (max-height: 680px) {

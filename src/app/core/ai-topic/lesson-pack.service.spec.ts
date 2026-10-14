@@ -77,6 +77,19 @@ describe('LessonPackService', () => {
     await vi.waitFor(() => expect(run.canSave).toBe(true));
   });
 
+  it('asks one topic at a time when told to (low per-minute limits)', async () => {
+    let resolveFirst!: (value: unknown) => void;
+    ai.generateDraft.mockImplementationOnce(() => new Promise(r => {
+      resolveFirst = () => r({ topicName: 'Unit 5', language: 'en-GB', notes: [], items: [draftItem('bread')] });
+    }));
+    const run = service.start(LESSON_PACK_BOXES.slice(0, 2), { ...request, oneAtATime: true }, () => {});
+    await settle();
+    expect(ai.generateDraft).toHaveBeenCalledTimes(1);
+    resolveFirst(null);
+    await vi.waitFor(() => expect(run.canSave).toBe(true));
+    expect(ai.generateDraft).toHaveBeenCalledTimes(2);
+  });
+
   it('a removed box no longer blocks saving', async () => {
     ai.generateDraft.mockImplementationOnce(async () => { throw new Error('x'); });
     const run = service.start(LESSON_PACK_BOXES.slice(0, 2), request, () => {});
@@ -102,7 +115,7 @@ describe('LessonPackService', () => {
     await vi.waitFor(() => expect(run.canSave).toBe(true));
     const ids = await service.save(run.activeCards.map(card => ({ card, name: `Unit 5 · ${card.box.id}` })), 'B1');
 
-    expect(db.createTopic.mock.calls).toEqual([['Unit 5 · vocabulary', 'B1'], ['Unit 5 · sentences', 'B1']]);
+    expect(db.createTopic.mock.calls).toEqual([['Unit 5 · vocabulary', 'B1', undefined], ['Unit 5 · sentences', 'B1', undefined]]);
     expect(ids.length).toBe(2);
     const [, items] = db.addItems.mock.calls[0];
     const { text, audioText, audioPitch, audioSpeed } = items[0];

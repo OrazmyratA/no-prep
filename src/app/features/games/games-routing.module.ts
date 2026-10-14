@@ -10,6 +10,7 @@ import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
 import { WritingWorkshopComponent } from './writing-workshop';
 import { ReadingDetectiveComponent } from './reading-detective';
+import { TalkShowComponent } from './talk-show';
 import { WordSearchComponent } from './word-search';
 import { PopBalloonComponent } from './pop-balloon';
 import { SpotlightComponent } from './spotlight';
@@ -36,6 +37,7 @@ const routes: Routes = [
   { path: 'unjumble', component: UnjumbleComponent },
   { path: 'writing-workshop', component: WritingWorkshopComponent },
   { path: 'reading-detective', component: ReadingDetectiveComponent },
+  { path: 'talk-show', component: TalkShowComponent },
   { path: 'word-search', component: WordSearchComponent },
   { path: 'pop-balloon', component: PopBalloonComponent },
   { path: 'spotlight', component: SpotlightComponent },

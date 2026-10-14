@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { db, Topic, Item, normalizeCefrLevel } from './db.model';
+import { db, Topic, Item, normalizeCefrLevel, normalizeSpeakingExam } from './db.model';
 import { showAppNotification } from './notification';
 import { DbService } from './db';
 import { PlatformFileService } from './platform-file';
@@ -7,6 +7,7 @@ import { PlatformFileService } from './platform-file';
 export interface ExportTopic {
   name: string;
   level?: string;
+  exam?: string;
   createdAt: string;
   updatedAt: string;
   items: {
@@ -28,6 +29,7 @@ interface BookTopicSnapshot {
   topic: {
     name: string;
     level?: string;
+    exam?: string;
     createdAt?: string;
     updatedAt?: string;
   };
@@ -92,6 +94,7 @@ const exportItems = await Promise.all(items.map(async item => ({
     return {
       name: topic.name,
       ...(topic.level ? { level: topic.level } : {}),
+      ...(topic.exam ? { exam: topic.exam } : {}),
       createdAt: topic.createdAt.toISOString(),
       updatedAt: topic.updatedAt.toISOString(),
       items: exportItems
@@ -144,9 +147,11 @@ const exportItems = await Promise.all(items.map(async item => ({
       for (const expTopic of data.topics) {
         // Create new topic with fresh timestamps (use current time)
         const level = normalizeCefrLevel(expTopic.level);
+        const exam = normalizeSpeakingExam(expTopic.exam);
         const topicId = await db.topics.add({
           name: expTopic.name,
           ...(level ? { level } : {}),
+          ...(exam ? { exam } : {}),
           createdAt: new Date(),   // fresh timestamp
           updatedAt: new Date()
         });
@@ -206,6 +211,7 @@ const exportItems = await Promise.all(items.map(async item => ({
         topics: [{
           name: data.topic.name,
           level: data.topic.level,
+          exam: data.topic.exam,
           createdAt: data.topic.createdAt || new Date().toISOString(),
           updatedAt: data.topic.updatedAt || new Date().toISOString(),
           items: data.items

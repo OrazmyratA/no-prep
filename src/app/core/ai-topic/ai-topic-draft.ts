@@ -97,7 +97,7 @@ function round4(value: number): number {
 // its answer into an unfamiliar shape, which measurably hurt crop accuracy — this avoids that.
 // A model that ignores the instruction and answers with 0-1 fractions anyway is detected here (a
 // real box on the 0-1000 scale never has all four corners within 0-1) and used as given.
-function normalizeCropBox(value: unknown): AiCropBox {
+export function normalizeCropBox(value: unknown): AiCropBox {
   const arr = Array.isArray(value) ? value : [];
   const nums = [0, 1, 2, 3].map(i => (typeof arr[i] === 'number' && Number.isFinite(arr[i]) ? arr[i] as number : 0));
   const scale = nums.every(n => n >= 0 && n <= 1) ? 1 : 1000;

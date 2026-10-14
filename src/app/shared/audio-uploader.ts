@@ -41,6 +41,8 @@ export interface AudioVoiceChange {
 }
 
 const RENDER_DEBOUNCE_MS = 300;
+// Stays comfortably under the 25 MB per-item ceiling import/export already enforces.
+const MAX_AUDIO_FILE_BYTES = 20 * 1024 * 1024;
 
 @Component({
   selector: 'app-audio-uploader',
@@ -151,8 +153,8 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       const file = input.files[0];
-      if (file.size > 3 * 1024 * 1024) {
-        alert('Audio file too large (max 3 MB)');
+      if (file.size > MAX_AUDIO_FILE_BYTES) {
+        alert('Audio file too large (max 20 MB)');
         return;
       }
       if (!file.type.startsWith('audio/')) {

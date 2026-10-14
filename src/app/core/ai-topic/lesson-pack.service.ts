@@ -1,15 +1,17 @@
 import { Injectable, NgZone } from '@angular/core';
 import { DbService } from '../db';
-import { CefrLevel } from '../db.model';
+import { CefrLevel, SpeakingExam } from '../db.model';
 import { getStoredVoiceLanguage } from '../audio-voice';
 import { AiItemDraft, AiTopicDraft } from './ai-topic-draft';
-import { AiMediaMode, ReadingTasksRequest } from './ai-topic-prompt';
-import { LessonPackBox } from './ai-topic-recipes';
+import { AiMediaMode, AiTopicRequest, ReadingTasksRequest } from './ai-topic-prompt';
+import { AiRecipeId, LessonPackBox } from './ai-topic-recipes';
 import { AiTopicError, AiTopicProviderId, AiTopicService } from './ai-topic.service';
 import { AiMediaResolverService } from './ai-media-resolver';
 
 // The lesson pack (docs/lesson-pack.md): one upload of pages or text, one topic per ticked box.
-// Each box is its own AI request, so one failing box never costs the others.
+// Each box is its own AI request, so one failing box never costs the others. The AI lesson
+// planner (docs/ai-lesson-planner.md) runs its planned topics through the same engine, with its
+// own "boxes": anything with a recipe.
 
 /** Pictures and audio being fetched at once, across all the pack's topics. */
 const MEDIA_CONCURRENCY = 4;
@@ -23,8 +25,13 @@ export interface LessonPackItem {
   audio: Blob | null;
 }
 
-export interface LessonPackCard {
-  box: LessonPackBox;
+/** One topic to make: a lesson pack box, or a lesson planner topic. */
+export interface LessonPackJob {
+  recipe: AiRecipeId;
+}
+
+export interface LessonPackCard<B extends LessonPackJob = LessonPackBox> {
+  box: B;
   status: LessonPackStatus;
   /** The topic name the AI suggested, e.g. "Unit 5 - Food". */
   topicName: string;
@@ -36,7 +43,7 @@ export interface LessonPackCard {
   removed: boolean;
 }
 
-export interface LessonPackRequest {
+export interface LessonPackRequest<B extends LessonPackJob = LessonPackBox> {
   provider: AiTopicProviderId;
   pages: Blob[];
   level: CefrLevel | null;
@@ -47,30 +54,37 @@ export interface LessonPackRequest {
   voiceLanguage: string;
   readingTasks: ReadingTasksRequest;
   /** The request text for a box: its chip prompt plus the teacher's note or pasted text. */
-  promptFor: (box: LessonPackBox) => string;
+  promptFor: (box: B) => string;
+  /** More request fields for a box (a recipe variant, a speaking test...). */
+  extraFor?: (box: B) => Partial<AiTopicRequest>;
   /** Word card colour per item text (paragraph colours for Writing Workshop / Reading Detective). */
   cardColors: (texts: string[]) => string[];
+  /** The pages one box needs (default: all of `pages`), so a request stays small. */
+  pagesFor?: (box: B) => Blob[];
+  /** Ask for the topics one after another (an AI with a low per-minute limit, like Groq's free plan). */
+  oneAtATime?: boolean;
 }
 
-export class LessonPackRun {
-  readonly cards: LessonPackCard[];
+export class LessonPackRun<B extends LessonPackJob = LessonPackBox> {
+  readonly cards: LessonPackCard<B>[];
   private cancelled = false;
   private mediaQueue: (() => Promise<void>)[] = [];
   private mediaRunning = 0;
 
   constructor(
-    boxes: LessonPackBox[],
-    private readonly request: LessonPackRequest,
+    boxes: B[],
+    private readonly request: LessonPackRequest<B>,
     private readonly deps: { ai: AiTopicService; media: AiMediaResolverService; zone: NgZone },
     private readonly onChange: () => void
   ) {
     this.cards = boxes.map(box => ({
       box, status: 'generating', topicName: '', items: [], notes: [], error: '', mediaDone: 0, removed: false
     }));
-    this.cards.forEach(card => void this.generate(card));
+    if (request.oneAtATime) void this.generateInTurn();
+    else this.cards.forEach(card => void this.generate(card));
   }
 
-  get activeCards(): LessonPackCard[] {
+  get activeCards(): LessonPackCard<B>[] {
     return this.cards.filter(card => !card.removed);
   }
 
@@ -85,12 +99,12 @@ export class LessonPackRun {
     return this.cards.find(card => card.topicName)?.topicName ?? '';
   }
 
-  retry(card: LessonPackCard): void {
+  retry(card: LessonPackCard<B>): void {
     if (card.status !== 'failed' || this.cancelled) return;
     void this.generate(card);
   }
 
-  remove(card: LessonPackCard): void {
+  remove(card: LessonPackCard<B>): void {
     card.removed = true;
     this.changed();
   }
@@ -101,14 +115,22 @@ export class LessonPackRun {
     this.mediaQueue = [];
   }
 
-  private async generate(card: LessonPackCard): Promise<void> {
+  private async generateInTurn(): Promise<void> {
+    for (const card of this.cards) {
+      if (this.cancelled) return;
+      if (!card.removed) await this.generate(card);
+    }
+  }
+
+  private async generate(card: LessonPackCard<B>): Promise<void> {
     Object.assign(card, { status: 'generating', error: '', items: [], notes: [], mediaDone: 0 });
     this.changed();
+    const pages = this.request.pagesFor?.(card.box) ?? this.request.pages;
     let draft: AiTopicDraft;
     try {
       draft = await this.deps.ai.generateDraft(this.request.provider, {
         prompt: this.request.promptFor(card.box),
-        pageCount: this.request.pages.length,
+        pageCount: pages.length,
         itemCount: null,
         images: this.request.images,
         audio: this.request.audio,
@@ -116,8 +138,9 @@ export class LessonPackRun {
         teacherLanguage: this.request.teacherLanguage,
         level: this.request.level,
         readingTasks: card.box.recipe === 'reading' ? { ...this.request.readingTasks } : null,
-        recipe: card.box.recipe
-      }, this.request.pages);
+        recipe: card.box.recipe,
+        ...this.request.extraFor?.(card.box)
+      }, pages);
     } catch (error) {
       if (this.cancelled) return;
       card.status = 'failed';
@@ -131,10 +154,10 @@ export class LessonPackRun {
     card.items = draft.items.map(item => ({ text: item.text, audioText: item.audioText, image: null, audio: null }));
     card.status = 'media';
     this.changed();
-    this.queueMedia(card, draft);
+    this.queueMedia(card, draft, pages);
   }
 
-  private queueMedia(card: LessonPackCard, draft: AiTopicDraft): void {
+  private queueMedia(card: LessonPackCard<B>, draft: AiTopicDraft, pages: Blob[]): void {
     const voice = this.request.voiceLanguage === 'auto'
       ? this.deps.media.voiceLanguageFor(draft.language, getStoredVoiceLanguage())
       : this.request.voiceLanguage;
@@ -148,7 +171,7 @@ export class LessonPackRun {
     draft.items.forEach((source: AiItemDraft, index) => {
       this.mediaQueue.push(async () => {
         const [picture, audio] = await Promise.all([
-          this.deps.media.resolveImage(source, this.request.pages, colors[index]).catch(() => null),
+          this.deps.media.resolveImage(source, pages, colors[index]).catch(() => null),
           this.deps.media.resolveAudio(source.audioText, voice).catch(() => null)
         ]);
         // A retry replaced this card's items: these results belong to the old ones.
@@ -189,15 +212,18 @@ export class LessonPackService {
     private zone: NgZone
   ) {}
 
-  start(boxes: LessonPackBox[], request: LessonPackRequest, onChange: () => void): LessonPackRun {
-    return new LessonPackRun(boxes, request, { ai: this.ai, media: this.media, zone: this.zone }, onChange);
+  start<B extends LessonPackJob = LessonPackBox>(boxes: B[], request: LessonPackRequest<B>, onChange: () => void): LessonPackRun<B> {
+    return new LessonPackRun<B>(boxes, request, { ai: this.ai, media: this.media, zone: this.zone }, onChange);
   }
 
   /** Creates one topic per entry, in order. Returns the new topic ids. */
-  async save(entries: { card: LessonPackCard; name: string }[], level: CefrLevel | null): Promise<number[]> {
+  async save(
+    entries: { card: LessonPackCard<LessonPackJob>; name: string; exam?: SpeakingExam | null }[],
+    level: CefrLevel | null
+  ): Promise<number[]> {
     const ids: number[] = [];
-    for (const { card, name } of entries) {
-      const id = await this.db.createTopic(name, level ?? undefined);
+    for (const { card, name, exam } of entries) {
+      const id = await this.db.createTopic(name, level ?? undefined, exam ?? undefined);
       await this.db.addItems(id, card.items.map(item => ({
         text: item.text,
         image: item.image ?? undefined,

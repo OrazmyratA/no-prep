@@ -59,7 +59,8 @@
         [textImageWidth]="1920"
         [textImageHeight]="1080"
         [compactSearchPanel]="true"
-        (imageSelected)="onBackgroundImageSelected($event)">
+        (imageSelected)="onBackgroundImageSelected($event)"
+        (imageCropped)="onBackgroundImageSelected($event)">
       </app-image-uploader>
       <div class="theme-tool-busy" *ngIf="addingBackgroundFromTool">
         {{ 'themeAdding' | translate }}

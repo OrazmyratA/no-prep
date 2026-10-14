@@ -41,6 +41,19 @@
     </div>
     <span class="topic-level-hint">{{ 'topicFormLevelHint' | translate }}</span>
   </div>
+  <!-- Speaking exam: Talk Show plays the topic as this exam's mock test. Shown for speaking parts. -->
+  <div *ngIf="usesSpeakingParts || topicExam" class="topic-level-row">
+    <span class="topic-level-label">{{ 'topicFormExam' | translate }}</span>
+    <div class="topic-level-chips" role="radiogroup" [attr.aria-label]="'topicFormExam' | translate">
+      <button type="button" class="topic-level-chip" role="radio"
+              [class.topic-level-chip-active]="!topicExam" [attr.aria-checked]="!topicExam"
+              (click)="setTopicExam('')">—</button>
+      <button *ngFor="let e of speakingExams" type="button" class="topic-level-chip" role="radio"
+              [class.topic-level-chip-active]="topicExam === e.id" [attr.aria-checked]="topicExam === e.id"
+              [title]="e.name" (click)="setTopicExam(e.id)">{{ e.short }}</button>
+    </div>
+    <span class="topic-level-hint">{{ 'topicFormExamHint' | translate }}</span>
+  </div>
 </div>
 
     <!-- Items section -->
@@ -72,7 +85,7 @@
         </div>
       </div>
 
-      <p *ngIf="usesWritingMarks" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}</p>
+      <p *ngIf="usesWritingMarks && !usesSpeakingParts" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}</p>
       <p *ngIf="usesReadingTasks" class="writing-marks-hint">🕵️ {{ 'topicFormReadingTasksHint' | translate }}</p>
 
       <div formArrayName="items">
@@ -122,6 +135,10 @@
                 <span *ngIf="itemBadge(i) as badge" class="item-task-badge" [attr.data-kind]="badge.kind">
                   {{ badge.literal || (badge.key | translate) }}
                 </span>
+                <button *ngIf="pointSceneFor(i)" type="button" class="item-area-btn" [class.item-area-set]="hasPointArea(i)"
+                        (click)="openAreaEditor(i)" [title]="'topicFormAreaTitle' | translate">
+                  🎯 {{ (hasPointArea(i) ? 'topicFormAreaSet' : 'topicFormMarkArea') | translate }}
+                </button>
                 <div class="relative">
                   <!-- Grows with the text (a whole sentence stays readable), scrolls when very long.
                        Still one line of item text: Enter and pasted line breaks become spaces. -->
@@ -156,7 +173,9 @@
                   <app-image-uploader
                     [autoPasteTarget]="isImagePasteReady(item)"
                     [initialImage]="item.get('image')?.value"
-                    (imageSelected)="onImageSelected($event, i)">
+                    [pageSources]="aiAttachedPages"
+                    (imageSelected)="onImageSelected($event, i)"
+                    (imageCropped)="onImageCropped($event, i)">
                   </app-image-uploader>
                 </div>
                 <button *ngIf="hasAiImageChoice(item) && item.get('image')?.value"
@@ -226,6 +245,10 @@
                        (packSaved)="onLessonPackSaved($event)"
                        (closed)="closeAiDialog()">
   </app-ai-topic-dialog>
+  <app-point-area-editor *ngIf="areaEditor as editor"
+                         [scene]="editor.scene" [instruction]="editor.instruction" [area]="editor.area"
+                         (saved)="onAreaSaved($event)" (closed)="areaEditor = null">
+  </app-point-area-editor>
   <!-- Floating action button: always visible bottom-right -->
 <button type="button" (click)="addItem()"
         [disabled]="!licenseService.fullAccess"

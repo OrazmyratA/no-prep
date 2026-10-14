@@ -73,6 +73,11 @@ export class AiMediaResolverService {
    * (see ai-topic-generation design notes). Caches the result on `choice` so cycling back to it
    * with "another picture" afterwards is free; calling this again always generates a new one.
    */
+  /**
+   * Throws on failure instead of swallowing it — the caller (topic-form's "Generate a picture"
+   * button) needs to know when this didn't work so it can tell the teacher, rather than the
+   * button silently doing nothing.
+   */
   async generateImage(choice: AiImageChoice, provider: AiTopicProviderId): Promise<Blob | null> {
     const subject = choice.cardText || choice.query;
     if (!subject) return null;
@@ -80,16 +85,11 @@ export class AiMediaResolverService {
       ? 'a simple, friendly illustration, plain background'
       : 'a clear, realistic photo, plain background';
     const prompt = `${styleHint}, showing: ${subject}. Suitable for a school flashcard, no text or watermark.`;
-    try {
-      const raw = await this.aiTopic.generateImage(provider, prompt);
-      const blob = await this.compressItemImage(raw, 'ai-generated.png');
-      choice.generated = blob;
-      choice.index = GENERATED_INDEX;
-      return blob;
-    } catch (error) {
-      console.debug('AI topic: image generation failed:', error);
-      return null;
-    }
+    const raw = await this.aiTopic.generateImage(provider, prompt);
+    const blob = await this.compressItemImage(raw, 'ai-generated.png');
+    choice.generated = blob;
+    choice.index = GENERATED_INDEX;
+    return blob;
   }
 
   /**

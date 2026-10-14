@@ -118,7 +118,8 @@ body.app-theme-active:not(.app-theme-excluded) .cup-clash-board,
 body.app-theme-active:not(.app-theme-excluded) .ball-sort-shell,
 body.app-theme-active:not(.app-theme-excluded) app-reveal-game,
 body.app-theme-active:not(.app-theme-excluded) .ws-root,
-body.app-theme-active:not(.app-theme-excluded) .rd-root {
+body.app-theme-active:not(.app-theme-excluded) .rd-root,
+body.app-theme-active:not(.app-theme-excluded) .ts-root {
   background: transparent !important;
 }
 

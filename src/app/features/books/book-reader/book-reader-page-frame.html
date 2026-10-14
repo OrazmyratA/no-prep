@@ -180,6 +180,7 @@
       [class.highlighter-element]="element.type === 'highlighter'"
       [class.text-mark-element]="element.type === 'text'"
       [class.game-element]="element.type === 'game'"
+      [class.plan-draft]="element.type === 'game' && element.data['planDraft']"
       [class.text-task-element]="element.type === 'textTask'"
       [class.choice-task-element]="element.type === 'choiceTask'"
       [class.circle-task-element]="element.type === 'circleTask'"

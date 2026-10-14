@@ -14,6 +14,7 @@ import { AnagramComponent } from './anagram';
 import { UnjumbleComponent } from './unjumble';
 import { WritingWorkshopComponent } from './writing-workshop';
 import { ReadingDetectiveComponent } from './reading-detective';
+import { TalkShowComponent } from './talk-show';
 import { WordSearchComponent } from './word-search';
 import { PopBalloonComponent } from './pop-balloon';
 import { SpotlightComponent } from './spotlight';
@@ -42,6 +43,7 @@ import { FlashcardHuntComponent } from './flashcard-hunt';
     UnjumbleComponent,
     WritingWorkshopComponent,
     ReadingDetectiveComponent,
+    TalkShowComponent,
     WordSearchComponent,
     PopBalloonComponent,
     SpotlightComponent,

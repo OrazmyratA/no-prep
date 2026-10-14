@@ -1,7 +1,32 @@
 import { Injectable } from '@angular/core';
 import imageCompression from 'browser-image-compression';
+import { aiTopicWebBridge } from './ai-topic-web-bridge';
 import { AI_TOPIC_DRAFT_SCHEMA, AiTopicDraft, parseAiTopicDraft } from './ai-topic-draft';
 import { AiTopicRequest, buildAiTopicSystemPrompt, buildAiTopicUserText } from './ai-topic-prompt';
+import {
+  LESSON_PLAN_SCHEMA,
+  LessonPlan,
+  LessonPlanRequest,
+  buildLessonPlanSystemPrompt,
+  buildLessonPlanUserText,
+  parseLessonPlan
+} from './lesson-plan';
+import {
+  SPEAKING_ANALYSIS_SCHEMA,
+  SpeakingAnalysis,
+  SpeakingAnalysisRequest,
+  buildSpeakingAnalysisSystemPrompt,
+  buildSpeakingAnalysisUserText,
+  parseSpeakingAnalysis
+} from './speaking-analysis';
+import {
+  SPEAKING_FEEDBACK_SCHEMA,
+  SpeakingFeedback,
+  SpeakingFeedbackRequest,
+  buildSpeakingFeedbackSystemPrompt,
+  buildSpeakingFeedbackUserText,
+  parseSpeakingFeedback
+} from './speaking-feedback';
 import {
   WRITING_CHECK_SCHEMA,
   WritingCheckRequest,
@@ -39,17 +64,47 @@ export const AI_TOPIC_PROVIDERS: AiTopicProviderInfo[] = [
 
 const SELECTED_PROVIDER_KEY = 'aiTopicProvider';
 
-// Book pages are sent at a size the AI can still read small print from.
+/** Short, teacher-recognizable name shown next to each provider's logo in the pickers. */
+export function providerShortLabel(id: AiTopicProviderId): string {
+  switch (id) {
+    case 'gemini': return 'Gemini';
+    case 'openai': return 'ChatGPT';
+    case 'anthropic': return 'Claude';
+    case 'groq': return 'Groq';
+    default: return 'NoPrep AI';
+  }
+}
+
+// Book pages are sent at a size the AI can still read small print from. Up to 6 pages get 1 MB
+// each; more pages share about 7 MB, so 12 pages (base64 + prompt) stay under the NoPrep AI
+// proxy's 12 MB request limit.
 const PAGE_MAX_SIDE = 1600;
+// Groq's free plan reads about 7,000 input tokens a minute and its vision model counts tokens by
+// picture size, so its pages are sent smaller (still readable for coursebook print).
+const GROQ_PAGE_MAX_SIDE = 1280;
+
+function pageMaxSide(provider: AiTopicProviderId): number {
+  return provider === 'groq' ? GROQ_PAGE_MAX_SIDE : PAGE_MAX_SIDE;
+}
 const PAGE_MAX_MB = 1;
+const PAGES_TOTAL_MB = 7;
+
+export function pageBudgetMb(pageCount: number): number {
+  return Math.min(PAGE_MAX_MB, PAGES_TOTAL_MB / Math.max(1, pageCount));
+}
 
 export class AiTopicError extends Error {}
 
 @Injectable({ providedIn: 'root' })
 export class AiTopicService {
-  /** Only the desktop app can call the AIs for now (keys live in the Electron main process). */
+  /**
+   * Electron calls the AIs via IPC (keys live in the main process); the web build falls back to
+   * calling each provider directly with a key the teacher pastes in and stores in this browser
+   * (see ai-topic-web-bridge.ts) — so this is always true, same as Electron is unconditionally
+   * "available" before any key is even linked.
+   */
   get isAvailable(): boolean {
-    return typeof window?.electronAPI?.aiTopicGenerateDraft === 'function';
+    return true;
   }
 
   async getProviders(): Promise<AiTopicProviderStatus[]> {
@@ -119,7 +174,7 @@ export class AiTopicService {
   }
 
   async generateDraft(provider: AiTopicProviderId, request: AiTopicRequest, pages: Blob[]): Promise<AiTopicDraft> {
-    const images = await Promise.all(pages.map(page => this.pageToBase64(page)));
+    const images = await this.pagesToBase64(provider, pages);
     const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
       provider,
       systemPrompt: buildAiTopicSystemPrompt(),
@@ -150,6 +205,56 @@ export class AiTopicService {
     }
   }
 
+  /** Speaking mode's "Analyse": which exam and speaking parts the materials contain. */
+  async analyseSpeaking(provider: AiTopicProviderId, request: SpeakingAnalysisRequest, pages: Blob[]): Promise<SpeakingAnalysis> {
+    const images = await this.pagesToBase64(provider, pages);
+    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+      provider,
+      systemPrompt: buildSpeakingAnalysisSystemPrompt(),
+      userText: buildSpeakingAnalysisUserText(request),
+      schema: SPEAKING_ANALYSIS_SCHEMA,
+      images
+    });
+    try {
+      return parseSpeakingAnalysis(result.text);
+    } catch {
+      throw new AiTopicError('The AI answer could not be read. Please try again.');
+    }
+  }
+
+  /** Talk Show "Suggest marks": one entry per candidate, in the request's order. */
+  async suggestSpeakingMarks(provider: AiTopicProviderId, request: SpeakingFeedbackRequest): Promise<SpeakingFeedback[]> {
+    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+      provider,
+      systemPrompt: buildSpeakingFeedbackSystemPrompt(),
+      userText: buildSpeakingFeedbackUserText(request),
+      schema: SPEAKING_FEEDBACK_SCHEMA,
+      images: []
+    });
+    try {
+      return parseSpeakingFeedback(result.text, request.exam, request.candidates.length);
+    } catch {
+      throw new AiTopicError('The AI answer could not be read. Please try again.');
+    }
+  }
+
+  /** AI lesson planner "Analyse" / "Re-plan": the plan for these book pages, nothing generated yet. */
+  async analyseLesson(provider: AiTopicProviderId, request: LessonPlanRequest, pages: Blob[]): Promise<LessonPlan> {
+    const images = await this.pagesToBase64(provider, pages);
+    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+      provider,
+      systemPrompt: buildLessonPlanSystemPrompt(),
+      userText: buildLessonPlanUserText(request),
+      schema: LESSON_PLAN_SCHEMA,
+      images
+    });
+    try {
+      return parseLessonPlan(result.text, pages.length);
+    } catch {
+      throw new AiTopicError('The AI answer could not be read. Please try again.');
+    }
+  }
+
   /** Explicit, teacher-triggered only — see the "Generate a picture" button, never automatic. */
   async generateImage(provider: AiTopicProviderId, prompt: string): Promise<Blob> {
     const result = await this.invoke<{ imageBase64: string; mimeType: string }>('aiTopicGenerateImage', {
@@ -166,11 +271,16 @@ export class AiTopicService {
     return new Blob([bytes], { type: mimeType });
   }
 
-  private async pageToBase64(page: Blob): Promise<{ mimeType: string; base64: string }> {
+  private pagesToBase64(provider: AiTopicProviderId, pages: Blob[]): Promise<{ mimeType: string; base64: string }[]> {
+    const maxSizeMB = pageBudgetMb(pages.length);
+    return Promise.all(pages.map(page => this.pageToBase64(page, maxSizeMB, pageMaxSide(provider))));
+  }
+
+  private async pageToBase64(page: Blob, maxSizeMB = PAGE_MAX_MB, maxSide = PAGE_MAX_SIDE): Promise<{ mimeType: string; base64: string }> {
     const file = page instanceof File ? page : new File([page], 'page.jpg', { type: page.type || 'image/jpeg' });
     const compressed = await imageCompression(file, {
-      maxSizeMB: PAGE_MAX_MB,
-      maxWidthOrHeight: PAGE_MAX_SIDE,
+      maxSizeMB,
+      maxWidthOrHeight: maxSide,
       useWebWorker: true,
       fileType: 'image/jpeg'
     });
@@ -184,7 +294,7 @@ export class AiTopicService {
   }
 
   private async invoke<T>(method: string, input?: unknown): Promise<T> {
-    const api = window?.electronAPI;
+    const api = typeof window?.electronAPI?.[method] === 'function' ? window.electronAPI : aiTopicWebBridge;
     if (typeof api?.[method] !== 'function') {
       throw new AiTopicError('');
     }

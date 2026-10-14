@@ -22,12 +22,17 @@ export class LanguageService {
   }
 
   translate(key: string, params?: Record<string, any>): string {
+    return this.translateFor(this.currentLang, key, params);
+  }
+
+  /** Like translate, in a given language (e.g. an English lesson plan in a Russian app). */
+  translateFor(lang: SupportedLanguage, key: string, params?: Record<string, any>): string {
     const entry = this.translations[key];
     if (!entry) {
       console.warn(`Translation missing for key: ${key}`);
       return key;
     }
-    let text = entry[this.currentLang];
+    let text = entry[lang];
     if (!text) {
       // Fallback to English if the specific language translation is missing
       text = entry.en;

@@ -51,13 +51,20 @@ export class LicenseService {
     this.statusSubject.next({ valid: true, daysLeft: 3650 });
   }
 
+  // Returns the saved file path, or '' when the desktop app could not produce its machine ID.
   async requestLicense(): Promise<string> {
-    try {
-      if (window?.electronAPI?.requestLicense) {
+    if (window?.electronAPI?.requestLicense) {
+      try {
         return await window.electronAPI.requestLicense();
+      } catch (err) {
+        console.error('requestLicense failed:', err);
+        return '';
       }
-    } catch {
-      // Ignore request failures, preserve UI flow
+    }
+
+    // A random browser ID can never match the desktop fingerprint, so never hand it out in Electron.
+    if (this.isElectronRuntime()) {
+      return '';
     }
 
     const machineId = await this.generateMachineId();

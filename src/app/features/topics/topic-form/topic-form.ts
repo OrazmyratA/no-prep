@@ -3,7 +3,10 @@ import { FormArray, FormBuilder, FormGroup, Validators, ValidatorFn, AbstractCon
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { DbService } from '../../../core/db';
-import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel } from '../../../core/db.model'; // import db and Item
+import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel, normalizeSpeakingExam, SpeakingExam } from '../../../core/db.model'; // import db and Item
+import { SPEAKING_EXAM_LIST, SPEAKING_EXAMS } from '../../../core/speaking-exams';
+import { pointAreasToScene } from '../point-areas';
+import { hasSpeakingParts, itemArea, parseSpeakingHeading, setItemArea, SpArea } from '../../games/speaking-model';
 import { LicenseService } from '../../../core/license';
 import { BookLibraryService } from '../../../core/book-library';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
@@ -55,11 +58,16 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   aiDialogOpen = false;
   // Book pages sent from a game marker's "Create with AI"; used once when the dialog opens.
   aiInitialPages: Blob[] = [];
+  // Pages attached through the ✨ AI dialog, kept around (unlike the AI-fill loop's own local
+  // `pages`) so every item's 📖 "crop from a page" button stays usable afterward — not just
+  // items the AI filled. Only in memory for this edit session; never saved with the topic.
+  aiAttachedPages: Blob[] = [];
   aiProgress: { done: number; total: number } | null = null;
   aiResult: AiFillResult | null = null;
   // The form as it was before the last AI fill, for "Undo AI fill".
-  private aiUndoSnapshot: { name: string; level: string; controls: AbstractControl[] } | null = null;
+  private aiUndoSnapshot: { name: string; level: string; exam: string; controls: AbstractControl[] } | null = null;
   readonly cefrLevels = CEFR_LEVELS;
+  readonly speakingExams = SPEAKING_EXAM_LIST;
   // Bumped on every fill/undo so media still loading for an older fill is dropped.
   private aiRunId = 0;
   // Picture alternatives for AI-filled items, behind the "another picture" button.
@@ -91,6 +99,7 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
       level: [''],
+      exam: [''],
       items: this.fb.array([], this.minOneItemValidator())
     });
   }
@@ -105,6 +114,59 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
 
   setTopicLevel(level: CefrLevel | '') {
     this.topicForm.patchValue({ level });
+  }
+
+  get topicExam(): SpeakingExam | '' {
+    return normalizeSpeakingExam(this.topicForm.value.exam) ?? '';
+  }
+
+  /** Picking an exam also sets its level (Starters and Movers are A1, IELTS B2...). */
+  setTopicExam(exam: SpeakingExam | '') {
+    this.topicForm.patchValue(exam ? { exam, level: SPEAKING_EXAMS[exam].level } : { exam });
+  }
+
+  /** Talk Show point & place: the area editor that is open (docs/talk-show.md §8). */
+  areaEditor: { index: number; scene: Blob; instruction: string; area: SpArea | null } | null = null;
+
+  /**
+   * For an instruction of a "# POINT" part: the part's scene picture (its first item with a picture
+   * and no text), to draw the answer area on. null for any other item.
+   */
+  pointSceneFor(index: number): Blob | null {
+    const text = (i: number) => String(this.items.at(i)?.get('text')?.value ?? '');
+    if (!text(index).trim() || parseSpeakingHeading(text(index))) return null;
+    let heading = index - 1;
+    while (heading >= 0 && !parseSpeakingHeading(text(heading))) heading--;
+    if (heading < 0 || parseSpeakingHeading(text(heading))?.type !== 'POINT') return null;
+    for (let i = heading + 1; i < this.items.length && !parseSpeakingHeading(text(i)); i++) {
+      const image = this.items.at(i).get('image')?.value;
+      if (image instanceof Blob && !text(i).trim()) return image;
+    }
+    return null;
+  }
+
+  hasPointArea(index: number): boolean {
+    return !!itemArea(String(this.items.at(index)?.get('text')?.value ?? ''));
+  }
+
+  openAreaEditor(index: number) {
+    const scene = this.pointSceneFor(index);
+    if (!scene) return;
+    const text = String(this.items.at(index).get('text')?.value ?? '');
+    this.areaEditor = { index, scene, instruction: text.replace(/\{[^{}]*\}\s*$/, '').trim(), area: itemArea(text) };
+  }
+
+  onAreaSaved(area: SpArea | null) {
+    const editor = this.areaEditor;
+    this.areaEditor = null;
+    if (!editor) return;
+    const control = this.items.at(editor.index)?.get('text');
+    if (control) control.setValue(setItemArea(String(control.value ?? ''), area));
+  }
+
+  /** Some item is a Talk Show part heading (`# ASK ...`). */
+  get usesSpeakingParts(): boolean {
+    return hasSpeakingParts(this.items.controls.map(control => String(control.get('text')?.value ?? '')));
   }
 
   /** The item text box is multi-line to read, but games expect one line: pasted line breaks become spaces. */
@@ -148,6 +210,8 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   /** A small label for Reading Detective items: heading, taken-out sentence, or a task (by its tag). */
   itemBadge(index: number): { kind: string; key: string; literal: string } | null {
     const text = String(this.items.at(index)?.get('text')?.value ?? '');
+    const speakingPart = parseSpeakingHeading(text);
+    if (speakingPart) return { kind: 'speaking', key: `talkShowTask_${speakingPart.type}`, literal: '' };
     if (isHeading(text)) return { kind: 'heading', key: 'topicFormBadgeHeading', literal: '' };
     if (isRemovedSentence(text)) return { kind: 'gap', key: 'readingDetectiveStage_gapped', literal: '' };
     if (!isTaskItem(text)) return null;
@@ -222,7 +286,7 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
 async loadTopic(id: number) {
   const topic = await db.topics.get(id);
   if (topic) {
-    this.topicForm.patchValue({ name: topic.name, level: topic.level ?? '' });
+    this.topicForm.patchValue({ name: topic.name, level: topic.level ?? '', exam: topic.exam ?? '' });
     const items = await db.items.where('topicId').equals(id).sortBy('order');
     items.forEach((item: Item) => {
     this.items.push(this.createItemFormGroup(item.id ?? null, item.text, item.image, item.audio, {
@@ -330,6 +394,17 @@ onImageSelected(blob: Blob | null, index: number) {
   }
 }
 
+/**
+ * A crop refines whatever picture was already there — it isn't the teacher rejecting it the
+ * way picking a different image/upload is — so, unlike onImageSelected, this deliberately
+ * keeps aiImageChoices: "another picture"/"generate a picture" should still work afterward.
+ */
+onImageCropped(blob: Blob, index: number) {
+  const item = this.items.at(index);
+  item.patchValue({ image: blob });
+  this.expandedImageItems.add(item);
+}
+
 openImagePanel(item: AbstractControl) {
   this.expandedImageItems.add(item);
   this.pasteReadyImageItems.add(item);
@@ -371,16 +446,27 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   async onAiDraft(result: AiTopicDialogResult) {
     this.closeAiDialog();
-    const { draft, pages } = result;
+    const { pages } = result;
+    // A prompt-only re-run (no photos this time) shouldn't wipe out pages attached earlier —
+    // every item's 📖 "crop from a page" button should keep working on whatever was last attached.
+    if (pages.length) this.aiAttachedPages = pages;
+    // Point & place answer areas come on the page photo: move them onto the scene picture.
+    const draft = { ...result.draft, items: pointAreasToScene(result.draft.items) };
     const runId = ++this.aiRunId;
     this.aiDraftProviderId = result.providerId;
     this.aiImageGenerationAvailable = result.imageGenerationAvailable;
-    this.aiUndoSnapshot = { name: this.topicForm.value.name ?? '', level: this.topicForm.value.level ?? '', controls: [...this.items.controls] };
+    this.aiUndoSnapshot = {
+      name: this.topicForm.value.name ?? '',
+      level: this.topicForm.value.level ?? '',
+      exam: this.topicForm.value.exam ?? '',
+      controls: [...this.items.controls]
+    };
 
     if (!String(this.topicForm.value.name || '').trim() && draft.topicName) {
       this.topicForm.patchValue({ name: draft.topicName });
     }
     if (result.level) this.topicForm.patchValue({ level: result.level });
+    if (result.exam) this.topicForm.patchValue({ exam: result.exam });
     if (result.mode === 'replace') {
       this.items.clear();
     } else {
@@ -444,7 +530,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.aiRunId++;
     this.items.clear();
     this.aiUndoSnapshot.controls.forEach(control => this.items.push(control));
-    this.topicForm.patchValue({ name: this.aiUndoSnapshot.name, level: this.aiUndoSnapshot.level });
+    this.topicForm.patchValue({ name: this.aiUndoSnapshot.name, level: this.aiUndoSnapshot.level, exam: this.aiUndoSnapshot.exam });
     this.aiUndoSnapshot = null;
     this.aiResult = null;
     this.aiProgress = null;
@@ -503,9 +589,12 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         return;
       }
       const voiceLanguage = this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage());
+      // The teacher asked for a recording: read the item itself when the AI gave no words to say
+      // (not a gap sentence, whose blanks cannot be read).
+      const spoken = itemDraft.audioText || (text.includes('_') ? '' : text);
       const [picture, audio] = await Promise.all([
         this.aiMedia.resolveImage(itemDraft, [], this.paragraphCardColor(item)).catch(() => null),
-        this.aiMedia.resolveAudio(itemDraft.audioText, voiceLanguage)
+        this.aiMedia.resolveAudio(spoken, voiceLanguage).catch(() => null)
       ]);
       this.zone.run(() => {
         if (picture?.choice) this.aiImageChoices.set(item, picture.choice);
@@ -514,8 +603,15 @@ isAudioPanelOpen(item: AbstractControl): boolean {
           this.expandedImageItems.add(item);
         }
         if (audio) {
-          item.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: itemDraft.audioText });
+          item.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: spoken });
           this.expandedAudioItems.add(item);
+        } else if (spoken && this.aiMedia.canMakeAudio) {
+          // Text-to-speech is available here but still didn't answer (offline, or the service
+          // refused): say so. On a platform without text-to-speech at all (web, Android),
+          // resolveAudio() always returns null — that's not a failure, so stay quiet; the
+          // audio panel's own "desktop only" hint already explains it, and the picture still
+          // got filled above.
+          showAppNotification(this.langService.translate('aiTopicFillItemNoAudio'), 'error');
         }
         // So the follow-up "another picture"/"generate a picture" buttons work for this item too.
         this.aiDraftProviderId = start.id;
@@ -563,9 +659,15 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.generatingImages.add(item);
     try {
       const blob = await this.aiMedia.generateImage(choice, this.aiDraftProviderId);
+      if (!blob) {
+        showAppNotification(this.langService.translate('aiTopicGenerateImageFailed'), 'error');
+        return;
+      }
       this.zone.run(() => {
-        if (blob && this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob });
+        if (this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob });
       });
+    } catch {
+      showAppNotification(this.langService.translate('aiTopicGenerateImageFailed'), 'error');
     } finally {
       this.zone.run(() => this.generatingImages.delete(item));
     }
@@ -614,6 +716,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     try {
       const name = this.topicForm.value.name;
       const level = this.topicLevel || null;
+      const exam = this.topicExam || null;
       const items = await Promise.all(this.items.controls.map(c => c.value).map(async (item: any) => ({
         id: item.id ?? undefined,
         text: item.text,
@@ -627,11 +730,11 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
       let savedTopicId = this.topicId || 0;
       if (this.isEdit && this.topicId) {
-        await this.dbService.updateTopic(this.topicId, name, level);
+        await this.dbService.updateTopic(this.topicId, name, level, exam);
         await this.dbService.updateItems(this.topicId, items);
         savedTopicId = this.topicId;
       } else {
-        const newId = await this.dbService.createTopic(name, level ?? undefined);
+        const newId = await this.dbService.createTopic(name, level ?? undefined, exam ?? undefined);
         // From here on a retry must update this topic, not create a second copy.
         this.isEdit = true;
         this.topicId = newId;
@@ -695,6 +798,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         id: topic.id,
         name: topic.name,
         ...(topic.level ? { level: topic.level } : {}),
+        ...(topic.exam ? { exam: topic.exam } : {}),
         createdAt: topic.createdAt,
         updatedAt: topic.updatedAt
       },

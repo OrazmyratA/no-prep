@@ -1,4 +1,6 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { LessonPackService } from '../../../core/ai-topic/lesson-pack.service';
+import { PlatformService } from '../../../core/platform';
 import { loadHtml2Canvas } from '../html2canvas-loader';
 import { CREATOR_SHORTCUTS } from '../book-shortcuts';
 import { getGuideDotNumber, getOrderedGuideDots } from '../guide-dot-order';
@@ -62,7 +64,8 @@ import { BookCreatorElementController } from './book-creator-element-controller'
 import { BookCreatorTracingController, TracingSegmentHandle } from './book-creator-tracing-controller';
 import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface';
 import { BookCreatorPageStripComponent } from './book-creator-page-strip';
-import { BookCreatorGameController } from './book-creator-game-controller';
+import { AiPagesResult, BookCreatorGameController } from './book-creator-game-controller';
+import { BookCreatorLessonPlanController } from './book-creator-lesson-plan-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
@@ -348,6 +351,11 @@ Tomorrow I will help my mom.`;
   private readonly tracingController = new BookCreatorTracingController(this);
   private readonly elementController = new BookCreatorElementController(this);
   private readonly gameController = new BookCreatorGameController(this);
+  /** The ✨ AI lesson plan panel's state (docs/ai-lesson-planner.md). */
+  /** Makes the lesson plan's topics (the lesson pack engine). */
+  readonly lessonPack = inject(LessonPackService);
+  readonly platform = inject(PlatformService);
+  readonly lessonPlanner = new BookCreatorLessonPlanController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
   private readonly mediaController = new BookCreatorMediaController(this);
@@ -1110,6 +1118,10 @@ Tomorrow I will help my mom.`;
     void this.guideAudioController.deleteSelectedGuideTrack(element);
   }
 
+  deleteGuideTrack(element: BookElement, track: GuideAudioTrack): void {
+    void this.guideAudioController.deleteGuideTrack(element, track);
+  }
+
   moveGuideDotAudio(element: BookElement, index: number, direction: -1 | 1): void {
     this.guideAudioController.moveGuideDotAudio(element, index, direction);
   }
@@ -1239,6 +1251,12 @@ Tomorrow I will help my mom.`;
     await this.gameController.chooseGameTopicFromList(element);
   }
 
+  /** Re-reads how many pages the chosen AI takes (after the planner switched AI). */
+  async reloadAiPageLimit(): Promise<void> {
+    await this.gameController.loadAiPageLimit();
+    this.cdr.markForCheck();
+  }
+
   get aiPageLimit(): number | null {
     return this.gameController.aiPageLimit;
   }
@@ -1263,6 +1281,10 @@ Tomorrow I will help my mom.`;
   async createTopicWithAi(element: BookElement): Promise<void> {
     await this.gameController.createTopicWithAi(element);
     this.cdr.markForCheck();
+  }
+
+  renderAiPages(text: string, maxPages: number): Promise<AiPagesResult> {
+    return this.gameController.renderAiPages(text, maxPages);
   }
 
   async deleteGameTopic(element: BookElement): Promise<void> {

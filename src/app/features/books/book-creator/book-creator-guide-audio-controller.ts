@@ -83,7 +83,18 @@ export class BookCreatorGuideAudioController {
 
   async deleteSelectedGuideTrack(element: BookElement): Promise<void> {
     const tracks = this.creator.getGuideDotTracks(element);
-    const index = tracks.findIndex((track: GuideAudioTrack) => track.id === this.creator.selectedGuideTrackId);
+    const track = tracks.find((item: GuideAudioTrack) => item.id === this.creator.selectedGuideTrackId);
+    if (!track) return;
+    await this.deleteGuideTrack(element, track);
+  }
+
+  // Also reachable per-row (not just for whichever track happens to be selected) - recording
+  // over a guide dot adds a new segment rather than replacing the old one (each segment can carry
+  // its own timed pins), so without this a leftover old segment keeps playing in the reader
+  // alongside the new one unless the teacher notices and removes it.
+  async deleteGuideTrack(element: BookElement, track: GuideAudioTrack): Promise<void> {
+    const tracks = this.creator.getGuideDotTracks(element);
+    const index = tracks.findIndex((item: GuideAudioTrack) => item.id === track.id);
     if (index < 0) return;
     const confirmed = await this.creator.confirmationService.confirm(
       this.creator.languageService.translate('creatorConfirmDeleteAudioTrack')
@@ -96,9 +107,11 @@ export class BookCreatorGuideAudioController {
     if (removed.id === this.creator.previewGuideTrackId) {
       this.creator.stopGuidePreview();
     }
-    const nextTrack = tracks[Math.min(index, tracks.length - 1)] ?? null;
-    this.creator.selectedGuideTrackId = nextTrack?.id ?? null;
-    this.creator.selectedGuidePinId = null;
+    if (removed.id === this.creator.selectedGuideTrackId) {
+      const nextTrack = tracks[Math.min(index, tracks.length - 1)] ?? null;
+      this.creator.selectedGuideTrackId = nextTrack?.id ?? null;
+      this.creator.selectedGuidePinId = null;
+    }
   }
 
   moveGuideDotAudio(element: BookElement, index: number, direction: -1 | 1): void {

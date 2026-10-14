@@ -203,6 +203,8 @@
     </label>
   </div>
 
+  <app-lesson-plan-panel *ngIf="!creator.selectedElement && creator.aiPageLimit !== null && creator.book" [creator]="creator"></app-lesson-plan-panel>
+
   <div class="element-inspector" *ngIf="creator.selectedElement as element">
     <h2>{{ creator.getSelectedElementTypeLabel() }}</h2>
     <div class="element-action-grid">
@@ -610,7 +612,7 @@
       </div>
     </div>
     <div class="image-settings-panel" *ngIf="element.type === 'image'">
-      <app-image-uploader [autoPasteTarget]="true" (imageSelected)="creator.onBookImageSelected($event, element)"></app-image-uploader>
+      <app-image-uploader [autoPasteTarget]="true" (imageSelected)="creator.onBookImageSelected($event, element)" (imageCropped)="creator.onBookImageSelected($event, element)"></app-image-uploader>
     </div>
     <div class="image-settings-panel answer-key-settings" *ngIf="element.type === 'answerKey'">
       <div class="answer-key-gallery" *ngIf="creator.getAnswerKeyImages(element).length">
@@ -632,7 +634,7 @@
           <button type="button" class="answer-key-thumb-remove" (click)="$event.stopPropagation(); creator.removeAnswerKeyImage(element, i)" title="Remove image" aria-label="Remove image">&times;</button>
         </div>
       </div>
-      <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" [autoPasteTarget]="true" (imageSelected)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
+      <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" [autoPasteTarget]="true" (imageSelected)="creator.addAnswerKeyImage($event, element)" (imageCropped)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
 
       <div class="answer-key-audio-section" *ngIf="creator.getAnswerKeyImages(element).length as imageCount">
         <div class="answer-key-audio-label">
@@ -740,7 +742,7 @@
         <span class="recording-saving-hint" *ngIf="creator.savingRecording">{{ 'save' | translate }}…</span>
       </div>
       <div class="guide-speech-panel" *ngIf="creator.guideSpeechPanelOpen">
-        <p class="guide-speech-note" *ngIf="!creator.audioVoice.canSynthesize">{{ 'textToSpeechDesktopOnly' | translate }}</p>
+        <p class="guide-speech-note" *ngIf="!creator.audioVoice.canSynthesize">{{ 'textToSpeechLinkAi' | translate }}</p>
         <ng-container *ngIf="creator.audioVoice.canSynthesize">
           <div class="guide-speech-row">
             <input
@@ -782,6 +784,15 @@
           (click)="creator.selectGuideTrack(element, track)"
           (keydown.enter)="creator.selectGuideTrack(element, track)"
           (keydown.space)="$event.preventDefault(); creator.selectGuideTrack(element, track)">
+          <div class="audio-row-head" *ngIf="creator.getGuideDotTracks(element).length > 1">
+            <span class="audio-row-label">Recording {{ i + 1 }} of {{ creator.getGuideDotTracks(element).length }}</span>
+            <button
+              type="button"
+              class="tiny-btn danger"
+              (click)="$event.stopPropagation(); creator.deleteGuideTrack(element, track)"
+              title="Delete this recording"
+              aria-label="Delete this recording">✕</button>
+          </div>
           <div
             class="guide-track-timeline"
             (pointerdown)="creator.startGuideTrackSeekDrag($event, element, track)"
@@ -860,7 +871,8 @@
         </div>
         <app-image-uploader
           [contextKey]="selectedPin.id"
-          (imageSelected)="creator.onGuidePinImageSelected($event, element)">
+          (imageSelected)="creator.onGuidePinImageSelected($event, element)"
+          (imageCropped)="creator.onGuidePinImageSelected($event, element)">
         </app-image-uploader>
       </div>
     </div>

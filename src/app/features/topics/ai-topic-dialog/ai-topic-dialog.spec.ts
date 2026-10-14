@@ -6,6 +6,7 @@ import { AiTopicService } from '../../../core/ai-topic/ai-topic.service';
 import { LanguageService } from '../../../core/language';
 import { BodyPortalDirective } from '../../../shared/body-portal.directive';
 import { LessonPackService } from '../../../core/ai-topic/lesson-pack.service';
+import { ConfirmationService } from '../../../shared/confirmation';
 
 describe('AiTopicDialogComponent prompt chips', () => {
   let component: AiTopicDialogComponent;
@@ -14,8 +15,8 @@ describe('AiTopicDialogComponent prompt chips', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       declarations: [AiTopicDialogComponent],
-      // Not the desktop app: the dialog only shows its "desktop only" note, which is enough here.
-      providers: [{ provide: AiTopicService, useValue: { isAvailable: false } }]
+      // These tests only exercise chip/prompt logic; ngOnInit just needs a provider list to load.
+      providers: [{ provide: AiTopicService, useValue: { getStartProvider: async () => ({ providers: [], start: undefined }) } }]
     }).compileComponents();
 
     fixture = TestBed.createComponent(AiTopicDialogComponent);
@@ -88,7 +89,7 @@ describe('AiTopicDialogComponent closing', () => {
   it('leaves nothing behind in the page body once closed', async () => {
     await TestBed.configureTestingModule({
       declarations: [AiTopicDialogComponent, BodyPortalDirective],
-      providers: [{ provide: AiTopicService, useValue: { isAvailable: false } }]
+      providers: [{ provide: AiTopicService, useValue: { getStartProvider: async () => ({ providers: [], start: undefined }) } }]
     }).compileComponents();
 
     const fixture = TestBed.createComponent(AiTopicDialogComponent);
@@ -140,6 +141,21 @@ describe('AiTopicDialogComponent lesson pack', () => {
     expect(component.packMode).toBe(false);
   });
 
+  it('keeps the pack boxes on screen, greyed out, when a pack cannot be made', async () => {
+    await open(false);
+    const fixture = TestBed.createComponent(AiTopicDialogComponent);
+    fixture.componentInstance.packAvailable = false;
+    await fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    const section = document.body.querySelector('.ai-pack') as HTMLElement;
+    expect(section.classList).toContain('ai-pack-off');
+    const boxes = [...section.querySelectorAll<HTMLInputElement>('.ai-pack-box input')];
+    expect(boxes.length).toBe(4);
+    expect(boxes.every(box => box.disabled)).toBe(true);
+    expect(section.textContent).toContain('aiPackUnavailable');
+    fixture.destroy();
+  });
+
   it('a chip unticks the pack, ticking a box again drops the chip prompt', async () => {
     await open(true);
     component.prompt = 'unit 5';
@@ -174,5 +190,159 @@ describe('AiTopicDialogComponent lesson pack', () => {
     component.prompt = 'my own words about the weather';
     await component.generate();
     expect(generateDraft.mock.calls[1][1].recipe).toBeNull();
+  });
+
+  it('sends the side picked on a two-sided chip, and shows the switch only there', async () => {
+    await open(false);
+    const gapFill = component.promptChips.find(c => c.id === 'gapFill')!;
+    component.applyChip(gapFill);
+    expect(component.activeChip).toBe(gapFill);
+    expect(component.chipVariant(gapFill)).toBe('findWord');
+    component.setChipVariant(gapFill, 'findCard');
+    await component.generate();
+    expect(generateDraft.mock.calls[0][1].recipeVariant).toBe('findCard');
+
+    component.applyChip(component.promptChips.find(c => c.id === 'translation')!);
+    expect(component.activeChip?.variants).toBeUndefined();
+    await component.generate();
+    expect(generateDraft.mock.calls[1][1].recipeVariant).toBeNull();
+  });
+});
+
+describe('AiTopicDialogComponent page photos', () => {
+  it('adds a copied image on Ctrl+V anywhere while the dialog is open', async () => {
+    await TestBed.configureTestingModule({
+      declarations: [AiTopicDialogComponent],
+      providers: [{
+        provide: AiTopicService,
+        useValue: {
+          isAvailable: true,
+          getProviders: async () => [{ id: 'gemini', label: 'Gemini', configured: true, keyPageUrl: '', maxImages: 3 }],
+          getSelectedProvider: () => 'gemini',
+          setSelectedProvider: () => {},
+          getStartProvider: AiTopicService.prototype.getStartProvider
+        }
+      }]
+    }).compileComponents();
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:page');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const fixture = TestBed.createComponent(AiTopicDialogComponent);
+    const dialog = fixture.componentInstance;
+    await dialog.ngOnInit();
+
+    const paste = (file: File) => {
+      const event = new Event('paste', { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'clipboardData', { value: { files: [file], items: [] } });
+      document.body.dispatchEvent(event);
+      return event;
+    };
+    const event = paste(new File(['x'], 'page.png', { type: 'image/png' }));
+    paste(new File(['x'], 'notes.txt', { type: 'text/plain' }));
+
+    expect(dialog.pages.length).toBe(1);
+    expect(event.defaultPrevented).toBe(true);
+
+    dialog.ngOnDestroy();
+    paste(new File(['x'], 'later.png', { type: 'image/png' }));
+    expect(dialog.pages.length).toBe(1);
+  });
+});
+
+describe('AiTopicDialogComponent provider picker', () => {
+  it('shows a pill per provider immediately, before the IPC status call resolves', () => {
+    const fixture = TestBed.configureTestingModule({
+      declarations: [AiTopicDialogComponent],
+      providers: [{ provide: AiTopicService, useValue: { isAvailable: true, getStartProvider: () => new Promise(() => {}) } }]
+    }).createComponent(AiTopicDialogComponent);
+    fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    const pills = fixture.nativeElement.querySelectorAll('.ai-provider');
+    expect(pills.length).toBe(4);
+  });
+
+  it('renders each provider logo (or the NoPrep AI sparkle) and its short name', async () => {
+    await TestBed.configureTestingModule({
+      declarations: [AiTopicDialogComponent],
+      providers: [{
+        provide: AiTopicService,
+        useValue: {
+          isAvailable: true,
+          getProviders: async () => [
+            { id: 'builtin', label: 'NoPrep AI', configured: true, keyPageUrl: '', maxImages: 3 },
+            { id: 'gemini', label: 'Google Gemini', configured: false, keyPageUrl: '', maxImages: 3 },
+            { id: 'openai', label: 'OpenAI (ChatGPT)', configured: false, keyPageUrl: '', maxImages: 3 },
+            { id: 'anthropic', label: 'Anthropic Claude', configured: false, keyPageUrl: '', maxImages: 3 },
+            { id: 'groq', label: 'Groq', configured: false, keyPageUrl: '', maxImages: 3 }
+          ],
+          getSelectedProvider: () => null,
+          setSelectedProvider: () => {},
+          getStartProvider: AiTopicService.prototype.getStartProvider
+        }
+      }]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AiTopicDialogComponent);
+    await fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    const pills = Array.from(fixture.nativeElement.querySelectorAll('.ai-provider')) as HTMLElement[];
+    expect(pills.length).toBe(5);
+    expect(pills.map(p => p.querySelector('.ai-provider-name')?.textContent))
+      .toEqual(['NoPrep AI', 'Gemini', 'ChatGPT', 'Claude', 'Groq']);
+    expect(pills[0].querySelector('.ai-provider-sparkle')).not.toBeNull();
+    for (const pill of pills.slice(1)) {
+      expect(pill.querySelector('.ai-provider-logo svg')).not.toBeNull();
+    }
+  });
+});
+
+describe('AiTopicDialogComponent remove key', () => {
+  it('asks for confirmation and keeps the key when declined', async () => {
+    const clearApiKey = vi.fn();
+    await TestBed.configureTestingModule({
+      declarations: [AiTopicDialogComponent],
+      providers: [
+        {
+          provide: AiTopicService,
+          useValue: {
+            isAvailable: true,
+            getStartProvider: async () => ({ providers: [{ id: 'gemini', label: 'Google Gemini', configured: true, keyPageUrl: '', maxImages: 6 }], start: { id: 'gemini', configured: true } }),
+            clearApiKey
+          }
+        },
+        { provide: ConfirmationService, useValue: { confirm: async () => false } }
+      ]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AiTopicDialogComponent);
+    const dialog = fixture.componentInstance;
+    await dialog.ngOnInit();
+
+    await dialog.removeKey();
+
+    expect(clearApiKey).not.toHaveBeenCalled();
+  });
+
+  it('clears the key once confirmed', async () => {
+    const clearApiKey = vi.fn(async (_provider: string) => {});
+    await TestBed.configureTestingModule({
+      declarations: [AiTopicDialogComponent],
+      providers: [
+        {
+          provide: AiTopicService,
+          useValue: {
+            isAvailable: true,
+            getStartProvider: async () => ({ providers: [{ id: 'gemini', label: 'Google Gemini', configured: true, keyPageUrl: '', maxImages: 6 }], start: { id: 'gemini', configured: true } }),
+            getProviders: async () => [],
+            clearApiKey
+          }
+        },
+        { provide: ConfirmationService, useValue: { confirm: async () => true } }
+      ]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AiTopicDialogComponent);
+    const dialog = fixture.componentInstance;
+    await dialog.ngOnInit();
+
+    await dialog.removeKey();
+
+    expect(clearApiKey).toHaveBeenCalledWith('gemini');
   });
 });

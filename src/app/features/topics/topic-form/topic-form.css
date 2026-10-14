@@ -218,6 +218,27 @@
 }
 
 .item-task-badge[data-kind='heading'] { background: #fef3c7; color: #92400e; }
+.item-task-badge[data-kind='speaking'] { background: #fce7f3; color: #9d174d; }
+
+/* Talk Show point & place: draw the answer area on the scene picture. */
+.item-area-btn {
+  margin: 0 0 4px 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px dashed #a5b4fc;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.item-area-set {
+  border-style: solid;
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
 .item-task-badge[data-kind='gap'] { background: #dcfce7; color: #166534; }
 .item-task-badge[data-kind='unknown'] { background: #fee2e2; color: #b91c1c; }
 

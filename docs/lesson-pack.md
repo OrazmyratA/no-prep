@@ -153,3 +153,31 @@ Draft instructions (to refine while building):
 | Pack also from the Topics list (not only via New topic → ✨ AI)? | Later; the form launch is enough for v1 |
 | Folders for a lesson's topics | No, name prefix only |
 | AI pre-ticks the boxes from the pages | No |
+
+## 10. More chips and the two-sided switch (2026-10-07)
+
+14 chips now, grouped in the dialog under the lesson pack's headings (`AiTopicRecipe.group`):
+
+| Group | Chips |
+|---|---|
+| Vocabulary | Words from pages, Picture guessing, Opposites, **Definitions**, **Translation**, **Synonyms**, **Verb forms**, **Collocations**, **Listen and spell** |
+| Sentences | Gap-fill, Q&A, Sentences to unjumble |
+| Reading & writing | Reading text, Writing model |
+
+New chips (one fixed shape each - it already serves spelling and matching games):
+
+| Chip | text | card (image) | audio |
+|---|---|---|---|
+| Definitions | word | definition (never contains the word) | word |
+| Translation | word | translation into the language named in the request, else the teacher's language | word |
+| Synonyms | word | one synonym | word |
+| Verb forms | past simple (or the form the teacher asks for) | base form | the text |
+| Collocations | the missing partner word | rest of the collocation with `___` | whole collocation |
+| Listen and spell | word | none | word (always) |
+
+**Two-sided switch** ("Students… see the card, find the word / see the text, find its card"), only on
+**Gap-fill** (default *find the word*: text = missing word, card = sentence with `____`) and
+**Q&A** (default *find its card*: text = question, card = answer, as before). The choice goes to the
+AI as `AiTopicRequest.recipeVariant`; `recipeInstructions()` adds that side's rules. Gap-fill and
+Q&A chip prompts were reworded so they no longer say which side is the picture. Prompt version 6.
+The lesson pack boxes use their chips' defaults (none of the four box chips has a switch).

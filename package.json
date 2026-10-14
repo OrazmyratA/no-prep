@@ -1,6 +1,6 @@
 {
   "name": "no-prep",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "main": "electron/index.js",
   "author": "Orazmyrat Ashyrmyradov Artykmyradovich",
   "description": "No-Prep – classroom game platform",
@@ -114,7 +114,7 @@
     "dexie": "^4.3.0",
     "extract-zip": "^2.0.1",
     "html2canvas": "^1.4.1",
-    "msedge-tts": "^2.0.7",
+    "msedge-tts": "2.1.0",
     "node-machine-id": "^1.1.12",
     "pdfjs-dist": "^6.0.227",
     "rxjs": "~7.8.0",

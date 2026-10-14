@@ -46,6 +46,13 @@
             [class.bg-gray-100]="activeTab !== 'text'">
       <span aria-hidden="true">🔤</span>
     </button>
+    <button *ngIf="preview || pageSources.length > 0" type="button"
+            (click)="openCrop($event)"
+            [attr.aria-label]="'adjustCrop' | translate"
+            [attr.title]="'adjustCrop' | translate"
+            class="flex-1 flex items-center justify-center py-2 text-sm font-medium text-gray-600 bg-gray-100 border-l border-gray-300 hover:text-blue-600">
+      <span aria-hidden="true">✂️</span>
+    </button>
   </div>
 
   <div *ngIf="activeTab === 'upload'" class="p-4">
@@ -226,3 +233,13 @@
     </div>
   </div>
 </div>
+
+<app-image-crop-dialog *ngIf="cropDialogOpen"
+  [images]="cropImages"
+  [labels]="cropLabels"
+  [startIndex]="cropStartIndex"
+  [maxSizeMB]="maxSizeMB"
+  [maxWidthOrHeight]="maxWidthOrHeight"
+  (cropped)="onCropped($event)"
+  (cancelled)="onCropCancelled()">
+</app-image-crop-dialog>

@@ -9,6 +9,11 @@ export interface AiPagesError {
   params: Record<string, string | number>;
 }
 
+/** Book pages rendered for the AI, or why they could not be. */
+export type AiPagesResult =
+  | { ok: true; pages: number[]; images: Blob[] }
+  | { ok: false; key: string; params: Record<string, string | number> };
+
 interface GameElementLocation {
   element: BookElement;
   pageSource: 'main' | 'workbook';
@@ -27,7 +32,11 @@ export class BookCreatorGameController {
   private readonly aiPagesText = new Map<string, string>();
 
   async loadAiPageLimit(): Promise<void> {
-    if (!this.creator.aiTopic.isAvailable) return;
+    // The book creator's AI ("Create with AI" here, and the AI lesson planner — see
+    // renderAiPages below) stays desktop-only even though AiTopicService.isAvailable now also
+    // covers the web "bring your own key" path (see ai-topic-web-bridge.ts) — that path isn't
+    // ready for the book creator yet.
+    if (!this.creator.aiTopic.isAvailable || !this.creator.platform.isElectron()) return;
     const { start } = await this.creator.aiTopic.getStartProvider();
     this.aiPageLimit = start?.maxImages ?? 3;
   }
@@ -45,14 +54,38 @@ export class BookCreatorGameController {
   async createTopicWithAi(element: BookElement): Promise<void> {
     if (!this.creator.book || element.type !== 'game' || this.preparingAiPages || this.aiPageLimit === null) return;
     this.aiPagesError = null;
+    this.preparingAiPages = true;
+    const result = await this.renderAiPages(this.getAiPagesText(element), this.aiPageLimit).finally(() => {
+      this.preparingAiPages = false;
+    });
+    if (!result.ok) {
+      this.aiPagesError = { elementId: element.id, key: result.key, params: result.params };
+      return;
+    }
+    const images = result.images;
+
+    // Same doors as the Create / Edit topic buttons: a linked topic gets the new items added
+    // (the dialog offers add or replace), otherwise a new topic is made for this marker.
+    this.creator.aiPageHandoff.give(images);
+    const topicId = Number(element.data['topicId']);
+    const navigated = Number.isFinite(topicId) && topicId > 0
+      ? await this.editGameTopic(element)
+      : await this.createTopicForGame(element);
+    if (!navigated) this.creator.aiPageHandoff.take();
+  }
+
+  /**
+   * Renders the typed pages ("12-13") of the open page list as photos for the AI. Also used by
+   * the AI lesson planner. Only PDF pages can be read.
+   */
+  async renderAiPages(text: string, maxPages: number): Promise<AiPagesResult> {
     const pages: BookPage[] = this.creator.activePages;
-    const parsed = parsePageList(this.getAiPagesText(element), pages.length, this.aiPageLimit);
+    const parsed = parsePageList(text, pages.length, maxPages);
     if (!parsed.ok) {
       const key = parsed.error === 'invalid' ? 'creatorAiPagesInvalid'
         : parsed.error === 'outOfRange' ? 'creatorAiPagesOutOfRange'
         : 'creatorAiPagesTooMany';
-      this.aiPagesError = { elementId: element.id, key, params: { count: pages.length, max: this.aiPageLimit } };
-      return;
+      return { ok: false, key, params: { count: pages.length, max: maxPages } };
     }
 
     const workbook = this.creator.activePageSource === 'workbook' ? this.creator.activeWorkbook : null;
@@ -62,12 +95,8 @@ export class BookCreatorGameController {
       return { number, page, url };
     });
     const blank = sources.find(source => !source.url);
-    if (blank) {
-      this.aiPagesError = { elementId: element.id, key: 'creatorAiPagesNotPdf', params: { page: blank.number } };
-      return;
-    }
+    if (blank) return { ok: false, key: 'creatorAiPagesNotPdf', params: { page: blank.number } };
 
-    this.preparingAiPages = true;
     const images: Blob[] = [];
     try {
       // One at a time: a full-size page canvas takes several MB.
@@ -78,20 +107,9 @@ export class BookCreatorGameController {
       }
     } catch (error) {
       console.error('Could not render book pages for AI', error);
-      this.aiPagesError = { elementId: element.id, key: 'creatorAiPagesFailed', params: {} };
-      return;
-    } finally {
-      this.preparingAiPages = false;
+      return { ok: false, key: 'creatorAiPagesFailed', params: {} };
     }
-
-    // Same doors as the Create / Edit topic buttons: a linked topic gets the new items added
-    // (the dialog offers add or replace), otherwise a new topic is made for this marker.
-    this.creator.aiPageHandoff.give(images);
-    const topicId = Number(element.data['topicId']);
-    const navigated = Number.isFinite(topicId) && topicId > 0
-      ? await this.editGameTopic(element)
-      : await this.createTopicForGame(element);
-    if (!navigated) this.creator.aiPageHandoff.take();
+    return { ok: true, pages: parsed.pages, images };
   }
 
   addGameMarker(): void {

@@ -23,6 +23,12 @@ export class LicenseComponent {
 
   async requestLicense() {
     const filePath = await this.licenseService.requestLicense();
+    if (!filePath) {
+      showAppNotification(this.langService.translate('license.request.failed', {
+        contact: '+99361615699 or tmoa10099@gmail.com'
+      }), 'error');
+      return;
+    }
     const message = this.langService.translate('license.request.success', {
       path: filePath,
       contact: '+99361615699 or tmoa10099@gmail.com'

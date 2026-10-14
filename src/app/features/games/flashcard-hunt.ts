@@ -226,6 +226,18 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     return Array.from({ length: this.livesPerTeam }, (_, i) => i);
   }
 
+  // Same rule as Spin Wheel: the board only gets cards that can show the picked board
+  // type. In quiz mode (not OK/Oops) with a different options type they also need that
+  // options content - otherwise a caught card without it fell back to OK/Oops in the quiz.
+  // If too few items qualify, keep the wider pool rather than an empty board.
+  private playableItems(): Item[] {
+    const withQuestion = this.items.filter(item => itemHasAitContent(item, this.aitQuestionType));
+    const base = withQuestion.length ? withQuestion : [...this.items];
+    if (this.forceSimpleMode || this.aitOptionsType === this.aitQuestionType) return base;
+    const withOptions = base.filter(item => itemHasAitContent(item, this.aitOptionsType));
+    return withOptions.length >= 2 ? withOptions : base;
+  }
+
   get cardsRemaining(): number {
     return this.deck.length + this.boardCards.filter(c => c.item && (c.state === 'idle' || c.state === 'entering')).length;
   }
@@ -324,8 +336,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     this.teams = this.createTeams();
     this.boardCards = [];
 
-    const playable = this.items.filter(item => itemHasAitContent(item, this.aitQuestionType));
-    this.deck = this.shuffle(playable.length ? playable : [...this.items]);
+    this.deck = this.shuffle(this.playableItems());
 
     this.placeBombs();
     const initial = Math.min(MAX_BOARD_CARDS, this.deck.length);

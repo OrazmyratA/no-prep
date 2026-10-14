@@ -1,0 +1,135 @@
+.pa-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.pa-dialog {
+  width: min(760px, 100%);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1f2937;
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+}
+
+.pa-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pa-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #4338ca;
+}
+
+.pa-close {
+  border: 0;
+  background: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.pa-instruction {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.pa-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.pa-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+/* Shrink-wraps the picture, so the box is a fraction of the picture itself. */
+.pa-scene {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.pa-scene img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  -webkit-user-drag: none;
+}
+
+.pa-box {
+  position: absolute;
+  border: 3px dashed #16a34a;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.18);
+  pointer-events: none;
+}
+
+.pa-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pa-spacer {
+  flex: 1;
+}
+
+.pa-link {
+  border: 0;
+  background: none;
+  color: #b91c1c;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pa-link:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pa-secondary,
+.pa-primary {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pa-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.pa-primary {
+  border: 0;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+}

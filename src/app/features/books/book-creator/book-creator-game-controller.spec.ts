@@ -28,6 +28,7 @@ describe('BookCreatorGameController: Create with AI from pages', () => {
       confirmSaveBeforeLeaving: async () => true,
       router: { navigate: async (commands: unknown[]) => { navigations.push(commands); return true; } },
       aiTopic: { isAvailable: true, getStartProvider: async () => ({ providers: [], start: { maxImages: 2 } }) },
+      platform: { isElectron: () => true },
       aiPageHandoff: {
         give: (pages: Blob[]) => { handedOver = pages; },
         take: () => { const pages = handedOver ?? []; handedOver = null; return pages; }
@@ -80,6 +81,15 @@ describe('BookCreatorGameController: Create with AI from pages', () => {
 
   it('is hidden when AI is not available on this device', async () => {
     creator.aiTopic.isAvailable = false;
+    await controller.loadAiPageLimit();
+    expect(controller.aiPageLimit).toBeNull();
+  });
+
+  // AiTopicService.isAvailable now also covers the web "bring your own key" path, but the book
+  // creator's AI (this, and the AI lesson planner) stays desktop-only until that path is ready
+  // here too — see ai-topic-web-bridge.ts.
+  it('stays hidden on the web even though AiTopicService.isAvailable is true there', async () => {
+    creator.platform.isElectron = () => false;
     await controller.loadAiPageLimit();
     expect(controller.aiPageLimit).toBeNull();
   });

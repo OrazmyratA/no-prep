@@ -1,0 +1,529 @@
+// The web build's stand-in for electron/main/ai-topic-service.js + ai-topic-ipc.js: same 5
+// methods (window.electronAPI's aiTopic* calls), same request/response shapes, so
+// AiTopicService.invoke() doesn't need to know which one it's talking to. "NoPrep AI" is
+// deliberately left out here — its only gate is a desktop license file; the web build has no
+// license-checking path to replace it with yet, so that option stays Electron-only.
+//
+// Keys are saved by the teacher's own browser in localStorage, in plain text — there's no OS
+// keychain to encrypt into from a web page, so pretending otherwise would be dishonest. The
+// dialog tells the teacher this (see aiTopicWebKeyNotice).
+//
+// @anthropic-ai/sdk is loaded lazily (only inside generateWithAnthropic) rather than imported
+// here at the top, so that merely importing this module — which AiTopicService always does —
+// doesn't drag that SDK into every bundle/test that transitively imports AiTopicService (nearly
+// the whole app). Same reasoning as audio-voice.ts's lazy @soundtouchjs/audio-worklet import.
+import type AnthropicSdk from '@anthropic-ai/sdk';
+
+type AiTopicWebProviderId = 'openai' | 'gemini' | 'anthropic' | 'groq';
+
+const PROVIDERS: Record<AiTopicWebProviderId, { model: string; maxImages: number }> = {
+  openai: { model: 'gpt-6-sol', maxImages: 12 },
+  gemini: { model: 'gemini-3.8-flash', maxImages: 12 },
+  anthropic: { model: 'claude-opus-5', maxImages: 12 },
+  // Groq's only vision model; it accepts at most 3 images per request.
+  groq: { model: 'qwen/qwen3.8-27b', maxImages: 3 }
+};
+
+// Only these two providers can generate images; see ai-media-resolver.ts.
+const IMAGE_PROVIDERS: Partial<Record<AiTopicWebProviderId, { model: string }>> = {
+  openai: { model: 'gpt-image-1' },
+  gemini: { model: 'gemini-3-flash-image' }
+};
+
+const REQUEST_TIMEOUT_MS = 180000;
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+const RETRY_DELAYS_MS = [2000, 6000];
+const MAX_RETRY_WAIT_MS = 60000;
+const KEYS_STORAGE_KEY = 'aiTopicWebKeys';
+
+interface AiImage {
+  mimeType: string;
+  base64: string;
+}
+
+interface NormalizedRequest {
+  provider: AiTopicWebProviderId;
+  apiKey: string;
+  model: string;
+  systemPrompt: string;
+  userText: string;
+  schema: unknown;
+  images: AiImage[];
+}
+
+type IpcResponse<T> = { ok: true; result: T } | { ok: false; error: string; message: string };
+
+function operationResult<T>(result: T): IpcResponse<T> {
+  return { ok: true, result };
+}
+
+function operationError(error: string, message: string): IpcResponse<never> {
+  return { ok: false, error, message };
+}
+
+// ---- key storage ----
+
+function readKeys(): Record<string, string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(KEYS_STORAGE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeKeys(keys: Record<string, string>): void {
+  try {
+    localStorage.setItem(KEYS_STORAGE_KEY, JSON.stringify(keys));
+  } catch {
+    // Storage unavailable (private mode, quota) — the key just won't persist.
+  }
+}
+
+/** Shared with audio-voice-web-bridge.ts: the teacher's own linked key for this provider, if any. */
+export function getWebApiKey(provider: string): string {
+  return String(readKeys()[provider] || '');
+}
+
+function isConfigured(provider: AiTopicWebProviderId): boolean {
+  return !!getWebApiKey(provider).trim();
+}
+
+function getStatus() {
+  return {
+    providers: Object.entries(PROVIDERS).map(([id, info]) => ({
+      id,
+      configured: isConfigured(id as AiTopicWebProviderId),
+      maxImages: info.maxImages,
+      supportsImageGeneration: !!IMAGE_PROVIDERS[id as AiTopicWebProviderId]
+    }))
+  };
+}
+
+function normalizeInput(input: any): NormalizedRequest {
+  const provider = String(input?.provider || '') as AiTopicWebProviderId;
+  if (!PROVIDERS[provider]) {
+    throw new Error('Unknown AI provider.');
+  }
+  const apiKey = String(getWebApiKey(provider) || '').trim();
+  if (!apiKey) {
+    throw new Error('This AI is not linked yet. Paste your API key first.');
+  }
+  const images: AiImage[] = (Array.isArray(input?.images) ? input.images : [])
+    .slice(0, PROVIDERS[provider].maxImages)
+    .map((image: any) => ({
+      mimeType: String(image?.mimeType || 'image/jpeg'),
+      base64: String(image?.base64 || '')
+    }))
+    .filter((image: AiImage) => image.base64);
+  return {
+    provider,
+    apiKey,
+    model: PROVIDERS[provider].model,
+    systemPrompt: String(input?.systemPrompt || ''),
+    userText: String(input?.userText || ''),
+    schema: input?.schema && typeof input.schema === 'object' ? input.schema : null,
+    images
+  };
+}
+
+// ---- shared fetch + error handling (ported from electron/main/ai-topic-service.js) ----
+
+async function postJson(url: string, headers: Record<string, string>, body: unknown): Promise<any> {
+  let response: Response;
+  for (let attempt = 0; ; attempt++) {
+    // AbortSignal.timeout() would be simpler, but its browser support isn't guaranteed on the
+    // older iOS Safari versions this web path specifically needs to reach.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        throw new Error('The AI took too long to answer. Please try again.');
+      }
+      throw new Error('Could not reach the AI service. Check your internet connection.');
+    } finally {
+      clearTimeout(timer);
+    }
+    if (response.ok) return response.json();
+    const errorText = await response.text().catch(() => '');
+    const delay = retryDelay(response, errorText, attempt);
+    if (delay === null) {
+      throw new Error(httpErrorMessage(response.status, errorText));
+    }
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+
+/** How long to wait before trying a busy AI again, or null to give up now. */
+function retryDelay(response: Response, errorText: string, attempt: number): number | null {
+  if (!RETRY_STATUSES.has(response.status) || attempt >= RETRY_DELAYS_MS.length) return null;
+  if (isDailyLimit(errorText) || isTooLarge(errorText)) return null;
+  const asked = askedWaitMs(response, errorText);
+  if (asked !== null) return asked <= MAX_RETRY_WAIT_MS ? Math.max(asked + 500, RETRY_DELAYS_MS[attempt]) : null;
+  return RETRY_DELAYS_MS[attempt];
+}
+
+/** The wait the AI asks for: Retry-After, Groq/OpenAI "try again in 12.5s", Gemini "retryDelay": "37s". */
+function askedWaitMs(response: Response, errorText: string): number | null {
+  const header = Number(response.headers?.get?.('retry-after'));
+  if (Number.isFinite(header) && header > 0) return header * 1000;
+  const text = String(errorText || '');
+  const minutes = text.match(/try again in (\d+)m([\d.]+)s/i);
+  if (minutes) return (Number(minutes[1]) * 60 + Number(minutes[2])) * 1000;
+  const seconds = text.match(/try again in ([\d.]+)\s*s/i) || text.match(/"retryDelay"\s*:\s*"([\d.]+)s"/);
+  if (seconds) return Number(seconds[1]) * 1000;
+  const ms = text.match(/try again in ([\d.]+)\s*ms/i);
+  return ms ? Number(ms[1]) : null;
+}
+
+/** One request is over a per-minute limit on its own (Groq's free plan): waiting cannot help. */
+function isTooLarge(errorText: string): boolean {
+  return /Request too large|reduce max_tokens/i.test(String(errorText || ''));
+}
+
+function isDailyLimit(errorText: string): boolean {
+  return /per ?day|PerDay|daily/i.test(String(errorText || ''));
+}
+
+/** The AI's own short reason from its error JSON (or text), for the line under our message. */
+function providerReason(errorText: string): string {
+  const text = String(errorText || '');
+  let message = '';
+  try {
+    const data = JSON.parse(text);
+    message = String(data?.error?.message || data?.message || '');
+  } catch {
+    message = text;
+  }
+  return message.replace(/\s+/g, ' ').trim().slice(0, 300);
+}
+
+function httpErrorMessage(status: number, errorText = ''): string {
+  if (status === 401 || status === 403) return 'The AI rejected your API key. Check that it is correct and active.';
+  const reason = providerReason(errorText);
+  const because = reason ? ` (${reason})` : '';
+  if (status === 413 || (status === 429 && isTooLarge(errorText))) {
+    return `This request is too big for this AI's plan. Send fewer pages, or pick another AI.${because}`;
+  }
+  if (status === 429) {
+    if (isDailyLimit(errorText)) {
+      return `This AI's free limit for today is used up. Try again tomorrow, or pick another AI.${because}`;
+    }
+    return `The AI is busy or your plan limit was reached. Please try again in a moment.${because}`;
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return 'The AI is overloaded right now. Please try again in a minute, or pick another AI.';
+  }
+  return `AI service error (${status}): ${String(errorText || '').slice(0, 200)}`;
+}
+
+// ---- per-provider draft generation ----
+
+async function generateWithOpenAi(req: NormalizedRequest): Promise<string> {
+  const content = [
+    { type: 'input_text', text: req.userText },
+    ...req.images.map(image => ({
+      type: 'input_image',
+      image_url: `data:${image.mimeType};base64,${image.base64}`
+    }))
+  ];
+  const data = await postJson('https://api.openai.com/v1/responses', {
+    Authorization: `Bearer ${req.apiKey}`
+  }, {
+    model: req.model,
+    input: [
+      { role: 'system', content: req.systemPrompt },
+      { role: 'user', content }
+    ],
+    text: {
+      format: { type: 'json_schema', name: 'topic_draft', schema: req.schema, strict: true }
+    }
+  });
+  if (typeof data?.output_text === 'string' && data.output_text.trim()) {
+    return data.output_text;
+  }
+  const parts = (Array.isArray(data?.output) ? data.output : [])
+    .flatMap((entry: any) => (Array.isArray(entry?.content) ? entry.content : []));
+  const refusal = parts.find((part: any) => part?.type === 'refusal');
+  if (refusal) {
+    throw new Error('The AI declined this request. Try rewording the prompt.');
+  }
+  return parts.filter((part: any) => part?.type === 'output_text').map((part: any) => part.text || '').join('');
+}
+
+// Gemini's responseSchema is an OpenAPI subset without `additionalProperties`.
+function toGeminiSchema(schema: any): any {
+  if (Array.isArray(schema)) return schema.map(toGeminiSchema);
+  if (!schema || typeof schema !== 'object') return schema;
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === 'additionalProperties') continue;
+    result[key] = toGeminiSchema(value);
+  }
+  return result;
+}
+
+function buildGeminiBody(req: NormalizedRequest) {
+  return {
+    systemInstruction: { parts: [{ text: req.systemPrompt }] },
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: req.userText },
+        ...req.images.map(image => ({ inline_data: { mime_type: image.mimeType, data: image.base64 } }))
+      ]
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: toGeminiSchema(req.schema)
+    }
+  };
+}
+
+function readGeminiText(data: any): string {
+  const candidate = data?.candidates?.[0];
+  if (!candidate) {
+    throw new Error('The AI declined this request. Try rewording the prompt.');
+  }
+  if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
+    throw new Error('The AI declined this request. Try rewording the prompt.');
+  }
+  return (candidate.content?.parts || []).map((part: any) => part?.text || '').join('');
+}
+
+async function generateWithGemini(req: NormalizedRequest): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
+  const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, buildGeminiBody(req));
+  return readGeminiText(data);
+}
+
+async function generateWithAnthropic(req: NormalizedRequest): Promise<string> {
+  const { default: Anthropic } = await import('@anthropic-ai/sdk') as { default: typeof AnthropicSdk };
+  const client = new Anthropic({
+    apiKey: req.apiKey,
+    timeout: REQUEST_TIMEOUT_MS,
+    maxRetries: 1,
+    dangerouslyAllowBrowser: true
+  });
+  let response;
+  try {
+    response = await client.beta.messages.create({
+      model: req.model,
+      max_tokens: 16000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      thinking: { type: 'adaptive' },
+      output_config: {
+        effort: 'medium',
+        format: { type: 'json_schema', schema: req.schema }
+      },
+      system: req.systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          ...req.images.map(image => ({
+            type: 'image',
+            source: { type: 'base64', media_type: image.mimeType, data: image.base64 }
+          })),
+          { type: 'text', text: req.userText }
+        ]
+      }]
+    } as any);
+  } catch (error) {
+    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+      throw new Error(httpErrorMessage(401));
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      throw new Error(httpErrorMessage(429, error.message));
+    }
+    if (error instanceof Anthropic.APIConnectionError) {
+      throw new Error('Could not reach the AI service. Check your internet connection.');
+    }
+    if (error instanceof Anthropic.APIError) {
+      throw new Error(httpErrorMessage(error.status || 0, error.message));
+    }
+    throw error;
+  }
+  if ((response as any).stop_reason === 'refusal') {
+    throw new Error('The AI declined this request. Try rewording the prompt.');
+  }
+  if ((response as any).stop_reason === 'max_tokens') {
+    throw new Error('The topic was too long for one request. Ask for fewer items.');
+  }
+  return (response as any).content.filter((block: any) => block.type === 'text').map((block: any) => block.text).join('');
+}
+
+async function generateWithGroq(req: NormalizedRequest): Promise<string> {
+  const content = [
+    { type: 'text', text: req.userText },
+    ...req.images.map(image => ({
+      type: 'image_url',
+      image_url: { url: `data:${image.mimeType};base64,${image.base64}` }
+    }))
+  ];
+  // Groq's vision model only offers JSON mode (no schema), so the schema goes into the prompt.
+  const systemPrompt = `${req.systemPrompt}\n\nThe JSON must match this JSON Schema exactly:\n${JSON.stringify(req.schema)}`;
+  const data = await postJson('https://api.groq.com/openai/v1/chat/completions', {
+    Authorization: `Bearer ${req.apiKey}`
+  }, {
+    model: req.model,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content }
+    ],
+    response_format: { type: 'json_object' },
+    max_completion_tokens: 8000
+  });
+  const text = String(data?.choices?.[0]?.message?.content || '');
+  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
+async function generateDraft(input: any): Promise<{ text: string }> {
+  const req = normalizeInput(input);
+  let text: string;
+  switch (req.provider) {
+    case 'openai': text = await generateWithOpenAi(req); break;
+    case 'gemini': text = await generateWithGemini(req); break;
+    case 'anthropic': text = await generateWithAnthropic(req); break;
+    case 'groq': text = await generateWithGroq(req); break;
+  }
+  if (!String(text || '').trim()) {
+    throw new Error('The AI returned an empty answer. Please try again.');
+  }
+  return { text };
+}
+
+// ---- image generation ("Generate a picture") ----
+
+function normalizeImageInput(input: any): { provider: AiTopicWebProviderId; apiKey: string; model: string; prompt: string } {
+  const provider = String(input?.provider || '') as AiTopicWebProviderId;
+  const imageInfo = IMAGE_PROVIDERS[provider];
+  if (!imageInfo) {
+    throw new Error('This AI cannot generate pictures. Link OpenAI or Gemini for that.');
+  }
+  const apiKey = String(getWebApiKey(provider) || '').trim();
+  if (!apiKey) {
+    throw new Error('This AI is not linked yet. Paste your API key first.');
+  }
+  const prompt = String(input?.prompt || '').trim().slice(0, 500);
+  if (!prompt) {
+    throw new Error('Nothing to draw.');
+  }
+  return { provider, apiKey, model: imageInfo.model, prompt };
+}
+
+async function generateImageWithOpenAi(req: { apiKey: string; model: string; prompt: string }) {
+  const data = await postJson('https://api.openai.com/v1/images/generations', {
+    Authorization: `Bearer ${req.apiKey}`
+  }, {
+    model: req.model,
+    prompt: req.prompt,
+    size: '1024x1024',
+    n: 1
+  });
+  const entry = data?.data?.[0];
+  if (!entry?.b64_json) {
+    throw new Error('The AI did not return a picture. Please try again.');
+  }
+  return { imageBase64: entry.b64_json, mimeType: 'image/png' };
+}
+
+async function generateImageWithGemini(req: { apiKey: string; model: string; prompt: string }) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
+  const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, {
+    contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+    generationConfig: { responseModalities: ['IMAGE'] }
+  });
+  const candidate = data?.candidates?.[0];
+  if (!candidate || candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
+    throw new Error('The AI declined this request. Try a different picture description.');
+  }
+  const part = (candidate.content?.parts || []).find((p: any) => p?.inlineData?.data);
+  if (!part) {
+    throw new Error('The AI did not return a picture. Please try again.');
+  }
+  return { imageBase64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
+}
+
+async function generateImage(input: any): Promise<{ imageBase64: string; mimeType: string }> {
+  const req = normalizeImageInput(input);
+  return req.provider === 'openai' ? generateImageWithOpenAi(req) : generateImageWithGemini(req);
+}
+
+// ---- key management IPC equivalents (electron/main/ai-topic-ipc.js's validation rules) ----
+
+function saveApiKey(input: any): IpcResponse<ReturnType<typeof getStatus>> {
+  const provider = String(input?.provider || '');
+  const apiKey = String(input?.apiKey || '').trim();
+  if (!PROVIDERS[provider as AiTopicWebProviderId]) {
+    return operationError('INVALID_PROVIDER', 'Unknown AI provider.');
+  }
+  if (!apiKey || apiKey.length > 500 || /\s/.test(apiKey)) {
+    return operationError('INVALID_API_KEY', 'Please paste a valid API key.');
+  }
+  const keys = readKeys();
+  keys[provider] = apiKey;
+  writeKeys(keys);
+  return operationResult(getStatus());
+}
+
+function clearApiKey(input: any): IpcResponse<ReturnType<typeof getStatus>> {
+  const provider = String(input?.provider || '');
+  if (!PROVIDERS[provider as AiTopicWebProviderId]) {
+    return operationError('INVALID_PROVIDER', 'Unknown AI provider.');
+  }
+  const keys = readKeys();
+  delete keys[provider];
+  writeKeys(keys);
+  return operationResult(getStatus());
+}
+
+/** Mirrors window.electronAPI's aiTopic* methods — see electron/preload.js. */
+export const aiTopicWebBridge = {
+  async aiTopicGetStatus(): Promise<IpcResponse<ReturnType<typeof getStatus>>> {
+    try {
+      return operationResult(getStatus());
+    } catch {
+      return operationError('AI_TOPIC_STATUS_FAILED', 'Could not check the AI setup.');
+    }
+  },
+
+  async aiTopicSaveApiKey(input: any): Promise<IpcResponse<ReturnType<typeof getStatus>>> {
+    try {
+      return saveApiKey(input);
+    } catch {
+      return operationError('API_KEY_SAVE_FAILED', 'Could not save this API key.');
+    }
+  },
+
+  async aiTopicClearApiKey(input: any): Promise<IpcResponse<ReturnType<typeof getStatus>>> {
+    try {
+      return clearApiKey(input);
+    } catch {
+      return operationError('API_KEY_CLEAR_FAILED', 'Could not remove this API key.');
+    }
+  },
+
+  async aiTopicGenerateDraft(input: any): Promise<IpcResponse<{ text: string }>> {
+    try {
+      return operationResult(await generateDraft(input));
+    } catch (error: any) {
+      return operationError('AI_TOPIC_FAILED', error?.message || 'The AI could not create the topic.');
+    }
+  },
+
+  async aiTopicGenerateImage(input: any): Promise<IpcResponse<{ imageBase64: string; mimeType: string }>> {
+    try {
+      return operationResult(await generateImage(input));
+    } catch (error: any) {
+      return operationError('AI_TOPIC_IMAGE_FAILED', error?.message || 'The AI could not create the picture.');
+    }
+  }
+};

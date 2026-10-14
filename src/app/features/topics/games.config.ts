@@ -104,17 +104,10 @@ export const GAMES: GameConfig[] = [
     requiresSettings: false,
   },
   {
-    id: 'writing-workshop',
-    nameKey: 'gameWritingWorkshopName',
-    descKey: 'gameWritingWorkshopDesc',
-    icon: '\u{1F4D3}',
-    requiresSettings: false,
-  },
-  {
-    id: 'reading-detective',
-    nameKey: 'gameReadingDetectiveName',
-    descKey: 'gameReadingDetectiveDesc',
-    icon: '\u{1F575}\u{FE0F}',
+    id: 'talk-show',
+    nameKey: 'gameTalkShowName',
+    descKey: 'gameTalkShowDesc',
+    icon: '\u{1F399}\u{FE0F}',
     requiresSettings: false,
   },
   {
@@ -180,5 +173,21 @@ export const GAMES: GameConfig[] = [
     descKey: 'gameFlashcardHuntDesc',
     icon: '\u{1F3AF}',
     requiresSettings: true,
+  },
+  // Reading Detective and Writing Workshop are structured literacy exercises rather than quick
+  // arcade-style games, so they go last — a different kind of activity from everything above.
+  {
+    id: 'writing-workshop',
+    nameKey: 'gameWritingWorkshopName',
+    descKey: 'gameWritingWorkshopDesc',
+    icon: '\u{1F4D3}',
+    requiresSettings: false,
+  },
+  {
+    id: 'reading-detective',
+    nameKey: 'gameReadingDetectiveName',
+    descKey: 'gameReadingDetectiveDesc',
+    icon: '\u{1F575}\u{FE0F}',
+    requiresSettings: false,
   },
 ];

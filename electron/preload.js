@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setAppFullscreen: (active) => ipcRenderer.invoke('app:set-fullscreen', !!active),
   isAppFullscreen: () => ipcRenderer.invoke('app:is-fullscreen'),
   capturePageScreenshot: (input) => ipcRenderer.invoke('app:capture-page-screenshot', input ?? {}),
+  saveHtmlAsPdf: (input) => ipcRenderer.invoke('app:save-html-as-pdf', input ?? {}),
   confirmBookUnsavedChanges: (input) => ipcRenderer.invoke('books:confirm-unsaved-changes', input ?? {}),
   getBookRegistry: () => ipcRenderer.invoke('books:get-registry'),
   getBookStorageLocation: () => ipcRenderer.invoke('books:get-storage-location'),

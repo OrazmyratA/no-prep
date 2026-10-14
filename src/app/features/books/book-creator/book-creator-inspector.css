@@ -1479,6 +1479,22 @@
   font-weight: 700;
 }
 
+.audio-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.audio-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
 .audio-actions {
   display: flex;
   flex-wrap: wrap;

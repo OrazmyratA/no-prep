@@ -10,13 +10,13 @@
 }
 
 .ai-dialog {
-  background: #fff;
-  border-radius: 16px;
+  background: #f8fafc;
+  border-radius: 18px;
   box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
   width: min(680px, 100%);
   max-height: calc(100vh - 32px);
   overflow-y: auto;
-  padding: 20px 22px;
+  padding: 18px 20px;
   color: #1f2937;
 }
 
@@ -24,11 +24,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  padding: 0 2px;
 }
 
 .ai-header h2 {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 800;
   background: linear-gradient(90deg, #4f46e5, #9333ea);
   -webkit-background-clip: text;
@@ -37,18 +38,27 @@
 }
 
 .ai-close {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
-  color: #6b7280;
+  color: #9ca3af;
 }
 
 .ai-close:hover:not(:disabled) {
-  background: #f3f4f6;
+  background: #e5e7eb;
+  color: #4b5563;
 }
 
+/* Every section is its own clean card — a plain white surface against the dialog's light grey
+   background, separated by a hairline border rather than a filled colour, so the specialised
+   panels (lesson pack, speaking, reading, pdf-choice) still stand out via their own tint without
+   a double border: their classes are declared later in this file and win the cascade. */
 .ai-section {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
 .ai-label {
@@ -110,6 +120,28 @@
   border-radius: 999px;
   font-size: 0.9rem;
   background: #fff;
+}
+
+.ai-provider-logo {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.ai-provider-logo svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.ai-provider-logo svg[viewBox="0 0 33 33"] {
+  border-radius: 4px;
+}
+
+.ai-provider-sparkle {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .ai-provider small {
@@ -179,7 +211,8 @@
 
 .ai-primary:disabled,
 .ai-secondary:disabled,
-.ai-link:disabled {
+.ai-link:disabled,
+.ai-icon-link:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -194,6 +227,18 @@
   color: #dc2626;
 }
 
+.ai-icon-link {
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.ai-icon-link:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
 .ai-pages {
   display: flex;
   flex-wrap: wrap;
@@ -206,6 +251,66 @@
 .ai-pages-drag {
   border-color: #6366f1;
   background: #eef2ff;
+}
+
+.ai-pages-empty {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px 14px;
+}
+
+.ai-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px;
+  color: #374151;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ai-drop:hover .ai-drop-icon {
+  transform: scale(1.1);
+}
+
+.ai-drop-icon {
+  font-size: 2rem;
+  transition: transform 0.15s;
+}
+
+.ai-drop-hint {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.ai-paste-btn {
+  padding: 6px 14px;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ai-paste-btn:hover {
+  background: #e0e7ff;
+}
+
+.ai-page-number {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.7);
+  color: #fff;
+  font-size: 0.7rem;
+  text-align: center;
 }
 
 .ai-page {
@@ -243,6 +348,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
+  padding: 4px;
+  border: 1px dashed #d1d5db;
   border-radius: 8px;
   background: #f9fafb;
   color: #4b5563;
@@ -264,26 +371,76 @@
   pointer-events: none;
 }
 
+.ai-options-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 1.05rem;
+}
+
+.ai-options-toggle:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.ai-options-toggle-open {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
 .ai-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
+/* Field labels are icons now (title attribute carries the tooltip, aria-label on the control
+   itself carries the accessible name) — icon beside the control instead of text above it. */
 .ai-options label {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 8px;
   font-size: 0.8rem;
   color: #374151;
+}
+
+.ai-options label > span {
+  flex: 0 0 auto;
+  font-size: 1.05rem;
 }
 
 .ai-mode {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  font-size: 0.9rem;
+  gap: 8px;
+}
+
+.ai-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ai-mode-btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.ai-mode-btn-on {
+  border-color: #6366f1;
+  background: #eef2ff;
+  color: #3730a3;
 }
 
 .ai-error {
@@ -446,6 +603,96 @@
   color: #6b7280;
 }
 
+/* A PDF longer than the room left: which pages to send */
+.ai-pdf-choice {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.ai-pdf-choice-text {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  color: #1e3a8a;
+}
+
+.ai-pdf-pages {
+  max-width: 10rem;
+}
+
+.ai-pdf-choice-error {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: #b91c1c;
+}
+
+/* Speaking test (docs/talk-show.md §4) */
+.ai-speaking {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: linear-gradient(135deg, #fdf2f8, #f5f3ff);
+  border-color: #f5d0fe;
+}
+
+.ai-speaking-analyse {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.ai-speaking-analyse .ai-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-speaking .ai-task-grid {
+  grid-template-columns: 1fr;
+  gap: 2px;
+  margin-top: 0;
+}
+
+.ai-speaking-row > span:first-of-type {
+  flex: 1;
+}
+
+.ai-speaking-row .ai-task-count {
+  width: 3.6rem;
+  margin-left: 0;
+}
+
+.ai-speaking-unit {
+  min-width: 4.5rem;
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.ai-speaking-source {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  min-width: 7.5rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.ai-speaking-found {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.ai-speaking-fill {
+  font-weight: 600;
+}
+
 /* ---------- Lesson pack (docs/lesson-pack.md) ---------- */
 
 .ai-pack {
@@ -486,6 +733,11 @@
   border-color: #6366f1;
   background: #eef2ff;
   color: #3730a3;
+}
+
+.ai-pack-off .ai-pack-box {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .ai-pack-cards {
@@ -587,4 +839,79 @@
   list-style: none;
   font-size: 0.8rem;
   color: #92400e;
+}
+
+/* ---------- Grouped chips + two-sided chip switch ---------- */
+
+.ai-chip-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.ai-chip-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ai-chip-group .ai-chips { margin-bottom: 0; flex: 1; }
+
+.ai-chip-group-label {
+  flex: 0 0 auto;
+  min-width: 92px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #6b7280;
+}
+
+@media (max-width: 560px) {
+  .ai-chip-group { flex-direction: column; gap: 4px; }
+}
+
+.ai-chip-active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+}
+
+.ai-chip-active:hover:not(:disabled) {
+  background: #4338ca;
+  border-color: #4338ca;
+}
+
+.ai-variants {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f5f7ff;
+  border: 1px solid #e0e7ff;
+}
+
+.ai-variant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  color: #475569;
+  cursor: pointer;
+}
+
+.ai-variant input { accent-color: #4f46e5; }
+
+.ai-variant-on {
+  background: #fff;
+  border-color: #a5b4fc;
+  color: #3730a3;
+  font-weight: 600;
 }
