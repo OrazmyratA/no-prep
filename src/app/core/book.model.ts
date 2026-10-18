@@ -11,6 +11,8 @@ export interface BookWordBankOption {
 export interface BookWordBank {
   id: string;
   options: BookWordBankOption[];
+  /** Made by "✨ Prepare tasks" for draft gaps; removed with them unless they are accepted. */
+  prepId?: string;
 }
 
 export interface GuideTimelinePin {
@@ -44,6 +46,23 @@ export interface BookElement {
  * Answer keys store multiple images in data['images']; older books only ever
  * saved a single data['src']. Reads of either shape always go through this.
  */
+/**
+ * An element the AI placed for the teacher to check (lesson planner icons, "✨ Prepare tasks"
+ * drafts). Drafts are only for the creator: students never see them.
+ */
+export function isDraftElement(element: BookElement | null | undefined): boolean {
+  return !!element?.data?.['planDraft'] || !!element?.data?.['taskDraft'];
+}
+
+/** Removes every draft element from the book's pages (the reader does this when it opens a book). */
+export function stripDraftElements(book: { pages?: { elements: BookElement[] }[]; workbooks?: { pages?: { elements: BookElement[] }[] }[] } | null | undefined): void {
+  if (!book) return;
+  const pages = [...(book.pages ?? []), ...(book.workbooks ?? []).flatMap(workbook => workbook.pages ?? [])];
+  for (const page of pages) {
+    if (page.elements?.some(isDraftElement)) page.elements = page.elements.filter(element => !isDraftElement(element));
+  }
+}
+
 export function getAnswerKeyImagePaths(element: BookElement | null | undefined): string[] {
   const images = element?.data?.['images'];
   if (Array.isArray(images) && images.length) {

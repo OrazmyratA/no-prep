@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PublicDownloadsPlugin.class);
         registerPlugin(NativeAudioRecorderPlugin.class);
         registerPlugin(NativeBookStoragePlugin.class);
+        registerPlugin(AppUpdaterPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

@@ -437,7 +437,16 @@
   color: rgba(226, 232, 240, 0.9);
 }
 
-.rd-skip { margin-top: auto; align-self: center; }
+.rd-skip {
+  margin-top: auto;
+  align-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.rd-link:disabled { opacity: 0.4; cursor: default; background: none; }
 
 /* The key word to find: a clue tag pinned to the board */
 .rd-clue {

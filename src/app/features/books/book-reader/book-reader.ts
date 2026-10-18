@@ -37,7 +37,8 @@ import {
   ProgressMapLesson,
   ProgressMapUnit,
   getLessonPageRefs,
-  getProgressNavigationMode
+  getProgressNavigationMode,
+  stripDraftElements
 } from '../../../core/book.model';
 import { normalizeBookGuideTimelines } from '../../../core/guide-timeline';
 import {
@@ -450,6 +451,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     if (isStale()) return;
     normalizeBookGuideTimelines(this.book);
     normalizeBookTracingElements(this.book);
+    // AI drafts the teacher has not accepted yet are for the creator only.
+    stripDraftElements(this.book);
     this.markVisiblePagesDirty();
     this.annotations = await this.bookLibrary.getBookAnnotations(bookId) ?? this.createEmptyAnnotations(bookId);
     if (isStale()) return;

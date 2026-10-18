@@ -83,6 +83,7 @@
       [class.text-mark-element]="element.type === 'text'"
       [class.game-element]="element.type === 'game'"
       [class.plan-draft]="element.type === 'game' && element.data['planDraft']"
+      [class.task-draft]="element.data['taskDraft']"
       [class.plan-working]="creator.lessonPlanner.isIconWorking(element)"
       [class.plan-failed]="creator.lessonPlanner.iconState(element) === 'failed'"
       [class.video-element]="element.type === 'video'"
@@ -106,6 +107,7 @@
       <img *ngIf="element.type === 'image' && !element.data['src']" class="book-marker-icon" src="assets/images/book/image.png" [alt]="'image' | translate">
       <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
       <span *ngIf="element.type === 'focus'" class="focus-label"></span>
+      <span *ngIf="element.type === 'focus' && element.data['taskDraft']" class="task-draft-badge" aria-hidden="true">✨ {{ element.data['exerciseNumber'] }}</span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
       <span *ngIf="element.type === 'guideDot' && creator.getGuideDotNumber(element) as dotNumber" class="guide-dot-number" aria-hidden="true">{{ dotNumber }}</span>

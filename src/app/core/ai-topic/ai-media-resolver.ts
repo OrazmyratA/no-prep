@@ -49,6 +49,11 @@ export interface AiImageChoice {
   index: number;                    // shown search result, or one of the *_INDEX sentinels above
 }
 
+/** The words on the shown picture when it is the word card, or '' (a photo or a page crop). */
+export function wordCardText(choice: AiImageChoice | null | undefined): string {
+  return choice && choice.index === WORD_CARD_INDEX ? choice.cardText : '';
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return new Promise(resolve => {
     const timer = setTimeout(() => resolve(null), ms);

@@ -299,21 +299,23 @@ export class BookCreatorGameController {
       return;
     }
 
+    // Also used for a plain "return to where I was" with no topic change (Edit Topic's back
+    // button, not Save) - linkedElementId alone, with no linkedTopicId, just jumps.
     const elementId = query.get('linkedElementId');
-    const topicId = Number(query.get('linkedTopicId'));
-    if (!elementId || !Number.isFinite(topicId) || topicId <= 0) {
-      return;
-    }
+    if (!elementId) return;
 
     const location = this.findGameElement(elementId);
     if (!location) return;
 
-    const topicTitle = query.get('linkedTopicTitle') || 'Topic';
-    const bookTopicPath = query.get('bookTopicPath') || '';
-    location.element.data['topicId'] = topicId;
-    location.element.data['topicName'] = topicTitle;
-    location.element.data['bookTopicPath'] = bookTopicPath;
-    location.element.data['label'] = topicTitle;
+    const topicId = Number(query.get('linkedTopicId'));
+    if (Number.isFinite(topicId) && topicId > 0) {
+      const topicTitle = query.get('linkedTopicTitle') || 'Topic';
+      const bookTopicPath = query.get('bookTopicPath') || '';
+      location.element.data['topicId'] = topicId;
+      location.element.data['topicName'] = topicTitle;
+      location.element.data['bookTopicPath'] = bookTopicPath;
+      location.element.data['label'] = topicTitle;
+    }
     await this.jumpToGameElement(location);
   }
 

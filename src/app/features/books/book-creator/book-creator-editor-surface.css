@@ -873,6 +873,37 @@
   opacity: 0.9;
 }
 
+/* "✨ Prepare tasks" drafts, until the teacher accepts them (docs/ai-task-prep.md). */
+.creator-element.focus-element.task-draft {
+  /* The number badge sits outside the frame, so no paint containment or clipping. */
+  contain: layout;
+  overflow: visible;
+  border: 2px dashed #8b5cf6;
+  background: rgba(237, 233, 254, 0.35);
+}
+
+/* A draft typing box or word-bank gap inside a prepared exercise. */
+.creator-element.task-draft:not(.focus-element) {
+  outline: 2px dashed #8b5cf6;
+  outline-offset: 1px;
+  background: rgba(237, 233, 254, 0.55);
+}
+
+.task-draft-badge {
+  position: absolute;
+  top: -0.7rem;
+  left: -0.2rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* Create is making this icon's topic. */
 .creator-element.game-element.plan-draft.plan-working {
   opacity: 0.9;

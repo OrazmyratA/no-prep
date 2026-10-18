@@ -1458,4 +1458,29 @@ export const AI_TOPIC_TRANSLATIONS: TranslationDictionary = {
   vi: 'PDF này có các trang từ 1 đến {count}.',
 },
 
+'aiTopicSimple': {
+  en: 'Simple, short wording (young learners)',
+  tk: 'Ýönekeý, gysga sözler (kiçi okuwçylar)',
+  ru: 'Простые и короткие формулировки (для детей)',
+  cn: '简单简短的表达（低龄学生）',
+  cde: 'Einfache, kurze Formulierungen (junge Lernende)',
+  es: 'Frases simples y cortas (alumnos pequeños)',
+  fr: 'Formulations simples et courtes (jeunes élèves)',
+  kr: '쉽고 짧은 표현 (어린 학습자)',
+  sa: 'صياغة بسيطة وقصيرة (للمتعلمين الصغار)',
+  vi: 'Câu chữ đơn giản, ngắn gọn (học sinh nhỏ)',
+},
+'aiTopicSimpleHint': {
+  en: 'Questions, headings and definitions in a few easy words, so students understand them at a glance. On for A1, A2 and no level; off for B1 and up (exam style).',
+  tk: 'Soraglar, sözbaşylar we düşündirişler birnäçe ýeňil sözde bolar, okuwçylar olara derrew düşüner. A1, A2 we derejesiz üçin açyk; B1 we ýokary üçin ýapyk (ekzamen görnüşi).',
+  ru: 'Вопросы, заголовки и определения из нескольких простых слов, чтобы ученики сразу их понимали. Включено для A1, A2 и без уровня; выключено для B1 и выше (экзаменационный стиль).',
+  cn: '问题、标题和释义只用几个简单的词，学生一看就懂。A1、A2 和未选级别时开启；B1 及以上关闭（考试风格）。',
+  cde: 'Fragen, Überschriften und Definitionen in wenigen einfachen Wörtern, damit die Lernenden sie sofort verstehen. An für A1, A2 und ohne Niveau; aus ab B1 (Prüfungsstil).',
+  es: 'Preguntas, títulos y definiciones con pocas palabras fáciles, para que los alumnos las entiendan enseguida. Activado para A1, A2 y sin nivel; desactivado desde B1 (estilo examen).',
+  fr: 'Questions, titres et définitions en quelques mots faciles, pour que les élèves comprennent tout de suite. Activé pour A1, A2 et sans niveau ; désactivé dès B1 (style examen).',
+  kr: '질문, 제목, 뜻풀이를 쉬운 단어 몇 개로 써서 학생들이 바로 이해합니다. A1, A2, 레벨 없음일 때 켜지고 B1 이상은 꺼집니다 (시험 스타일).',
+  sa: 'أسئلة وعناوين وتعريفات بكلمات قليلة سهلة، ليفهمها الطلاب فورًا. مفعّل لمستوى A1 وA2 وبدون مستوى؛ ومعطّل من B1 فما فوق (أسلوب الامتحان).',
+  vi: 'Câu hỏi, tiêu đề và định nghĩa chỉ vài từ dễ để học sinh hiểu ngay. Bật cho A1, A2 và khi chưa chọn trình độ; tắt từ B1 trở lên (kiểu đề thi).',
+},
+
 };

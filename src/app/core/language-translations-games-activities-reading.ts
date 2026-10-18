@@ -276,6 +276,18 @@ export const GAME_READING_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   vi: 'Gợi ý: hãy tìm trong đoạn đang sáng.',
 },
 
+'readingDetectiveSkipQuestion': {
+  en: 'Skip this question',
+  tk: 'Bu soragy geç',
+  ru: 'Пропустить вопрос',
+  cn: '跳过此题',
+  cde: 'Diese Frage überspringen',
+  es: 'Saltar esta pregunta',
+  fr: 'Passer cette question',
+  kr: '이 문제 건너뛰기',
+  sa: 'تخطَّ هذا السؤال',
+  vi: 'Bỏ qua câu này',
+},
 'readingDetectiveSkip': {
   en: 'Skip this stage',
   tk: 'Bu tapgyry geç',

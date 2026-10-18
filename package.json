@@ -1,15 +1,15 @@
 {
   "name": "no-prep",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "main": "electron/index.js",
   "author": "Orazmyrat Ashyrmyradov Artykmyradovich",
   "description": "No-Prep – classroom game platform",
   "homepage": "https://noprep.netlify.app/",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "build:prod": "ng build --configuration production",
+    "start": "node scripts/write-version.js && ng serve",
+    "build": "node scripts/write-version.js && ng build",
+    "build:prod": "node scripts/write-version.js && ng build --configuration production",
     "android:add": "cap add android",
     "android:sync": "npm run build:prod && cap sync android",
     "android:open": "cap open android",
@@ -17,7 +17,7 @@
     "android:aab": "npm run android:sync && cd android && gradlew.bat bundleRelease",
     "build:security-core": "cd native/security-core && napi build --release --platform .",
     "encrypt:features": "node scripts/encrypt-features.js",
-    "watch": "ng build --watch --configuration development",
+    "watch": "node scripts/write-version.js && ng build --watch --configuration development",
     "test": "ng test",
     "netlify": "npm run build:prod",
     "electron:prod": "npm run build && npm run build:security-core && npm run encrypt:features && set ELECTRON_RUN_AS_NODE=& electron .",
@@ -36,6 +36,11 @@
     ],
     "directories": {
       "output": "release"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "OrazmyratA",
+      "repo": "no-prep"
     },
     "files": [
       "dist/**/*",
@@ -112,6 +117,7 @@
     "browser-image-compression": "^2.0.2",
     "canvas-confetti": "^1.9.4",
     "dexie": "^4.3.0",
+    "electron-updater": "^6.6.2",
     "extract-zip": "^2.0.1",
     "html2canvas": "^1.4.1",
     "msedge-tts": "2.1.0",

@@ -33,8 +33,6 @@
   </div>
 
   <div *ngIf="!loading && !gameFinished" #board class="board relative flex-1 min-h-0 rounded-2xl">
-    <div class="reset-flash" [class.active]="resetFlashActive"></div>
-
     <canvas #lineCanvas class="line-canvas"></canvas>
 
     <button

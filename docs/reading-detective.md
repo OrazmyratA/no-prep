@@ -64,6 +64,10 @@ marks or has a level). Carried through export/import, book topic snapshots and "
   (Junior detective / Detective / Master detective), per-stage bars, "Skipped" for skipped stages,
   confetti. "Read the whole text" shows the text with the headings and key words.
 - Every stage has "Skip this stage". The pause menu also pauses stage 3.
+- "Skip this question" (key S, added 2026-10-19) skips only the current question of a stage: its
+  answer is shown for a moment without a ✓ (the gap filled with its card, the key / word
+  highlighted, the question's sentence marked, the right verdict / option and its proof sentence;
+  in Read & head the heading shows as missed), it scores nothing, and the next question comes.
 - Keyboard: Enter start/continue/next paragraph · Space pause · +/− speed · 1–9 heading ·
   Shift+R start over (plain R on results).
 - Panels are dark and nearly opaque, so the game looks right on any app theme background

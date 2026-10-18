@@ -165,7 +165,7 @@
         <ng-container *ngFor="let key of currentKey ? [currentKey] : []; trackBy: trackById">
           <div class="rd-clue" [class.rd-clue-found]="busy">
             <span class="rd-clue-text">{{ key.text }}</span>
-            <span *ngIf="busy" class="rd-clue-tick">✓</span>
+            <span *ngIf="busy && !skipping" class="rd-clue-tick">✓</span>
           </div>
         </ng-container>
         <div class="rd-progress">
@@ -185,7 +185,7 @@
             <span class="rd-qcard-number">{{ questionIndex + 1 }}</span>
             <img *ngIf="questionImage(question) as url; else noImage" [src]="url" alt="">
             <ng-template #noImage><span class="rd-qcard-empty">?</span></ng-template>
-            <span *ngIf="busy" class="rd-qcard-tick">✓</span>
+            <span *ngIf="busy && !skipping" class="rd-qcard-tick">✓</span>
           </div>
         </ng-container>
         <div class="rd-progress">
@@ -205,7 +205,7 @@
             <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
             <span class="rd-task-tag">{{ s.kind === 'ynng' ? 'Y / N / NG' : 'T / F / NG' }}</span>
             <p class="rd-task-text">{{ s.text }}</p>
-            <span *ngIf="taskPhase === 'done'" class="rd-qcard-tick">✓</span>
+            <span *ngIf="taskPhase === 'done' && !skipping" class="rd-qcard-tick">✓</span>
           </div>
         </ng-container>
         <div class="rd-verdicts">
@@ -240,7 +240,7 @@
           <div class="rd-task-card" [class.rd-task-card-done]="taskPhase === 'done'">
             <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
             <p class="rd-task-text">{{ c.question }}</p>
-            <span *ngIf="taskPhase === 'done'" class="rd-qcard-tick">✓</span>
+            <span *ngIf="taskPhase === 'done' && !skipping" class="rd-qcard-tick">✓</span>
           </div>
         </ng-container>
         <div class="rd-options">
@@ -268,7 +268,7 @@
         <ng-container *ngFor="let w of [wordTask]; trackBy: trackById">
           <div class="rd-clue rd-clue-word" [class.rd-clue-found]="busy">
             <span class="rd-clue-text rd-clue-sentence">{{ w.clue }}</span>
-            <span *ngIf="busy" class="rd-clue-tick">✓</span>
+            <span *ngIf="busy && !skipping" class="rd-clue-tick">✓</span>
           </div>
         </ng-container>
         <div class="rd-progress">
@@ -279,7 +279,10 @@
 
       <p *ngIf="hintParagraph >= 0" class="rd-hint">💡 {{ 'readingDetectiveHint' | translate }}</p>
 
-      <button type="button" class="rd-link rd-skip" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭</button>
+      <div class="rd-skip">
+        <button type="button" class="rd-link" [disabled]="busy" (click)="skipQuestion()">{{ 'readingDetectiveSkipQuestion' | translate }} ⏭</button>
+        <button type="button" class="rd-link" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭⏭</button>
+      </div>
     </aside>
 
     <main class="rd-text-area">
@@ -325,7 +328,10 @@
         </div>
       </div>
 
-      <button type="button" class="rd-link rd-skip" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭</button>
+      <div class="rd-skip">
+        <button type="button" class="rd-link" (click)="skipQuestion()">{{ 'readingDetectiveSkipQuestion' | translate }} ⏭</button>
+        <button type="button" class="rd-link" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭⏭</button>
+      </div>
     </aside>
 
     <main class="rd-read-main">

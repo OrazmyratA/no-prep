@@ -23,6 +23,11 @@ export interface AiTopicRequest {
   /** For two-sided chips (gap-fill, Q&A): which side students get; absent = the chip's default. */
   recipeVariant?: AiRecipeVariantId | null;
   /**
+   * Short, plain wording for young learners: questions, headings, definitions and options a child
+   * understands at a glance (see SIMPLE_WORDING_RULES). Default: simpleWordingFor(level).
+   */
+  simpleWording?: boolean;
+  /**
    * The per-item "✨" fill (topic-form.fillItemWithAi): the teacher already wrote this item's
    * text by hand. When set, every other field above except images/audio/teacherLanguage is
    * ignored — buildAiTopicUserText asks for exactly this one item back, text unchanged, with
@@ -59,7 +64,30 @@ export const DEFAULT_READING_TASKS: ReadingTasksRequest = {
 };
 
 // Versioned so changes to the instructions are easy to trace in support reports.
-export const AI_TOPIC_PROMPT_VERSION = 7;
+export const AI_TOPIC_PROMPT_VERSION = 8;
+
+/**
+ * Whether a topic should use simple wording by default: young classes (12 or younger, from the
+ * age the teacher typed, e.g. "10-11"), Pre-A1 to A2, or no level given. B1 and up keep the exam
+ * style (paraphrased questions and headings).
+ */
+export function simpleWordingFor(level: CefrLevel | null | undefined, age = ''): boolean {
+  const ages = (age.match(/\d+/g) ?? []).map(Number).filter(n => n > 0 && n < 100);
+  if (ages.length && Math.max(...ages) <= 12) return true;
+  return !level || level === 'A1' || level === 'A2';
+}
+
+// Added to the request when simpleWording is on. It overrides the exam-style rules of the system
+// prompt (paraphrased questions and headings, 12-word definitions), but never the students' text.
+const SIMPLE_WORDING_RULES = [
+  'Wording: SIMPLE, for young learners. Students must understand every question, heading and card at a glance, so they spend their time on the task, not on working out what is asked. These rules win over the rules above about paraphrasing and length:',
+  '- Use only very common words a child at this level knows. Short sentences, one idea each. No idioms, no passive, no long word when a short one works.',
+  '- Questions (on sentences, Q&A, multiple choice): at most 8 words, starting with Who / What / Where / When / How many / Is / Does / Can... They may use the words of the text, and the answer is said plainly in the sentence. E.g. "Where does Sam live?" for "Sam lives in a small village."',
+  '- Headings: 2-5 easy words that say what the paragraph is about; they may reuse its words. E.g. "Sam\'s new house".',
+  '- Definitions and explanations on cards: at most 8 easy words, the way you would explain it to a child. E.g. "a big farm animal that gives us milk".',
+  '- True/False statements, multiple-choice options and distractors: short and clear, one fact each; a wrong option is clearly wrong for a child who read the text.',
+  '- Never change the text the students read: sentences copied from a text stay exactly as written.'
+].join('\n');
 
 // The Cambridge exams teachers know each level by.
 export const CEFR_EXAM_NAMES: Record<CefrLevel, string> = {
@@ -186,6 +214,10 @@ export function buildAiTopicUserText(request: AiTopicRequest): string {
     );
   }
   const speaking = request.speakingTest;
+  // A speaking test keeps its exam's own wording.
+  if ((request.simpleWording ?? simpleWordingFor(request.level)) && !speaking?.parts.length) {
+    lines.push('', SIMPLE_WORDING_RULES);
+  }
   if (speaking?.parts.length) {
     lines.push(
       '',

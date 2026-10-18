@@ -360,3 +360,28 @@ under the prompt; the level goes into the user text (`Level: A2 (Cambridge A2 Ke
 in `AiTopicDialogResult.level`, which topic-form saves as `Topic.level`. The Reading chip asks for
 `# heading` items before each paragraph, sentences copied exactly with `[key words]`, paraphrased
 question word cards and 1–2 distractor headings. `AI_TOPIC_MAX_ITEMS` is now 60 (was 40).
+
+## 15. Simple wording for young learners — prompt v8
+
+Added 2026-10-16 after teachers found the AI's reading questions, headings and definitions too
+hard for children (students spent their time decoding the question, not doing the task).
+`AiTopicRequest.simpleWording` adds `SIMPLE_WORDING_RULES` to the user text: questions of at most
+8 words that may reuse the text's words and whose answer is stated plainly, headings of 2-5 easy
+words, definitions of at most 8 easy words "as you would explain it to a child", short clear
+options and statements. It overrides the system prompt's exam-style paraphrasing, never the
+students' own text, and is not added to speaking tests (their exam wording stays).
+Default `simpleWordingFor(level, age)`: on for no level, A1, A2, or a class of 12 or younger
+(the planner's age box); off for B1+. The ✨ AI window has a "✏️ Simple, short wording" checkbox
+under the level chips that follows the level unless the teacher changes it (`simpleOverride`);
+the lesson pack passes it on (`LessonPackRequest.simpleWording`) and the lesson planner sets it
+from the plan's level and the class age.
+
+## 16. Editing a word card's words
+
+Added 2026-10-16. `Item.imageText` keeps the words on an item's picture when it is a word card:
+set from the AI's choice (`wordCardText(choice)`: only while the word card is the picture shown,
+so "another picture" and "generate a picture" update or clear it), and from cards the teacher
+makes in the image uploader's 🔤 tab (`textImageMade`). Any other picture clears it. It is saved
+with the item, copied by duplicate, kept by the lesson pack, and exported/imported as
+`imageText`. The uploader's 🔤 tab opens on those words (`cardText`) and, for an AI card still in
+memory, its colour (`cardColor`), unless the teacher is typing other words there.

@@ -11,6 +11,21 @@ export interface IconRect {
   height: number;
 }
 
+/** Height / width of an A4 page, for pages whose size is not known. */
+export const A4_RATIO = 842 / 595;
+
+/** Height / width of a rendered page photo; A4 when it cannot be measured. */
+export async function pageRatio(image: Blob): Promise<number> {
+  try {
+    const bitmap = await createImageBitmap(image);
+    const ratio = bitmap.width ? bitmap.height / bitmap.width : A4_RATIO;
+    bitmap.close();
+    return ratio;
+  } catch {
+    return A4_RATIO;
+  }
+}
+
 /** Gap between an icon and its section, and the page edge. */
 const GAP = 0.012;
 /** How far an icon may slide down its section looking for a free spot. */

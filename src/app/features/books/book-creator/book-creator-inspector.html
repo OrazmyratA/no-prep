@@ -204,6 +204,7 @@
   </div>
 
   <app-lesson-plan-panel *ngIf="!creator.selectedElement && creator.aiPageLimit !== null && creator.book" [creator]="creator"></app-lesson-plan-panel>
+  <app-task-prep-panel *ngIf="!creator.selectedElement && creator.aiPageLimit !== null && creator.book" [creator]="creator"></app-task-prep-panel>
 
   <div class="element-inspector" *ngIf="creator.selectedElement as element">
     <h2>{{ creator.getSelectedElementTypeLabel() }}</h2>

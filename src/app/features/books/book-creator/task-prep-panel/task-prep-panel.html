@@ -1,0 +1,83 @@
+<section class="lp" [class.lp-open]="prep.open">
+  <button type="button" class="lp-toggle" (click)="prep.open = !prep.open" [attr.aria-expanded]="prep.open">
+    <span>✨ {{ 'taskPrepTitle' | translate }}<small *ngIf="!prep.open && prep.drafts.length" class="tp-count"> · {{ prep.drafts.length }}</small></span>
+    <span class="lp-chevron" aria-hidden="true">{{ prep.open ? '▾' : '▸' }}</span>
+  </button>
+
+  <ng-container *ngIf="prep.open">
+    <div class="lp-form">
+      <p class="lp-hint">{{ 'taskPrepHint' | translate }}</p>
+      <label class="lp-field">
+        <span>{{ 'lessonPlanPages' | translate }}</span>
+        <input type="text" inputmode="numeric" spellcheck="false" [value]="prep.pagesValue"
+               (input)="prep.pagesText = $any($event.target).value"
+               (keydown.enter)="prep.analyse()" [disabled]="prep.analysing">
+        <small>{{ 'creatorAiPagesHint' | translate: { max: creator.aiPageLimit } }}</small>
+      </label>
+      <div class="tp-marks" role="group" [attr.aria-label]="'taskPrepMarksLabel' | translate">
+        <span>{{ 'taskPrepMarksLabel' | translate }}</span>
+        <label><input type="checkbox" [checked]="prep.marks.guides" (change)="prep.setMark('guides', $any($event.target).checked)" [disabled]="prep.analysing">
+          <img src="assets/images/book/teacher.png" alt="">{{ 'taskPrepMarkGuides' | translate }}</label>
+        <label><input type="checkbox" [checked]="prep.marks.keys" (change)="prep.setMark('keys', $any($event.target).checked)" [disabled]="prep.analysing">
+          <img src="assets/images/book/answer key.png" alt="">{{ 'taskPrepMarkKeys' | translate }}</label>
+        <label><input type="checkbox" [checked]="prep.marks.videos" (change)="prep.setMark('videos', $any($event.target).checked)" [disabled]="prep.analysing">
+          <img src="assets/images/book/video.png" alt="">{{ 'taskPrepMarkVideos' | translate }}</label>
+      </div>
+      <button type="button" class="lp-primary" (click)="prep.analyse()" [disabled]="prep.analysing">
+        ✨ {{ (prep.analysing ? 'taskPrepAnalysing' : 'taskPrepAnalyse') | translate }}
+      </button>
+    </div>
+
+    <p *ngIf="prep.error as error" class="lp-error" role="alert">
+      {{ error.key | translate: error.params }}
+      <small *ngIf="error.detail">{{ error.detail }}</small>
+    </p>
+
+    <div *ngIf="prep.lastRun as run" class="tp-result" role="status">
+      <p>{{ 'taskPrepFound' | translate: { found: run.found, placed: run.placed } }}</p>
+      <p *ngIf="run.gaps">{{ 'taskPrepGapsPlaced' | translate: { gaps: run.gaps, exact: run.exact } }}</p>
+      <p *ngIf="run.targets">{{ 'taskPrepTargetsPlaced' | translate: { targets: run.targets, exact: run.exactTargets } }}</p>
+      <p *ngIf="run.pairs">{{ 'taskPrepPairsPlaced' | translate: { pairs: run.pairs, exact: run.exactPairs } }}</p>
+      <p *ngIf="run.squares">{{ 'taskPrepSquaresPlaced' | translate: { squares: run.squares } }}</p>
+      <p *ngIf="run.guides || run.keys || run.videos">{{ 'taskPrepMarksPlaced' | translate: { guides: run.guides, keys: run.keys, videos: run.videos } }}</p>
+      <p class="lp-hint">{{ (run.snapped ? 'taskPrepSnapped' : 'taskPrepNotSnapped') | translate }}</p>
+      <ul *ngIf="prep.notes.length" class="lp-notes">
+        <li *ngFor="let note of prep.notes">⚠ {{ note }}</li>
+      </ul>
+    </div>
+
+    <!-- Drafts waiting for the teacher -->
+    <div *ngIf="prep.drafts.length" class="tp-drafts">
+      <h4>{{ 'taskPrepDrafts' | translate: { n: prep.drafts.length } }}</h4>
+      <p class="lp-hint">{{ 'taskPrepDraftsHint' | translate }}</p>
+      <ul>
+        <li *ngFor="let draft of prep.drafts" class="tp-row">
+          <button type="button" class="tp-open" (click)="prep.show(draft)" [title]="'taskPrepShow' | translate">
+            <span class="tp-kind" aria-hidden="true">{{ kindIcon(prep.draftKind(draft)) }}</span>
+            <span class="tp-label">
+              <strong>{{ prep.draftLabel(draft) || ('taskPrepUntitled' | translate) }}</strong>
+              <small>{{ 'lessonPlanPage' | translate: { n: draft.pageNumber } }} · {{ ('taskPrepKind_' + prep.draftKind(draft)) | translate }}
+                <span *ngIf="draft.marks.length" class="tp-mark-icons">
+                  <img *ngIf="prep.hasMark(draft, 'guideDot')" src="assets/images/book/teacher.png" [alt]="'taskPrepMarkGuides' | translate" [title]="'taskPrepMarkGuides' | translate">
+                  <img *ngIf="prep.hasMark(draft, 'answerKey')" src="assets/images/book/answer key.png" [alt]="'taskPrepMarkKeys' | translate" [title]="'taskPrepMarkKeys' | translate">
+                  <img *ngIf="prep.hasMark(draft, 'video')" src="assets/images/book/video.png" [alt]="'taskPrepMarkVideos' | translate" [title]="'taskPrepMarkVideos' | translate">
+                </span>
+              </small>
+              <small *ngIf="draft.tasks.length" class="tp-answers">{{ prep.countKey(draft) | translate: { n: prep.taskCount(draft) } }}: {{ prep.answersPreview(draft) }}</small>
+              <small *ngIf="prep.noCorrectOption(draft)" class="tp-missing">⚠ {{ 'taskPrepNoCorrect' | translate }}</small>
+              <small *ngIf="prep.missingAnswers(draft) as missing" class="tp-missing">⚠ {{ 'taskPrepMissing' | translate: { n: missing } }}</small>
+            </span>
+          </button>
+          <button type="button" class="lp-icon-btn" (click)="prep.accept(draft)"
+                  [attr.aria-label]="'taskPrepAccept' | translate" [title]="'taskPrepAccept' | translate">✓</button>
+          <button type="button" class="lp-icon-btn lp-danger" (click)="prep.remove(draft)"
+                  [attr.aria-label]="'taskPrepRemove' | translate" [title]="'taskPrepRemove' | translate">✕</button>
+        </li>
+      </ul>
+      <div class="lp-download">
+        <button type="button" class="lp-primary" (click)="prep.acceptAll()" [disabled]="prep.analysing">✓ {{ 'taskPrepAcceptAll' | translate }}</button>
+        <button type="button" class="lp-secondary" (click)="prep.removeAll()" [disabled]="prep.analysing">{{ 'taskPrepRemoveAll' | translate }}</button>
+      </div>
+    </div>
+  </ng-container>
+</section>

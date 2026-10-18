@@ -166,7 +166,15 @@ function statusFromLicense(license) {
 }
 
 function checkLicense() {
-  return statusFromLicense(loadLicense());
+  try {
+    return statusFromLicense(loadLicense());
+  } catch (err) {
+    // A thrown fingerprint read (e.g. reg.exe blocked by a locked-down Windows image) would
+    // otherwise look identical to a genuine license mismatch, with no trace anywhere. Logging it
+    // here at least tells the difference apart after the fact.
+    console.error('checkLicense error:', err);
+    return { valid: false, daysLeft: 0 };
+  }
 }
 
 function saveLicense(licenseData) {

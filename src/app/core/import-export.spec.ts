@@ -72,6 +72,18 @@ describe('ImportExport', () => {
     }
   });
 
+  it('exports the words of a word-card picture, and only with a picture', async () => {
+    const now = new Date();
+    const exported = await (service as any).topicToExport(
+      { id: 1, name: 'Farm', createdAt: now, updatedAt: now },
+      [
+        { topicId: 1, text: 'cow', image: new Blob(['png'], { type: 'image/png' }), imageText: 'a big farm animal', order: 0, createdAt: now },
+        { topicId: 1, text: 'hen', imageText: 'left over', order: 1, createdAt: now }
+      ]
+    );
+    expect(exported.items.map((item: any) => item.imageText)).toEqual(['a big farm animal', undefined]);
+  });
+
   it('rejects remote media URLs in topic imports', () => {
     const data = {
       version: '1.0',

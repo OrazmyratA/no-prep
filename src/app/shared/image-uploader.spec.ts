@@ -222,4 +222,31 @@ describe('ImageUploaderComponent', () => {
       expect(component.cropDialogOpen).toBe(false);
     });
   });
+
+  it('starts the text tab on a transparent background', () => {
+    expect(component.textImageColor).toBe(component.transparentTextImageColor);
+  });
+
+  it('opens the text tab on the words and colour of the word card, and reports the words of a new card', async () => {
+    component.cardText = 'a big farm animal';
+    component.cardColor = '#16a34a';
+    component.activateTextMode();
+    expect(component.textImageControl.value).toBe('a big farm animal');
+    expect(component.textImageColor).toBe('#16a34a');
+
+    // The teacher's own unfinished typing is not replaced when the tab opens again.
+    component.textImageControl.setValue('a cow');
+    component.activeTab = 'upload';
+    component.activateTextMode();
+    expect(component.textImageControl.value).toBe('a cow');
+
+    vi.spyOn(component as any, 'renderTextAsImage').mockResolvedValue(new Blob(['png'], { type: 'image/png' }));
+    const made: string[] = [];
+    const selected: (Blob | null)[] = [];
+    component.imageSelected.subscribe(blob => selected.push(blob));
+    component.textImageMade.subscribe(text => made.push(text));
+    await component.useTextAsImage();
+    expect(selected.length).toBe(1);
+    expect(made).toEqual(['a cow']);
+  });
 });

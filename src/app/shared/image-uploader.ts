@@ -40,7 +40,13 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   // Book pages the parent has attached this session (e.g. topic-form's ✨ AI dialog) — when
   // non-empty, a 📖 button lets the teacher crop straight from one of them instead of uploading.
   @Input() pageSources: Blob[] = [];
+  /** The words on the current picture when it is a word card: the 🔤 tab opens with them to edit. */
+  @Input() cardText = '';
+  /** That word card's background colour, when known. */
+  @Input() cardColor = '';
   @Output() imageSelected = new EventEmitter<Blob | null>();
+  /** A word card was made in the 🔤 tab: its words (sent right after imageSelected). */
+  @Output() textImageMade = new EventEmitter<string>();
   // Separate from imageSelected: a crop refines whatever picture was already there, it isn't the
   // teacher rejecting it the way picking a different image/upload is — topic-form listens to
   // this one instead so its "another picture"/"generate a picture" buttons survive a crop.
@@ -61,7 +67,8 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
   googleSearchControl: FormControl<string | null>;
   textImageControl: FormControl<string | null>;
   androidUrlControl: FormControl<string | null>;
-  textImageColor = '#1d4ed8';
+  // Transparent by default (the same value as transparentTextImageColor, declared below).
+  textImageColor = 'transparent';
   readonly transparentTextImageColor = 'transparent';
   readonly textImageColors = [this.transparentTextImageColor, '#1d4ed8', '#16a34a', '#dc2626', '#9333ea', '#f59e0b', '#111827'];
   searchResults: PixabayImage[] = [];
@@ -233,7 +240,17 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
     this.activeTab = 'text';
     this.isSearchFullscreen = false;
     this.pasteImportError = null;
+    // Open on the card's own words, unless the teacher is in the middle of typing other ones.
+    const typed = this.textImageControl.value?.trim() ?? '';
+    if (this.cardText && (!typed || typed === this.filledCardText)) {
+      this.textImageControl.setValue(this.cardText);
+      this.filledCardText = this.cardText;
+      if (this.cardColor) this.textImageColor = this.cardColor;
+    }
   }
+
+  /** The card words last put in the 🔤 box, to tell them from the teacher's own typing. */
+  private filledCardText = '';
 
   async triggerFilePicker(fileInput: HTMLInputElement) {
     if (this.platform.isNative()) {
@@ -380,6 +397,8 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       const blob = await this.renderTextAsImage(text);
       this.setPreview(blob);
       this.imageSelected.emit(blob);
+      this.textImageMade.emit(text);
+      this.filledCardText = text;
       this.activeTab = 'upload';
     } catch (error) {
       console.error('Text image generation failed', error);

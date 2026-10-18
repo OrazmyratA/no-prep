@@ -12,6 +12,7 @@ import {
   ViewChild
 } from '@angular/core';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { PdfTextItem, RawPdfTextItem, pdfTextItems } from '../../../core/pdf-text';
 
 type PdfDocumentProxy = {
   numPages: number;
@@ -315,6 +316,31 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
    * reading the file's bytes when the URL can't be streamed, like the visible canvas does.
    */
   static async renderToBlob(sourceUrl: string, pageNumber: number, rotation = 0, renderScale = 2.5): Promise<Blob> {
+    const doc = await PdfPageCanvasComponent.loadDocument(sourceUrl);
+    const canvas = document.createElement('canvas');
+    await PdfPageCanvasComponent.renderPdfPage(doc, pageNumber, renderScale, rotation, canvas, { isStale: () => false });
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not export the page.')), 'image/jpeg', 0.9);
+    });
+  }
+
+  /**
+   * The page's text layer as boxes on the page as shown (the same rotation as renderToBlob), for
+   * snapping AI-placed elements to the printed text. [] for a scanned page with no text.
+   */
+  static async readText(sourceUrl: string, pageNumber: number, rotation = 0): Promise<PdfTextItem[]> {
+    const doc = await PdfPageCanvasComponent.loadDocument(sourceUrl);
+    const page = await doc.getPage(Math.min(Math.max(1, pageNumber || 1), doc.numPages));
+    const viewport = page.getViewport({
+      scale: 1,
+      rotation: PdfPageCanvasComponent.normalizeRotation((page.rotate || 0) + PdfPageCanvasComponent.normalizeRotation(rotation))
+    });
+    const content = await page.getTextContent();
+    return pdfTextItems((content.items as unknown[]).filter((item): item is RawPdfTextItem => !!item && typeof item === 'object' && 'str' in item), viewport);
+  }
+
+  /** Opens a PDF for a one-off export, reading the file's bytes when the URL can't be streamed. */
+  private static async loadDocument(sourceUrl: string): Promise<PdfDocumentProxy> {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/pdfjs/pdf.worker.mjs';
     let doc: PdfDocumentProxy;
     try {
@@ -330,11 +356,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
         wasmUrl: PdfPageCanvasComponent.wasmUrl
       }, `data:${sourceUrl}`);
     }
-    const canvas = document.createElement('canvas');
-    await PdfPageCanvasComponent.renderPdfPage(doc, pageNumber, renderScale, rotation, canvas, { isStale: () => false });
-    return new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not export the page.')), 'image/jpeg', 0.9);
-    });
+    return doc;
   }
 
   /** Shared by the visible canvas and prefetching, so both produce identical pixels. */

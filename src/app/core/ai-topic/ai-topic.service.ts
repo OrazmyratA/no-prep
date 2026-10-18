@@ -12,6 +12,9 @@ import {
   parseLessonPlan
 } from './lesson-plan';
 import {
+  TASK_PREP_SCHEMA, TaskPrepRequest, TaskPrepResult, buildTaskPrepSystemPrompt, buildTaskPrepUserText, parseTaskPrep
+} from './task-prep';
+import {
   SPEAKING_ANALYSIS_SCHEMA,
   SpeakingAnalysis,
   SpeakingAnalysisRequest,
@@ -250,6 +253,23 @@ export class AiTopicService {
     });
     try {
       return parseLessonPlan(result.text, pages.length);
+    } catch {
+      throw new AiTopicError('The AI answer could not be read. Please try again.');
+    }
+  }
+
+  /** Book creator "✨ Prepare tasks": the exercises on these book pages and where they are. */
+  async prepareTasks(provider: AiTopicProviderId, request: TaskPrepRequest, pages: Blob[]): Promise<TaskPrepResult> {
+    const images = await this.pagesToBase64(provider, pages);
+    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+      provider,
+      systemPrompt: buildTaskPrepSystemPrompt(),
+      userText: buildTaskPrepUserText(request),
+      schema: TASK_PREP_SCHEMA,
+      images
+    });
+    try {
+      return parseTaskPrep(result.text, pages.length);
     } catch {
       throw new AiTopicError('The AI answer could not be read. Please try again.');
     }

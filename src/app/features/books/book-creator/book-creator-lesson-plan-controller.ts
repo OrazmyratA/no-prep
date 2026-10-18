@@ -1,5 +1,5 @@
 import { CEFR_LEVELS, CefrLevel, SpeakingExam } from '../../../core/db.model';
-import { DEFAULT_READING_TASKS, SpeakingTestRequest } from '../../../core/ai-topic/ai-topic-prompt';
+import { DEFAULT_READING_TASKS, SpeakingTestRequest, simpleWordingFor } from '../../../core/ai-topic/ai-topic-prompt';
 import { findRecipe } from '../../../core/ai-topic/ai-topic-recipes';
 import { LessonPackCard, LessonPackRun, LessonPackStatus } from '../../../core/ai-topic/lesson-pack.service';
 import { SPEAKING_EXAMS, defaultPartCount } from '../../../core/speaking-exams';
@@ -21,7 +21,7 @@ import {
   newProfileId, sameClass, saveProfiles, saveTeacher
 } from '../../../core/ai-topic/lesson-plan-profiles';
 import { AiPagesResult } from './book-creator-game-controller';
-import { IconRect, isNearBox, placeIcon } from './lesson-plan-icons';
+import { A4_RATIO, IconRect, isNearBox, pageRatio, placeIcon } from './lesson-plan-icons';
 
 // The AI lesson planner in the book creator's right panel (docs/ai-lesson-planner.md). Lives on
 // the creator, not in the panel component, so the plan survives selecting an element.
@@ -32,8 +32,6 @@ const PROFILE_KEY = 'lessonPlanProfile';
 
 /** Width of a planned icon, as a fraction of the page width (game markers are square). */
 const ICON_WIDTH = 0.08;
-/** Height / width of an A4 page, for pages whose size is not known. */
-const A4_RATIO = 842 / 595;
 
 /** Where the plan's pages live, so icons land on the right pages whatever is open later. */
 interface PlanSource {
@@ -613,6 +611,7 @@ export class BookCreatorLessonPlanController {
         oneAtATime: provider === 'groq',
         pages: this.planImages,
         level: plan.level ?? this.klass.level,
+        simpleWording: simpleWordingFor(plan.level ?? this.klass.level, this.klass.age),
         teacherLanguage: LANGUAGE_NAMES[lang] ?? 'English',
         images: 'auto',
         audio: 'auto',
@@ -944,18 +943,6 @@ function speakingTestFor(exam: SpeakingExam): SpeakingTestRequest {
     exam,
     parts: SPEAKING_EXAMS[exam].parts.map(type => ({ type, count: defaultPartCount(exam, type), fromMaterials: false }))
   };
-}
-
-/** Height / width of a rendered page photo; A4 when it cannot be measured. */
-async function pageRatio(image: Blob): Promise<number> {
-  try {
-    const bitmap = await createImageBitmap(image);
-    const ratio = bitmap.width ? bitmap.height / bitmap.width : A4_RATIO;
-    bitmap.close();
-    return ratio;
-  } catch {
-    return A4_RATIO;
-  }
 }
 
 function loadClass(): LessonClass {

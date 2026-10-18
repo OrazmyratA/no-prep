@@ -62,8 +62,11 @@ const { registerBookManagementIpc } = require('./main/book-management-ipc');
 const { registerBookStorageIpc } = require('./main/book-storage-ipc');
 const { registerLicenseIpc } = require('./main/license-ipc');
 const { registerSecureFeatureIpc } = require('./main/secure-feature-ipc');
+const { createUpdateService } = require('./main/update-service');
+const { registerUpdateIpc } = require('./main/update-ipc');
 
 let mainWindow;
+const updateService = createUpdateService({ getMainWindow: () => mainWindow });
 const bookStorage = createBookStorageService({
   app,
   fs,
@@ -453,6 +456,14 @@ function createWindow() {
 app.whenReady().then(() => {
   registerBookAssetProtocol();
   createWindow();
+
+  // Running from source has no packaged update metadata, so skip the check there entirely
+  // rather than let it fire (and get swallowed as an error) on every dev launch.
+  if (!process.env.ELECTRON_START_URL) {
+    const ONE_HOUR_MS = 60 * 60 * 1000;
+    setTimeout(() => updateService.checkForUpdates(), 10000);
+    setInterval(() => updateService.checkForUpdates(), ONE_HOUR_MS);
+  }
 });
 
 app.on('window-all-closed', () => {
@@ -592,3 +603,4 @@ registerBookManagementIpc({
 });
 registerLicenseIpc(ipcMain);
 registerSecureFeatureIpc(ipcMain);
+registerUpdateIpc({ ipcMain, updateService });

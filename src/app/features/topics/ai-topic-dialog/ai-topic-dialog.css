@@ -598,6 +598,12 @@
   font-size: 0.85rem;
 }
 
+/* Simple wording: its own row under the level chips */
+.ai-simple {
+  flex-basis: 100%;
+  min-height: 24px;
+}
+
 .ai-levels-exam {
   font-size: 0.78rem;
   color: #6b7280;

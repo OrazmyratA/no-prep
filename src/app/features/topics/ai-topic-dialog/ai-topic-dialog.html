@@ -111,6 +111,10 @@
                     [title]="cefrExamNames[l]" (click)="level = l">{{ l }}</button>
           </div>
           <span *ngIf="level" class="ai-levels-exam">{{ cefrExamNames[level] }}</span>
+          <label *ngIf="!speakingMode || packMode" class="ai-task ai-simple" [title]="'aiTopicSimpleHint' | translate">
+            <input type="checkbox" [checked]="simpleWording" [disabled]="generating" (change)="setSimpleWording($any($event.target).checked)">
+            <span>✏️ {{ 'aiTopicSimple' | translate }}</span>
+          </label>
         </div>
 
         <!-- Speaking test (Talk Show): the exam, Analyse, and the parts the AI makes -->

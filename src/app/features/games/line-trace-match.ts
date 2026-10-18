@@ -66,7 +66,6 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   selectedElementId: string | null = null;
   matchedLines: MatchedLine[] = [];
   wrongFlashLine: { points: Point[] } | null = null;
-  resetFlashActive = false;
 
   themeActive = false;
   themeBackground: string | null = null;
@@ -89,7 +88,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     { key: 'Escape', action: 'Cancel selection' }
   ];
 
-  // Excludes red — that's reserved for the wrong-match/crossing-reset error color.
+  // Excludes red — that's reserved for the wrong-match/crossing error color.
   private readonly colorPalette = [
     '#3b82f6', '#22c55e', '#eab308', '#8b5cf6', '#ec4899',
     '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4'
@@ -121,7 +120,6 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   private resizeObserver: ResizeObserver | null = null;
   private setupTimer: number | null = null;
   private wrongFlashTimer: number | null = null;
-  private resetFlashTimer: number | null = null;
   private finishTimer: number | null = null;
   private shakeTimer: number | null = null;
   private themeSubscription: Subscription | null = null;
@@ -194,7 +192,6 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     this.destroyed = true;
     this.clearSetupTimer();
     this.clearWrongFlashTimer();
-    this.clearResetFlashTimer();
     this.clearFinishTimer();
     this.clearShakeTimer();
     this.resizeObserver?.disconnect();
@@ -494,8 +491,13 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     // already ended, which can introduce a segment the live per-point check
     // never saw — so self-intersection needs a final check here too, not
     // just against other matched lines.
+    //
+    // A crossing here rejects only this one match (buzz + a red flash of the
+    // attempted path) — the lines already matched stay matched. This used to
+    // wipe the whole board back to zero, punishing every earlier correct
+    // match for one crossing just now.
     if (this.noCrossing && (this.crossesExistingLine(path) || this.pathSelfIntersects(path))) {
-      this.resetBoard();
+      this.showWrongFlash(source, target, rawPath);
       return;
     }
     this.commitMatch(source, target, path);
@@ -595,24 +597,6 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
       }
     }
     return false;
-  }
-
-  private resetBoard() {
-    this.matchedLines = [];
-    this.colorIndex = 0;
-    this.elements.forEach(e => (e.matched = false));
-    this.placeElements();
-    this.playSound(this.buzzSound, 0.7);
-    this.resetFlashActive = true;
-    this.cdr.detectChanges();
-    this.renderCanvas();
-    this.clearResetFlashTimer();
-    this.resetFlashTimer = window.setTimeout(() => {
-      this.resetFlashTimer = null;
-      if (this.destroyed) return;
-      this.resetFlashActive = false;
-      this.cdr.detectChanges();
-    }, 300);
   }
 
   // Lets the student's final line settle on screen for a beat before the win overlay pops up.
@@ -784,13 +768,6 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.wrongFlashTimer !== null) {
       window.clearTimeout(this.wrongFlashTimer);
       this.wrongFlashTimer = null;
-    }
-  }
-
-  private clearResetFlashTimer() {
-    if (this.resetFlashTimer !== null) {
-      window.clearTimeout(this.resetFlashTimer);
-      this.resetFlashTimer = null;
     }
   }
 

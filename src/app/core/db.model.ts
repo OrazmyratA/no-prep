@@ -43,6 +43,8 @@ export interface Item {
   audioPitch?: number;
   audioSpeed?: number;
   audioText?: string;
+  /** The words on the picture when it is a word card (AI or 🔤 text-to-image), to edit them later. */
+  imageText?: string;
   order: number;
   createdAt: Date;
 }

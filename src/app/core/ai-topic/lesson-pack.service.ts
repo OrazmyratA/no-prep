@@ -6,7 +6,7 @@ import { AiItemDraft, AiTopicDraft } from './ai-topic-draft';
 import { AiMediaMode, AiTopicRequest, ReadingTasksRequest } from './ai-topic-prompt';
 import { AiRecipeId, LessonPackBox } from './ai-topic-recipes';
 import { AiTopicError, AiTopicProviderId, AiTopicService } from './ai-topic.service';
-import { AiMediaResolverService } from './ai-media-resolver';
+import { AiMediaResolverService, wordCardText } from './ai-media-resolver';
 
 // The lesson pack (docs/lesson-pack.md): one upload of pages or text, one topic per ticked box.
 // Each box is its own AI request, so one failing box never costs the others. The AI lesson
@@ -22,6 +22,8 @@ export interface LessonPackItem {
   text: string;
   audioText: string;
   image: Blob | null;
+  /** The words on the picture when it is a word card. */
+  imageText?: string;
   audio: Blob | null;
 }
 
@@ -59,6 +61,8 @@ export interface LessonPackRequest<B extends LessonPackJob = LessonPackBox> {
   extraFor?: (box: B) => Partial<AiTopicRequest>;
   /** Word card colour per item text (paragraph colours for Writing Workshop / Reading Detective). */
   cardColors: (texts: string[]) => string[];
+  /** Short, plain wording for young learners (AiTopicRequest.simpleWording); default by level. */
+  simpleWording?: boolean;
   /** The pages one box needs (default: all of `pages`), so a request stays small. */
   pagesFor?: (box: B) => Blob[];
   /** Ask for the topics one after another (an AI with a low per-minute limit, like Groq's free plan). */
@@ -139,6 +143,7 @@ export class LessonPackRun<B extends LessonPackJob = LessonPackBox> {
         level: this.request.level,
         readingTasks: card.box.recipe === 'reading' ? { ...this.request.readingTasks } : null,
         recipe: card.box.recipe,
+        simpleWording: this.request.simpleWording,
         ...this.request.extraFor?.(card.box)
       }, pages);
     } catch (error) {
@@ -177,6 +182,7 @@ export class LessonPackRun<B extends LessonPackJob = LessonPackBox> {
         // A retry replaced this card's items: these results belong to the old ones.
         if (this.cancelled || card.items !== items) return;
         items[index].image = picture?.blob ?? null;
+        items[index].imageText = picture?.blob ? wordCardText(picture.choice) : '';
         items[index].audio = audio;
         card.mediaDone++;
         if (card.mediaDone >= items.length) card.status = 'ready';
@@ -227,6 +233,7 @@ export class LessonPackService {
       await this.db.addItems(id, card.items.map(item => ({
         text: item.text,
         image: item.image ?? undefined,
+        imageText: item.image && item.imageText ? item.imageText : undefined,
         audio: item.audio ?? undefined,
         audioSource: item.audio ?? undefined,
         audioPitch: item.audio ? 0 : undefined,

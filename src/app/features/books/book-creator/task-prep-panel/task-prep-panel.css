@@ -1,0 +1,131 @@
+/* Only what the lesson planner's panel styles (shared) do not cover. */
+
+.tp-count {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.tp-result {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0 0.65rem 0.5rem;
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.tp-result p {
+  margin: 0;
+}
+
+.tp-drafts {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0 0.65rem 0.65rem;
+}
+
+.tp-drafts h4 {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: #3730a3;
+}
+
+.tp-drafts ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tp-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.tp-open {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  min-width: 0;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #ddd6fe;
+  border-radius: 0.45rem;
+  background: #faf5ff;
+  text-align: start;
+  cursor: pointer;
+}
+
+.tp-open:hover,
+.tp-open:focus-visible {
+  border-color: #8b5cf6;
+}
+
+.tp-kind {
+  flex: none;
+}
+
+.tp-label {
+  display: grid;
+  min-width: 0;
+}
+
+.tp-label strong {
+  overflow: hidden;
+  font-size: 0.78rem;
+  color: #1e1b4b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-label small {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.tp-label small.tp-answers {
+  overflow: hidden;
+  color: #5b21b6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-label small.tp-missing {
+  color: #b45309;
+}
+
+.tp-marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+  align-items: center;
+  font-size: 0.75rem;
+  color: #334155;
+}
+
+.tp-marks > span {
+  flex-basis: 100%;
+  font-weight: 600;
+}
+
+.tp-marks label {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.tp-marks img,
+.tp-mark-icons img {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+}
+
+.tp-mark-icons {
+  display: inline-flex;
+  gap: 0.15rem;
+  margin-inline-start: 0.25rem;
+  vertical-align: middle;
+}

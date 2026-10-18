@@ -1,0 +1,112 @@
+.app-update-dot {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 9000;
+  width: 3rem;
+  height: 3rem;
+  border: 0;
+  border-radius: 9999px;
+  background: #16a34a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.25);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.app-update-dot:hover,
+.app-update-dot:focus-visible {
+  background: #15803d;
+  transform: scale(1.05);
+}
+
+.app-update-dot:active {
+  transform: scale(0.95);
+}
+
+.app-update-dot.is-busy {
+  background: #2563eb;
+}
+
+.app-update-dot-ping {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+  animation: app-update-ping 1.6s ease-out infinite;
+}
+
+@keyframes app-update-ping {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+}
+
+.app-update-panel {
+  position: fixed;
+  left: 1rem;
+  bottom: 4.75rem;
+  z-index: 9001;
+  width: 17.5rem;
+  max-width: calc(100vw - 2rem);
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.app-update-panel-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #0f172a;
+  margin-bottom: 0.4rem;
+}
+
+.app-update-panel-body {
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.4;
+  margin-bottom: 0.85rem;
+}
+
+.app-update-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.app-update-later,
+.app-update-now {
+  border: 0;
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-update-later {
+  background: transparent;
+  color: #64748b;
+}
+
+.app-update-later:hover {
+  color: #0f172a;
+}
+
+.app-update-now {
+  background: #16a34a;
+  color: #fff;
+}
+
+.app-update-now:hover {
+  background: #15803d;
+}
+
+.app-update-now:disabled {
+  background: #94a3b8;
+  cursor: default;
+}

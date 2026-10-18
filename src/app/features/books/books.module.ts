@@ -1,4 +1,5 @@
 import { LessonPlanPanelComponent } from './book-creator/lesson-plan-panel/lesson-plan-panel';
+import { TaskPrepPanelComponent } from './book-creator/task-prep-panel/task-prep-panel';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -22,7 +23,7 @@ import { PdfPageCanvasComponent } from './pdf-page-canvas/pdf-page-canvas';
 import { TranslatePipe } from '../../shared/translate-pipe';
 
 @NgModule({
-  declarations: [BookCreatorComponent, LessonPlanPanelComponent, BookCreatorEditorSurfaceComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderProgressMapComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
+  declarations: [BookCreatorComponent, LessonPlanPanelComponent, TaskPrepPanelComponent, BookCreatorEditorSurfaceComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderProgressMapComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
   imports: [CommonModule, FormsModule, SharedModule, BooksRoutingModule, TranslatePipe]
 })
 export class BooksModule {}

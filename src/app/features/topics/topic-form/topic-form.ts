@@ -15,7 +15,7 @@ import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
 import { AiTopicDialogResult, LANGUAGE_NAMES } from '../ai-topic-dialog/ai-topic-dialog';
 import { AiTopicProviderId, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
-import { AiImageChoice, AiMediaResolverService } from '../../../core/ai-topic/ai-media-resolver';
+import { AiImageChoice, AiMediaResolverService, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
 import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
 import { getStoredVoiceLanguage } from '../../../core/audio-voice';
 import { GAMES } from '../games.config';
@@ -293,7 +293,8 @@ async loadTopic(id: number) {
       audioSource: item.audioSource,
       audioPitch: item.audioPitch,
       audioSpeed: item.audioSpeed,
-      audioText: item.audioText
+      audioText: item.audioText,
+      imageText: item.imageText
     }));
     });
   }
@@ -322,7 +323,7 @@ createItemFormGroup(
   text: string = '',
   image: Blob | null = null,
   audio: Blob | null = null,
-  voice: { audioSource?: Blob; audioPitch?: number; audioSpeed?: number; audioText?: string } = {}
+  voice: { audioSource?: Blob; audioPitch?: number; audioSpeed?: number; audioText?: string; imageText?: string } = {}
 ): FormGroup {
   return this.fb.group({
     id: [id],
@@ -332,7 +333,9 @@ createItemFormGroup(
     audioSource: [voice.audioSource ?? null],
     audioPitch: [voice.audioPitch ?? null],
     audioSpeed: [voice.audioSpeed ?? null],
-    audioText: [voice.audioText ?? '']
+    audioText: [voice.audioText ?? ''],
+    // The words on the picture when it is a word card (AI or 🔤), so the 🔤 tab can edit them.
+    imageText: [voice.imageText ?? '']
   }, { validators: (group: AbstractControl) => {
       const g = group as FormGroup;
       return g.get('text')?.value || g.get('image')?.value || g.get('audio')?.value ? null : { atLeastOne: true };
@@ -384,7 +387,8 @@ createItemFormGroup(
 
 onImageSelected(blob: Blob | null, index: number) {
   const item = this.items.at(index);
-  item.patchValue({ image: blob });
+  // Any other picture has no card words; a 🔤 card sends its words next (onTextImageMade).
+  item.patchValue({ image: blob, imageText: '' });
   // The teacher picked their own picture, so the AI's alternatives no longer apply.
   this.aiImageChoices.delete(item);
   if (blob) {
@@ -399,6 +403,17 @@ onImageSelected(blob: Blob | null, index: number) {
  * way picking a different image/upload is — so, unlike onImageSelected, this deliberately
  * keeps aiImageChoices: "another picture"/"generate a picture" should still work afterward.
  */
+/** A word card made in the uploader's 🔤 tab: keep its words to edit later. */
+onTextImageMade(text: string, index: number) {
+  this.items.at(index).patchValue({ imageText: text });
+}
+
+/** The AI word card's colour, so the 🔤 tab redraws it the same; '' when not known. */
+cardColorFor(item: AbstractControl): string {
+  const choice = this.aiImageChoices.get(item);
+  return wordCardText(choice) ? choice!.cardBackground : '';
+}
+
 onImageCropped(blob: Blob, index: number) {
   const item = this.items.at(index);
   item.patchValue({ image: blob });
@@ -505,7 +520,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
           if (runId !== this.aiRunId) return;
           const group = groups[index];
           if (picture?.choice) this.aiImageChoices.set(group, picture.choice);
-          if (picture?.blob) group.patchValue({ image: picture.blob });
+          if (picture?.blob) group.patchValue({ image: picture.blob, imageText: wordCardText(picture.choice) });
           if (audio) {
             group.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: item.audioText });
           }
@@ -599,7 +614,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       this.zone.run(() => {
         if (picture?.choice) this.aiImageChoices.set(item, picture.choice);
         if (picture?.blob) {
-          item.patchValue({ image: picture.blob });
+          item.patchValue({ image: picture.blob, imageText: wordCardText(picture.choice) });
           this.expandedImageItems.add(item);
         }
         if (audio) {
@@ -636,7 +651,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     try {
       const blob = await this.aiMedia.nextImage(choice);
       this.zone.run(() => {
-        if (blob && this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob });
+        if (blob && this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob, imageText: wordCardText(choice) });
       });
     } finally {
       this.zone.run(() => this.swappingImages.delete(item));
@@ -664,7 +679,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         return;
       }
       this.zone.run(() => {
-        if (this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob });
+        if (this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob, imageText: wordCardText(choice) });
       });
     } catch {
       showAppNotification(this.langService.translate('aiTopicGenerateImageFailed'), 'error');
@@ -725,7 +740,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         audioSource: item.audio ? item.audioSource ?? undefined : undefined,
         audioPitch: item.audio ? item.audioPitch ?? undefined : undefined,
         audioSpeed: item.audio ? item.audioSpeed ?? undefined : undefined,
-        audioText: item.audio ? item.audioText || undefined : undefined
+        audioText: item.audio ? item.audioText || undefined : undefined,
+        imageText: item.image ? item.imageText || undefined : undefined
       })));
 
       let savedTopicId = this.topicId || 0;
@@ -775,7 +791,12 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       return;
     }
     if (this.returnToBookId) {
-      this.router.navigate(['/books', this.returnToBookId, 'edit']);
+      // Nothing was linked/changed here (that only happens on Save), but the book editor still
+      // needs to know which marker to jump back to - otherwise it reopens wherever the book
+      // last saved (its first page), not the page the teacher actually left from.
+      this.router.navigate(['/books', this.returnToBookId, 'edit'], {
+        queryParams: this.returnToBookElementId ? { linkedElementId: this.returnToBookElementId } : {}
+      });
       return;
     }
     this.router.navigate(['/topics']);

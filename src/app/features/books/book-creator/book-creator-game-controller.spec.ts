@@ -247,4 +247,17 @@ describe('BookCreatorGameController: full-page topic picker', () => {
     expect(captureHistoryCalls).toBe(0);
     expect(navigations).toEqual([['/books', 'book-1', 'edit']]);
   });
+
+  it('jumps back to the marker on Edit Topic\'s back button, with no topic change (linkedElementId alone)', async () => {
+    creator.route.snapshot.queryParamMap = queryParamMap({ linkedElementId: 'm1' });
+
+    await controller.attachReturnedTopic();
+
+    const element = creator.book.pages[1].elements[0];
+    expect(element.data.topicId).toBeNull();
+    expect(creator.activePageSource).toBe('main');
+    expect(creator.selectedPageIndex).toBe(1);
+    expect(creator.selectedElementId).toBe('m1');
+    expect(navigations).toEqual([['/books', 'book-1', 'edit']]);
+  });
 });

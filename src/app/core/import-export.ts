@@ -14,6 +14,8 @@ export interface ExportTopic {
     text?: string;
     image?: string;   
     audio?: string;   
+    /** The words on a word-card picture. */
+    imageText?: string;
     order: number;
   }[];
 }
@@ -89,6 +91,7 @@ const exportItems = await Promise.all(items.map(async item => ({
       text: item.text,
       image: item.image ? await this.blobToBase64(item.image) : undefined,
       audio: item.audio ? await this.blobToBase64(item.audio) : undefined,  
+      ...(item.image && item.imageText ? { imageText: item.imageText } : {}),
       order: item.order
     })));
     return {
@@ -170,6 +173,7 @@ const exportItems = await Promise.all(items.map(async item => ({
           text: expItem.text,
           image,
           audio,          // <-- new
+          imageText: image && typeof expItem.imageText === 'string' ? expItem.imageText.slice(0, 500) : undefined,
           order: expItem.order ?? idx,
           createdAt: new Date()
         };

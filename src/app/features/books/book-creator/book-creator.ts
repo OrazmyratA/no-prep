@@ -66,6 +66,7 @@ import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface
 import { BookCreatorPageStripComponent } from './book-creator-page-strip';
 import { AiPagesResult, BookCreatorGameController } from './book-creator-game-controller';
 import { BookCreatorLessonPlanController } from './book-creator-lesson-plan-controller';
+import { BookCreatorTaskPrepController } from './book-creator-task-prep-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
 import { BookCreatorGuidePreviewController } from './book-creator-guide-preview-controller';
 import { BookCreatorMarkController } from './book-creator-mark-controller';
@@ -356,6 +357,7 @@ Tomorrow I will help my mom.`;
   readonly lessonPack = inject(LessonPackService);
   readonly platform = inject(PlatformService);
   readonly lessonPlanner = new BookCreatorLessonPlanController(this);
+  readonly taskPrep = new BookCreatorTaskPrepController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
   private readonly guidePreviewController = new BookCreatorGuidePreviewController(this);
   private readonly mediaController = new BookCreatorMediaController(this);

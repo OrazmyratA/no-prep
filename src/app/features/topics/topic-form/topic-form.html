@@ -174,7 +174,10 @@
                     [autoPasteTarget]="isImagePasteReady(item)"
                     [initialImage]="item.get('image')?.value"
                     [pageSources]="aiAttachedPages"
+                    [cardText]="item.get('imageText')?.value || ''"
+                    [cardColor]="cardColorFor(item)"
                     (imageSelected)="onImageSelected($event, i)"
+                    (textImageMade)="onTextImageMade($event, i)"
                     (imageCropped)="onImageCropped($event, i)">
                   </app-image-uploader>
                 </div>

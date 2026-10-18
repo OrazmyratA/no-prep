@@ -1,4 +1,4 @@
-import { AiTopicRequest, DEFAULT_READING_TASKS, buildAiTopicSystemPrompt, buildAiTopicUserText } from './ai-topic-prompt';
+import { AiTopicRequest, DEFAULT_READING_TASKS, buildAiTopicSystemPrompt, buildAiTopicUserText, simpleWordingFor } from './ai-topic-prompt';
 import { AI_RECIPE_GROUPS, AI_TOPIC_RECIPES, LESSON_PACK_BOXES, findRecipe } from './ai-topic-recipes';
 
 const base: AiTopicRequest = {
@@ -20,6 +20,22 @@ describe('ai-topic-prompt', () => {
     expect(text).toContain('- True/False/Not given (TFNG or YNNG): 5 statements');
     expect(text).toContain('- Multiple choice (MC): none');
     expect(text).toContain('- Gapped text: 3 sentences taken out');
+  });
+
+  it('uses simple wording for young learners, A1-A2 or no level, unless the teacher says otherwise', () => {
+    expect([null, 'A1', 'A2', 'B1', 'C1'].map(level => simpleWordingFor(level as never))).toEqual([true, true, true, false, false]);
+    expect(simpleWordingFor('B1', '10-11')).toBe(true); // a young class
+    expect(simpleWordingFor('B1', 'adults')).toBe(false);
+    expect(simpleWordingFor('B1', '14-15')).toBe(false);
+
+    const simple = 'Wording: SIMPLE, for young learners';
+    expect(buildAiTopicUserText({ ...base, level: 'A2' })).toContain(simple);
+    expect(buildAiTopicUserText({ ...base, level: null })).toContain(simple);
+    expect(buildAiTopicUserText(base)).not.toContain(simple); // B1: exam style
+    expect(buildAiTopicUserText({ ...base, simpleWording: true })).toContain(simple);
+    expect(buildAiTopicUserText({ ...base, level: 'A2', simpleWording: false })).not.toContain(simple);
+    // A speaking test keeps its exam wording.
+    expect(buildAiTopicUserText({ ...base, level: 'A1', speakingTest: { exam: 'movers', parts: [{ type: 'ASK', count: 3, fromMaterials: false }] } })).not.toContain(simple);
   });
 
   it('says nothing about tasks outside reading mode', () => {

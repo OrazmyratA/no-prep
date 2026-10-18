@@ -1,6 +1,8 @@
 import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { AiTopicDraft } from '../../../core/ai-topic/ai-topic-draft';
-import { AiMediaMode, CEFR_EXAM_NAMES, DEFAULT_READING_TASKS, ReadingTasksRequest, SpeakingTestRequest } from '../../../core/ai-topic/ai-topic-prompt';
+import {
+  AiMediaMode, CEFR_EXAM_NAMES, DEFAULT_READING_TASKS, ReadingTasksRequest, SpeakingTestRequest, simpleWordingFor
+} from '../../../core/ai-topic/ai-topic-prompt';
 import { AI_TOPIC_MAX_ITEMS } from '../../../core/ai-topic/ai-topic-draft';
 import { CEFR_LEVELS, CefrLevel, SpeakingExam } from '../../../core/db.model';
 import { defaultPartCount, examForLevel, SPEAKING_EXAM_LIST, SPEAKING_EXAMS, SpeakingTaskType } from '../../../core/speaking-exams';
@@ -136,6 +138,8 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   voiceLanguage = 'auto';
   mode: 'append' | 'replace' = 'append';
   level: CefrLevel | null = null;
+  /** The teacher's own choice for simple wording; null = follow the level (simpleWordingFor). */
+  simpleOverride: boolean | null = null;
   /** Reading Detective mode (the 📖 chip): which parts and tasks the AI makes. */
   readingMode = false;
   readingTasks: ReadingTasksRequest = { ...DEFAULT_READING_TASKS };
@@ -650,6 +654,7 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
         existingItems: this.hasExistingItems && this.mode === 'append' ? this.existingItemTexts : [],
         teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
         level: this.level,
+        simpleWording: this.simpleWording,
         readingTasks: this.readingMode ? { ...this.readingTasks } : null,
         speakingTest: this.speakingRequest(),
         recipe: chip?.id ?? null,
@@ -672,6 +677,15 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Short, plain questions, headings and definitions for young learners. */
+  get simpleWording(): boolean {
+    return this.simpleOverride ?? simpleWordingFor(this.level);
+  }
+
+  setSimpleWording(on: boolean): void {
+    this.simpleOverride = on === simpleWordingFor(this.level) ? null : on;
+  }
+
   // ---- Lesson pack ----
 
   private startPack(): void {
@@ -688,6 +702,7 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
         oneAtATime: this.providerId === 'groq',
         pages: this.pages.map(page => page.blob),
         level: this.level,
+        simpleWording: this.simpleWording,
         teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
         images: this.imagesMode,
         audio: this.audioMode,

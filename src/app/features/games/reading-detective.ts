@@ -160,6 +160,8 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
   missionShake = false;
   mistakes = 0;
   busy = false; // between a right answer and the next task
+  /** The answer on show is a skipped question's (no ✓). */
+  skipping = false;
 
   keyboardShortcuts: GameKeyboardShortcut[] = [
     { key: 'Enter', action: 'Start / continue' },
@@ -167,6 +169,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     { key: '+ / -', action: 'Reading speed' },
     { key: '1-9', action: 'Choose a heading / option / sentence' },
     { key: 'T F G', action: 'True / False / Not given' },
+    { key: 'S', action: 'Skip this question' },
     { key: 'Shift + R', action: 'Start over' }
   ];
 
@@ -354,6 +357,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.view = 'play';
     this.mistakes = 0;
     this.busy = false;
+    this.skipping = false;
     this.clearFlashes();
     const score = this.scores[stage];
     score.played = true;
@@ -511,21 +515,127 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     match.forEach(id => hits.add(id));
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => {
-      if (findingWord) {
-        this.nextTask();
-        return;
+    this.timers.set(() => findingWord ? this.nextTask() : this.nextKey(), FOUND_NEXT_MS);
+  }
+
+  private nextKey() {
+    this.busy = false;
+    this.skipping = false;
+    this.mistakes = 0;
+    this.keyIndex++;
+    if (this.keyIndex >= this.text.keys.length) {
+      this.finishStage();
+      return;
+    }
+    this.playSound(this.popSound, 0.35);
+    this.cdr.detectChanges();
+  }
+
+  /** Where a key shows in the text: its own words, else the first place it appears (its paragraph first). */
+  private keyWordIds(key: RdKey): number[] {
+    const own = this.text.words.filter(word => word.key === key.id).map(word => word.id);
+    if (own.length) return own;
+    const starts = (word: RdWord) => findKeyAt(this.text.words, key, word.id)?.[0] === word.id;
+    const inParagraph = this.text.words.find(word => this.text.sentences[word.sentence]?.paragraph === key.paragraph && starts(word));
+    const start = inParagraph ?? this.text.words.find(starts);
+    return start ? findKeyAt(this.text.words, key, start.id) ?? [] : [];
+  }
+
+  // ---- Skipping one question ----
+
+  /**
+   * Skips just the current question of the stage (not the whole stage): its answer is shown
+   * for a moment, it scores nothing, and the next question comes.
+   */
+  skipQuestion() {
+    if (this.view !== 'play') return;
+    if (this.stage === 'reading') {
+      this.skipHeading();
+      return;
+    }
+    if (this.busy) return;
+    this.clearFlashes();
+    this.ruleTipShown = false;
+    let next: () => void;
+    let delay = ANSWER_NEXT_MS;
+    switch (this.stage) {
+      case 'gapped': {
+        const gap = this.currentGap;
+        if (!gap) return;
+        const card = this.gapCards.find(c => c.sentence === gap.id && !this.usedCards.has(c.id));
+        if (card) this.usedCards.add(card.id);
+        this.filledGaps.add(gap.id);
+        this.justAnswered = gap.id;
+        next = () => this.nextGap();
+        break;
       }
-      this.busy = false;
-      this.mistakes = 0;
-      this.keyIndex++;
-      if (this.keyIndex >= this.text.keys.length) {
-        this.finishStage();
-        return;
+      case 'keys':
+      case 'word': {
+        const key = this.stage === 'word' ? this.currentWordTask?.key : this.currentKey;
+        if (!key) return;
+        const ids = this.keyWordIds(key);
+        const hits = this.stage === 'word' ? this.wordHits : this.foundWords;
+        ids.forEach(id => hits.add(id));
+        this.freshWords = new Set(ids);
+        next = this.stage === 'word' ? () => this.nextTask() : () => this.nextKey();
+        delay = FOUND_NEXT_MS;
+        break;
       }
-      this.playSound(this.popSound, 0.35);
-      this.cdr.detectChanges();
-    }, FOUND_NEXT_MS);
+      case 'questions': {
+        const question = this.currentQuestion;
+        if (!question) return;
+        this.answered.set(question.id, this.questionIndex + 1);
+        this.justAnswered = question.id;
+        next = () => this.nextQuestion();
+        break;
+      }
+      default: {
+        // True/False and multiple choice: the right answer, and its proof sentence.
+        const statement = this.currentStatement;
+        const choice = this.currentChoice;
+        if (!statement && !choice) return;
+        if (this.taskPhase === 'answer') {
+          this.chosenOption = statement ? VERDICTS.indexOf(statement.answer) : this.currentOptions.findIndex(option => option.correct);
+        }
+        const proof = this.currentProof;
+        if (proof >= 0) {
+          this.proved.add(proof);
+          this.justProved = proof;
+        }
+        this.taskPhase = 'done';
+        next = () => this.nextTask();
+        delay = MATCHED_NEXT_MS;
+      }
+    }
+    this.busy = true;
+    this.skipping = true;
+    this.playSound(this.flipSound, 0.3);
+    this.cdr.detectChanges();
+    this.timers.set(next, delay);
+  }
+
+  /** Read & head: the paragraph's heading is shown as missed, then the next paragraph. */
+  private skipHeading() {
+    const paragraph = this.readParagraph;
+    if (!paragraph) return;
+    if (this.phase !== 'reading' && this.phase !== 'choosing') {
+      this.readTimers.clear();
+      this.nextParagraph();
+      return;
+    }
+    this.readTimers.clear();
+    this.paused = false;
+    this.revealed = paragraph.words.length;
+    if (paragraph.heading < 0) {
+      this.nextParagraph();
+      return;
+    }
+    this.timerLeftMs = 0;
+    this.usedHeadings.add(paragraph.heading);
+    this.headingResults.set(paragraph.id, { heading: paragraph.heading, firstTry: false, missed: true });
+    this.phase = 'missed';
+    this.cdr.detectChanges();
+    this.readTimers.set(() => this.nextParagraph(), MISSED_NEXT_MS);
   }
 
   // ---- Gapped text ----
@@ -557,18 +667,21 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.justAnswered = gap.id;
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => {
-      this.busy = false;
-      this.mistakes = 0;
-      this.justAnswered = -1;
-      this.gapIndex++;
-      if (this.gapIndex >= this.text.gaps.length) {
-        this.finishStage();
-        return;
-      }
-      this.playSound(this.popSound, 0.35);
-      this.cdr.detectChanges();
-    }, ANSWER_NEXT_MS);
+    this.timers.set(() => this.nextGap(), ANSWER_NEXT_MS);
+  }
+
+  private nextGap() {
+    this.busy = false;
+    this.skipping = false;
+    this.mistakes = 0;
+    this.justAnswered = -1;
+    this.gapIndex++;
+    if (this.gapIndex >= this.text.gaps.length) {
+      this.finishStage();
+      return;
+    }
+    this.playSound(this.popSound, 0.35);
+    this.cdr.detectChanges();
   }
 
   // ---- True/False, multiple choice, find the word ----
@@ -659,6 +772,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
 
   private nextTask() {
     this.busy = false;
+    this.skipping = false;
     this.mistakes = 0;
     this.proofMistakes = 0;
     this.resetTaskFlags();
@@ -704,18 +818,21 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.justAnswered = sentence.id;
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => {
-      this.busy = false;
-      this.mistakes = 0;
-      this.justAnswered = -1;
-      this.questionIndex++;
-      if (this.questionIndex >= this.questions.length) {
-        this.finishStage();
-        return;
-      }
-      this.playSound(this.flipSound, 0.4);
-      this.cdr.detectChanges();
-    }, ANSWER_NEXT_MS);
+    this.timers.set(() => this.nextQuestion(), ANSWER_NEXT_MS);
+  }
+
+  private nextQuestion() {
+    this.busy = false;
+    this.skipping = false;
+    this.mistakes = 0;
+    this.justAnswered = -1;
+    this.questionIndex++;
+    if (this.questionIndex >= this.questions.length) {
+      this.finishStage();
+      return;
+    }
+    this.playSound(this.flipSound, 0.4);
+    this.cdr.detectChanges();
   }
 
   /** A sentence with the very same words as the answer is just as right. */
@@ -1009,6 +1126,11 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       return;
     }
     if (this.view !== 'play') return;
+    if (key === 's') {
+      event.preventDefault();
+      this.skipQuestion();
+      return;
+    }
     if (this.stage !== 'reading') {
       this.taskKey(event, key);
       return;

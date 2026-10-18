@@ -63,6 +63,7 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
     audioPitch: item.audioPitch,
     audioSpeed: item.audioSpeed,
     audioText: item.audioText,
+    imageText: item.imageText,
     order: index,
     createdAt: now
   }));
@@ -87,7 +88,8 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
         audioSource: item.audioSource,
         audioPitch: item.audioPitch,
         audioSpeed: item.audioSpeed,
-        audioText: item.audioText
+        audioText: item.audioText,
+        imageText: item.imageText
       };
       if (item.id != null && existingIds.has(item.id)) {
         await db.items.update(item.id, { text: item.text, image: item.image, audio: item.audio, ...voice, order: index });
@@ -118,7 +120,8 @@ async duplicateTopic(topicId: number): Promise<number | null> {
     audioSource: item.audioSource,
     audioPitch: item.audioPitch,
     audioSpeed: item.audioSpeed,
-    audioText: item.audioText
+    audioText: item.audioText,
+    imageText: item.imageText
   })));
   await this.refreshTopics();
   return newTopicId;

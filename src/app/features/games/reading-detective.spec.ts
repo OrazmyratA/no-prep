@@ -203,6 +203,30 @@ describe('ReadingDetectiveComponent', () => {
     expect(component.scores.reading).toEqual({ got: 0, total: 2, played: true, proofGot: 0, proofTotal: 0 });
   });
 
+  it('skips one key word, question or heading without a point', async () => {
+    await create(STORY);
+    component.start();
+    component.skipQuestion();
+    expect(component.foundWords.has(wordId('grandmother.'))).toBe(true);
+    vi.advanceTimersByTime(750);
+    expect(component.currentKey?.text).toBe('river');
+
+    component.skipStage();
+    const first = component.currentQuestion!;
+    component.skipQuestion();
+    expect(component.answered.get(first.id)).toBe(1);
+    vi.advanceTimersByTime(950);
+    expect([component.questionIndex, component.scores.questions.got]).toEqual([1, 0]);
+
+    component.skipStage();
+    expect(component.stage).toBe('reading');
+    component.skipQuestion(); // mid-paragraph: its heading shows as missed
+    expect(component.phase).toBe('missed');
+    expect(component.headingResult(component.text.paragraphs[0])?.missed).toBe(true);
+    vi.advanceTimersByTime(2600);
+    expect(component.readIndex).toBe(1);
+  });
+
   it('stage 3 without headings: each paragraph waits for Next', async () => {
     await create([item(0, 'One two three.'), item(1, '* Four five.')]);
     component.start();
@@ -309,6 +333,38 @@ describe('ReadingDetectiveComponent', () => {
       component.onSentenceClick(component.text.sentences[0]);
       vi.advanceTimersByTime(950);
       expect(component.scores.choice).toEqual({ got: 0, total: 1, played: true, proofGot: 1, proofTotal: 1 });
+    });
+
+    it('skips one question: shows its answer, scores nothing, and the stage goes on', async () => {
+      await create(TASKS);
+      only('statements');
+      component.skipQuestion();
+      // The right answer and its proof sentence are shown, without a point.
+      expect([component.chosenOption, component.taskPhase, component.proved.has(0), component.skipping]).toEqual([1, 'done', true, true]);
+      component.skipQuestion(); // ignored while the answer shows
+      vi.advanceTimersByTime(1700);
+      expect([component.stage, component.taskIndex, component.skipping]).toEqual(['statements', 1, false]);
+      component.answerStatement('ng');
+      vi.advanceTimersByTime(2600);
+      expect(component.scores.statements).toEqual({ got: 1, total: 2, played: true, proofGot: 0, proofTotal: 1 });
+
+      TestBed.resetTestingModule();
+      await create(TASKS);
+      only('gapped');
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 's' }));
+      expect(component.filledGaps.has(1)).toBe(true);
+      expect(component.usedCards.has(component.gapCards.find(card => card.sentence === 1)!.id)).toBe(true);
+      vi.advanceTimersByTime(950);
+      expect(component.currentGap?.id).toBe(2);
+    });
+
+    it('skips one word to find, highlighting it', async () => {
+      await create(TASKS);
+      only('word');
+      component.skipQuestion();
+      expect(component.wordHits.has(wordId('quiet.'))).toBe(true);
+      vi.advanceTimersByTime(750);
+      expect([component.view, component.scores.word.got]).toEqual(['results', 0]);
     });
 
     it('Find the word: tap the word in the text', async () => {
