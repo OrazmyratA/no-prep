@@ -195,7 +195,6 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     window.addEventListener('paste', this.onWindowPaste, true);
-    if (this.packAvailable) this.packBoxes.forEach(box => this.packTicked.add(box.id));
     const { providers, start } = await this.ai.getStartProvider();
     this.providers = providers;
     this.providerId = start?.id ?? 'gemini';
@@ -699,7 +698,9 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
       this.packBoxes.filter(box => this.packTicked.has(box.id)),
       {
         provider: this.providerId,
-        oneAtATime: this.providerId === 'groq',
+        // Firing every ticked box's request at once routinely overwhelms a weaker/rate-limited
+        // AI (not just Groq's free plan) — one request at a time is slower but far more reliable.
+        oneAtATime: true,
         pages: this.pages.map(page => page.blob),
         level: this.level,
         simpleWording: this.simpleWording,

@@ -106,6 +106,7 @@
   font-size: 2rem;
 }
 
+/* Face colours tell picture / word / sound cards apart, so they stay the same in every theme. */
 .card-front-image {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
 }

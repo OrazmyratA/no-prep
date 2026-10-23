@@ -1,9 +1,9 @@
-import { AiTopicError } from '../../../core/ai-topic/ai-topic.service';
+import { AiTopicError, AiTopicProviderId, AiTopicProviderStatus, providerShortLabel } from '../../../core/ai-topic/ai-topic.service';
 import { AiCropBox } from '../../../core/ai-topic/ai-topic-draft';
 import { ExerciseKind, PreparedExercise, TaskPrepResult } from '../../../core/ai-topic/task-prep';
-import { GridAnchor, MARK_SIZE, circleBox, gridCells, inkBox, marksAfter, marksInCorner, matchDots, placeGaps, separateBoxes } from '../../../core/ai-topic/task-gaps';
+import { GridAnchor, circleBox, gridCells, inkBox, markSize, marksAfter, marksInCorner, matchDots, placeGaps, separateBoxes, squareBox } from '../../../core/ai-topic/task-gaps';
 import { BookElement, BookElementType, BookPage, BookWordBank } from '../../../core/book.model';
-import { PdfTextItem, findBlanks, findInstructionEnd, findPhrases, snapBoxToText } from '../../../core/pdf-text';
+import { PdfTextItem, findBlanks, findInstructionEnd, findPhrases, snapBoxToText, textInBox } from '../../../core/pdf-text';
 import { LANGUAGE_NAMES } from '../../topics/ai-topic-dialog/ai-topic-dialog';
 import { PdfPageCanvasComponent } from '../pdf-page-canvas/pdf-page-canvas';
 import { AiPagesResult } from './book-creator-game-controller';
@@ -38,12 +38,14 @@ export interface TaskPrepMarks {
   guides: boolean;
   keys: boolean;
   videos: boolean;
+  /** A note with the AI's game idea, on exercises the page's tasks cannot make interactive. */
+  notes: boolean;
 }
 
 const MARKS_KEY = 'taskPrepMarks';
-const MARK_TYPES: BookElementType[] = ['guideDot', 'answerKey', 'video'];
+const MARK_TYPES: BookElementType[] = ['guideDot', 'answerKey', 'note', 'video'];
 /** Exercises with answers to check get an answer key. */
-const ANSWERED_KINDS: ExerciseKind[] = ['gapFill', 'wordBank', 'circle', 'choice', 'match', 'crossword', 'open'];
+const ANSWERED_KINDS: ExerciseKind[] = ['gapFill', 'wordBank', 'tick', 'order', 'circle', 'choice', 'match', 'crossword', 'open'];
 /** Marks may reach this far past the frame's right edge after a long line. */
 const MARK_OVERHANG = 0.05;
 
@@ -81,6 +83,8 @@ export interface TaskPrepRun {
   guides: number;
   keys: number;
   videos: number;
+  /** Game ideas left as notes. */
+  notes: number;
 }
 
 export class BookCreatorTaskPrepController {
@@ -88,6 +92,9 @@ export class BookCreatorTaskPrepController {
 
   /** The panel section is expanded. */
   open = false;
+  /** The AIs, as in the topic form's ✨ AI window; the choice is shared with it. */
+  providers: AiTopicProviderStatus[] = [];
+  providerId: AiTopicProviderId | null = null;
   pagesText = '';
   analysing = false;
   error: TaskPrepError | null = null;
@@ -95,6 +102,49 @@ export class BookCreatorTaskPrepController {
   notes: string[] = [];
   lastRun: TaskPrepRun | null = null;
   marks: TaskPrepMarks = loadMarks();
+
+  /** Opens or closes the panel section; opening reads which AIs are linked. */
+  toggle(): void {
+    this.open = !this.open;
+    if (this.open) void this.loadProviders();
+  }
+
+  async loadProviders(): Promise<void> {
+    const { providers, start } = await this.creator.aiTopic.getStartProvider();
+    this.inZone(() => {
+      this.providers = providers;
+      this.providerId = start?.id ?? null;
+    });
+  }
+
+  get provider(): AiTopicProviderStatus | null {
+    return this.providers.find(p => p.id === this.providerId) ?? null;
+  }
+
+  /** At least one AI has a key. */
+  get anyProviderLinked(): boolean {
+    return this.providers.some(p => p.configured);
+  }
+
+  providerLabel(provider: AiTopicProviderStatus): string {
+    return providerShortLabel(provider.id);
+  }
+
+  /** Switches AI for Prepare tasks and the topic form; the choice is shared. */
+  selectProvider(id: string): void {
+    const provider = this.providers.find(p => p.id === id);
+    if (!provider?.configured || this.analysing) return;
+    this.providerId = provider.id;
+    this.creator.aiTopic.setSelectedProvider(provider.id);
+    this.error = null;
+  }
+
+  /** The AI to call: the one picked here, or the shared start choice. */
+  private async providerToUse(): Promise<string> {
+    if (this.provider?.configured) return this.provider.id;
+    const { start } = await this.creator.aiTopic.getStartProvider();
+    return start?.id ?? 'gemini';
+  }
 
   setMark(key: keyof TaskPrepMarks, on: boolean): void {
     this.marks = { ...this.marks, [key]: on };
@@ -139,9 +189,9 @@ export class BookCreatorTaskPrepController {
   }
 
   private async askAi(rendered: Extract<AiPagesResult, { ok: true }>): Promise<TaskPrepResult> {
-    const { start } = await this.creator.aiTopic.getStartProvider();
+    const providerId = await this.providerToUse();
     const lang: string = this.creator.languageService.currentLang;
-    return this.creator.aiTopic.prepareTasks(start?.id ?? 'gemini', {
+    return this.creator.aiTopic.prepareTasks(providerId, {
       pageNumbers: rendered.pages,
       teacherLanguage: LANGUAGE_NAMES[lang] ?? 'English'
     }, rendered.images);
@@ -166,7 +216,7 @@ export class BookCreatorTaskPrepController {
     const prepId = `prep-${Date.now().toString(36)}`;
     const run: TaskPrepRun = {
       found: result.exercises.length, placed: 0, snapped: texts.some(items => items.length > 0), gaps: 0, exact: 0, targets: 0, exactTargets: 0,
-      pairs: 0, exactPairs: 0, squares: 0, guides: 0, keys: 0, videos: 0
+      pairs: 0, exactPairs: 0, squares: 0, guides: 0, keys: 0, videos: 0, notes: 0
     };
     targets.forEach((page, index) => {
       if (!page) return;
@@ -185,6 +235,7 @@ export class BookCreatorTaskPrepController {
         marks.push(...placedMarks);
         run.guides += placedMarks.filter(mark => mark.type === 'guideDot').length;
         run.keys += placedMarks.filter(mark => mark.type === 'answerKey').length;
+        run.notes += placedMarks.filter(mark => mark.type === 'note').length;
         if (!page.elements.concat(frames).some(element => element.type === 'focus' && overlap(element, box) >= SAME_FRAME)) {
           frames.push({ id: this.newId('focus-prep'), type: 'focus', x: box.x, y: box.y, width: box.width, height: box.height, data: { ...draft } });
         }
@@ -192,7 +243,7 @@ export class BookCreatorTaskPrepController {
           (element.type === 'textTask' || element.type === 'choiceTask' || element.type === 'circleTask' || element.type === 'matchTask')
           && !this.isTaskDraft(element) && overlap(element, box) >= SAME_FRAME);
         if (exercise.gaps.length && !hasOwnTasks) {
-          const placed = this.gapTasks(page, exercise, findBlanks(text, box), draft);
+          const placed = this.gapTasks(page, exercise, findBlanks(text, box), ratio, draft);
           tasks.push(...placed.elements);
           run.gaps += placed.elements.length;
           run.exact += placed.exact;
@@ -230,13 +281,16 @@ export class BookCreatorTaskPrepController {
   }
 
   /**
-   * A typing box (text task) per gap, or for a word-box exercise a word-bank gap (choice task)
-   * per gap with the box's words as a new word bank on the page.
+   * A typing box (text task) per gap, or for a word-box, tick or numbering exercise a word-bank
+   * gap (choice task) per gap with the box's words (✔ / ✘, T / F, the numbers) as a new word bank
+   * on the page. Ticks and numbers go in empty boxes the PDF has no text for: a square on the
+   * AI's box.
    */
-  private gapTasks(page: BookPage, exercise: PreparedExercise, blanks: ReturnType<typeof findBlanks>, draft: Record<string, unknown>): { elements: BookElement[]; exact: number } {
-    const places = placeGaps(exercise.gaps, blanks);
+  private gapTasks(page: BookPage, exercise: PreparedExercise, blanks: ReturnType<typeof findBlanks>, ratio: number, draft: Record<string, unknown>): { elements: BookElement[]; exact: number } {
+    const inBoxes = exercise.kind === 'tick' || exercise.kind === 'order';
+    const places = placeGaps(exercise.gaps, blanks, inBoxes ? box => squareBox(box, ratio) : undefined);
     let bank: BookWordBank | null = null;
-    if (exercise.kind === 'wordBank') {
+    if ((exercise.kind === 'wordBank' || inBoxes) && exercise.bank.length) {
       bank = {
         id: this.newId('word-bank'),
         options: exercise.bank.map(text => ({ id: this.newId('word-option'), text })),
@@ -372,12 +426,29 @@ export class BookCreatorTaskPrepController {
     const types: BookElementType[] = [];
     if (this.marks.guides && (exercise.instruction || exercise.instructionBox) && !has('guideDot')) types.push('guideDot');
     if (this.marks.keys && ANSWERED_KINDS.includes(exercise.kind) && !has('answerKey')) types.push('answerKey');
+    if (this.marks.notes && exercise.gameIdea && !has('note')) types.push('note');
     if (!types.length) return [];
     const printed = exercise.instruction ? findInstructionEnd(text, box, exercise.instruction) : null;
     const end = printed ?? exercise.instructionBox;
-    const after = end ? marksAfter(end, types.length, ratio, box.x + box.width + MARK_OVERHANG, !!printed) : null;
-    const spots = after && !this.hitsText(after, text, ratio, end!) ? after : marksInCorner(box, types.length);
-    return types.map((type, i) => this.mark(type, spots[i], draft));
+    // As big as the instruction's letters (or the exercise's first printed line), a little more.
+    const sizeLine = printed ?? textInBox(text, box)[0] ?? null;
+    const size = markSize(sizeLine, ratio, !!sizeLine);
+    const after = end ? marksAfter(end, types.length, ratio, box.x + box.width + MARK_OVERHANG, !!printed, size) : null;
+    const spots = this.firstClear([
+      after,
+      marksInCorner(box, types.length, size),
+      // Just above the frame's top-right corner.
+      marksInCorner({ ...box, y: box.y - size / ratio - size * 0.24 }, types.length, size)
+    ], text, ratio, end) ?? after ?? marksInCorner(box, types.length, size);
+    return types.map((type, i) => this.mark(type, spots[i], draft, exercise.gameIdea));
+  }
+
+  /**
+   * The first of these rows of marks that covers no printed words. The first row follows the
+   * instruction's line, so that line's own words do not count for it.
+   */
+  private firstClear(rows: (AiCropBox[] | null)[], text: PdfTextItem[], ratio: number, end: AiCropBox | null): AiCropBox[] | null {
+    return rows.find((row, i) => !!row && row.every(spot => spot.y >= 0) && !this.hitsText(row, text, ratio, i === 0 ? end : null)) ?? null;
   }
 
   /**
@@ -393,9 +464,10 @@ export class BookCreatorTaskPrepController {
       const sign = found[i] ?? video.box;
       if (!sign) return;
       // At the page's right edge there is no room after it: just before it instead.
-      const level = marksAfter({ ...sign, x: 0, width: 0 }, 1, ratio, 1, !!found[i])![0];
-      const spot = marksAfter(sign, 1, ratio, 1, !!found[i])?.[0] ?? { ...level, x: Math.max(0, sign.x - MARK_SIZE - 0.006) };
-      const centre = { x: spot.x + MARK_SIZE / 2, y: spot.y + MARK_SIZE / ratio / 2 };
+      const size = markSize(found[i], ratio, !!found[i]);
+      const level = marksAfter({ ...sign, x: 0, width: 0 }, 1, ratio, 1, !!found[i], size)![0];
+      const spot = marksAfter(sign, 1, ratio, 1, !!found[i], size)?.[0] ?? { ...level, x: Math.max(0, sign.x - size * 1.25) };
+      const centre = { x: spot.x + size / 2, y: spot.y + size / ratio / 2 };
       const taken = page.elements.concat(marks).some(element => element.type === 'video' && !this.isTaskDraft(element)
         && Math.hypot(element.x + (element.width || 0) / 2 - centre.x, element.y + (element.height || 0) / ratio / 2 - centre.y) < 0.06);
       if (taken) return;
@@ -409,18 +481,19 @@ export class BookCreatorTaskPrepController {
   }
 
   /** The marks would cover printed words other than the line they follow. */
-  private hitsText(spots: AiCropBox[], text: PdfTextItem[], ratio: number, end: AiCropBox): boolean {
+  private hitsText(spots: AiCropBox[], text: PdfTextItem[], ratio: number, end: AiCropBox | null): boolean {
     return spots.some(spot => text.some(item => {
-      if (item.y < end.y + end.height && item.y + item.height > end.y && item.x + item.width <= end.x + end.width + 0.002) return false;
+      if (end && item.y < end.y + end.height && item.y + item.height > end.y && item.x + item.width <= end.x + end.width + 0.002) return false;
       const ink = inkBox(item);
       return item.x < spot.x + spot.width && item.x + item.width > spot.x
-        && ink.y < spot.y + MARK_SIZE / ratio && ink.y + ink.height > spot.y;
+        && ink.y < spot.y + spot.width / ratio && ink.y + ink.height > spot.y;
     }));
   }
 
-  private mark(type: BookElementType, spot: AiCropBox, draft: Record<string, unknown>): BookElement {
+  private mark(type: BookElementType, spot: AiCropBox, draft: Record<string, unknown>, note = ''): BookElement {
     const data: Record<string, unknown> = type === 'guideDot' ? { text: '', audioFiles: [], guideTracks: [] }
       : type === 'answerKey' ? { images: [], label: 'Answer key' }
+      : type === 'note' ? { content: note }
       : { src: '', label: 'Video' };
     return { id: this.newId(type), type, ...spot, data: { ...data, ...draft } };
   }
@@ -646,10 +719,10 @@ function atLeast(box: AiCropBox): AiCropBox {
 }
 
 function loadMarks(): TaskPrepMarks {
-  const all = { guides: true, keys: true, videos: true };
+  const all = { guides: true, keys: true, videos: true, notes: true };
   try {
     const saved = JSON.parse(localStorage.getItem(MARKS_KEY) || '{}');
-    return { guides: saved.guides !== false, keys: saved.keys !== false, videos: saved.videos !== false };
+    return { guides: saved.guides !== false, keys: saved.keys !== false, videos: saved.videos !== false, notes: saved.notes !== false };
   } catch {
     return all;
   }

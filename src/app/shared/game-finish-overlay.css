@@ -1,3 +1,5 @@
+/* Colours read optional --np-finish-* tokens (falling back to the original look); season packs in
+   src/styles/seasons set them. */
 .game-finish-overlay {
   position: fixed;
   inset: 0;
@@ -7,11 +9,11 @@
   justify-content: center;
   padding: clamp(16px, 4vw, 34px);
   overflow: hidden;
-  background:
+  background: var(--np-finish-backdrop,
     radial-gradient(circle at 50% 38%, rgba(250, 204, 21, 0.28), transparent 24rem),
     radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.24), transparent 19rem),
     radial-gradient(circle at 82% 76%, rgba(251, 113, 133, 0.22), transparent 18rem),
-    rgba(2, 6, 23, 0.82);
+    rgba(2, 6, 23, 0.82));
   backdrop-filter: blur(8px);
 }
 
@@ -45,17 +47,17 @@
   max-height: min(88dvh, 720px);
   overflow: auto;
   border-radius: 8px;
-  border: 1px solid rgba(250, 204, 21, 0.48);
-  background:
+  border: 1px solid var(--np-finish-border, rgba(250, 204, 21, 0.48));
+  background: var(--np-finish-card,
     linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
-    #ffffff;
-  color: #111827;
+    #ffffff);
+  color: var(--np-finish-ink, #111827);
   padding: clamp(22px, 4.2vw, 38px);
   text-align: center;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.42) inset,
     0 1.2rem 3.5rem rgba(2, 6, 23, 0.44),
-    0 0 3.5rem rgba(250, 204, 21, 0.26);
+    0 0 3.5rem var(--np-finish-glow, rgba(250, 204, 21, 0.26));
   animation: finishCardEnter 420ms cubic-bezier(0.18, 0.9, 0.24, 1.08) both;
 }
 
@@ -65,9 +67,9 @@
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background:
+  background: var(--np-finish-sheen,
     linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent),
-    radial-gradient(circle at 50% 0%, rgba(250, 204, 21, 0.24), transparent 36%);
+    radial-gradient(circle at 50% 0%, rgba(250, 204, 21, 0.24), transparent 36%));
   opacity: 0.78;
 }
 
@@ -83,7 +85,7 @@
   color: #7c2d12;
   background:
     radial-gradient(circle at 35% 25%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.2) 24%, transparent 42%),
-    linear-gradient(145deg, #fde68a, #f59e0b 64%, #fb7185);
+    var(--np-finish-crown, linear-gradient(145deg, #fde68a, #f59e0b 64%, #fb7185));
   box-shadow:
     0 0.85rem 1.8rem rgba(245, 158, 11, 0.34),
     0 0 0 0.38rem rgba(254, 243, 199, 0.72);
@@ -108,7 +110,7 @@
   position: relative;
   z-index: 1;
   margin: 0;
-  color: #0f172a;
+  color: var(--np-finish-title, #0f172a);
   font-size: clamp(1.8rem, 5vw, 2.85rem);
   line-height: 1.04;
   font-weight: 1000;
@@ -124,7 +126,7 @@
   font-size: clamp(1rem, 2.6vw, 1.25rem);
   line-height: 1.35;
   font-weight: 700;
-  color: #475569;
+  color: var(--np-finish-message, #475569);
 }
 
 .game-finish-rankings {
@@ -140,10 +142,10 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background:
+  border: 1px solid var(--np-finish-row-border, rgba(148, 163, 184, 0.24));
+  background: var(--np-finish-row,
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.9)),
-    #f8fafc;
+    #f8fafc);
   text-align: left;
   box-shadow: 0 0.55rem 1.15rem rgba(15, 23, 42, 0.08);
 }
@@ -164,7 +166,7 @@
 
 .game-finish-score {
   font-size: 1rem;
-  color: #111827;
+  color: var(--np-finish-ink, #111827);
 }
 
 .game-finish-actions {
@@ -201,12 +203,12 @@
 }
 
 .game-finish-primary {
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-  box-shadow: 0 0.8rem 1.6rem rgba(37, 99, 235, 0.3);
+  background: var(--np-finish-primary, linear-gradient(135deg, #2563eb, #0ea5e9));
+  box-shadow: 0 0.8rem 1.6rem var(--np-finish-primary-shadow, rgba(37, 99, 235, 0.3));
 }
 
 .game-finish-secondary {
-  background: linear-gradient(135deg, #334155, #7c3aed);
+  background: var(--np-finish-secondary, linear-gradient(135deg, #334155, #7c3aed));
   box-shadow: 0 0.8rem 1.6rem rgba(51, 65, 85, 0.24);
 }
 

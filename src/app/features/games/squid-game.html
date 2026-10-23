@@ -152,7 +152,7 @@
           [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
           [disabled]="currentQuiz.locked"
           (click)="onQuizAnswer(opt)"
-          class="quiz-option relative rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold hover:scale-105 transition transform"
+          class="quiz-option relative rounded-2xl np-btn-primary font-bold hover:scale-105 transition transform"
           [class.squid-image-option]="aitOptionsType === 'image'"
           [class.px-8]="aitOptionsType !== 'image'" [class.py-4]="aitOptionsType !== 'image'"
           [class.text-xl]="aitOptionsType !== 'image'" [class.min-w-60]="aitOptionsType !== 'image'">
@@ -178,8 +178,8 @@
         <img [src]="'assets/images/characters/' + entry.team.id + '.png'"
              class="w-9 h-9 rounded-full object-contain flex-shrink-0"
              [alt]="('squidGameTeamLabel' | translate) + ' ' + entry.team.id">
-        <div class="w-20 font-semibold text-gray-700 flex-shrink-0 text-sm text-left">{{ 'squidGameTeamLabel' | translate }} {{ entry.team.id }}</div>
-        <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+        <div class="w-20 font-semibold text-ink flex-shrink-0 text-sm text-left">{{ 'squidGameTeamLabel' | translate }} {{ entry.team.id }}</div>
+        <div class="flex-1 h-10 bg-ink/10 rounded-full overflow-hidden">
           <div class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold text-sm"
                [style.width.%]="(entry.team.step / maxTeamStep) * 100"
                [style.backgroundColor]="getTeamColor(entry.team.id)"
@@ -187,7 +187,7 @@
             <span *ngIf="entry.team.step > 0">{{ entry.team.step }}</span>
           </div>
         </div>
-        <div class="w-14 text-right font-bold text-gray-700 flex-shrink-0 text-sm">{{ entry.team.step }}/{{ totalSteps }}</div>
+        <div class="w-14 text-right font-bold text-ink flex-shrink-0 text-sm">{{ entry.team.step }}/{{ totalSteps }}</div>
       </div>
     </div>
   </app-game-finish-overlay>

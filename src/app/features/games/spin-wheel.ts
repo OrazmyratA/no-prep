@@ -7,7 +7,7 @@ import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
-import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
+import { TrackedAudio, isTypingTarget, TimerBag, seasonPalette } from './game-utils';
 
 @Component({
   selector: 'app-spin-wheel',
@@ -265,6 +265,7 @@ drawWheel(): boolean {
   const arcLen = this.wheelRadius * 0.72 * angle;
   const glyph = Math.max(14, Math.min(this.imageSize, arcLen * 0.85));
   const bottomAngle = 3 * Math.PI / 2;
+  const palette = seasonPalette('--np-wheel-palette');
 
   for (let i = 0; i < count; i++) {
     const startAngle = i * angle + this.rotation;
@@ -278,11 +279,25 @@ drawWheel(): boolean {
     ctx.arc(this.centerX, this.centerY, this.wheelRadius, startAngle, endAngle);
     ctx.closePath();
 
-    const gradient = ctx.createRadialGradient(this.centerX, this.centerY, 0, this.centerX, this.centerY, this.wheelRadius);
-    gradient.addColorStop(0, `hsl(${(i * 360) / count}, 80%, 70%)`);
-    gradient.addColorStop(1, `hsl(${(i * 360) / count}, 80%, 50%)`);
-    ctx.fillStyle = gradient;
-    ctx.fill();
+    if (palette) {
+      // Season pack colours, lit from the hub like the default rainbow. The last wedge skips the
+      // first colour so it never matches its neighbour across the seam.
+      let colorIndex = i % palette.length;
+      if (i === count - 1 && count > 1 && colorIndex === 0) colorIndex = 1 % palette.length;
+      ctx.fillStyle = palette[colorIndex];
+      ctx.fill();
+      const shine = ctx.createRadialGradient(this.centerX, this.centerY, 0, this.centerX, this.centerY, this.wheelRadius);
+      shine.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      shine.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = shine;
+      ctx.fill();
+    } else {
+      const gradient = ctx.createRadialGradient(this.centerX, this.centerY, 0, this.centerX, this.centerY, this.wheelRadius);
+      gradient.addColorStop(0, `hsl(${(i * 360) / count}, 80%, 70%)`);
+      gradient.addColorStop(1, `hsl(${(i * 360) / count}, 80%, 50%)`);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
 
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2;

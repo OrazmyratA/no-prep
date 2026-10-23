@@ -608,7 +608,9 @@ export class BookCreatorLessonPlanController {
       const lang: string = this.creator.languageService.currentLang;
       this.run = this.creator.lessonPack.start(topics.map(topic => ({ recipe: topic.recipe, topic })), {
         provider,
-        oneAtATime: provider === 'groq',
+        // One request at a time: firing every planned topic's request together routinely
+        // overwhelms a weaker/rate-limited AI (not just Groq's free plan).
+        oneAtATime: true,
         pages: this.planImages,
         level: plan.level ?? this.klass.level,
         simpleWording: simpleWordingFor(plan.level ?? this.klass.level, this.klass.age),

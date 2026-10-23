@@ -28,18 +28,18 @@
     <!-- Empty State -->
     <div *ngIf="!loading && currentItems.length === 0 && !gameFinished" class="mt-0.5 bg-white bg-opacity-20 backdrop-blur-lg rounded-xl p-2">
       <p class="text-white text-lg">{{ 'spinWheelNoItemsLeft' | translate }}</p>
-      <button (click)="resetGame()" class="mt-0.5 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-full">{{ 'startOver' | translate }}</button>
+      <button (click)="resetGame()" class="mt-0.5 np-action np-action--blue font-bold py-1 px-3 rounded-full">{{ 'startOver' | translate }}</button>
     </div>
 
     <!-- Action Buttons -->
     <div class="mt-0.5 flex justify-center space-x-2">
       <button (click)="eliminate()"
               [disabled]="currentItems.length === 0 || gameFinished || spinning"
-              class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded-full shadow transition text-sm">
+              class="np-action np-action--red font-bold py-1 px-3 rounded-full shadow transition text-sm">
         {{ 'spinWheelEliminate' | translate }}
       </button>
       <button (click)="resetGame()"
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-full shadow transition text-sm">
+              class="np-action np-action--blue font-bold py-1 px-3 rounded-full shadow transition text-sm">
         {{ 'reset' | translate }}
       </button>
     </div>
@@ -103,7 +103,7 @@
                   (click)="onQuizAnswer(opt)"
                   [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
                   [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
-                  class="quiz-option relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+                  class="quiz-option relative px-8 py-4 rounded-2xl np-btn-primary font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
             <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
             <div *ngIf="aitOptionsType === 'text'">{{ opt.text || '?' }}</div>
             <div *ngIf="aitOptionsType === 'image'">

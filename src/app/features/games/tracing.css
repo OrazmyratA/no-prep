@@ -47,7 +47,7 @@
 .media-front {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
-    #312e81;
+    var(--np-tile-frame, #312e81);
 }
 
 .card-back-pattern {
@@ -56,7 +56,7 @@
   border-radius: 12px;
   background:
     linear-gradient(45deg, rgba(255, 255, 255, 0.11) 25%, transparent 25% 50%, rgba(255, 255, 255, 0.11) 50% 75%, transparent 75%),
-    linear-gradient(135deg, #4338ca, #7e22ce);
+    var(--np-tile-cover-flat, linear-gradient(135deg, #4338ca, #7e22ce));
   background-size: 24px 24px, auto;
   opacity: 0.95;
 }
@@ -218,7 +218,7 @@
   color: white;
   font-weight: bold;
   font-size: 1.2rem;
-  background: #4b5563;
+  /* Colour comes from the np-action hue classes on each button. */
   cursor: pointer;
   transition: transform 0.15s, opacity 0.15s;
 }

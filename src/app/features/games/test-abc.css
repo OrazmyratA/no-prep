@@ -299,7 +299,7 @@
   font-weight: 700;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #60a5fa, #c084fc);
+  background: var(--np-nav-btn, linear-gradient(135deg, #60a5fa, #c084fc));
   color: white;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;

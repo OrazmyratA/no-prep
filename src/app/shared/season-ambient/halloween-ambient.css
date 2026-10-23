@@ -1,0 +1,260 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  /* Stretches every drifting animation; raised under prefers-reduced-motion. */
+  --motion-scale: 1;
+}
+
+/* ── Sky ─────────────────────────────────────────────────────────── */
+
+.stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow:
+    6vw 8vh #fff, 14vw 22vh #fde68a, 21vw 5vh #fff, 29vw 16vh #fff, 35vw 31vh #e9d5ff,
+    42vw 9vh #fff, 48vw 24vh #fff, 55vw 4vh #fde68a, 61vw 18vh #fff, 67vw 35vh #fff,
+    73vw 7vh #e9d5ff, 91vw 12vh #fff, 96vw 28vh #fff, 3vw 38vh #fff, 25vw 42vh #e9d5ff;
+  animation: twinkle calc(4.5s * var(--motion-scale)) ease-in-out infinite alternate;
+}
+
+.stars-late {
+  box-shadow:
+    10vw 14vh #fff, 18vw 33vh #fff, 32vw 6vh #fde68a, 39vw 20vh #fff, 46vw 38vh #fff,
+    52vw 13vh #e9d5ff, 58vw 29vh #fff, 64vw 10vh #fff, 70vw 25vh #fde68a, 87vw 36vh #fff,
+    94vw 5vh #e9d5ff, 12vw 3vh #fff, 77vw 40vh #fff, 85vw 2vh #fff;
+  animation-duration: calc(6s * var(--motion-scale));
+  animation-delay: -3s;
+}
+
+.moon {
+  position: absolute;
+  left: 80%;
+  top: 20%;
+  width: clamp(64px, 8vw, 128px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 64% 34%, rgba(217, 119, 6, 0.22) 0 9%, transparent 10%),
+    radial-gradient(circle at 36% 62%, rgba(217, 119, 6, 0.18) 0 12%, transparent 13%),
+    radial-gradient(circle at 58% 70%, rgba(217, 119, 6, 0.14) 0 6%, transparent 7%),
+    radial-gradient(circle at 35% 32%, #fffbeb 0%, #fde68a 55%, #f59e0b 100%);
+  box-shadow: 0 0 40px 8px rgba(253, 230, 138, 0.35);
+}
+
+.moon::after {
+  content: '';
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(253, 230, 138, 0.28) 0%, transparent 65%);
+  animation: moon-glow 7s ease-in-out infinite alternate;
+}
+
+/* ── Spider ──────────────────────────────────────────────────────── */
+
+.spider-drop {
+  position: absolute;
+  top: -10px;
+  left: 1.5vw;
+  width: 34px;
+  animation: spider-bob calc(6s * var(--motion-scale)) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.spider-drop::before {
+  content: '';
+  display: block;
+  width: 1px;
+  height: 150px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, transparent, rgba(226, 232, 240, 0.7));
+}
+
+.spider {
+  display: block;
+  width: 34px;
+  height: 34px;
+  margin-top: -6px;
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.35));
+}
+
+/* ── Bats ────────────────────────────────────────────────────────── */
+
+.bat-flight {
+  position: absolute;
+  left: 0;
+  animation: bat-fly calc(var(--duration) * var(--motion-scale)) linear calc(var(--delay) * var(--motion-scale)) infinite;
+  will-change: transform;
+}
+
+.bat {
+  display: block;
+  width: 56px;
+  height: 28px;
+  fill: #0a0514;
+  filter: drop-shadow(0 0 4px rgba(167, 139, 250, 0.45));
+  animation: bat-bob 1.6s ease-in-out infinite alternate;
+}
+
+.wing {
+  transform-box: view-box;
+  transform-origin: 32px 15px;
+  animation: wing-flap 0.22s ease-in-out infinite alternate;
+}
+
+/* ── Ghosts ──────────────────────────────────────────────────────── */
+
+.ghost {
+  position: absolute;
+  width: 46px;
+  opacity: 0.7;
+  animation: ghost-float calc(var(--duration) * var(--motion-scale)) ease-in-out calc(var(--delay) * var(--motion-scale)) infinite alternate;
+  will-change: transform, opacity;
+}
+
+.ghost svg {
+  display: block;
+  width: 46px;
+  filter: drop-shadow(0 0 12px rgba(226, 232, 240, 0.55));
+}
+
+/* ── Ground ──────────────────────────────────────────────────────── */
+
+.fog {
+  position: absolute;
+  left: -30vw;
+  bottom: -6vh;
+  width: 160vw;
+  height: 28vh;
+  background:
+    radial-gradient(ellipse 22% 60% at 20% 60%, rgba(196, 181, 253, 0.16), transparent 70%),
+    radial-gradient(ellipse 26% 55% at 55% 70%, rgba(196, 181, 253, 0.12), transparent 70%),
+    radial-gradient(ellipse 20% 60% at 85% 60%, rgba(196, 181, 253, 0.14), transparent 70%);
+  animation: fog-drift calc(38s * var(--motion-scale)) ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.fog-back {
+  bottom: 4vh;
+  opacity: 0.7;
+  animation-duration: calc(52s * var(--motion-scale));
+  animation-direction: alternate-reverse;
+}
+
+.landscape {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: clamp(140px, 30vh, 320px);
+}
+
+.window-glow,
+.pumpkin-face {
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.9));
+  animation: candle-flicker 3.2s steps(1, end) infinite;
+}
+
+.pumpkin-face-late {
+  animation-delay: -1.4s;
+}
+
+/* ── Calm (games) and reduced motion ─────────────────────────────── */
+
+:host(.calm) .bat-flight,
+:host(.calm) .ghost,
+:host(.calm) .spider-drop,
+:host(.calm) .fog {
+  display: none;
+}
+
+:host(.calm) .landscape {
+  opacity: 0.55;
+}
+
+:host(.calm) *,
+:host(.calm) *::after {
+  animation-play-state: paused;
+}
+
+/* Many school PCs have Windows animations off, which reports reduced motion. The teacher still
+   chose this theme, so keep everything visible but drift slowly and drop the fast flutter. */
+@media (prefers-reduced-motion: reduce) {
+  :host {
+    --motion-scale: 2.5;
+  }
+
+  .bat,
+  .wing,
+  .window-glow,
+  .pumpkin-face,
+  .moon::after {
+    animation: none;
+  }
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────── */
+
+@keyframes twinkle {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+@keyframes moon-glow {
+  from { opacity: 0.55; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1.06); }
+}
+
+@keyframes spider-bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(70px); }
+}
+
+@keyframes bat-fly {
+  0% { transform: translate3d(-12vw, 0, 0); }
+  25% { transform: translate3d(20vw, -4vh, 0); }
+  50% { transform: translate3d(50vw, 3vh, 0); }
+  75% { transform: translate3d(80vw, -5vh, 0); }
+  100% { transform: translate3d(112vw, 1vh, 0); }
+}
+
+@keyframes bat-bob {
+  from { transform: translateY(-6px) rotate(-6deg); }
+  to { transform: translateY(6px) rotate(5deg); }
+}
+
+@keyframes wing-flap {
+  from { transform: scaleY(1); }
+  to { transform: scaleY(0.25); }
+}
+
+@keyframes ghost-float {
+  0% { transform: translate3d(0, 0, 0); opacity: 0.25; }
+  50% { opacity: 0.75; }
+  100% { transform: translate3d(3vw, -5vh, 0); opacity: 0.4; }
+}
+
+@keyframes fog-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(22vw, 0, 0); }
+}
+
+@keyframes candle-flicker {
+  0% { opacity: 1; }
+  12% { opacity: 0.78; }
+  18% { opacity: 1; }
+  47% { opacity: 0.88; }
+  52% { opacity: 1; }
+  80% { opacity: 0.72; }
+  84% { opacity: 0.95; }
+}

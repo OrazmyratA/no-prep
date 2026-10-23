@@ -168,7 +168,7 @@
         <div *ngFor="let result of finishResults; trackBy: trackByFinishResult" class="flex items-center gap-3">
           <div class="w-12 text-center font-bold text-xl">{{ result.medal }}</div>
           <div class="w-28 font-semibold text-left" [style.color]="result.color">{{ result.name }}</div>
-          <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+          <div class="flex-1 h-10 bg-ink/10 rounded-full overflow-hidden">
             <div *ngIf="result.found > 0"
                  class="result-bar h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
                  [style.width.%]="result.percent"
@@ -176,7 +176,7 @@
               {{ result.found }}/{{ result.total }}
             </div>
             <div *ngIf="result.found === 0"
-                 class="h-full flex items-center pl-3 text-gray-400 font-bold">
+                 class="h-full flex items-center pl-3 text-ink-faint font-bold">
               0/{{ result.total }}
             </div>
           </div>

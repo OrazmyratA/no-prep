@@ -142,7 +142,9 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
   async ngOnInit() {
     this.themeSubscription = this.themeService.render$.subscribe(theme => {
       this.themeActive = theme.active;
-      this.themeBackground = theme.active ? theme.background : null;
+      // A season pack draws its own animated scene behind the app; painting its backdrop here
+      // would cover it, so leave the board see-through.
+      this.themeBackground = !theme.active ? null : theme.season ? 'transparent' : theme.background;
       this.themeDim = theme.dim;
       this.cdr.detectChanges();
     });

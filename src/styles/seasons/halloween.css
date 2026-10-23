@@ -1,0 +1,160 @@
+/*
+  Halloween pack: tokens + small ornaments. Applied while the Halloween season theme is active
+  (AppComponent sets html[data-season]). The animated scene lives in the lazy
+  shared/season-ambient/halloween-ambient component; this file only styles the UI on top of it.
+  No backdrop-filter on cards: blurring over the animated scene would repaint every frame.
+*/
+html[data-season='halloween'] {
+  --np-surface: 28 14 44;
+  --np-surface-alpha: 0.94;
+  --np-glass: 36 18 56;
+  --np-ink: 250 245 255;
+  --np-ink-soft: 233 213 255;
+  --np-ink-muted: 203 186 236;
+  --np-ink-faint: 170 150 205;
+  --np-line: 107 33 168;
+  --np-accent: 234 88 12;
+  --np-accent-ink: 255 255 255;
+  --np-accent-soft: 88 32 14;
+  --np-accent-strong: 253 186 116;
+  /* Light "bone" chips: round icon buttons carry dark line icons (translate, settings ...). */
+  --np-chip: 237 225 255;
+  --np-chip-hover: 221 200 255;
+
+  --np-card-shadow: 0 18px 38px -14px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(249 115 22 / 0.22);
+  --np-card-shadow-hover: 0 26px 50px -12px rgb(0 0 0 / 0.8), 0 0 30px rgb(249 115 22 / 0.42), 0 0 0 1px rgb(251 146 60 / 0.6);
+
+  --np-primary: linear-gradient(to right, #ea580c, #9333ea);
+  --np-primary-hover: linear-gradient(to right, #c2410c, #7e22ce);
+  --np-primary-glow: 0 0 22px rgb(249 115 22 / 0.55), 0 10px 18px -6px rgb(0 0 0 / 0.6);
+  --np-primary-book: var(--np-primary);
+  --np-primary-book-hover: var(--np-primary-hover);
+
+  --np-go: linear-gradient(to right, #ea580c, #db2777);
+  --np-go-hover: linear-gradient(to right, #c2410c, #be185d);
+  --np-title-gradient: linear-gradient(to right, #fdba74, #f0abfc);
+  --np-title-gradient-alt: var(--np-title-gradient);
+  --np-ring-selected: 249 115 22;
+  --np-game-header:
+    radial-gradient(1.5px 1.5px at 14% 24%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 32% 70%, #fde68a 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 72% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 58%, #e9d5ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 55% 40%, #fff 50%, transparent 51%),
+    linear-gradient(165deg, #1e0b3a 0%, #581c87 55%, #c2410c 140%);
+
+  --np-avatar-topic: linear-gradient(135deg, #fb923c, #c2410c);
+  --np-avatar-book: linear-gradient(135deg, #a855f7, #581c87);
+  --np-cover-topic:
+    radial-gradient(circle at 86% 32%, #fef3c7 0 7%, rgba(253, 230, 138, 0.35) 9%, transparent 19%),
+    linear-gradient(165deg, #2e1065 0%, #581c87 50%, #c2410c 135%);
+  --np-cover-book:
+    radial-gradient(circle at 86% 32%, #fef3c7 0 7%, rgba(253, 230, 138, 0.35) 9%, transparent 19%),
+    linear-gradient(165deg, #0f172a 0%, #3b0764 55%, #7c2d12 140%);
+
+  --np-link-ink: rgb(233 213 255);
+  --np-amber-ink: #fdba74;
+  --np-amber-soft: rgba(249, 115, 22, 0.14);
+  --np-amber-soft-hover: rgba(249, 115, 22, 0.26);
+  --np-dialog: linear-gradient(180deg, #2a1444, #1c0d30);
+  /* Dialog frame (theme picker; editor/leaderboard dialogs keep light inputs and paper inside). */
+  --np-dialog-border: rgba(249, 115, 22, 0.45);
+  --np-dialog-scheme: dark;
+  --np-dialog-scrollbar: rgba(249, 115, 22, 0.55) transparent;
+  --np-dialog-title: var(--np-title-gradient);
+  --np-dialog-ink: #faf5ff;
+  --np-dialog-heading: #fdba74;
+  --np-dialog-muted: #cbbaec;
+  --np-dialog-line: rgba(168, 85, 247, 0.4);
+  --np-dialog-well: rgba(255, 255, 255, 0.06);
+  --np-dialog-chip: rgba(237, 225, 255, 0.14);
+  --np-dialog-chip-ink: #f3e8ff;
+  --np-dialog-accent: #f97316;
+  --np-dialog-primary: linear-gradient(135deg, #ea580c, #9333ea);
+  --np-dialog-primary-shadow: rgba(249, 115, 22, 0.4);
+  --np-dialog-primary-hover: linear-gradient(135deg, #c2410c, #7e22ce);
+  --np-dialog-chip-hover: rgba(237, 225, 255, 0.24);
+  --np-dialog-danger: #fca5a5;
+  --np-dialog-ok-ink: #86efac;
+  /* Leaderboard header buttons carry dark line-art icons: light bone chips. */
+  --np-lb-btn: rgb(237 225 255 / 0.92);
+  --np-lb-btn-hover: rgb(221 200 255);
+  --np-lb-btn-ink: #3b0764;
+  --np-fab: linear-gradient(135deg, #ea580c, #9333ea);
+  --np-help-trigger: rgb(237 225 255 / 0.92);
+  --np-countdown-stroke: #7c2d12;
+  --np-countdown-go: #fb923c;
+
+  /* In-game chrome (games read these with their own fallbacks). */
+  /* Tile covers: -flat is a single layer for games that put their own pattern on top. */
+  --np-tile-cover-flat: linear-gradient(150deg, #fb923c 0%, #ea580c 55%, #9a3412 100%);
+  --np-tile-cover:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.28), transparent 42%),
+    var(--np-tile-cover-flat);
+  --np-tile-frame: #3b0764;
+  --np-letter-tile: #fb923c;
+  --np-letter-tile-hover: #fdba74;
+  --np-word-tile: #ea580c;
+  --np-word-tile-hover: #f97316;
+  --np-nav-btn: linear-gradient(135deg, #fb923c, #a855f7);
+  --np-game-btn: #7c3aed;
+  --np-game-btn-hover: #6d28d9;
+  --np-game-btn-alt: #ea580c;
+  --np-game-btn-alt-hover: #c2410c;
+  /* Canvas wedges (Spin the Wheel), read by seasonPalette() in games/game-utils.ts. */
+  --np-wheel-palette: #ea580c #6b21a8 #c2410c #9333ea #4d7c0f #7e22ce;
+
+  /* Game finish overlay (shared/game-finish-overlay.css). */
+  --np-finish-backdrop:
+    radial-gradient(circle at 50% 38%, rgba(249, 115, 22, 0.3), transparent 24rem),
+    radial-gradient(circle at 18% 22%, rgba(168, 85, 247, 0.28), transparent 19rem),
+    radial-gradient(circle at 82% 76%, rgba(234, 88, 12, 0.22), transparent 18rem),
+    rgba(9, 4, 20, 0.86);
+  --np-finish-card: linear-gradient(180deg, #2a1444, #170a28);
+  --np-finish-border: rgba(249, 115, 22, 0.6);
+  --np-finish-glow: rgba(249, 115, 22, 0.4);
+  --np-finish-sheen:
+    linear-gradient(90deg, transparent, rgba(251, 146, 60, 0.14), transparent),
+    radial-gradient(circle at 50% 0%, rgba(249, 115, 22, 0.3), transparent 40%);
+  --np-finish-crown: linear-gradient(145deg, #fdba74, #ea580c 60%, #9333ea);
+  --np-finish-ink: #faf5ff;
+  --np-finish-title: #fed7aa;
+  --np-finish-message: #d8c7f0;
+  --np-finish-row: linear-gradient(180deg, rgba(76, 29, 149, 0.45), rgba(46, 16, 101, 0.45));
+  --np-finish-row-border: rgba(168, 85, 247, 0.35);
+  --np-finish-primary: linear-gradient(135deg, #ea580c, #c026d3);
+  --np-finish-primary-shadow: rgba(249, 115, 22, 0.45);
+  --np-finish-secondary: linear-gradient(135deg, #3b0764, #6d28d9);
+}
+
+/* Actions: dark plum wearing their hue as a tint + neon rim. The solid base keeps the scene
+   (pumpkins, house) from showing through buttons that sit low on the screen. */
+html[data-season='halloween'] .np-action {
+  background: linear-gradient(rgb(var(--hue) / 0.24), rgb(var(--hue) / 0.24)), rgb(28 14 44 / 0.94);
+  color: rgb(var(--np-ink));
+  box-shadow: inset 0 0 0 1.5px rgb(var(--hue) / 0.75), 0 0 16px rgb(var(--hue) / 0.35);
+}
+
+html[data-season='halloween'] .np-action:hover {
+  background: linear-gradient(rgb(var(--hue) / 0.42), rgb(var(--hue) / 0.42)), rgb(28 14 44 / 0.94);
+}
+
+html[data-season='halloween'] .np-action--fresh {
+  --hue: 249 115 22;
+}
+
+/* A cobweb in the top-left corner of every card: over the coloured header, never over text, and
+   under the card's own controls (checkbox z-20, hover actions z-10). */
+html[data-season='halloween'] .np-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: 74px;
+  height: 74px;
+  pointer-events: none;
+  opacity: 0.38;
+  transform: rotate(180deg);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='white' stroke-width='1' stroke-linecap='round'%3E%3Cpath d='M100 100 0 100M100 100 7.6 61.7M100 100 29.3 29.3M100 100 61.7 7.6M100 100 100 0'/%3E%3Cpath d='M70 100Q73 93 72.3 88.5Q77 85 78.8 78.8Q85 77 88.5 72.3Q93 73 100 70M45 100Q50 89 49.2 78.9Q57 70 61.1 61.1Q70 57 78.9 49.2Q89 50 100 45M20 100Q28 84 26.1 69.4Q38 54 43.4 43.4Q54 38 69.4 26.1Q84 28 100 20'/%3E%3C/svg%3E") no-repeat right bottom / contain;
+}

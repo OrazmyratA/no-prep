@@ -110,6 +110,26 @@ describe('task prep', () => {
     expect(parseTaskPrep(JSON.stringify({ exercises: [], notes: [] }), 1).videos).toEqual([]);
   });
 
+  it('reads tick and numbering exercises as word-bank gaps, and game ideas', () => {
+    const [tick, trueFalse, order, search] = parseTaskPrep(JSON.stringify({
+      exercises: [
+        { page: 0, box: [100, 50, 300, 950], number: '1', title: 'Look and tick', kind: 'tick', bank: [], options: [], pairs: [], grid: null, gameIdea: '',
+          gaps: [{ before: '', answers: ['✓'], box: [200, 300, 230, 330] }, { before: '', answers: ['x'], box: [200, 400, 230, 430] }] },
+        { page: 0, box: [300, 50, 400, 950], number: '2', title: 'True or false?', kind: 'tick', bank: ['T', 'F'], options: [], pairs: [], grid: null, gameIdea: '',
+          gaps: [{ before: 'Tom is happy.', answers: ['F'], box: [] }] },
+        { page: 0, box: [400, 50, 500, 950], number: '3', title: 'Listen and number', kind: 'order', bank: [], options: [], pairs: [], grid: null, gameIdea: '',
+          gaps: [{ before: '', answers: ['2'], box: [] }, { before: '', answers: ['4'], box: [] }] },
+        { page: 0, box: [500, 50, 600, 950], number: '4', title: 'Find the words', kind: 'other', gaps: [], bank: [], options: [], pairs: [], grid: null,
+          gameIdea: ' Word search: make a topic with cat, dog, bird. ' }
+      ],
+      notes: []
+    }), 1).exercises;
+    expect([tick.bank, tick.gaps.map(g => g.answers[0])]).toEqual([['✔', '✘'], ['✔', '✘']]);
+    expect([trueFalse.bank, trueFalse.gaps[0].answers]).toEqual([['T', 'F'], ['F']]);
+    expect(order.bank).toEqual(['1', '2', '3', '4']);
+    expect([search.gameIdea, tick.gameIdea]).toEqual(['Word search: make a topic with cat, dog, bird.', '']);
+  });
+
   it('names the pages as the app numbers them', () => {
     expect(buildTaskPrepUserText({ pageNumbers: [17, 18], teacherLanguage: 'Russian' }))
       .toContain('photo 0 = page 17 in the app, photo 1 = page 18 in the app');

@@ -17,6 +17,12 @@ export class LicenseComponent {
     private langService: LanguageService
   ) {}
 
+  // Translation key explaining why the licence is not valid; none when there simply is no licence yet.
+  get reasonKey(): string | null {
+    const reason = this.licenseService.invalidReason;
+    return reason && reason !== 'missing' ? `license.reason.${reason}` : null;
+  }
+
   dismiss() {
     this.dismissLicense.emit();
   }
@@ -61,7 +67,7 @@ export class LicenseComponent {
       showAppNotification(this.langService.translate('license.activate.success'), 'success');
       this.dismiss();
     } else {
-      showAppNotification(this.langService.translate('license.activate.invalid'), 'error');
+      showAppNotification(this.langService.translate(this.reasonKey ?? 'license.activate.invalid'), 'error');
     }
   }
 }

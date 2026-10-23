@@ -1,4 +1,4 @@
-import { blankBox, circleBox, contextScore, gridCells, marksAfter, marksInCorner, matchDots, placeGaps, separateBoxes, typingBox } from './task-gaps';
+import { blankBox, circleBox, contextScore, gridCells, markSize, marksAfter, marksInCorner, matchDots, placeGaps, separateBoxes, typingBox } from './task-gaps';
 import { PdfBlank, findBlanks, findInstructionEnd, findPhrases } from '../pdf-text';
 
 const blank = (before: string, y: number): PdfBlank => ({ x: 0.3, y, width: 0.08, height: 0.02, before });
@@ -125,14 +125,24 @@ describe('placing the AI\'s gaps', () => {
     expect(findInstructionEnd(items, box, 'Listen and repeat.')).toBeNull();
   });
 
+  it('sizes marks a little taller than the letters of their line', () => {
+    // 10 pt text on an A4 page: the letters are about 0.0117 of the page high.
+    const small = markSize({ x: 0.1, y: 0.2, width: 0.3, height: 0.0119 }, 1.4142);
+    expect(small).toBeCloseTo(0.0119 * 0.98 * 1.35 * 1.4142, 3);
+    expect(small).toBeLessThan(0.025);
+    expect(markSize({ x: 0, y: 0, width: 0.3, height: 0.003 }, 1.4142)).toBe(0.018); // still tappable
+    expect(markSize({ x: 0, y: 0, width: 0.3, height: 0.08 }, 1.4142)).toBe(0.04); // a big title: capped
+    expect(markSize(null, 1.4142)).toBe(0.03); // a scan
+  });
+
   it('places marks in a row after a line, or in the frame\'s corner', () => {
     const line = { x: 0.1, y: 0.2, width: 0.3, height: 0.02 };
-    const [guide, key] = marksAfter(line, 2, 1, 1)!;
-    expect([guide.x, key.x, guide.width, guide.height]).toEqual([0.406, 0.45, 0.04, 0.04]);
-    expect(guide.y + 0.02).toBeCloseTo(0.2 + 0.02 * 0.71, 4); // level with the letters (square page: drawn 0.04 high)
-    expect(marksAfter(line, 2, 1, 0.45)).toBeNull(); // past the frame
-    const corner = marksInCorner({ x: 0.1, y: 0.2, width: 0.5, height: 0.3 }, 2);
-    expect(corner.map(m => [m.x, m.y])).toEqual([[0.512, 0.204], [0.556, 0.204]]);
+    const [guide, key] = marksAfter(line, 2, 1, 1, true, 0.02)!;
+    expect([guide.x, key.x, guide.width, guide.height]).toEqual([0.405, 0.4274, 0.02, 0.02]);
+    expect(guide.y + 0.01).toBeCloseTo(0.2 + 0.02 * 0.71, 4); // level with the letters (square page: drawn 0.02 high)
+    expect(marksAfter(line, 2, 1, 0.44, true, 0.02)).toBeNull(); // past the frame
+    const corner = marksInCorner({ x: 0.1, y: 0.2, width: 0.5, height: 0.3 }, 2, 0.02);
+    expect(corner.map(m => [m.x, m.y])).toEqual([[0.5552, 0.2024], [0.5776, 0.2024]]);
   });
 
   it('splits a crossword grid into squares, lined up with letters printed in it', () => {

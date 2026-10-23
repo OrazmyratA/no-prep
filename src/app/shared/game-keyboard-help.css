@@ -9,7 +9,8 @@
   height: 42px;
   border: none;
   border-radius: 9999px;
-  background: transparent;
+  /* The info icon is dark line art: a pack with a dark scene gives it a light chip. */
+  background: var(--np-help-trigger, transparent);
   box-shadow: none;
   display: flex;
   align-items: center;

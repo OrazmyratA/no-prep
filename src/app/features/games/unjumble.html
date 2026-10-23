@@ -74,7 +74,7 @@
              [class.keyboard-selected]="isKeyboardSourceSelected(i)"
               [class.animate-fade]="getAnimationType(word.id) === 'fade'"
               [class.animate-shake]="getAnimationType(word.id) === 'shake'"
-              class="word-tile word-tile-source px-4 py-2 bg-yellow-500 text-white rounded-lg shadow-lg cursor-pointer hover:bg-yellow-400 transition text-lg">
+              class="word-tile word-tile-source px-4 py-2 text-white rounded-lg shadow-lg cursor-pointer transition text-lg">
           <span *ngIf="keyboardHintsVisible && i < 10" class="game-keyboard-hint-badge">{{ i === 9 ? 0 : i + 1 }}</span>
           {{ word.word }}
         </div>
@@ -86,17 +86,17 @@
                 [disabled]="currentIndex === 0"
                 aria-label="Previous"
                 title="Previous"
-                class="w-12 h-12 bg-slate-500 hover:bg-slate-700 text-white font-bold rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl">
+                class="w-12 h-12 np-action np-action--slate font-bold rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl">
           <span aria-hidden="true">&#9664;</span>
         </button>
         <button (click)="shuffle()"
-                class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
+                class="np-action np-action--violet font-bold py-2 px-6 rounded-full shadow-lg transition">
           {{ 'shuffle' | translate }}
         </button>
         <button (click)="nextItem()"
                 aria-label="Next"
                 title="Next"
-                class="w-12 h-12 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded-full shadow-lg transition flex items-center justify-center text-xl">
+                class="w-12 h-12 np-action np-action--blue font-bold rounded-full shadow-lg transition flex items-center justify-center text-xl">
           <span aria-hidden="true">&#9654;</span>
         </button>
       </div>

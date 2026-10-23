@@ -13,8 +13,21 @@ export function getAcceptedTextTaskAnswers(element: BookElement): string[] {
 }
 
 export function isTextTaskAnswerCorrect(element: BookElement, response: string): boolean {
-  const value = String(response ?? '').trim();
-  return !!value && getAcceptedTextTaskAnswers(element).includes(value);
+  const value = comparableAnswer(response);
+  return !!value && getAcceptedTextTaskAnswers(element).some((answer) => comparableAnswer(answer) === value);
+}
+
+/**
+ * An answer as it is compared. Capitals and punctuation stay exact (they are part of what is
+ * taught); only what a keyboard varies does not count: curly or straight quotes ("don’t" =
+ * "don't") and extra spaces.
+ */
+export function comparableAnswer(value: string): string {
+  return String(value ?? '')
+    .replace(/[‘’ʼ`´]/g, '\'')
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 export function getChoiceTaskBankId(element: BookElement): string {

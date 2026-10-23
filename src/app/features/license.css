@@ -117,3 +117,17 @@ p {
 .btn-request:active, .btn-enter:active {
   transform: translateY(1px);
 }
+/* Why the licence is not valid (missing Windows component, other PC, clock ...). */
+.license-reason {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.9rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-line;
+}

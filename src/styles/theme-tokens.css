@@ -1,0 +1,188 @@
+/*
+  Design tokens. The defaults here reproduce the app's original look, so a migrated screen looks
+  the same until a season pack (html[data-season="..."], see seasons/) swaps the values.
+
+  Colors are space-separated RGB channels so Tailwind's opacity modifiers keep working:
+  tailwind.config.js maps bg-surface, text-ink, text-ink-muted, bg-accent ... onto these.
+
+  Only migrate surfaces whose color is decoration. Colors that carry meaning (team red/blue,
+  correct/wrong, game pieces) stay hardcoded on purpose.
+*/
+:root {
+  --np-surface: 255 255 255;
+  --np-surface-alpha: 1;
+  --np-glass: 255 255 255;
+  --np-ink: 31 41 55;
+  --np-ink-soft: 75 85 99;
+  --np-ink-muted: 107 114 128;
+  --np-ink-faint: 156 163 175;
+  --np-line: 209 213 219;
+  --np-accent: 37 99 235;
+  --np-accent-ink: 255 255 255;
+  --np-accent-soft: 219 234 254;
+  --np-accent-strong: 29 78 216;
+  --np-chip: 229 231 235;
+  --np-chip-hover: 209 213 219;
+
+  --np-card-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --np-card-shadow-hover: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  --np-primary: linear-gradient(to right, #3b82f6, #9333ea);
+  --np-primary-hover: linear-gradient(to right, #2563eb, #7e22ce);
+  --np-primary-glow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  --np-go: linear-gradient(to right, #4ade80, #3b82f6);
+  --np-go-hover: linear-gradient(to right, #22c55e, #2563eb);
+  --np-title-gradient: linear-gradient(to right, #9333ea, #db2777);
+  --np-ring-selected: 168 85 247;
+  --np-game-header: linear-gradient(to bottom right, #60a5fa, #a855f7);
+
+  --np-avatar-topic: linear-gradient(to bottom right, #60a5fa, #a855f7);
+  --np-avatar-book: linear-gradient(to bottom right, #06b6d4, #2563eb);
+  --np-cover-topic:
+    linear-gradient(135deg, rgba(99, 102, 241, 0.88), rgba(168, 85, 247, 0.9)),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.14), transparent 32%);
+  --np-cover-book:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.88), rgba(37, 99, 235, 0.92)),
+    repeating-linear-gradient(90deg, transparent, transparent 13px, rgba(255, 255, 255, 0.12) 13px, rgba(255, 255, 255, 0.12) 14px);
+}
+
+/* ── Shared building blocks ──────────────────────────────────────── */
+
+/* A content card (topic, book, game). Pair with rounded-* / overflow-hidden utilities. */
+.np-card {
+  background-color: rgb(var(--np-surface) / var(--np-surface-alpha));
+  box-shadow: var(--np-card-shadow);
+}
+
+.np-card:hover {
+  box-shadow: var(--np-card-shadow-hover);
+}
+
+/* The main call-to-action button (Create topic, Clear search, Start game ...). */
+.np-btn-primary {
+  background-image: var(--np-primary);
+  box-shadow: var(--np-primary-glow);
+  color: #fff;
+}
+
+.np-btn-primary:hover {
+  background-image: var(--np-primary-hover);
+}
+
+/* "Go" button that starts something (Start game). */
+.np-btn-go {
+  background-image: var(--np-go);
+  box-shadow: var(--np-primary-glow);
+  color: #fff;
+}
+
+.np-btn-go:hover {
+  background-image: var(--np-go-hover);
+}
+
+/* Gradient page title; pair with text-transparent bg-clip-text. */
+.np-title-gradient {
+  background-image: var(--np-title-gradient);
+}
+
+.np-card.np-ring-selected {
+  box-shadow: 0 0 0 4px rgb(var(--np-ring-selected)), var(--np-card-shadow-hover);
+}
+
+/* Coloured band at the top of a game card, behind the game's icon. */
+.np-game-header {
+  background: var(--np-game-header);
+}
+
+.np-btn-primary--book {
+  background-image: var(--np-primary-book, linear-gradient(to right, #0ea5e9, #2563eb));
+}
+
+.np-btn-primary--book:hover {
+  background-image: var(--np-primary-book-hover, linear-gradient(to right, #0284c7, #1d4ed8));
+}
+
+.np-avatar-topic {
+  background-image: var(--np-avatar-topic);
+}
+
+.np-avatar-book {
+  background-image: var(--np-avatar-book);
+}
+
+/*
+  Coloured toolbar actions. Each keeps its own hue (it helps teachers find the button), packs only
+  change how the hue is worn. --hue / --hue-strong are RGB channels.
+*/
+.np-action {
+  background-color: rgb(var(--hue));
+  color: #fff;
+}
+
+.np-action:hover {
+  background-color: rgb(var(--hue-strong));
+}
+
+.np-action--violet { --hue: 147 51 234; --hue-strong: 126 34 206; }
+.np-action--green { --hue: 22 163 74; --hue-strong: 21 128 61; }
+.np-action--amber { --hue: 245 158 11; --hue-strong: 217 119 6; }
+.np-action--sky { --hue: 2 132 199; --hue-strong: 3 105 161; }
+.np-action--blue { --hue: 37 99 235; --hue-strong: 29 78 216; }
+.np-action--yellow { --hue: 234 179 8; --hue-strong: 202 138 4; }
+.np-action--slate { --hue: 100 116 139; --hue-strong: 51 65 85; }
+/* Destructive actions (Eliminate, Delete) keep red in every pack. */
+.np-action--red { --hue: 239 68 68; --hue-strong: 185 28 28; }
+
+.np-action--fresh {
+  --hue: 59 130 246;
+  --hue-strong: 37 99 235;
+  background-image: linear-gradient(to right, #4ade80, #3b82f6);
+}
+
+.np-action--fresh:hover {
+  background-image: linear-gradient(to right, #22c55e, #2563eb);
+}
+
+/*
+  Dialog frame for Tailwind-built dialogs. Packs restyle the frame only; content inside (inputs,
+  pictures, book pages) keeps its own light look. Fallbacks are the original white dialog.
+*/
+.np-dialog {
+  background: var(--np-dialog, #fff);
+  color: var(--np-dialog-ink, #1f2937);
+  color-scheme: var(--np-dialog-scheme, normal);
+  scrollbar-color: var(--np-dialog-scrollbar, auto);
+}
+
+.np-dialog-muted {
+  color: var(--np-dialog-muted, #6b7280);
+}
+
+.np-dialog-line {
+  border-color: var(--np-dialog-line, #e5e7eb);
+}
+
+.np-dialog-well {
+  background: var(--np-dialog-well, #f9fafb);
+}
+
+.np-dialog-secondary {
+  border: 1px solid var(--np-dialog-line, #d1d5db);
+  background: var(--np-dialog-chip, transparent);
+  color: var(--np-dialog-chip-ink, inherit);
+}
+
+.np-dialog-secondary:hover {
+  background: var(--np-dialog-chip-hover, #f3f4f6);
+}
+
+.np-dialog-primary {
+  background: var(--np-dialog-primary, #2563eb);
+  color: #fff;
+}
+
+.np-dialog-primary:hover:not(:disabled) {
+  background: var(--np-dialog-primary-hover, #1d4ed8);
+}

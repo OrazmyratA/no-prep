@@ -163,6 +163,29 @@ from letter shapes, not from reading the page).
   - Panel: "Also place: ☑ Guide dots ☑ Answer keys ☑ Videos" (with the app's icons, remembered in
     localStorage `taskPrepMarks`), the marks' icons on each row, "Placed N guide dots, …". 6 keys.
   - Full suite 72 files / 377 tests. Not browser-checked yet.
+  - Sized to the text (user: the 0.04 marks were "big and awkward", sometimes over the words):
+    `markSize` = the line's letter height × 1.35, as a page-width fraction (× `pageRatio`),
+    between 0.018 (tappable) and 0.04; 0.03 on scans. 10 pt on A4 → about 0.022. Gaps scale too
+    (0.25 / 0.12 of the size). Where they go, first clear of printed words: after the line, the
+    frame's top-right corner, just above that corner; else after the line anyway. Videos sized
+    by their word.
+- **Tick / number exercises and game ideas (2026-10-20).** Decided with the user: no new task
+  tools. Tick / cross and numbering are word-bank gaps with ✔ / ✘ (or T / F, Yes / No) or 1-N
+  as the bank (words are never used up); colouring = the drawing / highlighter tools; word search,
+  sorting, unjumbling, drag and drop = a topic + a game icon.
+  - New kinds "tick" and "order" (EXERCISE_KINDS): gaps + bank like "wordBank". The parser makes
+    any tick / cross the AI writes (✓ √ v / x × ✗ ❌) into ✔ / ✘ and always offers both;
+    T / F, Yes / No stay; an "order" bank defaults to 1..the highest answer (or the box count).
+    "circle" is now only for circling / underlining (also printed T / F to circle).
+  - Their boxes are drawn shapes, not text: `placeGaps(…, fallback)` uses `squareBox` (square on
+    the page, 0.025-0.06 wide) on the AI's box; a printed blank still wins when there is one.
+  - `gameIdea` per exercise (only for what the kinds cannot make interactive): one sentence naming
+    one of the app's games (listed in the prompt) and the words for it. Placed as a draft note
+    mark (`data.content`) in the guide dot / answer key row; 4th tick box "Game ideas"
+    (`TaskPrepMarks.notes`); "N game ideas left as notes". Answer keys also for tick / order.
+  - Typing boxes: the user's earlier design keeps capitals and punctuation exact (the spec says
+    so); only curly / straight quotes and extra spaces are now ignored (`comparableAnswer`).
+  - 4 + 4 keys. Full suite 72 files / 383 tests.
 - **All four phases are built.** Still to do: a check with a real coursebook and a real AI
   (Gemini / Claude / ChatGPT): box accuracy on real layouts, two-column pages, exercises that
   run over two pages, and answer quality.

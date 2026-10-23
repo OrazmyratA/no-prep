@@ -3,7 +3,7 @@ import { ExerciseKind } from '../../../../core/ai-topic/task-prep';
 import { BookCreatorTaskPrepController } from '../book-creator-task-prep-controller';
 
 const KIND_ICONS: Record<ExerciseKind | 'video', string> = {
-  gapFill: '✏️', wordBank: '🔤', circle: '⭕', choice: '🔘', match: '🔗', crossword: '🔠', open: '📝', other: '📄', video: '🎬'
+  gapFill: '✏️', wordBank: '🔤', tick: '☑️', order: '🔢', circle: '⭕', choice: '🔘', match: '🔗', crossword: '🔠', open: '📝', other: '📄', video: '🎬'
 };
 
 // "✨ Prepare tasks" in the book creator's right panel (docs/ai-task-prep.md). The state lives in

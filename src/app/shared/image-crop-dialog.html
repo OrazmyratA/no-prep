@@ -1,15 +1,15 @@
 <div appBodyPortal class="fixed inset-0 z-[9600] flex items-center justify-center bg-black/70 p-4">
-  <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-      <h2 class="text-base font-semibold text-gray-800">{{ 'cropImageTitle' | translate }}</h2>
-      <button type="button" (click)="cancel()" class="text-sm text-gray-500 hover:text-gray-700">
+  <div class="np-dialog rounded-lg shadow-xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div class="flex items-center justify-between px-4 py-3 border-b np-dialog-line">
+      <h2 class="text-base font-semibold">{{ 'cropImageTitle' | translate }}</h2>
+      <button type="button" (click)="cancel()" class="text-sm np-dialog-muted hover:underline">
         {{ 'cancel' | translate }}
       </button>
     </div>
 
     <!-- Thumbnails (the current picture, if any, plus every attached page) — only when there's
          more than one source to pick from. -->
-    <div *ngIf="images.length > 1" class="flex gap-2 px-4 py-2 overflow-x-auto border-b border-gray-100 bg-gray-50">
+    <div *ngIf="images.length > 1" class="flex gap-2 px-4 py-2 overflow-x-auto border-b np-dialog-line np-dialog-well">
       <button *ngFor="let url of thumbUrls; let i = index" type="button"
               (click)="setActiveIndex(i)"
               class="flex-shrink-0 flex flex-col items-center gap-1">
@@ -18,7 +18,7 @@
               [class.border-transparent]="i !== activeIndex">
           <img [src]="url" class="h-14 w-20 object-cover block">
         </span>
-        <span *ngIf="labelFor(i)" class="text-xs text-gray-600 max-w-[80px] truncate"
+        <span *ngIf="labelFor(i)" class="text-xs np-dialog-muted max-w-[80px] truncate"
               [class.font-semibold]="i === activeIndex" [class.text-blue-600]="i === activeIndex">
           {{ labelFor(i) }}
         </span>
@@ -51,13 +51,13 @@
       </div>
     </div>
 
-    <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-200">
+    <div class="flex items-center justify-end gap-2 px-4 py-3 border-t np-dialog-line">
       <button type="button" (click)="cancel()"
-              class="px-4 py-2 rounded border border-gray-300 text-sm hover:bg-gray-100">
+              class="px-4 py-2 rounded np-dialog-secondary text-sm">
         {{ 'cancel' | translate }}
       </button>
       <button type="button" (click)="confirm()" [disabled]="working"
-              class="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50">
+              class="px-4 py-2 rounded np-dialog-primary text-sm font-semibold disabled:opacity-50">
         {{ (working ? 'cropping' : 'useThisCrop') | translate }}
       </button>
     </div>

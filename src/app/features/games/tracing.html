@@ -83,13 +83,13 @@
         <button (click)="previousItem()" [disabled]="currentIndex === 0 || revealing"
                 aria-label="Previous"
                 title="Previous"
-                class="circle-btn bg-slate-500 hover:bg-slate-700">
+                class="circle-btn np-action np-action--slate">
           ◀
         </button>
         <button (click)="resetCurrentItem()" [disabled]="revealing"
                 aria-label="Reset current word"
                 title="Reset current word"
-                class="circle-btn bg-yellow-500 hover:bg-yellow-600">
+                class="circle-btn np-action np-action--amber">
           ↺
         </button>
         <button (click)="checkAnswer()" [disabled]="revealing || isCurrentChecked"
@@ -101,7 +101,7 @@
         <button (click)="nextItem()" [disabled]="currentIndex === items.length - 1 || revealing"
                 aria-label="Next"
                 title="Next"
-                class="circle-btn bg-blue-500 hover:bg-blue-700">
+                class="circle-btn np-action np-action--blue">
           ▶
         </button>
       </div>

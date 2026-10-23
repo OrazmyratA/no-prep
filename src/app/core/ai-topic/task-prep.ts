@@ -6,7 +6,7 @@ import { AiCropBox, normalizeCropBox, parseJsonLoosely } from './ai-topic-draft'
 // multiple-choice exercises their options and which are right (phase 3), matching exercises
 // their pairs (phase 4), crosswords their grid and words.
 
-export const EXERCISE_KINDS = ['gapFill', 'wordBank', 'circle', 'choice', 'match', 'crossword', 'open', 'other'] as const;
+export const EXERCISE_KINDS = ['gapFill', 'wordBank', 'tick', 'order', 'circle', 'choice', 'match', 'crossword', 'open', 'other'] as const;
 export type ExerciseKind = typeof EXERCISE_KINDS[number];
 
 export interface PreparedExercise {
@@ -35,7 +35,13 @@ export interface PreparedExercise {
   pairs: PreparedPair[];
   /** The crossword's grid and words (crossword only), else null. */
   grid: PreparedGrid | null;
+  /** For an exercise the page's tasks cannot make interactive: a game of the app to make from it, or ''. */
+  gameIdea: string;
 }
+
+/** Tick exercises use these two marks; whatever ticks or crosses the AI writes become them. */
+export const TICK = '✔';
+export const CROSS = '✘';
 
 export interface PreparedGrid {
   /** Around the grid's squares only, fractions of the page. */
@@ -194,9 +200,10 @@ export const TASK_PREP_SCHEMA = {
               }
             },
             required: ['box', 'rows', 'cols', 'words']
-          }
+          },
+          gameIdea: { type: 'string' }
         },
-        required: ['page', 'box', 'number', 'title', 'instruction', 'instructionBox', 'kind', 'gaps', 'bank', 'options', 'pairs', 'grid']
+        required: ['page', 'box', 'number', 'title', 'instruction', 'instructionBox', 'kind', 'gaps', 'bank', 'options', 'pairs', 'grid', 'gameIdea']
       }
     },
     videos: {
@@ -229,17 +236,19 @@ For every EXERCISE on the pages - a numbered task with an instruction, or a box 
 - "kind": what students do:
   - "gapFill": write words into blanks (lines, dots or empty boxes in sentences).
   - "wordBank": fill blanks with words from a box of given words.
-  - "circle": circle, tick or underline the right word or picture.
+  - "tick": put a tick or a cross in empty boxes ("Look and tick", "Tick or cross"), or write T / F, Yes / No into empty boxes or lines.
+  - "order": write numbers into empty boxes to put pictures, sentences or events in order ("Listen and number").
+  - "circle": circle or underline the right word or picture (also T / F or Yes / No printed for students to circle).
   - "choice": choose a), b) or c) for each question.
   - "match": match items to items (draw lines, numbers to letters, pictures to words).
   - "crossword": write letters into the squares of a crossword grid.
   - "open": answer questions or write sentences freely.
   - "other": anything else (listen, speak, read, a word box, a picture to talk about).
-- "gaps": ONLY for "gapFill" and "wordBank", otherwise []. Every blank students fill, in reading order. Skip the worked example (usually item 0 or the first item, already filled in). For each blank:
-  - "before": the last 2-4 words printed just before the blank on its line, copied exactly ("" when the blank starts the line).
-  - "answers": the correct answer, solved by you from the exercise, the pictures and the word box; then up to 3 other answers that are also fully correct (e.g. "isn't" and "is not"). Write exactly what a student writes in the blank, nothing around it.
-  - "box": [ymin, xmin, ymax, xmax] on that photo, 0-1000, tight around the blank itself.
-- "bank": ONLY for "wordBank": the words of the word box, exactly as printed, in order; otherwise []. Each gap's first answer must be one of these words.
+- "gaps": ONLY for "gapFill", "wordBank", "tick" and "order", otherwise []. Every blank (or empty box) students fill, in reading order. Skip the worked example (usually item 0 or the first item, already filled in). For each blank:
+  - "before": the last 2-4 words printed just before the blank on its line, copied exactly ("" when the blank starts the line or stands by a picture).
+  - "answers": the correct answer, solved by you from the exercise, the pictures and the word box; then up to 3 other answers that are also fully correct (e.g. "isn't" and "is not"). Write exactly what a student writes in the blank, nothing around it. For "tick": "✔" or "✘" (every box gets one: "✘" where students leave it empty or cross it), or "T" / "F", "Yes" / "No" when those are written. For "order": the number, e.g. "3".
+  - "box": [ymin, xmin, ymax, xmax] on that photo, 0-1000, tight around the blank or empty box itself.
+- "bank": for "wordBank": the words of the word box, exactly as printed, in order. For "tick": the marks used, ["✔", "✘"], ["T", "F"] or ["Yes", "No"]. For "order": the numbers in use, ["1", "2", ...]. Otherwise []. Each gap's first answer must be one of these.
 - "options": ONLY for "circle" and "choice", otherwise []. Every option students can circle, tick or choose, in reading order (question by question), skipping the worked example:
   - "text": the option's words exactly as printed, WITHOUT its letter or number ("went", not "a) went"); "" when the option is a picture.
   - "correct": true for the right option(s), solved by you; false for the others. A "choice" question has exactly one right option.
@@ -256,6 +265,7 @@ For every EXERCISE on the pages - a numbered task with an instruction, or a box 
     - "row" / "col": the 0-based row and column of its first square in the rectangle.
     - "across": true for across, false for down.
     - "given": true when its letters are already printed in the squares (a worked example).
+- "gameIdea": ONLY for an exercise none of the kinds above can make interactive - a word search, sorting words into groups or columns, putting words in order to make a sentence, unscrambling letters, a list of words to spell, a picture to talk about - one short sentence for the teacher, in the teacher's language, naming ONE of the app's games below to make from it, and the words to put in it. Otherwise "". The games: Word search (find words in a letter grid), Unjumble (put words in order to make a sentence), Anagram (unscramble a word's letters), Spelling check (spell words heard or seen), Match pairs (memory cards: word and picture), Odd one out (find the word that does not belong), Ball sort (sort words into groups), Writing workshop (write a text), Talk show (speaking questions), Reading detective (a reading text with tasks).
 Leave out page headers, unit titles, page numbers, footers and decorative pictures. If an exercise continues on the next photo, give one entry per photo.
 
 "videos": every sign on the pages telling students to watch a video - a video or play icon, or a word such as "Video", "Watch" or "Vlog" used as a label - in reading order, or []:
@@ -288,9 +298,12 @@ export function parseTaskPrep(raw: string, pageCount: number): TaskPrepResult {
     const box = normalizeCropBox(e['box']);
     if (box.width < MIN_BOX || box.height < MIN_BOX) continue;
     const kind = EXERCISE_KINDS.includes(e['kind'] as ExerciseKind) ? e['kind'] as ExerciseKind : 'other';
-    const hasGaps = kind === 'gapFill' || kind === 'wordBank';
-    const bank = kind === 'wordBank' ? unique(list_(e['bank']).map(word => text(word, 40)).filter(Boolean)).slice(0, MAX_BANK) : [];
-    const gaps = hasGaps ? list_(e['gaps']).map(gap => readGap(gap)).filter((gap): gap is PreparedGap => !!gap).slice(0, MAX_GAPS) : [];
+    const hasGaps = kind === 'gapFill' || kind === 'wordBank' || kind === 'tick' || kind === 'order';
+    let bank = kind === 'wordBank' || kind === 'tick' || kind === 'order'
+      ? unique(list_(e['bank']).map(word => text(word, 40)).filter(Boolean)).slice(0, MAX_BANK) : [];
+    let gaps = hasGaps ? list_(e['gaps']).map(gap => readGap(gap)).filter((gap): gap is PreparedGap => !!gap).slice(0, MAX_GAPS) : [];
+    if (kind === 'tick') ({ bank, gaps } = tickMarks(bank, gaps));
+    if (kind === 'order') bank = orderNumbers(bank, gaps);
     exercises.push({
       id: `e${exercises.length + 1}`,
       page,
@@ -309,7 +322,8 @@ export function parseTaskPrep(raw: string, pageCount: number): TaskPrepResult {
       pairs: kind === 'match'
         ? list_(e['pairs']).map(pair => readPair(pair)).filter((p): p is PreparedPair => !!p).slice(0, MAX_PAIRS)
         : [],
-      grid: kind === 'crossword' ? readGrid(e['grid']) : null
+      grid: kind === 'crossword' ? readGrid(e['grid']) : null,
+      gameIdea: text(e['gameIdea'], 300)
     });
   }
   const notes = (Array.isArray(data.notes) ? data.notes : [])
@@ -342,6 +356,28 @@ function readGap(value: unknown): PreparedGap | null {
   if (!answers.length) return null;
   const box = normalizeCropBox(g['box']);
   return { before: text(g['before'], 80), answers, box: box.width > 0.004 && box.height > 0.004 ? box : null };
+}
+
+const TICKS = /^[✔✓☑√vV]$/;
+const CROSSES = /^[✘✗×xX❌✕]$/;
+
+/**
+ * A tick exercise's marks: ticks and crosses however the AI wrote them become ✔ and ✘ (both
+ * always offered); T / F or Yes / No stay as they are. Without a bank, the answers make it.
+ */
+function tickMarks(bank: string[], gaps: PreparedGap[]): { bank: string[]; gaps: PreparedGap[] } {
+  const mark = (value: string) => TICKS.test(value) ? TICK : CROSSES.test(value) ? CROSS : value;
+  const marked = gaps.map(gap => ({ ...gap, answers: unique(gap.answers.map(mark)) }));
+  const used = unique([...bank.map(mark), ...marked.map(gap => gap.answers[0])]);
+  const ticks = used.some(value => value === TICK || value === CROSS);
+  return { bank: ticks ? unique([TICK, CROSS, ...used]) : used, gaps: marked };
+}
+
+/** An order exercise's numbers: the AI's, else 1 up to the highest answer (or the number of boxes). */
+function orderNumbers(bank: string[], gaps: PreparedGap[]): string[] {
+  if (bank.length) return bank;
+  const highest = Math.max(gaps.length, ...gaps.map(gap => Number(gap.answers[0]) || 0));
+  return Array.from({ length: Math.min(highest, MAX_BANK) }, (_, i) => String(i + 1));
 }
 
 /**

@@ -472,3 +472,8 @@
   color: #3730a3;
   font-size: 0.9rem;
 }
+
+/* The page title sits on the app background, so season packs may restyle it. */
+.topic-form-title {
+  background-image: var(--np-title-gradient-alt, linear-gradient(to right, #4f46e5, #9333ea));
+}

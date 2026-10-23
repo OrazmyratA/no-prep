@@ -4,6 +4,7 @@ import { PdfPageCanvasComponent } from '../pdf-page-canvas/pdf-page-canvas';
 import { BookElement, stripDraftElements } from '../../../core/book.model';
 import { AiTopicError } from '../../../core/ai-topic/ai-topic.service';
 import { A4_RATIO } from './lesson-plan-icons';
+import { markSize } from '../../../core/ai-topic/task-gaps';
 
 describe('BookCreatorTaskPrepController', () => {
   let creator: any;
@@ -47,7 +48,7 @@ describe('BookCreatorTaskPrepController', () => {
       : []);
     prep = new BookCreatorTaskPrepController(creator);
     // Guide dots, answer keys and videos have their own tests.
-    prep.marks = { guides: false, keys: false, videos: false };
+    prep.marks = { guides: false, keys: false, videos: false, notes: false };
   });
 
   afterEach(() => vi.restoreAllMocks());
@@ -63,7 +64,7 @@ describe('BookCreatorTaskPrepController', () => {
     expect(draft.x).toBeCloseTo(0.092, 4); // snapped to the text
     expect(p1.elements.filter((e: BookElement) => e.data['taskDraft']).length).toBe(1); // exercise 2 was framed already
     expect(p2.elements.length).toBe(1);
-    expect(prep.lastRun).toEqual({ found: 3, placed: 2, snapped: true, gaps: 0, exact: 0, targets: 0, exactTargets: 0, pairs: 0, exactPairs: 0, squares: 0, guides: 0, keys: 0, videos: 0 });
+    expect(prep.lastRun).toEqual({ found: 3, placed: 2, snapped: true, gaps: 0, exact: 0, targets: 0, exactTargets: 0, pairs: 0, exactPairs: 0, squares: 0, guides: 0, keys: 0, videos: 0, notes: 0 });
     expect(prep.notes).toEqual(['Check exercise 3.']);
     expect(prep.drafts.map(d => [d.pageNumber, prep.draftLabel(d)])).toEqual([[1, '1 · Complete'], [2, '3 · Talk']]);
 
@@ -274,7 +275,7 @@ describe('BookCreatorTaskPrepController', () => {
   });
 
   it('puts a guide dot and an answer key right after the instruction\'s last line, and a video after its sign', async () => {
-    prep.marks = { guides: true, keys: true, videos: true };
+    prep.marks = { guides: true, keys: true, videos: true, notes: true };
     vi.spyOn(PdfPageCanvasComponent, 'readText').mockResolvedValue([
       { text: '1 Complete the sentences with', x: 0.1, y: 0.2, width: 0.4, height: 0.02 },
       { text: 'the words.', x: 0.1, y: 0.225, width: 0.12, height: 0.02 },
@@ -299,14 +300,19 @@ describe('BookCreatorTaskPrepController', () => {
     const page = creator.activePages[1];
     const [guide, key, guide2] = page.elements.filter((e: BookElement) => e.type === 'guideDot' || e.type === 'answerKey');
     expect([guide.type, key.type, guide2.type]).toEqual(['guideDot', 'answerKey', 'guideDot']);
-    expect(guide.x).toBeCloseTo(0.1 + 0.12 + 0.006, 4); // after "the words."
-    expect(key.x).toBeCloseTo(guide.x + 0.044, 4);
-    expect(guide.y + 0.04 / A4_RATIO / 2).toBeCloseTo(0.225 + 0.02 * 0.71, 3); // level with its letters
-    // In the frame's top-right corner (the frame was snapped to its text).
-    expect(guide2.x + guide2.width).toBeCloseTo(0.408 - 0.004, 4);
-    expect(guide2.y).toBeCloseTo(0.692 + 0.004, 4);
+    // As big as the letters (0.02 high text): a little taller than them.
+    const size = markSize({ x: 0, y: 0, width: 0, height: 0.02 }, A4_RATIO);
+    expect([guide.width, key.width]).toEqual([size, size]);
+    expect(size).toBeLessThan(0.04);
+    expect(guide.x).toBeCloseTo(0.1 + 0.12 + size * 0.25, 4); // after "the words."
+    expect(key.x).toBeCloseTo(guide.x + size * 1.12, 3);
+    expect(guide.y + size / A4_RATIO / 2).toBeCloseTo(0.225 + 0.02 * 0.71, 3); // level with its letters
+    // No room after the line, and the frame's top-right corner would cover its words: just above it.
+    expect(guide2.x + guide2.width).toBeCloseTo(0.408 - size * 0.12, 4);
+    expect(guide2.y).toBeCloseTo(0.692 - size / A4_RATIO - size * 0.12, 3);
     const video = page.elements.find((e: BookElement) => e.type === 'video');
-    expect([video.x, video.data['src']]).toEqual([0.166, '']);
+    expect(video.x).toBeCloseTo(0.16 + size * 0.25, 4);
+    expect(video.data['src']).toBe('');
     expect([prep.lastRun?.guides, prep.lastRun?.keys, prep.lastRun?.videos]).toEqual([2, 1, 1]);
 
     const [first, , videoDraft] = prep.drafts;
@@ -320,6 +326,42 @@ describe('BookCreatorTaskPrepController', () => {
     page.elements.push({ id: 'mine', type: 'guideDot', x: 0.3, y: 0.7, width: 0.04, height: 0.04, data: {} });
     await prep.analyse();
     expect(page.elements.filter((e: BookElement) => e.type === 'guideDot').map((e: BookElement) => e.id)).toEqual([guide.id, 'mine']);
+  });
+
+  it('makes tick boxes word-bank gaps with ✔ / ✘ on the AI\'s boxes, and leaves a game idea as a note', async () => {
+    prep.marks = { guides: false, keys: false, videos: false, notes: true };
+    vi.spyOn(PdfPageCanvasComponent, 'readText').mockResolvedValue([]); // the boxes are drawn, not text
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.aiTopic.prepareTasks = vi.fn(async () => ({
+      exercises: [
+        { id: 'e1', page: 0, box: { x: 0.1, y: 0.1, width: 0.8, height: 0.3 }, number: '1', title: 'Look and tick', instruction: '', instructionBox: null,
+          kind: 'tick', bank: ['✔', '✘'], options: [], pairs: [], grid: null, gameIdea: '',
+          gaps: [
+            { before: '', answers: ['✔'], box: { x: 0.3, y: 0.2, width: 0.02, height: 0.015 } },
+            { before: '', answers: ['✘'], box: { x: 0.5, y: 0.2, width: 0.02, height: 0.015 } }
+          ] },
+        { id: 'e2', page: 0, box: { x: 0.1, y: 0.5, width: 0.8, height: 0.3 }, number: '2', title: 'Find the words', instruction: 'Find the words.', instructionBox: { x: 0.12, y: 0.52, width: 0.2, height: 0.02 },
+          kind: 'other', gaps: [], bank: [], options: [], pairs: [], grid: null, gameIdea: 'Word search: make a topic with cat, dog, bird.' }
+      ],
+      videos: [],
+      notes: []
+    }));
+    await prep.analyse();
+    const page = creator.activePages[1];
+    const [bank] = page.wordBanks;
+    expect(bank.options.map((o: any) => o.text)).toEqual(['✔', '✘']);
+    const boxes = page.elements.filter((e: BookElement) => e.type === 'choiceTask');
+    expect(boxes.map((b: BookElement) => b.data['correctOptionId'])).toEqual([bank.options[0].id, bank.options[1].id]);
+    // Square on the page, around the AI's box.
+    expect(boxes[0].width).toBeCloseTo(0.025, 4);
+    expect(boxes[0].height).toBeCloseTo(0.025 / A4_RATIO, 4);
+    const note = page.elements.find((e: BookElement) => e.type === 'note');
+    expect(note.data['content']).toBe('Word search: make a topic with cat, dog, bird.');
+    expect(prep.lastRun?.notes).toBe(1);
+    const [, second] = prep.drafts;
+    expect(prep.hasMark(second, 'note')).toBe(true);
+    prep.accept(second);
+    expect(note.data).toEqual({ content: 'Word search: make a topic with cat, dog, bird.' });
   });
 
   it('leaves an exercise alone when the teacher already made its tasks', async () => {

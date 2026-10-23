@@ -1,0 +1,5 @@
+# Link the C runtime statically: otherwise the .node needs VCRUNTIME140.dll (Visual C++
+# Redistributable), which clean Windows installs lack — the module then fails to load and every
+# licence reads as invalid.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

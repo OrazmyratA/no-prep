@@ -16,7 +16,7 @@
   <!-- No images -->
   <div *ngIf="!loading && items.length === 0" class="text-white text-center p-8">
     <p class="text-xl">{{ 'revealGameNoImages' | translate }}</p>
-    <button (click)="onMenuAction('activity')" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">{{ 'backToActivities' | translate }}</button>
+    <button (click)="onMenuAction('activity')" class="mt-4 np-action np-action--blue px-4 py-2 rounded">{{ 'backToActivities' | translate }}</button>
   </div>
 
   <!-- Game active -->
@@ -53,7 +53,7 @@
             [disabled]="isPaused"
             aria-label="Skip"
             title="Skip"
-            class="mt-4 bg-yellow-500 hover:bg-yellow-600 text-white font-bold w-12 h-12 rounded-full shadow-lg transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+            class="mt-4 np-action np-action--yellow font-bold w-12 h-12 rounded-full shadow-lg transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
       <img src="assets/images/skip.png" alt="" class="w-7 h-7 object-contain">
     </button>
   </div>
@@ -83,7 +83,7 @@
                 (click)="onQuizAnswer(opt)"
                 [class.fade-out]="fadeOutOptionIds.has(opt.id!)"
                 [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
-                class="quiz-option relative px-8 py-4 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
+                class="quiz-option relative px-8 py-4 rounded-2xl np-btn-primary font-bold text-xl hover:scale-105 transition transform min-w-[240px]">
           <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
           {{ opt.text || '?' }}
         </button>
@@ -108,7 +108,7 @@
       <div *ngFor="let entry of rankedTeamsWithPosition; trackBy: trackByRankedTeam" class="flex items-center gap-3">
         <div class="w-12 text-center font-bold text-xl">{{ entry.medal }}</div>
         <div class="w-28 font-semibold text-left" [style.color]="entry.team.color">{{ entry.team.name }}</div>
-        <div class="flex-1 h-10 bg-gray-200 rounded-full overflow-hidden">
+        <div class="flex-1 h-10 bg-ink/10 rounded-full overflow-hidden">
           <div *ngIf="entry.team.score > 0"
                class="h-full rounded-full flex items-center justify-end pr-3 text-white font-bold"
                [style.width.%]="(entry.team.score / maxScore) * 100"
@@ -117,7 +117,7 @@
             {{ entry.team.score }}
           </div>
           <div *ngIf="entry.team.score < 0"
-               class="h-full flex items-center pl-3 text-gray-400 font-bold">
+               class="h-full flex items-center pl-3 text-ink-faint font-bold">
             {{ entry.team.score }}
           </div>
         </div>

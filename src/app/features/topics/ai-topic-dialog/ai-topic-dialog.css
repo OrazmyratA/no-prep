@@ -9,10 +9,12 @@
   z-index: 10000;
 }
 
+/* Season packs restyle the frame (shell, header, footer); the section cards stay light paper. */
 .ai-dialog {
-  background: #f8fafc;
+  background: var(--np-dialog, #f8fafc);
   border-radius: 18px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3), 0 0 0 1px var(--np-dialog-border, transparent);
+  scrollbar-color: var(--np-dialog-scrollbar, auto);
   width: min(680px, 100%);
   max-height: calc(100vh - 32px);
   overflow-y: auto;
@@ -31,7 +33,7 @@
 .ai-header h2 {
   font-size: 1.25rem;
   font-weight: 800;
-  background: linear-gradient(90deg, #4f46e5, #9333ea);
+  background: var(--np-dialog-title, linear-gradient(90deg, #4f46e5, #9333ea));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -41,12 +43,12 @@
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  color: #9ca3af;
+  color: var(--np-dialog-muted, #9ca3af);
 }
 
 .ai-close:hover:not(:disabled) {
-  background: #e5e7eb;
-  color: #4b5563;
+  background: var(--np-dialog-chip, #e5e7eb);
+  color: var(--np-dialog-ink, #4b5563);
 }
 
 /* Every section is its own clean card — a plain white surface against the dialog's light grey
@@ -199,7 +201,7 @@
 }
 
 .ai-primary {
-  background: linear-gradient(90deg, #4f46e5, #9333ea);
+  background: var(--np-dialog-primary, linear-gradient(90deg, #4f46e5, #9333ea));
   color: #fff;
 }
 
@@ -461,8 +463,14 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--np-dialog-line, #e5e7eb);
   padding-top: 14px;
+}
+
+.ai-footer .ai-secondary {
+  border-color: var(--np-dialog-line, #d1d5db);
+  background: var(--np-dialog-chip, #fff);
+  color: var(--np-dialog-chip-ink, #374151);
 }
 
 .ai-working {
@@ -470,7 +478,7 @@
   align-items: center;
   gap: 8px;
   margin-right: auto;
-  color: #4f46e5;
+  color: var(--np-dialog-heading, #4f46e5);
   font-size: 0.9rem;
 }
 

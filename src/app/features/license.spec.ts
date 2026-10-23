@@ -57,6 +57,17 @@ describe('LicenseComponent', () => {
     expect(dismissSpy).toHaveBeenCalled();
   });
 
+  it('should explain why the licence is invalid, but not when there is simply none yet', () => {
+    (licenseService as any).invalidReason = 'engine';
+    expect(component.reasonKey).toBe('license.reason.engine');
+
+    (licenseService as any).invalidReason = 'missing';
+    expect(component.reasonKey).toBeNull();
+
+    (licenseService as any).invalidReason = undefined;
+    expect(component.reasonKey).toBeNull();
+  });
+
   it('should keep the license window open when the license is invalid', async () => {
     const dismissSpy = vi.fn();
     component.dismissLicense.subscribe(dismissSpy);

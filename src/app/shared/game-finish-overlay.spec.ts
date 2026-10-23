@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
+import confetti from 'canvas-confetti';
 
 import { GameFinishConfettiService, GameFinishOverlayComponent } from './game-finish-overlay';
 
@@ -97,6 +98,32 @@ describe('GameFinishOverlayComponent', () => {
     vi.advanceTimersByTime(3000);
 
     expect(confettiLauncher).toHaveBeenCalledTimes(4);
+  });
+
+  it('dresses each burst in Halloween colours plus bats, pumpkins and ghosts during the Halloween season', async () => {
+    fixture.destroy();
+    confettiLauncher.mockClear();
+    const shape = { type: 'bitmap' } as unknown as confetti.Shape;
+    const shapeSpy = vi.spyOn(confetti, 'shapeFromText').mockReturnValue(shape);
+    document.documentElement.dataset['season'] = 'halloween';
+
+    try {
+      fixture = TestBed.createComponent(GameFinishOverlayComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      await Promise.resolve();
+
+      // The 3 opening bursts each become a coloured burst + an emoji burst.
+      expect(confettiLauncher).toHaveBeenCalledTimes(6);
+      const [colored, emoji] = confettiLauncher.mock.calls.slice(0, 2).map(call => call[0] as any);
+      expect(colored.colors).toContain('#f97316');
+      expect(colored.particleCount).toBe(315);
+      expect(emoji.shapes).toEqual([shape, shape, shape]);
+      expect(emoji.flat).toBe(true);
+      expect(shapeSpy.mock.calls.map(call => (call[0] as { text: string }).text)).toEqual(['🦇', '🎃', '👻']);
+    } finally {
+      delete document.documentElement.dataset['season'];
+    }
   });
 
   it('resets confetti when the window loses focus', () => {

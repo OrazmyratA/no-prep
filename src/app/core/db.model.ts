@@ -49,7 +49,8 @@ export interface Item {
   createdAt: Date;
 }
 
-export type AppThemeType = 'default' | 'color' | 'image';
+export type AppThemeType = 'default' | 'color' | 'image' | 'season';
+export type SeasonThemeId = 'halloween';
 
 export interface ThemeBackground {
   id?: number;
@@ -64,6 +65,7 @@ export interface ThemeSettings {
   type: AppThemeType;
   color?: string;
   backgroundId?: number;
+  season?: SeasonThemeId;
   dim: number;
   updatedAt: Date;
 }

@@ -22,14 +22,14 @@
   font-weight: 900;
   line-height: 1;
   color: #fff;
-  -webkit-text-stroke: 0.02em #1e3a8a;
+  -webkit-text-stroke: 0.02em var(--np-countdown-stroke, #1e3a8a);
   text-shadow: 0 0.04em 0.12em rgba(0, 0, 0, 0.5);
   animation: game-countdown-pop 0.9s ease-out both;
 }
 
 .game-countdown-label.go {
   font-size: min(20vw, 30vh);
-  color: #facc15;
+  color: var(--np-countdown-go, #facc15);
 }
 
 @keyframes game-countdown-pop {

@@ -35,7 +35,7 @@ export interface ConfettiOptions {
   origin?: ConfettiOrigin;
   particleCount?: number;
   scalar?: number;
-  shapes?: Array<'circle' | 'square' | 'star'>;
+  shapes?: Array<'circle' | 'square' | 'star' | confetti.Shape>;
   spread?: number;
   startVelocity?: number;
   ticks?: number;
@@ -65,6 +65,22 @@ function getMainThreadConfetti(): ConfettiInstance {
     mainThreadConfetti = confetti.create(undefined, { useWorker: false, resize: true }) as unknown as ConfettiInstance;
   }
   return mainThreadConfetti;
+}
+
+// Halloween season pack (html[data-season]): pumpkin/violet confetti with bats, pumpkins and ghosts
+// mixed in. Emoji shapes are rasterised once by canvas-confetti, then drawn like any other piece.
+const HALLOWEEN_COLORS = ['#f97316', '#fb923c', '#fdba74', '#a855f7', '#7c3aed', '#84cc16', '#ffffff'];
+const HALLOWEEN_EMOJI_SCALAR = 2.4;
+let halloweenShapes: confetti.Shape[] | null = null;
+function getHalloweenShapes(): confetti.Shape[] {
+  if (!halloweenShapes) {
+    halloweenShapes = ['🦇', '🎃', '👻'].map(text => confetti.shapeFromText({ text, scalar: HALLOWEEN_EMOJI_SCALAR }));
+  }
+  return halloweenShapes;
+}
+
+function activeSeason(): string | undefined {
+  return typeof document === 'undefined' ? undefined : document.documentElement.dataset['season'];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -256,11 +272,28 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
 
   private fireConfetti(options: ConfettiOptions) {
     if (!this.confettiInstance) return;
-    this.confettiInstance({
+    const base: ConfettiOptions = {
       colors: this.confettiColors,
       disableForReducedMotion: false,
       zIndex: 2147483647,
       ...options
+    };
+
+    if (activeSeason() !== 'halloween') {
+      this.confettiInstance(base);
+      return;
+    }
+
+    // Same burst, re-dressed: most pieces in pumpkin/violet plus a sprinkle of big emoji (more than
+    // ~10% buries the title).
+    const count = base.particleCount ?? 50;
+    this.confettiInstance({ ...base, colors: HALLOWEEN_COLORS, particleCount: Math.round(count * 0.75) });
+    this.confettiInstance({
+      ...base,
+      shapes: getHalloweenShapes(),
+      scalar: HALLOWEEN_EMOJI_SCALAR,
+      flat: true,
+      particleCount: Math.max(6, Math.round(count * 0.09))
     });
   }
 

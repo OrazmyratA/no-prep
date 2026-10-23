@@ -16,9 +16,10 @@
   gap: 10px;
   padding: 18px 20px;
   border-radius: 18px;
-  background: #fff;
-  color: #1f2937;
-  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35);
+  background: var(--np-dialog, #fff);
+  color: var(--np-dialog-ink, #1f2937);
+  color-scheme: var(--np-dialog-scheme, normal);
+  box-shadow: 0 30px 70px rgba(15, 23, 42, 0.35), 0 0 0 1px var(--np-dialog-border, transparent);
   overflow: hidden;
 }
 
@@ -32,7 +33,7 @@
 .pa-head h2 {
   margin: 0;
   font-size: 1.15rem;
-  color: #4338ca;
+  color: var(--np-dialog-heading, #4338ca);
 }
 
 .pa-close {
@@ -40,7 +41,7 @@
   background: none;
   font-size: 1.1rem;
   cursor: pointer;
-  color: #64748b;
+  color: var(--np-dialog-muted, #64748b);
 }
 
 .pa-instruction {
@@ -51,7 +52,7 @@
 
 .pa-hint {
   margin: 0;
-  color: #64748b;
+  color: var(--np-dialog-muted, #64748b);
   font-size: 0.85rem;
 }
 
@@ -63,7 +64,7 @@
   overflow: auto;
   padding: 6px;
   border-radius: 12px;
-  background: #f1f5f9;
+  background: var(--np-dialog-well, #f1f5f9);
 }
 
 /* Shrink-wraps the picture, so the box is a fraction of the picture itself. */
@@ -104,7 +105,7 @@
 .pa-link {
   border: 0;
   background: none;
-  color: #b91c1c;
+  color: var(--np-dialog-danger, #b91c1c);
   font-weight: 600;
   cursor: pointer;
 }
@@ -123,13 +124,13 @@
 }
 
 .pa-secondary {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
+  border: 1px solid var(--np-dialog-line, #cbd5e1);
+  background: var(--np-dialog-chip, #fff);
+  color: var(--np-dialog-chip-ink, #334155);
 }
 
 .pa-primary {
   border: 0;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: var(--np-dialog-primary, linear-gradient(135deg, #4f46e5, #7c3aed));
   color: #fff;
 }

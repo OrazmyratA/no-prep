@@ -1,5 +1,5 @@
 <section class="lp" [class.lp-open]="prep.open">
-  <button type="button" class="lp-toggle" (click)="prep.open = !prep.open" [attr.aria-expanded]="prep.open">
+  <button type="button" class="lp-toggle" (click)="prep.toggle()" [attr.aria-expanded]="prep.open">
     <span>✨ {{ 'taskPrepTitle' | translate }}<small *ngIf="!prep.open && prep.drafts.length" class="tp-count"> · {{ prep.drafts.length }}</small></span>
     <span class="lp-chevron" aria-hidden="true">{{ prep.open ? '▾' : '▸' }}</span>
   </button>
@@ -7,6 +7,16 @@
   <ng-container *ngIf="prep.open">
     <div class="lp-form">
       <p class="lp-hint">{{ 'taskPrepHint' | translate }}</p>
+      <!-- Which AI: shared with the topic form's ✨ AI window, where keys are linked -->
+      <label *ngIf="prep.providers.length" class="lp-field">
+        <span>{{ 'lessonPlanAi' | translate }}</span>
+        <select (change)="prep.selectProvider($any($event.target).value)" [disabled]="prep.analysing">
+          <option *ngFor="let p of prep.providers" [value]="p.id" [selected]="p.id === prep.providerId" [disabled]="!p.configured">
+            {{ prep.providerLabel(p) }}{{ p.configured ? '' : ' (' + ('aiTopicNotLinked' | translate) + ')' }}
+          </option>
+        </select>
+        <small *ngIf="!prep.anyProviderLinked">{{ 'lessonPlanAiNone' | translate }}</small>
+      </label>
       <label class="lp-field">
         <span>{{ 'lessonPlanPages' | translate }}</span>
         <input type="text" inputmode="numeric" spellcheck="false" [value]="prep.pagesValue"
@@ -22,6 +32,8 @@
           <img src="assets/images/book/answer key.png" alt="">{{ 'taskPrepMarkKeys' | translate }}</label>
         <label><input type="checkbox" [checked]="prep.marks.videos" (change)="prep.setMark('videos', $any($event.target).checked)" [disabled]="prep.analysing">
           <img src="assets/images/book/video.png" alt="">{{ 'taskPrepMarkVideos' | translate }}</label>
+        <label><input type="checkbox" [checked]="prep.marks.notes" (change)="prep.setMark('notes', $any($event.target).checked)" [disabled]="prep.analysing">
+          <img src="assets/images/book/note.png" alt="">{{ 'taskPrepMarkNotes' | translate }}</label>
       </div>
       <button type="button" class="lp-primary" (click)="prep.analyse()" [disabled]="prep.analysing">
         ✨ {{ (prep.analysing ? 'taskPrepAnalysing' : 'taskPrepAnalyse') | translate }}
@@ -40,6 +52,7 @@
       <p *ngIf="run.pairs">{{ 'taskPrepPairsPlaced' | translate: { pairs: run.pairs, exact: run.exactPairs } }}</p>
       <p *ngIf="run.squares">{{ 'taskPrepSquaresPlaced' | translate: { squares: run.squares } }}</p>
       <p *ngIf="run.guides || run.keys || run.videos">{{ 'taskPrepMarksPlaced' | translate: { guides: run.guides, keys: run.keys, videos: run.videos } }}</p>
+      <p *ngIf="run.notes">{{ 'taskPrepNotesPlaced' | translate: { notes: run.notes } }}</p>
       <p class="lp-hint">{{ (run.snapped ? 'taskPrepSnapped' : 'taskPrepNotSnapped') | translate }}</p>
       <ul *ngIf="prep.notes.length" class="lp-notes">
         <li *ngFor="let note of prep.notes">⚠ {{ note }}</li>
@@ -60,6 +73,7 @@
                 <span *ngIf="draft.marks.length" class="tp-mark-icons">
                   <img *ngIf="prep.hasMark(draft, 'guideDot')" src="assets/images/book/teacher.png" [alt]="'taskPrepMarkGuides' | translate" [title]="'taskPrepMarkGuides' | translate">
                   <img *ngIf="prep.hasMark(draft, 'answerKey')" src="assets/images/book/answer key.png" [alt]="'taskPrepMarkKeys' | translate" [title]="'taskPrepMarkKeys' | translate">
+                  <img *ngIf="prep.hasMark(draft, 'note')" src="assets/images/book/note.png" [alt]="'taskPrepMarkNotes' | translate" [title]="'taskPrepMarkNotes' | translate">
                   <img *ngIf="prep.hasMark(draft, 'video')" src="assets/images/book/video.png" [alt]="'taskPrepMarkVideos' | translate" [title]="'taskPrepMarkVideos' | translate">
                 </span>
               </small>

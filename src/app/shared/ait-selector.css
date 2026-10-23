@@ -22,14 +22,17 @@
 
 .ait-icon-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.55);
+  border-color: rgb(var(--np-accent) / 0.55);
   box-shadow: 0 8px 16px rgba(15, 23, 42, 0.1);
 }
 
+/* The light base keeps the dark line icons readable when a season pack darkens the panel. */
 .ait-icon-btn.selected {
-  border-color: #2563eb;
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.14), rgba(147, 51, 234, 0.1));
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.22);
+  border-color: rgb(var(--np-accent));
+  background:
+    linear-gradient(180deg, rgb(var(--np-accent) / 0.14), rgba(147, 51, 234, 0.1)),
+    rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 14px rgb(var(--np-accent) / 0.22);
 }
 
 .ait-icon-btn.maxed-out:not(.selected) {
@@ -73,12 +76,12 @@
   width: 1.35rem;
   height: 1.35rem;
   border-radius: 999px;
-  background: #2563eb;
-  color: white;
+  background: rgb(var(--np-accent));
+  color: rgb(var(--np-accent-ink));
   font-size: 0.72rem;
   font-weight: 800;
   line-height: 1;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 10px rgb(var(--np-accent) / 0.4);
 }
 
 .ait-selector.disabled {

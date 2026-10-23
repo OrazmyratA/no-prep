@@ -3,9 +3,15 @@ import { BehaviorSubject, Subject, map } from 'rxjs';
 
 declare const window: any;
 
+// Why the desktop app reports the licence as not valid (see electron/license-service.js).
+export type LicenseInvalidReason = 'missing' | 'engine' | 'machine-id' | 'other-pc' | 'expired' | 'signature' | 'clock';
+
+const INVALID_REASONS: readonly LicenseInvalidReason[] = ['missing', 'engine', 'machine-id', 'other-pc', 'expired', 'signature', 'clock'];
+
 export interface LicenseStatus {
   valid: boolean;
   daysLeft: number;
+  reason?: LicenseInvalidReason;
 }
 
 export interface SecureFeatureResult<T = unknown> {
@@ -102,10 +108,14 @@ export class LicenseService {
   }
 
   private normalizeStatus(status: any): LicenseStatus {
-    return {
+    const normalized: LicenseStatus = {
       valid: Boolean(status?.valid),
       daysLeft: Number.isFinite(status?.daysLeft) ? Math.max(0, Math.floor(status.daysLeft)) : 0
     };
+    if (!normalized.valid && INVALID_REASONS.includes(status?.reason)) {
+      normalized.reason = status.reason;
+    }
+    return normalized;
   }
 
   private isElectronRuntime(): boolean {
@@ -182,5 +192,9 @@ export class LicenseService {
 
   get daysLeft(): number {
     return this.statusSubject.value.daysLeft;
+  }
+
+  get invalidReason(): LicenseInvalidReason | undefined {
+    return this.statusSubject.value.reason;
   }
 }

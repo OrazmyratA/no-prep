@@ -53,7 +53,7 @@
 .media-front {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
-    #14532d;
+    var(--np-tile-frame, #14532d);
 }
 
 .card-back-pattern {
@@ -62,7 +62,7 @@
   border-radius: 12px;
   background:
     linear-gradient(45deg, rgba(255, 255, 255, 0.11) 25%, transparent 25% 50%, rgba(255, 255, 255, 0.11) 50% 75%, transparent 75%),
-    linear-gradient(135deg, #15803d, #0f766e);
+    var(--np-tile-cover-flat, linear-gradient(135deg, #15803d, #0f766e));
   background-size: 24px 24px, auto;
   opacity: 0.95;
 }
@@ -151,6 +151,14 @@
   touch-action: none;
   font-size: 1.85rem;
   padding: 0.65rem 1.35rem !important;
+}
+
+.word-tile-source {
+  background-color: var(--np-word-tile, #eab308);
+}
+
+.word-tile-source:hover {
+  background-color: var(--np-word-tile-hover, #facc15);
 }
 
 .word-tile-source.keyboard-selected {

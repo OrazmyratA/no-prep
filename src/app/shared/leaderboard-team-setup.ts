@@ -127,6 +127,16 @@ export class LeaderboardTeamSetupComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  // Clicking the name always arms the team rather than toggling it like selectTeam() does —
+  // renaming a team needs multiple clicks inside the same input (focus, then reposition the
+  // cursor), and a toggle would deselect it again on that second click, right as the teacher is
+  // trying to assign members to it.
+  armTeam(team: Team) {
+    if (this.selectedTeamId === team.id) return;
+    this.selectedTeamId = team.id;
+    this.cdr.detectChanges();
+  }
+
   // currentTeam is null when the student is tapped from the unassigned list.
   onChipClick(student: Item, currentTeam: Team | null) {
     const target = this.selectedTeam;

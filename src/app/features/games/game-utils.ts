@@ -160,3 +160,20 @@ export class GameCountdown {
     this.sound.play().catch(e => console.debug('Sound error:', e));
   }
 }
+
+const seasonPaletteCache = new Map<string, string[] | null>();
+
+/**
+ * Colours a season pack supplies for canvas-drawn decoration (e.g. `--np-wheel-palette` in
+ * src/styles/seasons), or null to keep the game's own colours. Cached per season so per-frame
+ * drawing never forces a style recalculation.
+ */
+export function seasonPalette(cssVar: string): string[] | null {
+  const season = document.documentElement.dataset['season'] ?? '';
+  const key = `${season}|${cssVar}`;
+  if (!seasonPaletteCache.has(key)) {
+    const raw = season ? getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() : '';
+    seasonPaletteCache.set(key, raw ? raw.split(/\s+/) : null);
+  }
+  return seasonPaletteCache.get(key)!;
+}

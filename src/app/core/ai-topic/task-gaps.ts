@@ -29,9 +29,9 @@ export interface PlacedGap {
 /**
  * Pairs the AI's gaps with the printed blanks: in order when the counts agree; otherwise each gap
  * takes the next unused blank whose preceding words match its "before" best. A gap with no blank
- * falls back to the AI's box; one with neither is left out (null).
+ * falls back to the AI's box (made into a box by `fallback`); one with neither is left out (null).
  */
-export function placeGaps(gaps: PreparedGap[], blanks: PdfBlank[]): (PlacedGap | null)[] {
+export function placeGaps(gaps: PreparedGap[], blanks: PdfBlank[], fallback: (box: AiCropBox) => AiCropBox = typingBox): (PlacedGap | null)[] {
   if (blanks.length && blanks.length === gaps.length) {
     return gaps.map((_, i) => ({ box: blankBox(blanks[i]), exact: true }));
   }
@@ -54,8 +54,25 @@ export function placeGaps(gaps: PreparedGap[], blanks: PdfBlank[]): (PlacedGap |
       after = best;
       return { box: blankBox(blanks[best]), exact: true };
     }
-    return gap.box ? { box: typingBox(gap.box), exact: false } : null;
+    return gap.box ? { box: fallback(gap.box), exact: false } : null;
   });
+}
+
+/**
+ * A square box over an empty box the AI saw (a tick or a number goes in it), drawn square on a
+ * page `ratio` (height / width) high: as big as the AI's box, within a tappable size.
+ */
+export function squareBox(box: AiCropBox, ratio: number): AiCropBox {
+  const width = clamp(Math.max(box.width, box.height * (ratio || 1)), 0.025, 0.06);
+  const height = width / (ratio || 1);
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  return {
+    x: round4(clamp(cx - width / 2, 0, 1 - width)),
+    y: round4(clamp(cy - height / 2, 0, 1 - height)),
+    width: round4(width),
+    height: round4(height)
+  };
 }
 
 /** How many of the last words agree (both empty, a blank at the start of a line, counts as 1). */
@@ -120,35 +137,54 @@ export function inkBox(word: AiCropBox): AiCropBox {
   return { x: word.x, y: round5(word.y + word.height * INK_TOP), width: word.width, height: round5(word.height * (INK_BOTTOM - INK_TOP)) };
 }
 
-/** Guide dots, answer keys and videos placed by the AI: this wide, drawn square. */
+/**
+ * Guide dots, answer keys and videos placed by the AI are drawn square, a little taller than the
+ * letters of the line they follow (MARK_SCALE), within these widths (fractions of the page width):
+ * never too small to tap, never bigger than a hand-placed one shrunk by half.
+ */
 export const MARK_SIZE = 0.04;
-const MARK_GAP = 0.006;
-const MARK_SPACING = 0.004;
+const MIN_MARK_SIZE = 0.018;
+const MARK_SCALE = 1.35;
+/** Without printed text (a scan), an AI box's height is a poor guide to the letters: this one. */
+const SCAN_MARK_SIZE = 0.03;
 
 /**
- * Marks in a row right after a line's words, level with its letters (`ink`: `end` is a PDF text
- * box; else an AI box, centred). null when the row would end past `limit` (the frame's right
- * edge, allowing a little) or the page. Heights are stored like hand-placed marks (= width);
- * the row is centred using the height they are drawn with on the page (`ratio`: height / width).
+ * How wide (and, as stored, high) a mark beside this line is: its letters' height × MARK_SCALE,
+ * turned into a width on a page `ratio` (height / width) high. `ink`: `line` is a PDF text box.
  */
-export function marksAfter(end: AiCropBox, count: number, ratio: number, limit = 1, ink = true): AiCropBox[] | null {
-  const drawnHeight = MARK_SIZE / (ratio || 1);
-  const cy = ink ? end.y + end.height * (INK_TOP + INK_BOTTOM) / 2 : end.y + end.height / 2;
-  const y = round4(clamp(cy - drawnHeight / 2, 0, 1 - drawnHeight));
-  const x = end.x + end.width + MARK_GAP;
-  const right = x + count * MARK_SIZE + (count - 1) * MARK_SPACING;
-  if (right > Math.min(1, limit)) return null;
-  return Array.from({ length: count }, (_, i) => ({ x: round4(x + i * (MARK_SIZE + MARK_SPACING)), y, width: MARK_SIZE, height: MARK_SIZE }));
+export function markSize(line: AiCropBox | null, ratio: number, ink = true): number {
+  if (!line || !ink) return SCAN_MARK_SIZE;
+  const letters = line.height * (INK_BOTTOM - INK_TOP);
+  return round4(clamp(letters * MARK_SCALE * (ratio || 1), MIN_MARK_SIZE, MARK_SIZE));
 }
 
-/** Marks in a row inside a frame's top-right corner (when there is no room after the line). */
-export function marksInCorner(frame: AiCropBox, count: number): AiCropBox[] {
-  const right = frame.x + frame.width - MARK_SPACING;
+/**
+ * Marks of `size` in a row right after a line's words, level with its letters (`ink`: `end` is a
+ * PDF text box; else an AI box, centred). null when the row would end past `limit` (the frame's
+ * right edge, allowing a little) or the page. Heights are stored like hand-placed marks (= width);
+ * the row is centred using the height they are drawn with on the page (`ratio`: height / width).
+ */
+export function marksAfter(end: AiCropBox, count: number, ratio: number, limit = 1, ink = true, size = markSize(end, ratio, ink)): AiCropBox[] | null {
+  const drawnHeight = size / (ratio || 1);
+  const gap = size * 0.25;
+  const spacing = size * 0.12;
+  const cy = ink ? end.y + end.height * (INK_TOP + INK_BOTTOM) / 2 : end.y + end.height / 2;
+  const y = round4(clamp(cy - drawnHeight / 2, 0, 1 - drawnHeight));
+  const x = end.x + end.width + gap;
+  const right = x + count * size + (count - 1) * spacing;
+  if (right > Math.min(1, limit)) return null;
+  return Array.from({ length: count }, (_, i) => ({ x: round4(x + i * (size + spacing)), y, width: size, height: size }));
+}
+
+/** Marks of `size` in a row inside a frame's top-right corner (when there is no room after the line). */
+export function marksInCorner(frame: AiCropBox, count: number, size = MARK_SIZE): AiCropBox[] {
+  const spacing = size * 0.12;
+  const right = frame.x + frame.width - spacing;
   return Array.from({ length: count }, (_, i) => ({
-    x: round4(clamp(right - (count - i) * MARK_SIZE - (count - 1 - i) * MARK_SPACING, 0, 1 - MARK_SIZE)),
-    y: round4(clamp(frame.y + MARK_SPACING, 0, 1 - MARK_SIZE)),
-    width: MARK_SIZE,
-    height: MARK_SIZE
+    x: round4(clamp(right - (count - i) * size - (count - 1 - i) * spacing, 0, 1 - size)),
+    y: round4(clamp(frame.y + spacing, 0, 1 - size)),
+    width: size,
+    height: size
   }));
 }
 

@@ -6,6 +6,7 @@ import {
   ThemeSelection,
   ThemeService
 } from '../core/theme';
+import { SeasonTheme } from '../core/season-themes';
 import { showAppNotification } from '../core/notification';
 import { LanguageService } from '../core/language';
 
@@ -63,6 +64,18 @@ export class ThemePickerComponent implements OnInit, OnDestroy {
       color,
       dim: 0
     });
+  }
+
+  previewSeason(season: SeasonTheme) {
+    this.themeService.previewTheme({
+      type: 'season',
+      season: season.id,
+      dim: 0
+    });
+  }
+
+  isSeasonSelected(season: SeasonTheme): boolean {
+    return this.themeService.isSelected(this.selection, 'season', season.id);
   }
 
   previewPickedColor(event: Event) {

@@ -93,8 +93,10 @@
   max-height: min(92dvh, 820px);
   overflow: hidden;
   border-radius: 1.75rem;
-  background: linear-gradient(160deg, #ffffff, #eef2ff);
-  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.4);
+  /* Season packs restyle the frame; student rows, the wheel and reveal cards keep their colours. */
+  background: var(--np-dialog, linear-gradient(160deg, #ffffff, #eef2ff));
+  box-shadow: 0 30px 80px rgba(2, 6, 23, 0.4), 0 0 0 1px var(--np-dialog-border, transparent);
+  scrollbar-color: var(--np-dialog-scrollbar, auto);
   padding: 1.75rem;
   display: flex;
   flex-direction: column;
@@ -114,8 +116,8 @@
   height: 2.1rem;
   border: 0;
   border-radius: 9999px;
-  background: rgba(15, 23, 42, 0.08);
-  color: #1f2937;
+  background: var(--np-dialog-chip, rgba(15, 23, 42, 0.08));
+  color: var(--np-dialog-chip-ink, #1f2937);
   font-size: 1rem;
   cursor: pointer;
   transition: background 150ms ease;
@@ -123,14 +125,14 @@
 }
 
 .rp-close:hover {
-  background: rgba(15, 23, 42, 0.16);
+  background: var(--np-dialog-chip-hover, rgba(15, 23, 42, 0.16));
 }
 
 .rp-title {
   margin: 0 2.5rem 1rem 0;
   font-size: 1.5rem;
   font-weight: 800;
-  color: #312e81;
+  color: var(--np-dialog-heading, #312e81);
   text-align: center;
 }
 
@@ -147,7 +149,7 @@
 }
 
 .lb-empty-message {
-  color: #6b7280;
+  color: var(--np-dialog-muted, #6b7280);
   margin: 0 0 0.5rem;
 }
 
@@ -155,7 +157,7 @@
   padding: 0.85rem 1.75rem;
   border: 0;
   border-radius: 9999px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: var(--np-dialog-primary, linear-gradient(135deg, #6366f1, #a855f7));
   color: white;
   font-weight: 800;
   font-size: 1.05rem;
@@ -268,8 +270,8 @@
   padding: 0.5rem 0.9rem;
   border: 0;
   border-radius: 9999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #312e81;
+  background: var(--np-lb-btn, rgba(99, 102, 241, 0.12));
+  color: var(--np-lb-btn-ink, #312e81);
   font-weight: 700;
   font-size: 0.85rem;
   cursor: pointer;
@@ -278,7 +280,7 @@
 }
 
 .lb-header-btn:hover {
-  background: rgba(99, 102, 241, 0.22);
+  background: var(--np-lb-btn-hover, rgba(99, 102, 241, 0.22));
 }
 
 .lb-icon-btn {
@@ -298,12 +300,12 @@
   width: 1px;
   height: 1.5rem;
   flex-shrink: 0;
-  background: rgba(99, 102, 241, 0.18);
+  background: var(--np-dialog-line, rgba(99, 102, 241, 0.18));
   margin: 0 0.15rem;
 }
 
 .lb-header-btn-primary {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: var(--np-dialog-primary, linear-gradient(135deg, #6366f1, #a855f7));
   color: white;
 }
 
@@ -320,7 +322,7 @@
 }
 
 .lb-icon-btn.active {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
+  background: var(--np-dialog-primary, linear-gradient(135deg, #6366f1, #a855f7));
 }
 
 .lb-icon-btn.active img {

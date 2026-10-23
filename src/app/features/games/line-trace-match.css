@@ -28,7 +28,7 @@
   height: clamp(44px, 8vmin, 60px);
   border: none;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--np-game-btn-alt, #3b82f6);
   font-size: clamp(1.35rem, 4vmin, 2rem);
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -36,7 +36,7 @@
 }
 .ltm-speaker-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  background: #2563eb;
+  background: var(--np-game-btn-alt-hover, #2563eb);
 }
 .ltm-speaker-btn:disabled {
   opacity: 0.4;

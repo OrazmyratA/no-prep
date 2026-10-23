@@ -12,7 +12,7 @@
   height: 52px;
   border: none;
   border-radius: 9999px;
-  background: #111827;
+  background: var(--np-fab, #111827);
   color: #fff;
   font-size: 26px;
   line-height: 1;
@@ -27,7 +27,7 @@
   bottom: 64px;
   left: 0;
   width: 168px;
-  background: #fff;
+  background: var(--np-dialog, #fff);
   border-radius: 10px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
   padding: 8px;
@@ -50,10 +50,10 @@
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 14px;
-  color: #111827;
+  color: rgb(var(--np-ink));
   cursor: pointer;
 }
 
 .menu-action:hover {
-  background: #f3f4f6;
+  background: rgb(var(--np-ink) / 0.06);
 }

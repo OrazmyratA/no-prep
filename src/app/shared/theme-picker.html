@@ -47,6 +47,22 @@
   </div>
 
   <div class="theme-section">
+    <h3>{{ 'themeSeasonal' | translate }}</h3>
+    <div class="theme-season-grid">
+      <button
+        *ngFor="let season of themeService.seasonThemes"
+        type="button"
+        class="theme-season"
+        [class.selected]="isSeasonSelected(season)"
+        [style.background]="season.background"
+        (click)="previewSeason(season)">
+        <span class="theme-season-icon" aria-hidden="true">{{ season.icon }}</span>
+        <span class="theme-season-name">{{ season.nameKey | translate }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="theme-section">
     <div class="theme-section-title">
       <h3>{{ 'themeCustom' | translate }}</h3>
       <span>{{ backgrounds.length }}/{{ themeService.maxBackgrounds }}</span>

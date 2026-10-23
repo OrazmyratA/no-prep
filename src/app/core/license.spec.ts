@@ -48,6 +48,24 @@ describe('LicenseService', () => {
     expect(service.daysLeft).toBe(45);
   });
 
+  it('should keep the reason the desktop app gives for an invalid licence', async () => {
+    (window as any).electronAPI.getLicenseStatus.and.returnValue(Promise.resolve({ valid: false, daysLeft: 0, reason: 'engine' }));
+
+    await service.checkStatus();
+
+    expect(service.invalidReason).toBe('engine');
+  });
+
+  it('should drop unknown reasons and any reason on a valid licence', async () => {
+    (window as any).electronAPI.getLicenseStatus.and.returnValue(Promise.resolve({ valid: false, daysLeft: 0, reason: 'bogus' }));
+    await service.checkStatus();
+    expect(service.invalidReason).toBeUndefined();
+
+    (window as any).electronAPI.getLicenseStatus.and.returnValue(Promise.resolve({ valid: true, daysLeft: 30, reason: 'clock' }));
+    await service.checkStatus();
+    expect(service.invalidReason).toBeUndefined();
+  });
+
   it('should update status after entering license content', async () => {
     const mockStatus: LicenseStatus = { valid: true, daysLeft: 90 };
     (window as any).electronAPI.enterLicenseContent.and.returnValue(Promise.resolve(true));

@@ -877,6 +877,85 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Tệp giấy phép không hợp lệ.',
 },
 
+// Why the licence is not valid (reason codes from electron/license-service.js).
+'license.reason.engine': {
+  en: 'This computer is missing a Windows component (Microsoft Visual C++ Redistributable), so the licence cannot be checked. Install it from aka.ms/vs/17/release/vc_redist.x64.exe, then restart No-Prep.',
+  tk: 'Bu kompýuterde Windows bölegi (Microsoft Visual C++ Redistributable) ýok, şonuň üçin lisenziýany barlap bolanok. Ony aka.ms/vs/17/release/vc_redist.x64.exe salgysyndan guruň, soňra No-Prep-i täzeden açyň.',
+  ru: 'На этом компьютере не хватает компонента Windows (Microsoft Visual C++ Redistributable), поэтому лицензию нельзя проверить. Установите его с aka.ms/vs/17/release/vc_redist.x64.exe и перезапустите No-Prep.',
+  cn: '此计算机缺少 Windows 组件（Microsoft Visual C++ Redistributable），因此无法检查许可证。请从 aka.ms/vs/17/release/vc_redist.x64.exe 安装，然后重新启动 No-Prep。',
+  cde: 'Auf diesem Computer fehlt eine Windows-Komponente (Microsoft Visual C++ Redistributable), daher kann die Lizenz nicht geprüft werden. Installieren Sie sie von aka.ms/vs/17/release/vc_redist.x64.exe und starten Sie No-Prep neu.',
+  es: 'A este ordenador le falta un componente de Windows (Microsoft Visual C++ Redistributable), por lo que no se puede comprobar la licencia. Instálelo desde aka.ms/vs/17/release/vc_redist.x64.exe y reinicie No-Prep.',
+  fr: 'Il manque un composant Windows sur cet ordinateur (Microsoft Visual C++ Redistributable), la licence ne peut donc pas être vérifiée. Installez-le depuis aka.ms/vs/17/release/vc_redist.x64.exe, puis redémarrez No-Prep.',
+  kr: '이 컴퓨터에 Windows 구성 요소(Microsoft Visual C++ Redistributable)가 없어 라이선스를 확인할 수 없습니다. aka.ms/vs/17/release/vc_redist.x64.exe 에서 설치한 후 No-Prep을 다시 시작하세요.',
+  sa: 'ينقص هذا الكمبيوتر أحد مكونات Windows (Microsoft Visual C++ Redistributable)، لذلك لا يمكن التحقق من الترخيص. ثبّته من aka.ms/vs/17/release/vc_redist.x64.exe ثم أعد تشغيل No-Prep.',
+  vi: 'Máy tính này thiếu một thành phần của Windows (Microsoft Visual C++ Redistributable) nên không thể kiểm tra giấy phép. Hãy cài đặt từ aka.ms/vs/17/release/vc_redist.x64.exe rồi khởi động lại No-Prep.',
+},
+
+'license.reason.machine-id': {
+  en: 'No-Prep could not read this computer\'s ID (security settings may be blocking it). Restart No-Prep; if this keeps happening, contact us.',
+  tk: 'No-Prep bu kompýuteriň ID-sini okap bilmedi (howpsuzlyk sazlamalary böwet bolup biler). No-Prep-i täzeden açyň; gaýtalansa, biziň bilen habarlaşyň.',
+  ru: 'No-Prep не смог прочитать идентификатор этого компьютера (возможно, мешают настройки безопасности). Перезапустите No-Prep; если ошибка повторяется, свяжитесь с нами.',
+  cn: 'No-Prep 无法读取此计算机的 ID（可能被安全设置阻止）。请重新启动 No-Prep；如果问题仍然存在，请联系我们。',
+  cde: 'No-Prep konnte die ID dieses Computers nicht lesen (möglicherweise blockieren Sicherheitseinstellungen dies). Starten Sie No-Prep neu; wenn das weiterhin passiert, kontaktieren Sie uns.',
+  es: 'No-Prep no pudo leer el ID de este ordenador (puede que la configuración de seguridad lo bloquee). Reinicie No-Prep; si sigue ocurriendo, contáctenos.',
+  fr: 'No-Prep n’a pas pu lire l’identifiant de cet ordinateur (des paramètres de sécurité le bloquent peut-être). Redémarrez No-Prep ; si cela continue, contactez-nous.',
+  kr: 'No-Prep이 이 컴퓨터의 ID를 읽지 못했습니다(보안 설정이 막고 있을 수 있음). No-Prep을 다시 시작하고, 계속되면 문의해 주세요.',
+  sa: 'تعذّر على No-Prep قراءة معرّف هذا الكمبيوتر (قد تمنعه إعدادات الأمان). أعد تشغيل No-Prep، وإذا تكرر ذلك فتواصل معنا.',
+  vi: 'No-Prep không đọc được mã của máy tính này (có thể do cài đặt bảo mật chặn). Hãy khởi động lại No-Prep; nếu vẫn lỗi, hãy liên hệ với chúng tôi.',
+},
+
+'license.reason.other-pc': {
+  en: 'This licence was made for a different computer. Click "Request License" on this computer and send us the new machine ID file to get its own licence.',
+  tk: 'Bu lisenziýa başga kompýuter üçin döredildi. Şu kompýuterde "Lisenziýa sora" düwmesine basyň we täze maşyn ID faýlyny bize iberiň.',
+  ru: 'Эта лицензия создана для другого компьютера. Нажмите «Запросить лицензию» на этом компьютере и отправьте нам новый файл идентификатора машины.',
+  cn: '此许可证是为另一台计算机生成的。请在这台计算机上点击“申请许可证”，并将新的机器ID文件发送给我们。',
+  cde: 'Diese Lizenz wurde für einen anderen Computer erstellt. Klicken Sie auf diesem Computer auf „Lizenz anfordern“ und senden Sie uns die neue Maschinen-ID-Datei.',
+  es: 'Esta licencia se creó para otro ordenador. Haga clic en "Solicitar licencia" en este ordenador y envíenos el nuevo archivo de ID de máquina.',
+  fr: 'Cette licence a été créée pour un autre ordinateur. Cliquez sur « Demander une licence » sur cet ordinateur et envoyez-nous le nouveau fichier d’ID machine.',
+  kr: '이 라이선스는 다른 컴퓨터용으로 만들어졌습니다. 이 컴퓨터에서 "라이선스 요청"을 클릭하고 새 기기 ID 파일을 보내 주세요.',
+  sa: 'تم إنشاء هذا الترخيص لكمبيوتر آخر. انقر على "طلب الترخيص" على هذا الكمبيوتر وأرسل إلينا ملف معرف الجهاز الجديد.',
+  vi: 'Giấy phép này được tạo cho một máy tính khác. Hãy nhấn "Yêu cầu giấy phép" trên máy này và gửi cho chúng tôi tệp mã máy mới.',
+},
+
+'license.reason.expired': {
+  en: 'This licence has expired. Contact us to renew it.',
+  tk: 'Bu lisenziýanyň möhleti gutardy. Ony täzelemek üçin biziň bilen habarlaşyň.',
+  ru: 'Срок действия этой лицензии истёк. Свяжитесь с нами, чтобы продлить её.',
+  cn: '此许可证已过期。请联系我们续期。',
+  cde: 'Diese Lizenz ist abgelaufen. Kontaktieren Sie uns, um sie zu verlängern.',
+  es: 'Esta licencia ha caducado. Contáctenos para renovarla.',
+  fr: 'Cette licence a expiré. Contactez-nous pour la renouveler.',
+  kr: '이 라이선스는 만료되었습니다. 갱신하려면 문의해 주세요.',
+  sa: 'انتهت صلاحية هذا الترخيص. تواصل معنا لتجديده.',
+  vi: 'Giấy phép này đã hết hạn. Hãy liên hệ với chúng tôi để gia hạn.',
+},
+
+'license.reason.signature': {
+  en: 'This file is damaged or is not a No-Prep licence. Choose the original license.dat file you received.',
+  tk: 'Bu faýl zaýalanan ýa-da No-Prep lisenziýasy däl. Size iberilen asyl license.dat faýlyny saýlaň.',
+  ru: 'Этот файл повреждён или не является лицензией No-Prep. Выберите исходный файл license.dat, который вы получили.',
+  cn: '此文件已损坏或不是 No-Prep 许可证。请选择您收到的原始 license.dat 文件。',
+  cde: 'Diese Datei ist beschädigt oder keine No-Prep-Lizenz. Wählen Sie die ursprüngliche license.dat-Datei, die Sie erhalten haben.',
+  es: 'Este archivo está dañado o no es una licencia de No-Prep. Elija el archivo license.dat original que recibió.',
+  fr: 'Ce fichier est endommagé ou n’est pas une licence No-Prep. Choisissez le fichier license.dat d’origine que vous avez reçu.',
+  kr: '이 파일은 손상되었거나 No-Prep 라이선스가 아닙니다. 받으신 원본 license.dat 파일을 선택하세요.',
+  sa: 'هذا الملف تالف أو ليس ترخيص No-Prep. اختر ملف license.dat الأصلي الذي استلمته.',
+  vi: 'Tệp này bị hỏng hoặc không phải giấy phép No-Prep. Hãy chọn tệp license.dat gốc mà bạn đã nhận.',
+},
+
+'license.reason.clock': {
+  en: 'This computer\'s date seems to have gone backwards. Check the date and time in Windows settings. If they are correct, contact us.',
+  tk: 'Bu kompýuteriň senesi yzyna süýşen ýaly. Windows sazlamalarynda senäni we wagty barlaň. Olar dogry bolsa, biziň bilen habarlaşyň.',
+  ru: 'Похоже, дата на этом компьютере была переведена назад. Проверьте дату и время в настройках Windows. Если они верны, свяжитесь с нами.',
+  cn: '此计算机的日期似乎被调回了过去。请在 Windows 设置中检查日期和时间。如果正确，请联系我们。',
+  cde: 'Das Datum dieses Computers scheint zurückgestellt worden zu sein. Prüfen Sie Datum und Uhrzeit in den Windows-Einstellungen. Wenn sie stimmen, kontaktieren Sie uns.',
+  es: 'Parece que la fecha de este ordenador ha retrocedido. Compruebe la fecha y la hora en la configuración de Windows. Si son correctas, contáctenos.',
+  fr: 'La date de cet ordinateur semble avoir reculé. Vérifiez la date et l’heure dans les paramètres Windows. Si elles sont correctes, contactez-nous.',
+  kr: '이 컴퓨터의 날짜가 과거로 되돌려진 것 같습니다. Windows 설정에서 날짜와 시간을 확인하세요. 올바르다면 문의해 주세요.',
+  sa: 'يبدو أن تاريخ هذا الكمبيوتر قد رجع إلى الوراء. تحقق من التاريخ والوقت في إعدادات Windows. إذا كانا صحيحين فتواصل معنا.',
+  vi: 'Ngày của máy tính này có vẻ đã bị lùi lại. Hãy kiểm tra ngày và giờ trong cài đặt Windows. Nếu đúng, hãy liên hệ với chúng tôi.',
+},
+
 
 
 'tapOrDropImage': {
@@ -1611,6 +1690,36 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   kr: '어두운 색',
   sa: 'داكن',
   vi: 'Tối',
+},
+
+
+
+'themeSeasonal': {
+  en: 'Seasonal',
+  tk: 'Möwsümleýin',
+  ru: 'Сезонные',
+  cn: '节日主题',
+  cde: 'Saisonal',
+  es: 'De temporada',
+  fr: 'Saisonnier',
+  kr: '시즌 테마',
+  sa: 'موسمي',
+  vi: 'Theo mùa',
+},
+
+
+
+'themeSeasonHalloween': {
+  en: 'Halloween',
+  tk: 'Hellouin',
+  ru: 'Хэллоуин',
+  cn: '万圣节',
+  cde: 'Halloween',
+  es: 'Halloween',
+  fr: 'Halloween',
+  kr: '핼러윈',
+  sa: 'الهالوين',
+  vi: 'Halloween',
 },
 
 

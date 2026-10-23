@@ -132,12 +132,15 @@ describe('AiTopicDialogComponent lesson pack', () => {
 
   const text = (key: string) => TestBed.inject(LanguageService).translate(key);
 
-  it('ticks all four boxes on an empty topic, none otherwise', async () => {
+  it('starts with no boxes ticked, so the teacher opts in on purpose', async () => {
+    // Ticking every box used to fire all 4 requests in parallel, which routinely overwhelmed a
+    // weaker/rate-limited AI — defaulting to none ticked avoids that by default.
     await open(true);
-    expect([...component.packTicked]).toEqual(['vocabulary', 'sentences', 'reading', 'writing']);
-    expect(component.packMode).toBe(true);
+    expect(component.packTicked.size).toBe(0);
+    expect(component.packMode).toBe(false);
     TestBed.resetTestingModule();
     await open(false);
+    expect(component.packTicked.size).toBe(0);
     expect(component.packMode).toBe(false);
   });
 
@@ -170,7 +173,9 @@ describe('AiTopicDialogComponent lesson pack', () => {
 
   it('starts one request per ticked box with the chip prompt plus the note', async () => {
     await open(true);
-    component.togglePackBox(component.packBoxes[3]); // writing off
+    component.togglePackBox(component.packBoxes[0]); // vocabulary on
+    component.togglePackBox(component.packBoxes[1]); // sentences on
+    component.togglePackBox(component.packBoxes[2]); // reading on
     component.prompt = 'focus on past simple';
     await component.generate();
     expect(start).toHaveBeenCalledTimes(1);

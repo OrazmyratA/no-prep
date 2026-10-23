@@ -213,7 +213,7 @@
                 [class.correct-flash]="correctOptionId === opt.id"
                 [class.shake]="shakeOptionId === opt.id"
                 [class.keyboard-selected]="isKeyboardOptionSelected(optIndex)"
-                class="quiz-option relative rounded-2xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold">
+                class="quiz-option relative rounded-2xl np-btn-primary font-bold">
           <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ optIndex + 1 }}</span>
           <div *ngIf="aitOptionsType === 'text'">{{ opt.text || '?' }}</div>
           <div *ngIf="aitOptionsType === 'image'">

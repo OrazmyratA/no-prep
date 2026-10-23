@@ -78,8 +78,9 @@
   justify-content: center;
 }
 
+/* Tile cover is decoration (season packs restyle it); the back shows the item, so it stays white. */
 .card-front {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--np-tile-cover, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
 }
 
 .card-back {
@@ -205,7 +206,7 @@
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: #3b82f6;
+  background: var(--np-game-btn-alt, #3b82f6);
   border: none;
   font-size: 2rem;
   width: 60px;
@@ -407,7 +408,7 @@
   gap: 0.75rem;
 }
 .text-toggle-btn {
-  background: #6366f1;
+  background: var(--np-game-btn, #6366f1);
   border: none;
   font-size: 1.75rem;
   width: 60px;
@@ -419,7 +420,7 @@
 }
 .text-toggle-btn:hover {
   transform: scale(1.05);
-  background: #4f46e5;
+  background: var(--np-game-btn-hover, #4f46e5);
 }
 .text-toggle-btn.active {
   background: #f59e0b;
@@ -427,7 +428,7 @@
 
 /* "Show" button that replaces a hidden card text */
 .show-text-btn {
-  background: #6366f1;
+  background: var(--np-game-btn, #6366f1);
   color: white;
   border: none;
   border-radius: 9999px;
@@ -439,7 +440,7 @@
 }
 .show-text-btn:hover {
   transform: scale(1.05);
-  background: #4f46e5;
+  background: var(--np-game-btn-hover, #4f46e5);
 }
 /* On the card the button overlays the text position so the image layout never shifts */
 .show-text-btn--card {
@@ -487,7 +488,7 @@
 
 /* Speaker button (top‑right) */
 .speaker-btn {
-  background: #3b82f6;
+  background: var(--np-game-btn-alt, #3b82f6);
   border: none;
   font-size: 2rem;
   width: 60px;
@@ -499,7 +500,7 @@
 }
 .speaker-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  background: #2563eb;
+  background: var(--np-game-btn-alt-hover, #2563eb);
 }
 .speaker-btn:disabled {
   opacity: 0.4;

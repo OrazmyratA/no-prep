@@ -9,6 +9,11 @@
     class="app-theme-dim"
     [style.opacity]="theme.dim">
   </div>
+  <ng-container
+    *ngIf="theme.active && !themeExcluded && seasonAmbient()"
+    [ngComponentOutlet]="seasonAmbient()"
+    [ngComponentOutletInputs]="{ calm: inGame }">
+  </ng-container>
 </ng-container>
 
 <!-- Main app always visible -->

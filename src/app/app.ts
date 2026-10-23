@@ -1,9 +1,11 @@
-import { Component, HostListener, OnDestroy } from '@angular/core';
+import { Component, HostListener, OnDestroy, Type, signal } from '@angular/core';
 import { NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 import { LicenseService } from './core/license';
 import { Observable, Subscription, filter } from 'rxjs';
 import { ResizeService } from './core/resize';
 import { ThemeService } from './core/theme';
+import { SeasonThemeId } from './core/db.model';
+import { seasonTheme } from './core/season-themes';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +19,11 @@ export class AppComponent implements OnDestroy {
   fullscreenButtonActive = false;
   themeExcluded = false;
   routeLoadingVisible = false;
+  // A signal, not a field: the pack arrives from a native dynamic import() that zone.js does not
+  // track, so only a signal reliably schedules the view update.
+  readonly seasonAmbient = signal<Type<unknown> | null>(null);
+  inGame = false;
+  private seasonAmbientRequest = 0;
   private overlayHidden = false;
   private currentThemeActive = false;
   private routeLoadingDelayHandle?: ReturnType<typeof setTimeout>;
@@ -39,6 +46,8 @@ export class AppComponent implements OnDestroy {
     this.subscriptions.add(this.themeService.render$.subscribe(theme => {
       this.currentThemeActive = theme.active;
       this.updateThemeBodyClasses();
+      this.applySeasonTokens(theme.season);
+      void this.loadSeasonAmbient(theme.season);
     }));
 
     // Listen for reopen requests from any component
@@ -55,6 +64,7 @@ export class AppComponent implements OnDestroy {
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe(event => {
         this.themeExcluded = this.isThemeExcludedRoute(event.urlAfterRedirects);
+        this.inGame = this.isGameRoute(event.urlAfterRedirects);
         this.updateThemeBodyClasses();
         this.resizeService.requestLayoutRefresh();
         this.finishRouteLoading();
@@ -69,7 +79,32 @@ export class AppComponent implements OnDestroy {
       }));
 
     this.themeExcluded = this.isThemeExcludedRoute(this.router.url);
+    this.inGame = this.isGameRoute(this.router.url);
     this.updateThemeBodyClasses();
+  }
+
+  // Season packs restyle the UI through CSS tokens keyed off html[data-season] (src/styles/seasons).
+  private applySeasonTokens(season: SeasonThemeId | undefined): void {
+    const root = document.documentElement;
+    if (season) root.dataset['season'] = season;
+    else delete root.dataset['season'];
+  }
+
+  // Seasonal decorations are a lazy chunk per pack; only the latest request wins so fast
+  // preview clicks in the theme picker can't leave an old pack on screen.
+  private async loadSeasonAmbient(season: SeasonThemeId | undefined): Promise<void> {
+    const requestId = ++this.seasonAmbientRequest;
+    const pack = seasonTheme(season);
+    if (!pack) {
+      this.seasonAmbient.set(null);
+      return;
+    }
+    try {
+      const component = await pack.loadAmbient();
+      if (requestId === this.seasonAmbientRequest) this.seasonAmbient.set(component);
+    } catch (error) {
+      console.warn('Unable to load seasonal decorations', error);
+    }
   }
 
   private startupRevealed = false;
@@ -129,6 +164,10 @@ hideLicenseOverlay() {
     } catch (error) {
       console.warn('Unable to toggle fullscreen mode', error);
     }
+  }
+
+  private isGameRoute(url: string): boolean {
+    return url.includes('/play');
   }
 
   private isThemeExcludedRoute(url: string): boolean {

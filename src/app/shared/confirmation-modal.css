@@ -11,7 +11,8 @@
       z-index: 10000;
     }
     .modal-content {
-      background: white;
+      background: var(--np-dialog, white);
+      color: rgb(var(--np-ink));
       padding: 24px;
       border-radius: 12px;
       text-align: center;
@@ -31,7 +32,7 @@
       font-weight: bold;
     }
     .cancel {
-      background: #e2e8f0;
+      background: rgb(var(--np-ink) / 0.1);
     }
     .confirm {
       background: #ef4444;

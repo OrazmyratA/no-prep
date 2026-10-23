@@ -13,11 +13,13 @@ describe('text task answer matching', () => {
     type: 'textTask',
     x: 0,
     y: 0,
-    data: { acceptedAnswers: ['London', 'U.S.A.'] }
+    data: { acceptedAnswers: ['London', 'U.S.A.', "don't play"] }
   };
 
-  it('trims only leading and trailing spaces', () => {
+  it('ignores extra spaces and curly or straight quotes, nothing else', () => {
     expect(isTextTaskAnswerCorrect(task, '  London  ')).toBe(true);
+    expect(isTextTaskAnswerCorrect(task, 'don’t   play')).toBe(true);
+    expect(isTextTaskAnswerCorrect(task, 'dont play')).toBe(false);
   });
 
   it('keeps capitalization exact', () => {

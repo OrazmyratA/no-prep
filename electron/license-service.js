@@ -7,6 +7,10 @@ const os = require('os');
 
 const MAX_LICENSE_BYTES = 16 * 1024;
 
+// Why the last load failed, kept for the licence status: a missing native module (usually the
+// Visual C++ runtime absent on a clean Windows) must not look like a wrong licence.
+let securityCoreLoadError = null;
+
 function loadSecurityCore() {
   const candidates = [
     path.join(__dirname, '..', 'native', 'security-core'),
@@ -17,11 +21,13 @@ function loadSecurityCore() {
   for (const candidate of candidates) {
     try {
       return require(candidate);
-    } catch {
+    } catch (err) {
       // Continue searching common dev and packaged locations.
+      securityCoreLoadError = err;
     }
   }
 
+  console.error('security-core failed to load:', securityCoreLoadError);
   return null;
 }
 
@@ -156,9 +162,38 @@ function checkClockRollback() {
   return true;
 }
 
+// Why a licence is not valid, so the licence screen can say what to do about it:
+// missing | engine (native module did not load) | machine-id (fingerprint unreadable) |
+// other-pc | expired | signature (damaged or edited file) | clock (clock set back).
+function invalidReason(license) {
+  if (!license) {
+    return 'missing';
+  }
+  if (!nativeCall('validate_license_signature', 'validateLicenseSignature')) {
+    return 'engine';
+  }
+  let fingerprint;
+  try {
+    fingerprint = getMachineFingerprint();
+  } catch (err) {
+    console.error('machine fingerprint error:', err);
+    return 'machine-id';
+  }
+  if (license.machineId !== fingerprint) {
+    return 'other-pc';
+  }
+  if (license.expiry <= Date.now()) {
+    return 'expired';
+  }
+  return 'signature';
+}
+
 function statusFromLicense(license) {
-  if (!validateLicense(license) || !checkClockRollback()) {
-    return { valid: false, daysLeft: 0 };
+  if (!validateLicense(license)) {
+    return { valid: false, daysLeft: 0, reason: invalidReason(license) };
+  }
+  if (!checkClockRollback()) {
+    return { valid: false, daysLeft: 0, reason: 'clock' };
   }
 
   const daysLeft = Math.max(0, Math.ceil((license.expiry - Date.now()) / 86_400_000));
@@ -173,7 +208,7 @@ function checkLicense() {
     // otherwise look identical to a genuine license mismatch, with no trace anywhere. Logging it
     // here at least tells the difference apart after the fact.
     console.error('checkLicense error:', err);
-    return { valid: false, daysLeft: 0 };
+    return { valid: false, daysLeft: 0, reason: 'machine-id' };
   }
 }
 
@@ -216,6 +251,10 @@ function writeMachineIdToDesktop() {
 
 function activateLicenseContent(content) {
   const license = parseLicenseContent(content);
+  if (!license) {
+    // Not a licence file at all (wrong file picked, or damaged in transit).
+    return { valid: false, daysLeft: 0, reason: 'signature' };
+  }
   const status = statusFromLicense(license);
   if (!status.valid) {
     return status;

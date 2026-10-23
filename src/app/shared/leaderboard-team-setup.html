@@ -42,7 +42,7 @@
             #nameInput
             class="team-name-input"
             [value]="team.name"
-            (click)="$event.stopPropagation()"
+            (click)="$event.stopPropagation(); armTeam(team)"
             (change)="renameTeam(team, nameInput.value)"
             [placeholder]="'leaderboardTeamNamePlaceholder' | translate">
           <button

@@ -14,12 +14,12 @@ function registerLicenseIpc(ipcMain) {
   ipcMain.handle('enter-license-content', async (event, content) => {
     try {
       if (typeof content !== 'string') {
-        return { valid: false, daysLeft: 0 };
+        return { valid: false, daysLeft: 0, reason: 'signature' };
       }
       return activateLicenseContent(content);
     } catch (err) {
       console.error('enter-license-content error:', err);
-      return { valid: false, daysLeft: 0 };
+      return { valid: false, daysLeft: 0, reason: 'machine-id' };
     }
   });
 }

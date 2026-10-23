@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { AppThemeType, db, ThemeBackground, ThemeSettings } from './db.model';
+import { AppThemeType, db, SeasonThemeId, ThemeBackground, ThemeSettings } from './db.model';
+import { SEASON_THEMES, seasonTheme } from './season-themes';
 
 export interface ColorThemeOption {
   id: string;
@@ -17,6 +18,7 @@ export interface ThemeSelection {
   type: AppThemeType;
   color?: string;
   backgroundId?: number;
+  season?: SeasonThemeId;
   dim: number;
 }
 
@@ -25,6 +27,7 @@ export interface ThemeRender {
   type: AppThemeType;
   background: string;
   dim: number;
+  season?: SeasonThemeId;
 }
 
 const DEFAULT_SELECTION: ThemeSelection = {
@@ -51,6 +54,8 @@ export class ThemeService {
     { id: 'sun', name: 'Sun', value: 'linear-gradient(135deg, #fef3c7 0%, #f59e0b 50%, #ea580c 100%)', swatch: '#f59e0b' },
     { id: 'dark', name: 'Dark', value: 'linear-gradient(135deg, #111827 0%, #334155 55%, #020617 100%)', swatch: '#111827' }
   ];
+
+  readonly seasonThemes = SEASON_THEMES;
 
   private savedSelection: ThemeSelection = { ...DEFAULT_SELECTION };
   private previewSelection: ThemeSelection | null = null;
@@ -158,6 +163,7 @@ export class ThemeService {
     if (selection.type !== type) return false;
     if (type === 'default') return true;
     if (type === 'color') return selection.color === value;
+    if (type === 'season') return selection.season === value;
     return selection.backgroundId === value;
   }
 
@@ -208,6 +214,7 @@ export class ThemeService {
       type: selection.type,
       color: selection.color,
       backgroundId: selection.backgroundId,
+      season: selection.season,
       dim: selection.dim,
       updatedAt: new Date()
     };
@@ -233,6 +240,14 @@ export class ThemeService {
         type: 'image',
         backgroundId: selection.backgroundId,
         dim: this.normalizeDim(selection.dim)
+      };
+    }
+
+    if (selection.type === 'season' && seasonTheme(selection.season)) {
+      return {
+        type: 'season',
+        season: selection.season,
+        dim: 0
       };
     }
 
@@ -269,6 +284,17 @@ export class ThemeService {
           dim: this.normalizeDim(selection.dim)
         };
       }
+    }
+
+    const season = selection.type === 'season' ? seasonTheme(selection.season) : undefined;
+    if (season) {
+      return {
+        active: true,
+        type: 'season',
+        background: season.background,
+        dim: 0,
+        season: season.id
+      };
     }
 
     return {

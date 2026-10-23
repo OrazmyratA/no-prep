@@ -75,7 +75,7 @@
              [class.keyboard-selected]="isKeyboardSourceSelected(tileIdx)"
               [class.animate-fly]="getAnimationType(tile.id) === 'fly'"
               [class.animate-shake]="getAnimationType(tile.id) === 'shake'"
-              class="source-letter-tile w-11 h-11 md:w-16 md:h-16 bg-yellow-400 rounded-lg shadow-lg flex items-center justify-center text-2xl md:text-3xl font-bold cursor-pointer hover:bg-yellow-300 transition transform hover:scale-110">
+              class="source-letter-tile w-11 h-11 md:w-16 md:h-16 rounded-lg shadow-lg flex items-center justify-center text-2xl md:text-3xl font-bold cursor-pointer transition transform hover:scale-110">
           <span *ngIf="keyboardHintsVisible && tileIdx < 10" class="game-keyboard-hint-badge">{{ tileIdx === 9 ? 0 : tileIdx + 1 }}</span>
           {{ tile.letter }}
         </div>
@@ -87,17 +87,17 @@
                 [disabled]="currentIndex === 0"
                 aria-label="Previous"
                 title="Previous"
-                class="w-12 h-12 bg-slate-500 hover:bg-slate-700 text-white font-bold rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl">
+                class="w-12 h-12 np-action np-action--slate font-bold rounded-full shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-xl">
           <span aria-hidden="true">&#9664;</span>
         </button>
         <button (click)="shuffle()"
-                class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition">
+                class="np-action np-action--violet font-bold py-2 px-6 rounded-full shadow-lg transition">
           {{ 'shuffle' | translate }}
         </button>
         <button (click)="nextItem()"
                 aria-label="Next"
                 title="Next"
-                class="w-12 h-12 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded-full shadow-lg transition flex items-center justify-center text-xl">
+                class="w-12 h-12 np-action np-action--blue font-bold rounded-full shadow-lg transition flex items-center justify-center text-xl">
           <span aria-hidden="true">&#9654;</span>
         </button>
       </div>

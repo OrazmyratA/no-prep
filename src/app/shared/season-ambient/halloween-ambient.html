@@ -1,0 +1,122 @@
+<div class="stars"></div>
+<div class="stars stars-late"></div>
+
+<div class="moon"></div>
+
+<div class="spider-drop">
+  <svg class="spider" viewBox="0 0 40 40">
+    <g stroke="#0a0514" stroke-width="2" stroke-linecap="round" fill="none">
+      <path d="M14 20 Q6 14 2 18 M14 22 Q5 22 1 27 M15 24 Q8 30 6 36 M26 20 Q34 14 38 18 M26 22 Q35 22 39 27 M25 24 Q32 30 34 36" />
+    </g>
+    <ellipse cx="20" cy="22" rx="8" ry="9" fill="#0a0514" />
+    <circle cx="20" cy="12" r="5" fill="#0a0514" />
+    <circle cx="18" cy="11" r="1.2" fill="#f97316" />
+    <circle cx="22" cy="11" r="1.2" fill="#f97316" />
+  </svg>
+</div>
+
+@for (bat of bats; track $index) {
+  <div
+    class="bat-flight"
+    [style.top]="bat.top"
+    [style.--duration]="bat.duration"
+    [style.--delay]="bat.delay">
+    <svg class="bat" viewBox="0 0 64 32" [style.scale]="bat.scale">
+      <g class="wing">
+        <path d="M30 14 C22 4 10 4 2 10 C8 12 10 16 9 20 C14 17 18 18 21 22 C23 18 27 17 30 18Z" />
+        <path d="M34 14 C42 4 54 4 62 10 C56 12 54 16 55 20 C50 17 46 18 43 22 C41 18 37 17 34 18Z" />
+      </g>
+      <ellipse cx="32" cy="16" rx="4" ry="6" />
+      <path d="M29 12 L29.5 7 L31.5 10 L32.5 10 L34.5 7 L35 12Z" />
+    </svg>
+  </div>
+}
+
+@for (ghost of ghosts; track $index) {
+  <div
+    class="ghost"
+    [style.left]="ghost.left"
+    [style.bottom]="ghost.bottom"
+    [style.--duration]="ghost.duration"
+    [style.--delay]="ghost.delay">
+    <svg viewBox="0 0 40 46" [style.scale]="ghost.scale">
+      <path d="M20 2 C9 2 2 11 2 22 V44 L8 39 L14 44 L20 39 L26 44 L32 39 L38 44 V22 C38 11 31 2 20 2Z" fill="#f8fafc" />
+      <ellipse cx="14" cy="20" rx="3" ry="4" fill="#1e0b3a" />
+      <ellipse cx="26" cy="20" rx="3" ry="4" fill="#1e0b3a" />
+      <ellipse cx="20" cy="30" rx="3" ry="2.5" fill="#1e0b3a" />
+    </svg>
+  </div>
+}
+
+<div class="fog"></div>
+<div class="fog fog-back"></div>
+
+<svg class="landscape" viewBox="0 0 1440 260" preserveAspectRatio="xMidYMax slice">
+  <path d="M0 200 C200 150 380 170 560 190 S900 160 1080 175 S1320 150 1440 170 L1440 260 L0 260Z" fill="#160b2b" />
+
+  <!-- Haunted house (scaled about its base so the spire stays inside the sliced viewBox) -->
+  <g transform="translate(1085 180) scale(0.65) translate(-1085 -180)">
+  <g fill="#0b0617">
+    <rect x="1030" y="105" width="110" height="75" />
+    <polygon points="1018,110 1085,60 1152,110" />
+    <rect x="1110" y="68" width="34" height="44" />
+    <polygon points="1104,72 1127,26 1150,72" />
+    <rect x="1050" y="82" width="8" height="24" />
+  </g>
+  <g class="window-glow" fill="#fbbf24">
+    <rect x="1046" y="120" width="16" height="18" rx="2" />
+    <rect x="1108" y="120" width="16" height="18" rx="2" />
+    <rect x="1121" y="82" width="12" height="14" rx="6" />
+  </g>
+  <rect x="1077" y="150" width="16" height="30" rx="8" fill="#05020b" />
+  </g>
+
+  <path d="M0 226 C240 204 480 232 720 220 S1200 200 1440 228 L1440 260 L0 260Z" fill="#07030f" />
+
+  <!-- Dead tree -->
+  <g stroke="#07030f" stroke-linecap="round" fill="none">
+    <path stroke-width="9" d="M172 222 C170 185 168 150 171 118" />
+    <path stroke-width="5" d="M170 152 C150 136 136 120 120 100 M170 136 C190 121 205 106 215 86 M171 122 C165 102 160 86 150 70" />
+    <path stroke-width="3" d="M138 116 C128 110 120 113 110 106 M205 104 C215 104 222 98 232 100 M156 82 C150 74 152 64 146 56" />
+  </g>
+
+  <!-- Gravestones -->
+  <g fill="#07030f">
+    <path d="M372 226 v-24 a13 13 0 0 1 26 0 v24z" />
+    <path d="M420 228 v-30 a15 15 0 0 1 30 0 v30z" />
+    <rect x="476" y="196" width="6" height="32" />
+    <rect x="467" y="204" width="24" height="6" />
+  </g>
+
+  <!-- Jack-o'-lanterns -->
+  <g transform="translate(720 214)">
+    <ellipse rx="24" ry="18" fill="#ea580c" />
+    <ellipse rx="9" ry="18" fill="#c2410c" />
+    <path d="M-2 -18 q2 -9 7 -10" stroke="#365314" stroke-width="4" fill="none" stroke-linecap="round" />
+    <g class="pumpkin-face" fill="#fde047">
+      <polygon points="-13,-4 -6,-4 -9.5,-10" />
+      <polygon points="6,-4 13,-4 9.5,-10" />
+      <path d="M-14 3 L-9 9 L-5 4 L0 10 L5 4 L9 9 L14 3 L10 12 L-10 12Z" />
+    </g>
+  </g>
+  <g transform="translate(770 224) scale(0.68)">
+    <ellipse rx="24" ry="18" fill="#ea580c" />
+    <ellipse rx="9" ry="18" fill="#c2410c" />
+    <path d="M-2 -18 q2 -9 7 -10" stroke="#365314" stroke-width="4" fill="none" stroke-linecap="round" />
+    <g class="pumpkin-face pumpkin-face-late" fill="#fde047">
+      <circle cx="-8" cy="-5" r="3.5" />
+      <circle cx="8" cy="-5" r="3.5" />
+      <path d="M-11 4 Q0 14 11 4 Q0 9 -11 4Z" />
+    </g>
+  </g>
+  <g transform="translate(1320 232) scale(0.85)">
+    <ellipse rx="24" ry="18" fill="#ea580c" />
+    <ellipse rx="9" ry="18" fill="#c2410c" />
+    <path d="M-2 -18 q2 -9 7 -10" stroke="#365314" stroke-width="4" fill="none" stroke-linecap="round" />
+    <g class="pumpkin-face" fill="#fde047">
+      <polygon points="-13,-3 -5,-3 -9,-10" />
+      <polygon points="5,-3 13,-3 9,-10" />
+      <path d="M-12 4 L12 4 L8 11 L-8 11Z" />
+    </g>
+  </g>
+</svg>
