@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { AiSpeakingRuntimeService } from './ai-speaking-runtime';
 import { hasWebTtsProvider, synthesizeSpeechWeb } from './audio-voice-web-bridge';
+import { SpeechError, SpeechProvider, speechErrorCode } from './speech-error';
 
 const PROCESSOR_URL = 'assets/soundtouch/soundtouch-processor.js';
 
@@ -45,11 +45,10 @@ export function storeVoiceLanguage(code: string): void {
 
 @Injectable({ providedIn: 'root' })
 export class AudioVoiceService {
-  constructor(private aiSpeaking: AiSpeakingRuntimeService) {}
-
   /**
-   * The desktop app's free text-to-speech (Microsoft Edge's unofficial speech service) is
-   * Electron-only — it has no CORS allowance for a browser to call it directly. On the web (and
+   * The desktop app always has a voice (Edge's free voices, then the teacher's key, then Windows'
+   * own; electron/main/speech-service.js). Edge's service has no CORS allowance for a browser to
+   * call it directly. On the web (and
    * Android), this falls back to the teacher's own linked OpenAI/Gemini key instead (see
    * audio-voice-web-bridge.ts), so it's available there once one of those is linked.
    */
@@ -57,13 +56,34 @@ export class AudioVoiceService {
     return typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function' || hasWebTtsProvider();
   }
 
+  /** For batches (AI topics, lesson packs): the clip, or null when no voice could make it. */
   async synthesize(text: string, language: string): Promise<Blob | null> {
-    if (typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function') {
-      const result = await this.aiSpeaking.synthesizeSpeechAudio(text, language);
-      return result?.blob ?? null;
+    try {
+      return (await this.synthesizeVoice(text, language)).blob;
+    } catch {
+      return null;
     }
-    const result = await synthesizeSpeechWeb(text, language);
-    return result?.blob ?? null;
+  }
+
+  /**
+   * The clip and which voice made it (desktop: Edge's free voices, the teacher's OpenAI/Gemini
+   * key, or Windows' offline voices — see electron/main/speech-service.js). Throws a SpeechError
+   * whose code says why, for a message the teacher can act on.
+   */
+  async synthesizeVoice(text: string, language: string): Promise<{ blob: Blob; provider: SpeechProvider }> {
+    const api = window?.electronAPI;
+    if (typeof api?.aiSpeakingSynthesizeSpeech !== 'function') return synthesizeSpeechWeb(text, language);
+    let response: any;
+    try {
+      response = await api.aiSpeakingSynthesizeSpeech({ text, language });
+    } catch {
+      throw new SpeechError('UNAVAILABLE');
+    }
+    if (!response?.ok) throw new SpeechError(speechErrorCode(response?.error));
+    const { audioBase64, mimeType, provider } = response.result || {};
+    if (!audioBase64) throw new SpeechError('UNAVAILABLE');
+    const bytes = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+    return { blob: new Blob([bytes], { type: mimeType || 'audio/mpeg' }), provider: provider || 'edge' };
   }
 
   /**

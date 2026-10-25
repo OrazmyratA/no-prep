@@ -81,7 +81,11 @@ function createEdgeTtsService() {
           reject(error);
         });
       });
-      return Buffer.concat(chunks);
+      const audio = Buffer.concat(chunks);
+      // The service sometimes closes the stream without sending audio: that is a failure (retried),
+      // not an empty clip.
+      if (!audio.length) throw new Error('Edge speech returned no audio.');
+      return audio;
     } finally {
       client.close();
     }
@@ -101,6 +105,9 @@ function createEdgeTtsService() {
         return { audioBase64: buffer.toString('base64'), mimeType: 'audio/mpeg' };
       } catch (error) {
         lastError = error;
+        // A refused handshake (Microsoft changed what it accepts; 2026-10 it answers 200 or 403)
+        // fails the same way every time: give up at once instead of making the teacher wait.
+        if (/Unexpected server response: (200|401|403)/.test(String(error?.message || error))) break;
         if (attempt < MAX_ATTEMPTS) {
           await delay(RETRY_DELAY_MS * attempt);
         }

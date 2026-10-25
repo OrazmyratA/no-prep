@@ -118,6 +118,8 @@ async function run(win) {
   await waitFor(`document.querySelectorAll('.topic-card').length >= 6`);
   console.log('after restart (reload):', await js(`[...document.querySelectorAll('.topics-page button')].map(b => b.textContent.trim()).filter(Boolean).slice(0, 3).join(' | ')`));
 
+  // Text-to-speech through the app's own bridge (Edge, then a linked AI key, then Windows voices).
+  console.log('speech:', await js(`(async () => { const r = await window.electronAPI.aiSpeakingSynthesizeSpeech({ text: 'apple', language: 'en-US' }); return r.ok ? r.result.provider + ', ' + Math.round(r.result.audioBase64.length * 3 / 4) + ' bytes' : 'failed: ' + r.error; })()`));
   console.log(`renderer errors in total: ${errors.length}${errors.length ? '\n  ' + [...new Set(errors)].slice(0, 10).join('\n  ') : ''}`);
   app.exit(0);
 }

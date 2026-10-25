@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { hasWebTtsProvider, synthesizeSpeechWeb } from './audio-voice-web-bridge';
+import { SpeechError } from './speech-error';
 
 const KEYS_STORAGE_KEY = 'aiTopicWebKeys';
 
@@ -15,7 +16,7 @@ describe('audio-voice-web-bridge', () => {
 
   it('reports no provider available when nothing is linked', async () => {
     expect(hasWebTtsProvider()).toBe(false);
-    expect(await synthesizeSpeechWeb('hello', 'en-US')).toBeNull();
+    await expect(synthesizeSpeechWeb('hello', 'en-US')).rejects.toBeInstanceOf(SpeechError);
   });
 
   it('reports a provider available once a key is linked', () => {
@@ -78,5 +79,42 @@ describe('audio-voice-web-bridge', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0] as [string, any];
     expect(url).toBe('https://api.openai.com/v1/audio/speech');
+  });
+
+  it('says why it failed: rejected key, no credit, plan limit', async () => {
+    saveKey('openai', 'oa-key');
+    const answer = (status: number, body: string) => vi.stubGlobal('fetch', vi.fn(async () => new Response(body, { status })));
+    answer(401, 'bad key');
+    await expect(synthesizeSpeechWeb('a', 'en-US')).rejects.toMatchObject({ code: 'KEY_REJECTED' });
+    answer(429, JSON.stringify({ error: { code: 'insufficient_quota' } }));
+    await expect(synthesizeSpeechWeb('a', 'en-US')).rejects.toMatchObject({ code: 'NO_CREDIT' });
+    answer(429, 'Quota exceeded for GenerateRequestsPerDay');
+    await expect(synthesizeSpeechWeb('a', 'en-US')).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+  });
+
+  it('waits as the provider asks after a rate limit, then succeeds', async () => {
+    saveKey('openai', 'oa-key');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('Rate limit reached. Please try again in 0.01s', { status: 429 }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await synthesizeSpeechWeb('a', 'en-US');
+    expect(result.provider).toBe('openai');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends one request at a time', async () => {
+    saveKey('openai', 'oa-key');
+    let inFlight = 0;
+    let maxInFlight = 0;
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      inFlight--;
+      return new Response(new Uint8Array([1]), { status: 200 });
+    }));
+    await Promise.all(['a', 'b', 'c'].map(text => synthesizeSpeechWeb(text, 'en-US')));
+    expect(maxInFlight).toBe(1);
   });
 });

@@ -182,7 +182,9 @@ export class AiMediaResolverService {
 
   async resolveAudio(text: string, voiceLanguage: string): Promise<Blob | null> {
     if (!text || !this.voice.canSynthesize) return null;
-    return withTimeout(this.voice.synthesize(text, voiceLanguage), MEDIA_TIMEOUT_MS);
+    // No overall timeout: clips are made one at a time, so a later item waits its turn; each
+    // request has its own timeout (audio-voice-web-bridge.ts, electron/main/speech-service.js).
+    return this.voice.synthesize(text, voiceLanguage);
   }
 
   /**

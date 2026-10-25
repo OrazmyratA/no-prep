@@ -2637,4 +2637,84 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Khi có phiên bản mới, nhấn vào biểu tượng để tải và cài đặt — không cần tự tìm tệp.',
 },
 
+// Text-to-speech: why a voice could not be made (core/speech-error.ts), and the note shown when
+// Windows' offline voice made it because the online voices failed.
+'speechErrorNoVoice': {
+  en: 'This computer has no voice for this language. Add one in Windows Settings → Time & language → Speech, or link an OpenAI or Gemini key (✨ button).',
+  tk: 'Bu kompýuterde bu dil üçin ses ýok. Ony Windows sazlamalarynda → Wagt we dil → Gepleşik bölüminde goşuň ýa-da OpenAI ýa-da Gemini açaryny baglaň (✨ düwme).',
+  ru: 'На этом компьютере нет голоса для этого языка. Добавьте его в параметрах Windows → Время и язык → Речь или привяжите ключ OpenAI или Gemini (кнопка ✨).',
+  cn: '这台电脑没有该语言的语音。请在 Windows 设置 → 时间和语言 → 语音 中添加，或关联 OpenAI 或 Gemini 密钥（✨ 按钮）。',
+  cde: 'Dieser Computer hat keine Stimme für diese Sprache. Füge eine in den Windows-Einstellungen → Zeit und Sprache → Sprachausgabe hinzu oder verknüpfe einen OpenAI- oder Gemini-Schlüssel (✨-Schaltfläche).',
+  es: 'Este equipo no tiene voz para este idioma. Añade una en Configuración de Windows → Hora e idioma → Voz, o vincula una clave de OpenAI o Gemini (botón ✨).',
+  fr: 'Cet ordinateur n\'a pas de voix pour cette langue. Ajoutez-en une dans Paramètres Windows → Heure et langue → Voix, ou liez une clé OpenAI ou Gemini (bouton ✨).',
+  kr: '이 컴퓨터에는 이 언어의 음성이 없습니다. Windows 설정 → 시간 및 언어 → 음성에서 추가하거나 OpenAI 또는 Gemini 키를 연결하세요 (✨ 버튼).',
+  sa: 'لا يوجد صوت لهذه اللغة على هذا الحاسوب. أضف صوتًا من إعدادات Windows ← الوقت واللغة ← الكلام، أو اربط مفتاح OpenAI أو Gemini (زر ✨).',
+  vi: 'Máy tính này không có giọng đọc cho ngôn ngữ này. Hãy thêm trong Cài đặt Windows → Thời gian và ngôn ngữ → Giọng nói, hoặc liên kết khóa OpenAI hay Gemini (nút ✨).',
+},
+
+'speechErrorKeyRejected': {
+  en: 'Your AI key was rejected. Check it with the ✨ button.',
+  tk: 'AI açaryňyz kabul edilmedi. Ony ✨ düwmesi bilen barlaň.',
+  ru: 'Ваш ключ ИИ отклонён. Проверьте его кнопкой ✨.',
+  cn: '您的 AI 密钥被拒绝。请通过 ✨ 按钮检查。',
+  cde: 'Dein KI-Schlüssel wurde abgelehnt. Prüfe ihn über die ✨-Schaltfläche.',
+  es: 'Tu clave de IA fue rechazada. Revísala con el botón ✨.',
+  fr: 'Votre clé d\'IA a été refusée. Vérifiez-la avec le bouton ✨.',
+  kr: 'AI 키가 거부되었습니다. ✨ 버튼으로 확인하세요.',
+  sa: 'تم رفض مفتاح الذكاء الاصطناعي. تحقّق منه عبر زر ✨.',
+  vi: 'Khóa AI của bạn bị từ chối. Hãy kiểm tra bằng nút ✨.',
+},
+
+'speechErrorNoCredit': {
+  en: 'Your AI account has no credit left for speech. Top it up, or link another key with the ✨ button.',
+  tk: 'AI hasabyňyzda gepleşik üçin serişde galmady. Ony dolduryň ýa-da ✨ düwmesi bilen başga açar baglaň.',
+  ru: 'На вашем аккаунте ИИ закончились средства для озвучки. Пополните его или привяжите другой ключ кнопкой ✨.',
+  cn: '您的 AI 账户已没有可用于语音的额度。请充值，或通过 ✨ 按钮关联其他密钥。',
+  cde: 'Dein KI-Konto hat kein Guthaben mehr für Sprachausgabe. Lade es auf oder verknüpfe über die ✨-Schaltfläche einen anderen Schlüssel.',
+  es: 'Tu cuenta de IA no tiene saldo para voz. Recárgala o vincula otra clave con el botón ✨.',
+  fr: 'Votre compte d\'IA n\'a plus de crédit pour la voix. Rechargez-le ou liez une autre clé avec le bouton ✨.',
+  kr: 'AI 계정에 음성용 크레딧이 남아 있지 않습니다. 충전하거나 ✨ 버튼으로 다른 키를 연결하세요.',
+  sa: 'لا يوجد رصيد كافٍ في حساب الذكاء الاصطناعي لإنشاء الكلام. اشحن الرصيد أو اربط مفتاحًا آخر عبر زر ✨.',
+  vi: 'Tài khoản AI của bạn đã hết tín dụng cho giọng nói. Hãy nạp thêm hoặc liên kết khóa khác bằng nút ✨.',
+},
+
+'speechErrorRateLimited': {
+  en: 'The voice service is busy or your plan\'s limit was reached. Please try again in a minute.',
+  tk: 'Ses hyzmaty meşgul ýa-da meýilnamaňyzyň çägi doldy. Bir minutdan soň täzeden synanyşyň.',
+  ru: 'Голосовой сервис занят или исчерпан лимит вашего тарифа. Попробуйте ещё раз через минуту.',
+  cn: '语音服务繁忙，或已达到您套餐的上限。请一分钟后再试。',
+  cde: 'Der Sprachdienst ist ausgelastet oder das Limit deines Tarifs ist erreicht. Bitte versuche es in einer Minute erneut.',
+  es: 'El servicio de voz está ocupado o se alcanzó el límite de tu plan. Inténtalo de nuevo en un minuto.',
+  fr: 'Le service vocal est occupé ou la limite de votre forfait est atteinte. Réessayez dans une minute.',
+  kr: '음성 서비스가 바쁘거나 요금제 한도에 도달했습니다. 1분 후에 다시 시도하세요.',
+  sa: 'خدمة الصوت مشغولة أو تم بلوغ حد خطتك. يرجى المحاولة مرة أخرى بعد دقيقة.',
+  vi: 'Dịch vụ giọng nói đang bận hoặc gói của bạn đã đạt giới hạn. Vui lòng thử lại sau một phút.',
+},
+
+'speechErrorUnavailable': {
+  en: 'Could not make the voice. Check your internet connection and try again.',
+  tk: 'Ses döredip bolmady. Internet baglanyşygyňyzy barlaň we täzeden synanyşyň.',
+  ru: 'Не удалось создать голос. Проверьте подключение к интернету и попробуйте ещё раз.',
+  cn: '无法生成语音。请检查网络连接后重试。',
+  cde: 'Die Stimme konnte nicht erzeugt werden. Prüfe deine Internetverbindung und versuche es erneut.',
+  es: 'No se pudo crear la voz. Revisa tu conexión a internet e inténtalo de nuevo.',
+  fr: 'Impossible de créer la voix. Vérifiez votre connexion internet et réessayez.',
+  kr: '음성을 만들 수 없습니다. 인터넷 연결을 확인하고 다시 시도하세요.',
+  sa: 'تعذّر إنشاء الصوت. تحقّق من اتصالك بالإنترنت وحاول مرة أخرى.',
+  vi: 'Không thể tạo giọng nói. Hãy kiểm tra kết nối internet và thử lại.',
+},
+
+'speechWindowsVoiceNote': {
+  en: 'Made with the offline Windows voice, because the online voices are unavailable. You can make it again later for a more natural voice.',
+  tk: 'Onlaýn sesler elýeterli bolmansoň, Windows-yň oflaýn sesi bilen döredildi. Has tebigy ses üçin ony soňra täzeden döredip bilersiňiz.',
+  ru: 'Создано офлайн-голосом Windows, так как онлайн-голоса недоступны. Позже можно создать заново с более естественным голосом.',
+  cn: '由于在线语音不可用，已使用 Windows 离线语音生成。稍后可重新生成，获得更自然的声音。',
+  cde: 'Mit der Offline-Stimme von Windows erstellt, weil die Online-Stimmen nicht verfügbar sind. Du kannst sie später für eine natürlichere Stimme neu erzeugen.',
+  es: 'Creado con la voz sin conexión de Windows porque las voces en línea no están disponibles. Puedes volver a crearlo más tarde con una voz más natural.',
+  fr: 'Créé avec la voix hors ligne de Windows, car les voix en ligne sont indisponibles. Vous pourrez le refaire plus tard avec une voix plus naturelle.',
+  kr: '온라인 음성을 사용할 수 없어 Windows 오프라인 음성으로 만들었습니다. 나중에 더 자연스러운 음성으로 다시 만들 수 있습니다.',
+  sa: 'تم الإنشاء بصوت Windows غير المتصل لأن الأصوات عبر الإنترنت غير متاحة. يمكنك إعادة إنشائه لاحقًا بصوت أكثر طبيعية.',
+  vi: 'Được tạo bằng giọng đọc ngoại tuyến của Windows vì giọng trực tuyến không khả dụng. Bạn có thể tạo lại sau để có giọng tự nhiên hơn.',
+},
+
 };

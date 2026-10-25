@@ -92,7 +92,9 @@ function registerAiIpc({
       return operationResult(result);
     } catch (error) {
       console.error('ai-speaking:synthesize-speech error:', error);
-      return operationError('AI_TTS_FAILED', error?.message || 'Speech synthesis failed.');
+      // NO_VOICE_FOR_LANGUAGE, KEY_REJECTED, NO_CREDIT, RATE_LIMITED or UNAVAILABLE: the app turns
+      // it into a translated, actionable message.
+      return operationError(error?.code || 'AI_TTS_FAILED', error?.message || 'Speech synthesis failed.');
     }
   });
 }

@@ -23,6 +23,9 @@ import {
   VOICE_SPEED_MAX,
   VOICE_SPEED_MIN
 } from '../core/audio-voice';
+import { LanguageService } from '../core/language';
+import { showAppNotification } from '../core/notification';
+import { speechErrorMessageKey } from '../core/speech-error';
 
 interface NativeAudioRecorderPlugin {
   start(): Promise<void>;
@@ -78,6 +81,8 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   voiceText = '';
   voiceLanguage = 'en-US';
   isGenerating = false;
+  // Set when the last generated clip came from Windows' offline voices (the online ones failed).
+  madeWithWindowsVoice = false;
   isRendering = false;
   textPanelOpen = false;
   private renderSeq = 0;
@@ -101,7 +106,8 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     private platform: PlatformService,
     private zone: NgZone,
     private cdr: ChangeDetectorRef,
-    public voice: AudioVoiceService
+    public voice: AudioVoiceService,
+    private languageService: LanguageService
   ) {
     this.voiceLanguage = getStoredVoiceLanguage();
   }
@@ -404,20 +410,22 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     if (!text || this.isGenerating) return;
     this.isGenerating = true;
     this.cdr.detectChanges();
-    let blob: Blob | null = null;
+    let made: Awaited<ReturnType<AudioVoiceService['synthesizeVoice']>> | null = null;
+    let failure: unknown = null;
     try {
-      blob = await this.voice.synthesize(text, this.voiceLanguage);
-    } catch {
-      blob = null;
+      made = await this.voice.synthesizeVoice(text, this.voiceLanguage);
+    } catch (error) {
+      failure = error;
     }
     this.zone.run(() => {
       this.isGenerating = false;
-      if (!blob) {
-        alert('Could not generate the voice. Please check your internet connection and try again.');
+      if (!made) {
+        showAppNotification(this.languageService.translate(speechErrorMessageKey(failure)), 'error');
         this.cdr.detectChanges();
         return;
       }
-      this.sourceBlob = blob;
+      this.madeWithWindowsVoice = made.provider === 'windows';
+      this.sourceBlob = made.blob;
       this.voiceText = text;
       void this.renderAndApply(true);
     });

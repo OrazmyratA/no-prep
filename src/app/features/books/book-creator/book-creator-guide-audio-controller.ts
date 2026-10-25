@@ -5,6 +5,7 @@ import {
 import { syncLegacyGuideAudioFiles } from '../../../core/guide-timeline';
 import { showAppNotification } from '../../../core/notification';
 import { decodeAudioBlobToMonoWav } from '../../../core/audio-wav';
+import { SpeechProvider, speechErrorMessageKey } from '../../../core/speech-error';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -45,10 +46,16 @@ export class BookCreatorGuideAudioController {
     this.creator.generatingGuideSpeech = true;
     this.creator.cdr.detectChanges();
     try {
-      const generated = await this.creator.audioVoice.synthesize(text, this.creator.guideSpeechLanguage);
-      if (!generated) {
-        showAppNotification(this.creator.languageService.translate('creatorMicRecordingFailed'), 'error');
+      let generated: Blob;
+      let provider: SpeechProvider;
+      try {
+        ({ blob: generated, provider } = await this.creator.audioVoice.synthesizeVoice(text, this.creator.guideSpeechLanguage));
+      } catch (error) {
+        showAppNotification(this.creator.languageService.translate(speechErrorMessageKey(error)), 'error');
         return;
+      }
+      if (provider === 'windows') {
+        showAppNotification(this.creator.languageService.translate('speechWindowsVoiceNote'), 'info');
       }
       // Re-encode to WAV, as for recordings, so the clip has a seekable duration for the timeline.
       let blob: Blob;

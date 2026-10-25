@@ -19,6 +19,7 @@
     "encrypt:features": "node scripts/encrypt-features.js",
     "watch": "node scripts/write-version.js && ng build --watch --configuration development",
     "test": "ng test",
+    "test:electron": "node --test \"electron/main/*.test.cjs\"",
     "netlify": "npm run build:prod",
     "electron:prod": "npm run build && npm run build:security-core && npm run encrypt:features && set ELECTRON_RUN_AS_NODE=& electron .",
     "electron:build": "npm run build:security-core && npm run encrypt:features && npm run build && electron-builder",
@@ -63,6 +64,7 @@
       "!node_modules/browser-image-compression/**",
       "!node_modules/native-run/**",
       "!node_modules/xml2js/**",
+      "!electron/**/*.test.cjs",
       "!electron/ai-config.json",
       "!electron/ai-config.example.json"
     ],

@@ -70,6 +70,9 @@ const { createBookService } = require('./main/book-service');
 const { createBookStorageService } = require('./main/book-storage-service');
 const { createGroqService } = require('./main/ai-groq-service');
 const { createEdgeTtsService } = require('./main/ai-edge-tts-service');
+const { createCloudTtsService } = require('./main/cloud-tts-service');
+const { createWindowsTtsService } = require('./main/windows-tts-service');
+const { createSpeechService } = require('./main/speech-service');
 const { registerAppIpc } = require('./main/app-ipc');
 const { registerAiIpc } = require('./main/ai-ipc');
 const { createAiTopicService, AI_TOPIC_PROVIDERS } = require('./main/ai-topic-service');
@@ -201,7 +204,12 @@ async function clearUserGroqApiKey() {
   await fsp.rm(getUserAiConfigPath(), { force: true });
 }
 const aiService = createGroqService({ getApiKey: getGroqApiKey });
-const ttsService = createEdgeTtsService();
+// Edge's free voices, then the teacher's OpenAI/Gemini key, then Windows' own voices.
+const ttsService = createSpeechService({
+  edge: createEdgeTtsService(),
+  cloud: createCloudTtsService({ getApiKey: (provider) => getAiTopicApiKey(provider) }),
+  windows: createWindowsTtsService()
+});
 
 // Keys teachers link for the AI topic generator. Groq shares the AI Speaking key; the others are
 // stored encrypted with the OS keychain (safeStorage) when it is available.
