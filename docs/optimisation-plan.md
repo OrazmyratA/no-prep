@@ -367,14 +367,15 @@ Measured and **not** done:
     Writing Workshop, Spelling Check, Test ABC need other content by design); the book creator
     creates a book and opens the editor; the reader works; the chosen language survives a restart.
 
-Found, not changed:
-- The router rewrites the desktop address from `…/browser/index.html` to `…/browser/#/route`
-  (`<base href="./">` + hash routing), so a reload in Electron would open a missing file. Nothing
-  reloads there today (the update reload is web-only; the splash "Restart" only shows when startup
-  failed before the rewrite). Matters only if a reload is ever added.
-- The new notification bell (`core/app-notifications.ts`) fetches GitHub release notes, but the
-  desktop CSP (`electron/index.js`, `connect-src`) only allows Pixabay — on the desktop the request
-  is always blocked. Needs `https://api.github.com` in `connect-src` when that feature is finished.
+Found here, fixed 2026-10-25 (round 5):
+- The router rewrote the desktop address from `…/browser/index.html` to `…/browser/#/route`: hash
+  routes resolve against `<base href="./">`, the folder, which is not a file, so a reload opened
+  nothing (the splash "Restart" after a failed start could hit it). On `file:` a one-line script in
+  `index.html` now points `<base>` at index.html itself; relative URLs resolve in the same folder,
+  the address stays `…/index.html#/route`, and a plain reload works (electron-smoke now uses
+  `location.reload()`). Web and Android (http) are untouched.
+- The notification bell's GitHub release-notes request was blocked by the desktop CSP;
+  `https://api.github.com` is now in `connect-src` (renderer errors in the desktop smoke: 3 → 0).
 
 ### Round 5 (2026-10-25)
 

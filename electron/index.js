@@ -439,7 +439,8 @@ function createWindow() {
           "media-src 'self' noprep-book: blob: data:; " +
           "frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
           // Pixabay: image search (API + downloads) for the image uploader and AI topics.
-          "connect-src 'self' noprep-book: blob: https://pixabay.com https://cdn.pixabay.com; " +
+          // GitHub API: release notes for the notification bell's "What's new" (app-notifications.ts).
+          "connect-src 'self' noprep-book: blob: https://pixabay.com https://cdn.pixabay.com https://api.github.com; " +
           "font-src 'self' data:; " +
           "object-src 'none';"
         ]

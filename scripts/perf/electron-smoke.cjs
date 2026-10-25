@@ -24,9 +24,8 @@ const t = () => Math.round(process.uptime() * 1000);
 const timing = {};
 const errors = [];
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-// The router rewrites the address to …/browser/#/route (the <base href="./"> folder), which is
-// not a file, so reload through index.html explicitly.
-const RELOAD = "setTimeout(() => { location.href = location.href.replace('/#', '/index.html#'); }, 0); true";
+// A plain reload, as a teacher (or an update) would do it; index.html keeps the address on itself.
+const RELOAD = "setTimeout(() => location.reload(), 0); true";
 
 app.on('browser-window-created', (_, win) => {
   timing.windowCreated = t();
