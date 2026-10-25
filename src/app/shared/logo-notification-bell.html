@@ -1,0 +1,67 @@
+<div class="logo-bell-wrap" (click)="$event.stopPropagation()">
+  <button
+    type="button"
+    class="logo-bell-btn"
+    (click)="togglePanel($event)"
+    [attr.aria-label]="'notificationBellLabel' | translate">
+    <img
+      src="assets/images/noprep-logo.webp"
+      alt="NoPrep"
+      width="500"
+      height="500"
+      class="h-14 sm:h-16 w-auto shrink-0 drop-shadow-[0_10px_18px_rgba(79,70,229,0.4)] transition-transform duration-300 ease-out hover:-translate-y-0.5 hover:drop-shadow-[0_14px_24px_rgba(79,70,229,0.5)]">
+    <span *ngIf="hasUnseen" class="logo-bell-dot" aria-hidden="true"></span>
+  </button>
+
+  <div *ngIf="panelOpen" class="logo-bell-panel">
+    <div class="logo-bell-panel-title">{{ 'notificationBellLabel' | translate }}</div>
+
+    <div class="logo-bell-empty" *ngIf="!items.length">
+      {{ 'notificationEmpty' | translate }}
+    </div>
+
+    <div class="logo-bell-item" *ngFor="let item of items">
+      <div class="logo-bell-item-icon" aria-hidden="true">{{ item.icon }}</div>
+      <div class="logo-bell-item-body">
+        <div class="logo-bell-item-title">{{ item.title }}</div>
+        <div class="logo-bell-item-text">{{ item.body }}</div>
+        <button
+          *ngIf="item.action"
+          type="button"
+          class="logo-bell-item-action"
+          (click)="runAction(item, $event)">
+          {{ item.actionLabel }}
+        </button>
+      </div>
+    </div>
+
+    <div class="logo-bell-platforms">
+      <span class="logo-bell-platforms-label">{{ 'alsoAvailableOn' | translate }}</span>
+      <div class="logo-bell-platforms-links">
+        <!-- Web Version: show on Android & Electron (not on web) -->
+        <button *ngIf="platform.isNative() || platform.isElectron()"
+                type="button"
+                class="logo-bell-platform-link"
+                (click)="openUrl('https://noprep.netlify.app', $event)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          {{ 'tryWebVersion' | translate }}
+        </button>
+
+        <!-- Windows App: show on Android & web (not on Electron) -->
+        <button *ngIf="!platform.isElectron()"
+                type="button"
+                class="logo-bell-platform-link"
+                (click)="openUrl('https://noprep.netlify.app/#/download', $event)">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+          </svg>
+          {{ 'windowsApp' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

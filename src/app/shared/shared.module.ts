@@ -23,7 +23,7 @@ import { LeaderboardWheelComponent } from './leaderboard-wheel';
 import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
 import { LeaderboardTimerComponent } from './leaderboard-timer';
 import { AitSelectorComponent } from './ait-selector';
-import { AppUpdateBadgeComponent } from './app-update-badge';
+import { LogoNotificationBellComponent } from './logo-notification-bell';
 
 @NgModule({
   declarations: [
@@ -46,7 +46,7 @@ import { AppUpdateBadgeComponent } from './app-update-badge';
     LeaderboardTeamSetupComponent,
     LeaderboardTimerComponent,
     AitSelectorComponent,
-    AppUpdateBadgeComponent,
+    LogoNotificationBellComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -73,7 +73,7 @@ import { AppUpdateBadgeComponent } from './app-update-badge';
     LeaderboardTimerComponent,
     AitSelectorComponent,
     BodyPortalDirective,
-    AppUpdateBadgeComponent
+    LogoNotificationBellComponent
   ]
 })
 export class SharedModule { }

@@ -132,19 +132,6 @@ onClickOutside(event: MouseEvent) {
     this.bookProgress$ = this.bookLibrary.progress$;
   }
 
-  async openUrl(url: string): Promise<void> {
-    const api = (window as any)?.electronAPI;
-    if (typeof api?.openExternalUrl === 'function') {
-      const opened = await api.openExternalUrl(url);
-      if (opened) return;
-    }
-    if (this.platform.isNative()) {
-      await Browser.open({ url });
-    } else {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  }
-
   setLanguage(lang: SupportedLanguage) {
     this.langService.setLanguage(lang);
   }

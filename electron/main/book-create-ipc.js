@@ -49,11 +49,14 @@ function registerBookCreateIpc({
       const bookFolder = path.join(getBooksRoot(), bookId);
       await fsp.mkdir(path.join(bookFolder, 'assets'), { recursive: true });
 
+      // No progress-map page yet — an empty map in front of an empty book is just confusing.
+      // books:replace-main-pdf inserts one in front of the real content the first time the
+      // teacher uploads a PDF, so the map shows up exactly when there's something to map.
       const book = {
         version: '1.0',
         id: bookId,
         title,
-        pages: [createProgressMapPage(), createBlankBookPage()],
+        pages: [createBlankBookPage()],
         workbooks: [],
         workbookLinks: {},
         createdAt: now,
