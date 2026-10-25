@@ -453,6 +453,30 @@ cost; time decoding with `ffmpeg -benchmark -threads 1 -c:v libvpx -i <file> -f 
     Still below 60 with software drawing, from their own animation, not blur: Pop Balloon and Team
     Sentence (39 fps) — to check on a real tablet.
 
+26. **Measured on a real Android device** (2026-10-25): Infinix Note 40 Pro (MediaTek Helio G99 /
+    MT6789 — the chip class of many budget tablets), Android 16, Chrome 156, with
+    `ANDROID=1 node scripts/perf/bench.mjs …` (USB debugging; served from the PC via `adb reverse`;
+    nothing installed; test data cleared after each run). Phone set landscape and the page
+    fullscreen with a 1280x800 tablet layout at DPR 1.34 (~1.9 Mpx a frame, close to a 1920x1200
+    tablet). Real speed, no throttling.
+
+    | | v1.17.0 | now |
+    |---|---|---|
+    | cold start → first topic card | 1,936 ms | 534 ms (−72 %) |
+    | cold start → all covers | 2,221 ms | 961 ms (−57 %) |
+    | back to the list → first screen / all covers | 112 / 476 ms | 42 / 174 ms |
+    | enter a topic / start a game | 100 / 198 ms | 73 / 137 ms |
+    | **Pop Balloon** | **9 fps** | 60 fps |
+    | **Team Sentence** | **33 fps** | 56–61 fps |
+    | Cup Clash, Team Tug, Squid Game, Flashcard Hunt | 54–60 fps | 54–61 fps |
+
+    All 25 games run at ~60 fps on it. The blur removal (item 25) changes no frame rate here (the
+    GPU blurs cheaply). One measured side effect: Team Sentence's main-thread style work is ~700 ms
+    per 5 s with its panel blur and ~1,070 ms without (same 28 tiles, proven both ways with injected
+    CSS; `will-change`, `isolation`, `contain: paint`, `blur(0px)` and `opacity(1)` do not bring it
+    back). Still 60 fps on this phone, and 20 → 39 fps with software drawing, so the blur stays off;
+    if a much weaker tablet ever struggles in Team Sentence, this is the first thing to revisit.
+
 Measured and **not** done:
 - **Unused translation keys:** 88 keys appear nowhere literally; most are built at runtime
   (`talkShowTask_${code}`, `${tip.key}Title`, …). About a dozen are really unused, worth ~1 KB of

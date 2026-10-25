@@ -9,6 +9,11 @@
 // hits all of them equally; medians are printed side by side.
 //
 // Env: THROTTLE, TOPICS, ITEMS, CHROME (path to chrome.exe), WINDOW (default 1366,768).
+//
+// ANDROID=1: run on the Chrome of a phone/tablet connected with USB debugging (adb), at its real
+// speed (THROTTLE defaults to 1) with a tablet layout (ANDROID_SIZE, default 1280x800x1.5). The page
+// is served from this PC through `adb reverse`; nothing is installed, and the test data is cleared
+// from the device's Chrome afterwards. ADB = path to adb.exe if it is not on PATH.
 import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,14 +26,21 @@ const ROUNDS = roundsAt >= 0 ? Number(args.splice(roundsAt, 2)[1]) : 3;
 const builds = args.map(dir => path.resolve(dir));
 if (!builds.length) { console.error('usage: node scripts/perf/bench.mjs <buildDir> [...] [--rounds N]'); process.exit(1); }
 
-const THROTTLE = Number(process.env.THROTTLE || 6);
+const ANDROID = !!process.env.ANDROID;
+const THROTTLE = Number(process.env.THROTTLE || (ANDROID ? 1 : 6));
 const TOPICS = Number(process.env.TOPICS || 120);
 const ITEMS = Number(process.env.ITEMS || 20);
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const PORT = 4318, DEBUG_PORT = 9333;
+if (ANDROID) {
+  const { execFileSync } = await import('node:child_process');
+  const adb = process.env.ADB || 'adb';
+  execFileSync(adb, ['reverse', `tcp:${PORT}`, `tcp:${PORT}`]);
+  execFileSync(adb, ['forward', `tcp:${DEBUG_PORT}`, 'localabstract:chrome_devtools_remote']);
+}
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-const TYPES = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
+const TYPES = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.webm': 'video/webm', '.mp4': 'video/mp4' };
 let servedRoot = builds[0];
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]);
@@ -41,10 +53,32 @@ const server = http.createServer((req, res) => {
 }).listen(PORT);
 
 // ---- Chrome over CDP -------------------------------------------------------------------------
+// One command on the browser-wide DevTools connection (opens its own short-lived socket).
+async function browserCommand(method, params = {}) {
+  const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/version`)).json();
+  const ws = new WebSocket(webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => { ws.addEventListener('open', resolve); ws.addEventListener('error', reject); });
+  const reply = await new Promise(resolve => {
+    ws.addEventListener('message', ev => { const m = JSON.parse(ev.data); if (m.id === 1) resolve(m); });
+    ws.send(JSON.stringify({ id: 1, method, params }));
+  });
+  ws.close();
+  if (reply.error) throw new Error(`${method}: ${reply.error.message}`);
+  return reply.result;
+}
+
 async function openChrome() {
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'np-bench-'));
-  const proc = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${profile}`, `--window-size=${process.env.WINDOW || '1366,768'}`, '--no-first-run', 'about:blank'], { stdio: 'ignore' });
+  let profile, proc;
+  if (!ANDROID) {
+    profile = fs.mkdtempSync(path.join(os.tmpdir(), 'np-bench-'));
+    proc = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${DEBUG_PORT}`, `--user-data-dir=${profile}`, `--window-size=${process.env.WINDOW || '1366,768'}`, '--no-first-run', 'about:blank'], { stdio: 'ignore' });
+  }
   let target;
+  if (ANDROID) {
+    // Chrome on Android refuses /json/new; the browser target can still open a tab.
+    target = { id: (await browserCommand('Target.createTarget', { url: 'about:blank' })).targetId };
+    target.webSocketDebuggerUrl = `ws://127.0.0.1:${DEBUG_PORT}/devtools/page/${target.id}`;
+  }
   for (let i = 0; i < 50 && !target; i++) {
     try { target = await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/new?about:blank`, { method: 'PUT' })).json(); } catch { await sleep(200); }
   }
@@ -62,8 +96,42 @@ async function openChrome() {
   };
   await send('Page.enable'); await send('Runtime.enable');
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__firstCard=-1;new MutationObserver((ms,o)=>{if(document.querySelector('.topic-card')){window.__firstCard=Math.round(performance.now());o.disconnect();}}).observe(document,{childList:true,subtree:true});window.__lt=[];try{new PerformanceObserver(l=>l.getEntries().forEach(e=>window.__lt.push(e.duration))).observe({type:'longtask',buffered:true})}catch(e){}` });
-  const close = () => { ws.close(); proc.kill(); setTimeout(() => { try { fs.rmSync(profile, { recursive: true, force: true }); } catch { } }, 500); };
-  api = { send, evaluate, close, onEvent: null };
+  // Android: a tablet layout (1280x800 CSS px) drawn at the largest DPR that fits what the device
+  // shows — it must fit, or whatever is drawn beyond the screen is garbage. With the phone landscape
+  // and `fullscreen` (not kept across reloads), a 2436x1080 phone gets DPR 1.35: ~1.9 Mpx a frame,
+  // close to a 1920x1200 tablet. The override itself is kept across navigations and reloads.
+  const tabletView = async ({ fullscreen = false } = {}) => {
+    if (!ANDROID) return;
+    await send('Emulation.clearDeviceMetricsOverride');
+    if (fullscreen) {
+      await send('Runtime.evaluate', { expression: 'document.documentElement.requestFullscreen().catch(() => {})', userGesture: true, awaitPromise: true });
+      await sleep(1000);
+    }
+    // Going fullscreen can briefly report the portrait size; wait for landscape (the phone must be
+    // turned/set landscape, or the tablet layout would be drawn at a third of the pixels).
+    let shown;
+    for (let i = 0; i < 25; i++) {
+      shown = await evaluate(`() => ({ w: innerWidth * devicePixelRatio, h: innerHeight * devicePixelRatio })`);
+      if (shown.w > shown.h) break;
+      await sleep(200);
+    }
+    if (shown.w <= shown.h) throw new Error(`device is in portrait (${Math.round(shown.w)}x${Math.round(shown.h)}): turn it landscape`);
+    const dpr = Math.floor(Math.min(shown.w / 1280, shown.h / 800) * 100) / 100;
+    await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: dpr, mobile: true });
+    await sleep(500);
+    console.log(`  tablet view 1280x800 at DPR ${dpr} (device shows ${Math.round(shown.w)}x${Math.round(shown.h)} px${fullscreen ? ', fullscreen' : ''})`);
+  };
+  const close = async () => {
+    if (ANDROID) {
+      // The phone's own Chrome profile: leave nothing of the test behind.
+      await send('Storage.clearDataForOrigin', { origin: `http://127.0.0.1:${PORT}`, storageTypes: 'all' });
+      ws.close();
+      await browserCommand('Target.closeTarget', { targetId: target.id }).catch(() => {});
+      return;
+    }
+    ws.close(); proc.kill(); setTimeout(() => { try { fs.rmSync(profile, { recursive: true, force: true }); } catch { } }, 500);
+  };
+  api = { send, evaluate, close, tabletView, onEvent: null };
   return api;
 }
 
@@ -117,6 +185,7 @@ async function runOnce(build) {
   try {
     await send('Page.navigate', { url: `http://127.0.0.1:${PORT}/#/topics` });
     await evaluate(waitFor.toString(), null, `!!document.querySelector('.topics-page')`, 60000);
+    await chrome.tabletView();
     await evaluate(seed.toString(), TOPICS, ITEMS);
     await send('Emulation.setCPUThrottlingRate', { rate: THROTTLE });
     await send('Performance.enable');
@@ -151,7 +220,7 @@ async function runOnce(build) {
     r.startGame = (await evaluate(waitFor.toString(), '#/topics/5/play/spin-wheel', GAME_READY, 60000)).ms;
     return r;
   } finally {
-    chrome.close();
+    await chrome.close();
     await sleep(800);
   }
 }
@@ -167,13 +236,14 @@ if (process.env.SHOT) {
   await evaluate(seed.toString(), 6, 12);
   await send('Page.reload', {});
   await sleep(1500);
+  await chrome.tabletView({ fullscreen: true });
   await evaluate(`() => { location.hash = '#/topics/5/play/${process.env.SHOT}'; }`);
   await sleep(Number(process.env.SHOT_WAIT || 4000));
   await evaluate(`() => document.getAnimations().forEach(a => a.pause())`);
   if (process.env.SHOT_JS) console.log(JSON.stringify(await evaluate(process.env.SHOT_JS)));
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   if (process.env.SHOT_OUT) fs.writeFileSync(process.env.SHOT_OUT, Buffer.from(shot.data, 'base64'));
-  chrome.close(); server.close();
+  await chrome.close(); server.close();
   setTimeout(() => process.exit(0), 1000);
 } else
 // IDLE=1 (or IDLE=spin-wheel,pop-balloon): opens each game, waits for it to settle, then measures
@@ -191,14 +261,16 @@ if (process.env.IDLE) {
   await evaluate(seed.toString(), 6, 12);
   await send('Page.reload', {});
   await sleep(1500);
+  await chrome.tabletView({ fullscreen: true });
   await send('Emulation.setCPUThrottlingRate', { rate: THROTTLE });
   await send('Performance.enable');
   const metrics = async () => Object.fromEntries((await send('Performance.getMetrics')).metrics.map(m => [m.name, m.value]));
   // CPU of every Chrome process (GPU, video decoding, raster…), which the page metrics above miss.
   // Not slowed by THROTTLE: only the page's main thread is.
-  const browserWs = new WebSocket((await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/version`)).json()).webSocketDebuggerUrl);
-  await new Promise(r => browserWs.addEventListener('open', r));
-  const allCpu = () => new Promise(r => {
+  // (Not available from a phone's Chrome: reported as 0 there.)
+  const browserWs = ANDROID ? null : new WebSocket((await (await fetch(`http://127.0.0.1:${DEBUG_PORT}/json/version`)).json()).webSocketDebuggerUrl);
+  if (browserWs) await new Promise(r => browserWs.addEventListener('open', r));
+  const allCpu = () => !browserWs ? Promise.resolve(0) : new Promise(r => {
     browserWs.addEventListener('message', ev => r(JSON.parse(ev.data).result.processInfo.reduce((a, p) => a + p.cpuTime, 0)), { once: true });
     browserWs.send(JSON.stringify({ id: 1, method: 'SystemInfo.getProcessInfo' }));
   });
@@ -209,6 +281,8 @@ if (process.env.IDLE) {
     await evaluate(`() => { location.hash = '#/topics/5/play/${game}'; }`);
     await sleep(Number(process.env.IDLE_SETTLE || 6000));
     const stayed = await evaluate(`() => location.hash.includes('/play/${game}')`);
+    // IDLE_CSS=<css>: added to the game before measuring (to test a style change without a rebuild).
+    if (process.env.IDLE_CSS) { await evaluate(`(css) => document.head.insertAdjacentHTML("beforeend", "<style>" + css + "</style>")`, process.env.IDLE_CSS); await sleep(1000); }
     await evaluate(`() => { window.__frames = 0; const tick = () => { window.__frames++; window.__frameLoop = requestAnimationFrame(tick); }; cancelAnimationFrame(window.__frameLoop); window.__frameLoop = requestAnimationFrame(tick); }`);
     const m0 = await metrics(), cpu0 = await allCpu();
     let events = [], traced;
@@ -245,9 +319,11 @@ if (process.env.IDLE) {
     }
     const ms = k => Math.round((m1[k] - m0[k]) * 1000);
     rows.push([game, stayed ? ms('TaskDuration') : -1, ms('ScriptDuration'), ms('RecalcStyleDuration'), ms('LayoutDuration')]);
+    // IDLE_COUNT=<selector>: how many such elements were on screen (games with random content vary).
+    if (process.env.IDLE_COUNT) console.log(`   ${process.env.IDLE_COUNT}: ${await evaluate(`() => document.querySelectorAll(${JSON.stringify(process.env.IDLE_COUNT)}).length`)}`);
     console.log(`${game.padEnd(20)} ${stayed ? String(ms('TaskDuration')).padStart(5) + ' ms busy of 5000, ' + String(fps).padStart(2) + ' fps' : '  (left the game: needs other content)'}   script ${ms('ScriptDuration')}  style ${ms('RecalcStyleDuration')}  layout ${ms('LayoutDuration')}  all processes ${Math.round((cpu1 - cpu0) * 1000)} ms CPU`);
   }
-  browserWs.close(); chrome.close(); server.close();
+  browserWs?.close(); await chrome.close(); server.close();
   setTimeout(() => process.exit(0), 1000);
 } else
 // DBKEYS=1: on the seeded DB (throttled), time ways of reading item ids per topic without records.
@@ -279,7 +355,7 @@ if (process.env.DBKEYS) {
     return out;
   }`);
   console.log(JSON.stringify(result));
-  chrome.close(); server.close();
+  await chrome.close(); server.close();
   setTimeout(() => process.exit(0), 1000);
 } else
 // TIMELINE=1: one throttled cold start of the first build; prints when the startup milestones
@@ -315,7 +391,7 @@ if (process.env.TIMELINE) {
   await sleep(500);
   const marks = await evaluate(`() => window.__marks`);
   for (const [k, v] of Object.entries(marks).sort((a, b) => a[1] - b[1])) console.log(String(v).padStart(7), 'ms ', k);
-  chrome.close(); server.close();
+  await chrome.close(); server.close();
   setTimeout(() => process.exit(0), 1000);
 } else
 // PROFILE=1: one throttled cold start of the first build under the CPU profiler; prints where the
@@ -348,7 +424,7 @@ if (process.env.PROFILE) {
   });
   const top = (map, n) => [...map].sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `${v.toFixed(0).padStart(7)} ms  ${k}`).join('\n');
   console.log(`-- by file (${THROTTLE}× throttle)\n${top(file, 15)}\n-- by function\n${top(fn, 30)}`);
-  chrome.close(); server.close();
+  await chrome.close(); server.close();
   setTimeout(() => process.exit(0), 1000);
 } else {
 const all = builds.map(() => ({}));
