@@ -14,7 +14,9 @@
     radial-gradient(circle at 18% 22%, rgba(56, 189, 248, 0.24), transparent 19rem),
     radial-gradient(circle at 82% 76%, rgba(251, 113, 133, 0.22), transparent 18rem),
     rgba(2, 6, 23, 0.82));
-  backdrop-filter: blur(8px);
+  /* No backdrop blur: the game keeps animating underneath (videos, balloons), so a full-screen blur
+     was redone every frame — about 10 fps with software drawing (weak GPUs, tablets) right during the
+     celebration; under 82 % dark it barely showed. */
 }
 
 .game-finish-overlay::before,

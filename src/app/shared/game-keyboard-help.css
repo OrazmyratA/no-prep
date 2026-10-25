@@ -42,7 +42,6 @@
   background: rgba(17, 24, 39, 0.94);
   color: #fff;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(8px);
 }
 
 .keyboard-help-panel::before {

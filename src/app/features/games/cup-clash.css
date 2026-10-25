@@ -700,7 +700,14 @@
   align-items: center;
   justify-content: center;
   z-index: 950;
-  backdrop-filter: blur(8px);
+}
+
+/* No blur under the 90 % black overlay: it barely showed, and with the RPS hands animating over the
+   blurred zones every blur was redrawn each frame — 7 fps with software drawing (weak GPUs, tablets),
+   60 without. The zones and question card get their blur back as soon as the overlay closes. */
+.rps-overlay ~ .board-container .zone,
+.rps-overlay ~ .game-controls .question-card {
+  backdrop-filter: none;
 }
 
 .rps-hidden {

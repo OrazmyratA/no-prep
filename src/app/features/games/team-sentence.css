@@ -277,7 +277,8 @@
   padding: 5px;
   margin-bottom: 5px;
   text-align: center;
-  backdrop-filter: blur(8px);
+  /* No backdrop blur here or on .sentence-area: over the playing video it was redone every frame —
+     20 fps with software drawing (weak GPUs, tablets), 31 without; at 3–5 % white it barely showed. */
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
   width: 50%;
   margin-left: 25%;
@@ -336,7 +337,6 @@
   gap: 10px;
   align-items: center;
   margin-bottom: 0px;
-  backdrop-filter: blur(6px);
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   touch-action: none;
 }

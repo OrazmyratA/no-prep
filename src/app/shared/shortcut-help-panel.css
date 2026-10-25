@@ -12,7 +12,6 @@
   background: rgba(17, 24, 39, 0.96);
   color: #ffffff;
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
-  backdrop-filter: blur(8px);
 }
 
 .shortcut-help-head {

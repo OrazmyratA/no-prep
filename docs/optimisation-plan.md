@@ -433,6 +433,26 @@ cost; time decoding with `ffmpeg -benchmark -threads 1 -c:v libvpx -i <file> -f 
 24. Removed: `@angular/platform-browser-dynamic` (nothing imports it) and `execRuntimeText` in
     `electron/main/fs-utils.js` (unused since the local AI runtime was replaced in v1.4.0).
 
+25. **Backdrop blurs with software drawing (Phase 5, desktop part).** `scripts/perf/electron-fps.cjs`
+    runs the real desktop app with hardware graphics off (all drawing on the CPU, like a weak
+    integrated GPU or a tablet) and measures each game as is and with every `backdrop-filter` off
+    (`NO_BLUR=<selector>` for one selector, `EXTRA_CSS` for both runs, `LIST_BLUR=1` lists them).
+    A blur only costs when what is under it changes every frame:
+    - **Cup Clash 7 → 60 fps**: the start-of-game RPS overlay (90 % black, full-screen blur) with its
+      animated hands over the blurred zones redid every blur each frame. The overlay has no blur now,
+      and the zones/question card drop theirs only while the overlay is open (`.rps-overlay ~ …`).
+    - **Team Sentence 20 → 39 fps**: the team headers and sentence areas (3–5 % white) blurred the
+      playing video. Blur removed; it barely showed.
+    - **Game finish overlay** (every game, full screen, 82 % dark, game animating underneath): a
+      simulated copy dropped Team Tug to 11 fps and Pop Balloon to 10 fps; blur removed. Also removed
+      where the panel is ≥ 86 % opaque and the blur invisible: keyboard help, shortcut help, random
+      picker reveal card.
+    - Kept: blurs over still content (Spotlight, Word Search, Test ABC, Squid Game badges: no
+      measurable cost) and the clearly visible frosted backdrops of the sandwich menu (32 %), theme
+      picker (44 %) and random picker (72 %).
+    Still below 60 with software drawing, from their own animation, not blur: Pop Balloon and Team
+    Sentence (39 fps) — to check on a real tablet.
+
 Measured and **not** done:
 - **Unused translation keys:** 88 keys appear nowhere literally; most are built at runtime
   (`talkShowTask_${code}`, `${tip.key}Title`, …). About a dozen are really unused, worth ~1 KB of
