@@ -1,4 +1,5 @@
-export type SupportedLanguage = 'en' | 'tk' | 'ru' | 'cn' | 'cde' | 'es' | 'fr' | 'kr' | 'sa' | 'vi';
+export const SUPPORTED_LANGUAGES = ['en', 'tk', 'ru', 'cn', 'cde', 'es', 'fr', 'kr', 'sa', 'vi'] as const;
+export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 export interface TranslationDictionary {
   [key: string]: {

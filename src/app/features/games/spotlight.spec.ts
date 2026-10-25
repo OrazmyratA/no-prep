@@ -8,7 +8,7 @@ describe('SpotlightComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [SpotlightComponent]
+      imports: [SpotlightComponent]
     })
     .compileComponents();
 

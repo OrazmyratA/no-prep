@@ -4,8 +4,13 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { DragDropModule } from '@angular/cdk/drag-drop';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface LetterTile {
   id: string;
@@ -24,7 +29,7 @@ interface AnimatingTile {
 
 @Component({
   selector: 'app-anagram',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe, DragDropModule],
   templateUrl: './anagram.html',
   styleUrls: ['./anagram.css']
 })

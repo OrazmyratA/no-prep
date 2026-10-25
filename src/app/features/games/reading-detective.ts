@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { ConfettiInstance, ConfettiOptions, GameFinishConfettiService } from '../../shared/game-finish-overlay';
 import { isTypingTarget, TimerBag, shuffled } from './game-utils';
 import {
@@ -26,6 +26,9 @@ import {
 } from './reading-model';
 import { Verdict } from './reading-tasks';
 import { plainText } from './writing-text';
+import { CommonModule } from '@angular/common';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 // Reading Detective (docs/reading-detective.md): one reading text, up to seven stages (each one
 // only when the topic has items for it; the teacher can switch stages off on the start screen).
@@ -83,7 +86,7 @@ const CONFETTI_COLORS = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', 
 
 @Component({
   selector: 'app-reading-detective',
-  standalone: false,
+  imports: [CommonModule, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './reading-detective.html',
   styleUrls: ['./reading-detective.css']
 })

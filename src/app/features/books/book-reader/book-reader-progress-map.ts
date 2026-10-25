@@ -66,11 +66,11 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
   private readonly headerCollapseThresholdPx = 40;
   private readonly beachRevealSlidePx = 40;
 
-  readonly beforeImage = "url('assets/images/book/tree/before.png')";
-  readonly lifeImage = "url('assets/images/book/tree/life.png')";
-  readonly waterBackgroundImage = "url('assets/images/book/islend/water.gif')";
-  readonly boatImage = 'assets/images/book/islend/boat.png';
-  readonly beachImage = 'assets/images/book/islend/beach.png';
+  readonly beforeImage = "url('assets/images/book/tree/before.webp')";
+  readonly lifeImage = "url('assets/images/book/tree/life.webp')";
+  readonly waterBackgroundImage = "url('assets/images/book/islend/water.webp')";
+  readonly boatImage = 'assets/images/book/islend/boat.webp';
+  readonly beachImage = 'assets/images/book/islend/beach.webp';
   private readonly waterImageNaturalWidth = 529;
   private readonly waterImageNaturalHeight = 759;
 
@@ -374,7 +374,7 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
 
     const logoSize = 900;
     try {
-      const logo = await this.loadImage('assets/images/noprep-logo.png');
+      const logo = await this.loadImage('assets/images/noprep-logo.webp');
       ctx.drawImage(logo, (width - logoSize) / 2, logoCenterY - logoSize / 2, logoSize, logoSize);
     } catch {
       // fall back to no logo if it can't be loaded
@@ -481,9 +481,9 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
       ? 0
       : Math.round(this.getUnitProgress(unit) * (this.treeStageCount - 1));
     if (stageIndex < this.treeStageFiles.length) {
-      return `assets/images/book/tree/${this.treeStageFiles[stageIndex]}.png`;
+      return `assets/images/book/tree/${this.treeStageFiles[stageIndex]}.webp`;
     }
-    return `assets/images/book/tree/${this.getHarvestVariant(unit)}.png`;
+    return `assets/images/book/tree/${this.getHarvestVariant(unit)}.webp`;
   }
 
   private getHarvestVariant(unit: ProgressMapUnit): string {
@@ -494,7 +494,7 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
   getIslandImage(unit: ProgressMapUnit): string {
     const index = this.units.findIndex((item) => item.id === unit.id);
     const islandNumber = this.pickStableIndex(index, 11, this.islandCount) + 1;
-    return `assets/images/book/islend/${islandNumber}.png`;
+    return `assets/images/book/islend/${islandNumber}.webp`;
   }
 
   private pickStableIndex(index: number, salt: number, count: number): number {

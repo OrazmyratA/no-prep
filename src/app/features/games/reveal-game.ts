@@ -11,9 +11,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 import { isTypingTarget, TimerBag } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface Team {
   id: number;
@@ -24,7 +28,7 @@ interface Team {
 
 @Component({
   selector: 'app-reveal-game',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './reveal-game.html',
   styleUrls: ['./reveal-game.css']
 })
@@ -134,7 +138,8 @@ teamColors = ['#ff4d4d', '#ff8a00', '#00c2ff', '#7dff3b', '#ff4fd8', '#9b5cff', 
       }
 
       this.collectSound = new Audio('assets/sound/collect.mp3');
-      this.correctSound = new Audio('assets/sound/correct.mp3');
+      // The correct-answer sound of every other game (there has never been a correct.mp3).
+      this.correctSound = new Audio('assets/sound/collect.mp3');
       this.buzzSound = new Audio('assets/sound/buzz.mp3');
       this.captureSound = new Audio('assets/sound/capture.mp3');
       this.rewardSound = new Audio('assets/sound/reward-reveal.mp3');

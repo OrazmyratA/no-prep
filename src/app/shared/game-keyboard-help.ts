@@ -1,4 +1,5 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 export interface GameKeyboardShortcut {
   key: string;
@@ -7,7 +8,7 @@ export interface GameKeyboardShortcut {
 
 @Component({
   selector: 'app-game-keyboard-help',
-  standalone: false,
+  imports: [CommonModule],
   templateUrl: './game-keyboard-help.html',
   styleUrls: ['./game-keyboard-help.css']
 })

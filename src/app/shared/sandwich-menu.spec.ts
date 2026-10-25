@@ -11,8 +11,7 @@ describe('SandwichMenu', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RouterTestingModule],
-      declarations: [SandwichMenuComponent]
+      imports: [RouterTestingModule, SandwichMenuComponent]
     })
     .compileComponents();
 

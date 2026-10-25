@@ -1,7 +1,11 @@
 import { Component, OnInit, OnDestroy, AfterViewInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
+import { CommonModule } from '@angular/common';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 type RPSChoice = 'rock' | 'paper' | 'scissors';
 
@@ -22,7 +26,7 @@ interface QuizOption {
 
 @Component({
   selector: 'app-rock-paper-scissors',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './rock-paper-scissors.html',
   styleUrls: ['./rock-paper-scissors.css']
 })

@@ -205,7 +205,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   savingSpeakingApiKey = false;
   speakingApiKeyError = '';
   speakingResponsePending = false;
-  owlImage = 'assets/gifs/owl-corner.gif';
+  owlImage = 'assets/gifs/owl-corner.webp';
   owlX = 0;
   owlY = 0;
   owlTeaching = false;
@@ -2407,7 +2407,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private moveOwlToCorner(): void {
     this.owlTeaching = false;
-    this.owlImage = 'assets/gifs/owl-corner.gif';
+    this.owlImage = 'assets/gifs/owl-corner.webp';
     const bounds = this.getOwlVisibleBounds(false);
     this.owlX = bounds.maxX;
     this.owlY = bounds.maxY;

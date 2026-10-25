@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription, combineLatest } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -21,6 +21,20 @@ import { DriveLink, DriveLinksService, isValidDriveLinkUrl } from '../../../core
 type LibraryCategory = 'topics' | 'books';
 type PendingBookStorageAction = 'create' | 'import' | null;
 
+// Topic cards are built a batch at a time: the first batch (more than a screenful) at once, the
+// rest while the browser is idle. A big library then shows and can be clicked before all of its
+// cards exist; building ~120 cards up front cost ~0.7 s of a slow PC's start.
+const TOPIC_CARD_BATCH = 24;
+
+function whenIdle(task: () => void): () => void {
+  if (typeof requestIdleCallback === 'function') {
+    const id = requestIdleCallback(task, { timeout: 200 });
+    return () => cancelIdleCallback(id);
+  }
+  const id = setTimeout(task, 16);
+  return () => clearTimeout(id);
+}
+
 @Component({
   selector: 'app-topics-list',
   standalone: false,
@@ -40,7 +54,7 @@ export class TopicsListComponent implements OnInit, AfterViewInit, OnDestroy {
   activeTopicId: number | null = null;
   activeBookId: string | null = null;
   activeLibraryCategory: LibraryCategory = 'topics';
-  topicCoverUrls: Record<number, string> = {};
+  topicCoverUrls: ReadonlyMap<number, string> = new Map();
   showBookStorageDialog = false;
   showDriveLinksPanel = false;
   driveLinks: DriveLink[] = [];
@@ -55,6 +69,10 @@ export class TopicsListComponent implements OnInit, AfterViewInit, OnDestroy {
   private layoutSubscription?: Subscription;
   private topicCoverSubscription?: Subscription;
   private booksSubscription?: Subscription;
+  private topicCountSubscription?: Subscription;
+  topicCardLimit = TOPIC_CARD_BATCH;
+  private topicCount = 0;
+  private cancelMoreTopicCards?: () => void;
   private viewRefreshHandle?: ReturnType<typeof setTimeout>;
 
 supportedLanguages: { code: SupportedLanguage; name: string; flag: string }[] = [
@@ -104,7 +122,6 @@ onClickOutside(event: MouseEvent) {
     private confirmationService: ConfirmationService,
     private langService: LanguageService,
     private resizeService: ResizeService,
-    private elementRef: ElementRef<HTMLElement>,
     private ngZone: NgZone,
     public platform: PlatformService,
     public bookLibrary: BookLibraryService,
@@ -186,8 +203,31 @@ onClickOutside(event: MouseEvent) {
         return topics.filter(topic => topic.name.toLowerCase().includes(filter));
       })
     );
-    this.topicCoverSubscription = topics$.subscribe((topics) => {
-      void this.refreshTopicCovers(topics);
+    // DbService owns the cover URLs (kept across visits), so nothing to revoke here.
+    this.topicCoverSubscription = this.db.topicCoverUrls$.subscribe((urls) => {
+      this.topicCoverUrls = urls;
+      this.scheduleViewRefresh();
+    });
+    this.topicCountSubscription = topics$.subscribe((topics) => {
+      this.topicCount = topics.length;
+      this.buildMoreTopicCards();
+    });
+  }
+
+  get topicsLoaded(): boolean {
+    return this.db.topicsLoaded;
+  }
+
+  private buildMoreTopicCards(): void {
+    if (this.cancelMoreTopicCards || this.topicCardLimit >= this.topicCount) return;
+    // Outside the zone: each batch only needs this view checked, not the whole app.
+    this.ngZone.runOutsideAngular(() => {
+      this.cancelMoreTopicCards = whenIdle(() => {
+        this.cancelMoreTopicCards = undefined;
+        this.topicCardLimit += TOPIC_CARD_BATCH;
+        this.cdr.detectChanges();
+        this.buildMoreTopicCards();
+      });
     });
   }
 
@@ -204,7 +244,8 @@ onClickOutside(event: MouseEvent) {
     this.layoutSubscription?.unsubscribe();
     this.topicCoverSubscription?.unsubscribe();
     this.booksSubscription?.unsubscribe();
-    this.clearTopicCoverUrls();
+    this.topicCountSubscription?.unsubscribe();
+    this.cancelMoreTopicCards?.();
   }
 
   private scheduleViewRefresh(): void {
@@ -218,10 +259,6 @@ onClickOutside(event: MouseEvent) {
   }
 
   private recalculateLayout() {
-    const root = this.elementRef.nativeElement.querySelector('.topics-page') as HTMLElement | null;
-    if (root) {
-      root.getBoundingClientRect();
-    }
     this.cdr.detectChanges();
   }
 
@@ -686,7 +723,7 @@ async combineSelectedTopics() {
   }
 
   getTopicCoverUrl(topic: Topic): string {
-    return topic.id ? this.topicCoverUrls[topic.id] || '' : '';
+    return topic.id ? this.topicCoverUrls.get(topic.id) || '' : '';
   }
 
   trackByBookId(index: number, book: BookRegistryItem) {
@@ -707,31 +744,5 @@ async combineSelectedTopics() {
       unit++;
     }
     return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
-  }
-
-  private async refreshTopicCovers(topics: Topic[]): Promise<void> {
-    const liveIds = new Set(topics.map((topic) => topic.id).filter((id): id is number => typeof id === 'number'));
-    for (const id of Object.keys(this.topicCoverUrls).map(Number)) {
-      if (!liveIds.has(id)) {
-        URL.revokeObjectURL(this.topicCoverUrls[id]);
-        delete this.topicCoverUrls[id];
-      }
-    }
-
-    await Promise.all(topics.map(async (topic) => {
-      if (!topic.id || this.topicCoverUrls[topic.id]) return;
-      const items = await this.db.getItemsSnapshot(topic.id);
-      const imageItem = items.find((item) => !!item.image);
-      if (!imageItem?.image || this.topicCoverUrls[topic.id!]) return;
-      this.topicCoverUrls[topic.id] = URL.createObjectURL(imageItem.image);
-    }));
-    this.cdr.detectChanges();
-  }
-
-  private clearTopicCoverUrls(): void {
-    for (const url of Object.values(this.topicCoverUrls)) {
-      URL.revokeObjectURL(url);
-    }
-    this.topicCoverUrls = {};
   }
 }

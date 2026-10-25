@@ -26,8 +26,7 @@ describe('WritingWorkshopComponent', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
 
     await TestBed.configureTestingModule({
-      declarations: [WritingWorkshopComponent],
-      imports: [TranslatePipe],
+      imports: [WritingWorkshopComponent, TranslatePipe],
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['id', '1']]) } } },
         { provide: Router, useValue: { navigate: vi.fn() } },

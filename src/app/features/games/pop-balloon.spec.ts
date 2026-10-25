@@ -36,8 +36,7 @@ describe('PopBalloonComponent', () => {
     } as unknown as ActivatedRoute;
 
     await TestBed.configureTestingModule({
-      imports: [RouterTestingModule],
-      declarations: [PopBalloonComponent],
+      imports: [RouterTestingModule, PopBalloonComponent],
       providers: [{ provide: ActivatedRoute, useValue: routeStub }],
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();

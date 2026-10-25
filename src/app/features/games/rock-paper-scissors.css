@@ -51,20 +51,19 @@
   image-rendering: auto;
   animation: knight-walk-bounce 0.58s ease-in-out infinite;
   filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.28));
-  will-change: margin-top, filter;
+  will-change: filter;
 }
 
+/* Only the shadow pulses. (It also animated margin-top, which cannot move a box placed by
+   `bottom` — it only cost a page layout every frame.) */
 @keyframes knight-walk-bounce {
   0%, 100% {
-    margin-top: 0;
     filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.28));
   }
   35% {
-    margin-top: -8px;
     filter: drop-shadow(0 14px 10px rgba(0, 0, 0, 0.2));
   }
   70% {
-    margin-top: 2px;
     filter: drop-shadow(0 6px 7px rgba(0, 0, 0, 0.32));
   }
 }

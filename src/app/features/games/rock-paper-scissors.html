@@ -7,7 +7,7 @@
   </app-game-keyboard-help>
 
   <!-- Background -->
-  <img src="assets/images/castle-clash-bg.png" class="rps-bg" alt="">
+  <img src="assets/images/castle-clash-bg.webp" class="rps-bg" alt="">
 
   <!-- Loading -->
   <div *ngIf="loading" class="rps-loading">
@@ -18,7 +18,7 @@
 
     <!-- Knight / gift carrier -->
     <img
-      [src]="gameFinished ? 'assets/gifs/gift-opened.gif' : 'assets/images/knight-gift.png'"
+      [src]="gameFinished ? 'assets/gifs/gift-opened.webp' : 'assets/images/knight-gift.webp'"
       class="rps-gift"
       [ngStyle]="giftStyle"
       alt=""
@@ -185,7 +185,7 @@
       {{ (victoryTeam.side === 'left' ? 'rpsBlueTeam' : 'rpsRedTeam') | translate }}
     </div>
     <div class="gift-box-popup">
-      <img src="assets/gifs/gift-opened.gif"
+      <img src="assets/gifs/gift-opened.webp"
            alt="Opened Gift"
            class="gift-image-popup">
       <div class="reward-number">{{ rewardNumber }}</div>

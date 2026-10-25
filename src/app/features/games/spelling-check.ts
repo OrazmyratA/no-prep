@@ -3,8 +3,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { shuffled, TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 type MatchMode = 'prefix' | 'suffix' | 'contains' | 'whole';
 
@@ -39,7 +43,7 @@ interface Question {
 
 @Component({
   selector: 'app-spelling-check',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './spelling-check.html',
   styleUrls: ['./spelling-check.css']
 })

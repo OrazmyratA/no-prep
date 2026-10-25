@@ -1,5 +1,5 @@
 <div class="hunt-root">
-  <img class="hunt-letterbox" src="assets/images/classroom.jpg" alt="" draggable="false">
+  <img class="hunt-letterbox" src="assets/images/classroom.webp" alt="" draggable="false">
   <app-game-keyboard-help
     class="hunt-keyboard-help"
     [shortcuts]="keyboardShortcuts"
@@ -8,7 +8,7 @@
   </app-game-keyboard-help>
 
   <div #stage class="hunt-stage" [class.shaking]="stageShaking" [class.frenzy]="frenzy">
-    <img class="hunt-bg" src="assets/images/classroom.jpg" alt="" draggable="false">
+    <img class="hunt-bg" src="assets/images/classroom.webp" alt="" draggable="false">
 
     <!-- Loading -->
     <div *ngIf="loading" class="hunt-loading">
@@ -41,7 +41,7 @@
              class="hunt-card-audio" src="assets/images/book/audio.png" alt="" draggable="false">
         <div *ngIf="aitQuestionType === 'image' && !item.image" class="hunt-card-text">?</div>
       </ng-container>
-      <img *ngIf="card.bomb" class="hunt-card-bomb" src="assets/images/ice-bomb.png" alt="" draggable="false">
+      <img *ngIf="card.bomb" class="hunt-card-bomb" src="assets/images/ice-bomb.webp" alt="" draggable="false">
       <div *ngIf="card.golden" class="hunt-golden-face">
         <span class="hunt-golden-star">⭐</span>
         <span class="hunt-golden-points">+2</span>

@@ -81,27 +81,6 @@ function execFileText(filePath, args, options = {}) {
   });
 }
 
-function execRuntimeText(filePath, args, options = {}) {
-  const extension = path.extname(filePath).toLowerCase();
-  if (extension === '.js' || extension === '.cjs') {
-    const nodePaths = [
-      path.join(__dirname, '..', '..', 'node_modules'),
-      path.join(process.resourcesPath || '', 'app.asar', 'node_modules'),
-      path.join(process.resourcesPath || '', 'app.asar.unpacked', 'node_modules')
-    ].filter(Boolean);
-    return execFileText(process.execPath, [filePath, ...args], {
-      ...options,
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: '1',
-        NODE_PATH: [process.env.NODE_PATH, ...nodePaths].filter(Boolean).join(path.delimiter),
-        ...(options.env || {})
-      }
-    });
-  }
-  return execFileText(filePath, args, options);
-}
-
 async function commandExists(command) {
   const checker = process.platform === 'win32' ? 'where.exe' : 'which';
   try {
@@ -151,6 +130,5 @@ module.exports = {
   commandExists,
   ensureEnoughSpace,
   formatBytesForDialog,
-  execFileText,
-  execRuntimeText
+  execFileText
 };

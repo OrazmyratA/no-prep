@@ -9,8 +9,8 @@
 
   <!-- Full-screen background cross-fade -->
   <div class="squid-bg">
-    <img src="assets/images/squid-game-back.png"  [class.active]="!dollLooking" alt="">
-    <img src="assets/images/squid-game-front.png" [class.active]="dollLooking"  alt="">
+    <img src="assets/images/squid-game-back.webp"  [class.active]="!dollLooking" alt="">
+    <img src="assets/images/squid-game-front.webp" [class.active]="dollLooking"  alt="">
   </div>
 
   <!-- Loading -->
@@ -44,7 +44,7 @@
     >
       <div class="char-bg" [style.background]="getTeamColor(team.id)">
         <img
-          [src]="'assets/images/characters/' + team.id + '.png'"
+          [src]="'assets/images/characters/' + team.id + '.webp'"
           [alt]="('squidGameTeamLabel' | translate) + ' ' + team.id"
           class="squid-char-img"
         />
@@ -56,7 +56,7 @@
       <div class="team-unit"
            *ngFor="let team of teams; let teamIndex = index; trackBy: trackByTeamId">
         <div class="btn-avatar-indicator" [style.background]="getTeamColor(team.id)">
-          <img [src]="'assets/images/characters/' + team.id + '.png'"
+          <img [src]="'assets/images/characters/' + team.id + '.webp'"
                class="btn-avatar-img" [alt]="('squidGameTeamLabel' | translate) + ' ' + team.id">
         </div>
         <button
@@ -86,7 +86,7 @@
       <div class="flex justify-center mb-4">
         <div class="quiz-team-badge">
           <div class="char-bg" [style.background]="getTeamColor(currentQuiz.team.id)">
-            <img [src]="'assets/images/characters/' + currentQuiz.team.id + '.png'"
+            <img [src]="'assets/images/characters/' + currentQuiz.team.id + '.webp'"
                  class="squid-char-img" [alt]="('squidGameTeamLabel' | translate) + ' ' + currentQuiz.team.id" />
           </div>
           <span class="text-white font-bold text-lg">{{ 'squidGameTeamLabel' | translate }} {{ currentQuiz.team.id }}</span>
@@ -175,7 +175,7 @@
     <div class="space-y-4 mt-6">
       <div *ngFor="let entry of rankedTeamsForResult" class="flex items-center gap-3">
         <div class="w-10 text-center font-bold text-xl flex-shrink-0">{{ entry.medal }}</div>
-        <img [src]="'assets/images/characters/' + entry.team.id + '.png'"
+        <img [src]="'assets/images/characters/' + entry.team.id + '.webp'"
              class="w-9 h-9 rounded-full object-contain flex-shrink-0"
              [alt]="('squidGameTeamLabel' | translate) + ' ' + entry.team.id">
         <div class="w-20 font-semibold text-ink flex-shrink-0 text-sm text-left">{{ 'squidGameTeamLabel' | translate }} {{ entry.team.id }}</div>

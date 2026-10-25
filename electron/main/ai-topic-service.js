@@ -3,7 +3,8 @@
 // teacher linked with their own API key. The prompt, the JSON schema and all validation live in
 // the renderer (src/app/core/ai-topic/); this service only talks to each provider and returns the
 // model's raw JSON text.
-const Anthropic = require('@anthropic-ai/sdk');
+// Loaded on first use (only the Anthropic provider needs it), not while the app starts.
+const loadAnthropic = () => require('@anthropic-ai/sdk');
 
 // 12 pages covers a unit or a whole speaking test; the app shrinks each page more when many are
 // sent, so a full request stays under the NoPrep AI proxy's MAX_BODY_BYTES (12 MB).
@@ -284,6 +285,7 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
   }
 
   async function generateWithAnthropic(req) {
+    const Anthropic = loadAnthropic();
     const client = new Anthropic({
       apiKey: req.apiKey,
       timeout: REQUEST_TIMEOUT_MS,

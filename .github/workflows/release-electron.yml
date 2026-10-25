@@ -33,6 +33,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # package.json build.files leaves renderer/Android packages out; make sure the main process
+      # still finds everything it loads (see docs/production-release-checklist.md).
+      - name: Check packaged main-process modules
+        shell: bash
+        run: ELECTRON_RUN_AS_NODE=1 release/win-unpacked/No-Prep.exe scripts/check-packaged-app.cjs release/win-unpacked/resources
+
       - name: Upload installer to GitHub Release
         uses: softprops/action-gh-release@v2
         with:

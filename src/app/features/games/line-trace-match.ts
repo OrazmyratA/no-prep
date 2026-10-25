@@ -14,8 +14,12 @@ import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
 import { showAppNotification } from '../../core/notification';
 import { ThemeService } from '../../core/theme';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { shuffled, TrackedAudio, isTypingTarget } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface Point {
   x: number;
@@ -47,7 +51,7 @@ interface MatchedLine {
 
 @Component({
   selector: 'app-line-trace-match',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './line-trace-match.html',
   styleUrls: ['./line-trace-match.css']
 })

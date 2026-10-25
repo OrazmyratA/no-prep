@@ -4,7 +4,6 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { ImageUploaderComponent } from './image-uploader';
 import { ImageCropDialogComponent } from './image-crop-dialog';
-import { SandwichMenuComponent } from './sandwich-menu';
 import { SettingsPanelComponent } from './settings-panel';
 import { ConfirmationModalComponent } from './confirmation-modal';
 import { ConfirmationService } from './confirmation';
@@ -14,10 +13,7 @@ import { ThemePickerComponent } from './theme-picker';
 import { SwipeDirective } from './swipe.directive';
 import { BodyPortalDirective } from './body-portal.directive';
 import { HorizontalToolbarScrollDirective } from './horizontal-toolbar-scroll.directive';
-import { GameKeyboardHelpComponent } from './game-keyboard-help';
 import { ShortcutHelpPanelComponent } from './shortcut-help-panel';
-import { GameFinishOverlayComponent } from './game-finish-overlay';
-import { GameCountdownComponent } from './game-countdown';
 import { RandomPickerComponent } from './random-picker';
 import { LeaderboardStarRatingComponent } from './leaderboard-star-rating';
 import { LeaderboardStudentRowComponent } from './leaderboard-student-row';
@@ -33,7 +29,6 @@ import { AppUpdateBadgeComponent } from './app-update-badge';
   declarations: [
     ImageUploaderComponent,
     ImageCropDialogComponent,
-    SandwichMenuComponent,
     SettingsPanelComponent,
     ConfirmationModalComponent,
     AudioUploaderComponent,
@@ -41,10 +36,7 @@ import { AppUpdateBadgeComponent } from './app-update-badge';
     SwipeDirective,
     BodyPortalDirective,
     HorizontalToolbarScrollDirective,
-    GameKeyboardHelpComponent,
     ShortcutHelpPanelComponent,
-    GameFinishOverlayComponent,
-    GameCountdownComponent,
     RandomPickerComponent,
     LeaderboardStarRatingComponent,
     LeaderboardStudentRowComponent,
@@ -65,16 +57,12 @@ import { AppUpdateBadgeComponent } from './app-update-badge';
   ],
   exports: [
     ImageUploaderComponent,
-    SandwichMenuComponent,
     SettingsPanelComponent,
     AudioUploaderComponent,
     ThemePickerComponent,
     SwipeDirective,
     HorizontalToolbarScrollDirective,
-    GameKeyboardHelpComponent,
     ShortcutHelpPanelComponent,
-    GameFinishOverlayComponent,
-    GameCountdownComponent,
     RandomPickerComponent,
     LeaderboardStarRatingComponent,
     LeaderboardStudentRowComponent,

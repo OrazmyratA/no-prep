@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GAMES, GameConfig } from '../games.config';
@@ -41,7 +41,6 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
     private router: Router,
     private resizeService: ResizeService,
     private cdr: ChangeDetectorRef,
-    private elementRef: ElementRef<HTMLElement>,
     private leaderboardState: LeaderboardStateService
   ) {}
 
@@ -68,10 +67,6 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   private recalculateLayout() {
-    const root = this.elementRef.nativeElement.querySelector('.activity-page') as HTMLElement | null;
-    if (root) {
-      root.getBoundingClientRect();
-    }
     this.cdr.detectChanges();
   }
 

@@ -5,12 +5,15 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { TrackedAudio, isTypingTarget } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 @Component({
   selector: 'app-spotlight',
-  standalone: false,
+  imports: [CommonModule, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './spotlight.html',
   styleUrls: ['./spotlight.css']
 })

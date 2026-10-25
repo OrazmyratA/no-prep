@@ -8,7 +8,7 @@ describe('FlipTilesComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [FlipTilesComponent]
+      imports: [FlipTilesComponent]
     })
     .compileComponents();
 

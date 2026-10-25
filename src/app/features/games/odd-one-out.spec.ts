@@ -8,7 +8,7 @@ describe('OddOneOutComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [OddOneOutComponent]
+      imports: [OddOneOutComponent]
     })
     .compileComponents();
 

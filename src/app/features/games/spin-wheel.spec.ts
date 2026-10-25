@@ -8,7 +8,7 @@ describe('SpinWheel', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [SpinWheelComponent]
+      imports: [SpinWheelComponent]
     })
     .compileComponents();
 

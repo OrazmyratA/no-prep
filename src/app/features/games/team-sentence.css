@@ -382,6 +382,16 @@
   box-shadow: none;
   touch-action: none;
 }
+/* Tiles and mines drift every frame. Moving them with `translate` (set in px, see offsetIn) instead
+   of top/left needs no layout and no repaint of the blurred panels behind them. `translate` applies
+   before their centring/hover/shake `transform`, so they land exactly where top/left put them.
+   Only where supported (see moveByTranslate) — older WebViews keep top/left. */
+.move-by-translate .floating-word,
+.move-by-translate .floating-mine {
+  top: 0;
+  left: 0;
+  will-change: translate;
+}
 .one-by-one-controls {
   position: absolute;
   left: 50%;

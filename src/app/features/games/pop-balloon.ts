@@ -1,15 +1,19 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewInit, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewInit, HostListener, NgZone } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 type RPSChoice = 'rock' | 'paper' | 'scissors';
 
@@ -74,7 +78,7 @@ interface PopReward {
 
 @Component({
   selector: 'app-pop-balloon',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './pop-balloon.html',
   styleUrls: ['./pop-balloon.css']
 })
@@ -126,6 +130,14 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   private timers = new TimerBag(() => this.destroyed);
   private destroyed = false;
   private stringTrackFrame?: number;
+  // localStorage.popBalloonDebugStrings = '1' logs the string coordinates (read once, not per frame).
+  private readonly debugStrings = (() => {
+    try {
+      return localStorage.getItem('popBalloonDebugStrings') === '1';
+    } catch {
+      return false;
+    }
+  })();
   private gameStartTime = 0;
 
   private objectUrls: string[] = [];
@@ -168,7 +180,8 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private langService: LanguageService,
-    private resizeService: ResizeService
+    private resizeService: ResizeService,
+    private zone: NgZone
   ) {}
 
   // 1st pick: the balloon-pop question face. Last pick (when 2-3 are chosen): what the
@@ -1118,7 +1131,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
       team.balloons.forEach(balloon => {
         const balloonElement = document.getElementById(this.balloonDomId(team.id, balloon.id));
         if (!balloonElement) return;
-        const balloonRect = balloonElement.getBoundingClientRect();
+        // The tilted body (the tilt is on .balloon-content), so the string meets its bottom.
+        const balloonBody = balloonElement.querySelector('.balloon-content') ?? balloonElement;
+        const balloonRect = balloonBody.getBoundingClientRect();
         const startX = balloonRect.left + balloonRect.width / 2;
         const startY = balloonRect.bottom - this.stringBalloonOverlap;
         const dx = targetX - startX;
@@ -1130,10 +1145,10 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         balloon.stringTop = startY + 'px';
         balloon.stringLength = length + 'px';
         balloon.stringAngle = angle;
-        debugRows.push(this.buildStringDebugRow(balloon.id, startX, startY, targetX, targetY, length, angleNumber));
+        if (this.debugStrings) debugRows.push(this.buildStringDebugRow(balloon.id, startX, startY, targetX, targetY, length, angleNumber));
       });
     });
-    this.logStringCoordinates('live', lastTargetX, lastTargetY, debugRows);
+    if (this.debugStrings) this.logStringCoordinates('live', lastTargetX, lastTargetY, debugRows);
     this.cdr.detectChanges();
   }
 
@@ -1165,16 +1180,13 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private logStringCoordinates(source: string, targetX: number, targetY: number, rows: Array<Record<string, number | string>>) {
-    try {
-      if (localStorage.getItem('popBalloonDebugStrings') !== '1') return;
-      console.groupCollapsed(`[PopBalloon strings:${source}] target=(${Math.round(targetX)}, ${Math.round(targetY)})`);
-      console.table(rows);
-      console.groupEnd();
-    } catch {
-      // Debug logging should never affect gameplay.
-    }
+    console.groupCollapsed(`[PopBalloon strings:${source}] target=(${Math.round(targetX)}, ${Math.round(targetY)})`);
+    console.table(rows);
+    console.groupEnd();
   }
 
+  // The string loops only touch this component's view (detectChanges), so they run outside the
+  // zone: a frame no longer also triggers a change detection pass over the whole app.
   private sequenceStringUpdates() {
     let frames = 0;
     const frameUpdate = () => {
@@ -1184,7 +1196,7 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         requestAnimationFrame(frameUpdate);
       }
     };
-    requestAnimationFrame(frameUpdate);
+    this.zone.runOutsideAngular(() => requestAnimationFrame(frameUpdate));
   }
 
   private trackStringsThroughRise(duration = 3500) {
@@ -1204,7 +1216,9 @@ export class PopBalloonComponent implements OnInit, AfterViewInit, OnDestroy {
         this.updateAllStringParams();
       }
     };
-    this.stringTrackFrame = requestAnimationFrame(frameUpdate);
+    this.zone.runOutsideAngular(() => {
+      this.stringTrackFrame = requestAnimationFrame(frameUpdate);
+    });
   }
 
   private cancelStringTracking() {

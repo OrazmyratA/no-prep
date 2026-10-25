@@ -5,8 +5,13 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { ResizeService } from '../../core/resize';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { TrackedAudio, isTypingTarget, TimerBag, GameCountdown } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameCountdownComponent } from '../../shared/game-countdown';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface WordTile {
   id: number;
@@ -36,11 +41,14 @@ interface Team {
   mines: Mine[];
   containerEl: HTMLElement | null;
   frozenUntil: number | null;   // timestamp (ms) when freeze ends
+  // Size of the floating area, read every frame by updatePositions (for offsetIn).
+  width?: number;
+  height?: number;
 }
 
 @Component({
   selector: 'app-team-sentence',
-  standalone: false,
+  imports: [CommonModule, GameCountdownComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './team-sentence.html',
   styleUrls: ['./team-sentence.css']
 })
@@ -59,6 +67,9 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
   private destroyed = false;
   private timers = new TimerBag(() => this.destroyed);
   private animationFrame: any;
+  /** Drifting tiles move by `translate` (see team-sentence.css) where the browser supports it. */
+  readonly moveByTranslate = typeof CSS !== 'undefined' && typeof CSS.supports === 'function'
+    && CSS.supports('translate', '1px 1px');
   countdown = new GameCountdown(() => this.cdr.detectChanges());
   private speed = 4;
   reverseMode = false;
@@ -381,14 +392,23 @@ export class TeamSentenceComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** A tile's or mine's position (in % of its floating area) as a `translate` in px. */
+  offsetIn(team: Team, item: { left: number; top: number }): string {
+    const width = team.width || team.containerEl?.clientWidth || 0;
+    const height = team.height || team.containerEl?.clientHeight || 0;
+    return `${(item.left * width) / 100}px ${(item.top * height) / 100}px`;
+  }
+
   private updatePositions() {
     const updateTeam = (team: Team) => {
-      // Skip if frozen (pause movement)
-      if (this.isFrozen(team)) return;
       if (!team.containerEl) return;
       const container = team.containerEl;
       const width = container.clientWidth;
       const height = container.clientHeight;
+      team.width = width;
+      team.height = height;
+      // Skip if frozen (pause movement)
+      if (this.isFrozen(team)) return;
       if (width === 0 || height === 0) return;
       const movementScale = this.movementScale;
 

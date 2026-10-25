@@ -150,7 +150,7 @@ export const GAMES: GameConfig[] = [
     nameKey: 'gameSquidGameName',
     descKey: 'gameSquidGameDesc',
     icon: '\u{1F991}',
-    iconImage: 'assets/images/characters/squid-icon.png',
+    iconImage: 'assets/images/characters/squid-icon.webp',
     requiresSettings: true,
   },
   {

@@ -8,7 +8,7 @@ describe('CupClashComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [CupClashComponent]
+      imports: [CupClashComponent]
     })
     .compileComponents();
 

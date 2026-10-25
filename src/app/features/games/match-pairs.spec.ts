@@ -8,7 +8,7 @@ describe('MatchPairs', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [MatchPairsComponent]
+      imports: [MatchPairsComponent]
     })
     .compileComponents();
 

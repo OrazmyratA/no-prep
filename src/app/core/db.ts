@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { db, Topic, Item, LeaderboardScore, CefrLevel, SpeakingExam } from './db.model';
 
@@ -6,25 +6,100 @@ import { db, Topic, Item, LeaderboardScore, CefrLevel, SpeakingExam } from './db
 export class DbService {
   private topicsSubject = new BehaviorSubject<Topic[]>([]);
   topics$: Observable<Topic[]> = this.topicsSubject.asObservable();
+  /** False until the topics were read once: topics$ starts as [] before that, which is not "none". */
+  topicsLoaded = false;
 
-  constructor() {
+  // Topic id → object URL of its cover: the first item, in play order, that has a picture.
+  // Kept for the whole session, so coming back to the topics list costs nothing. '' = no picture.
+  private coverUrls = new Map<number, string>();
+  private coverUrlsSubject = new BehaviorSubject<ReadonlyMap<number, string>>(this.coverUrls);
+  topicCoverUrls$: Observable<ReadonlyMap<number, string>> = this.coverUrlsSubject.asObservable();
+  private coverRun = 0;
+
+  constructor(private zone: NgZone) {
     this.refreshTopics();
   }
 
   private async refreshTopics() {
     const topics = await db.topics.orderBy('updatedAt').reverse().toArray();
-    const topicIds = topics.map(t => t.id!);
-    const items = await db.items.where('topicId').anyOf(topicIds).toArray();
-    const countMap = new Map<number, number>();
-    items.forEach(item => {
-      countMap.set(item.topicId, (countMap.get(item.topicId) || 0) + 1);
+    // Outside the zone: each of the per-topic reads settling in it would run change detection
+    // over the whole app (~120 passes on a big library) before the cards can even be built.
+    const itemIds = await this.zone.runOutsideAngular(() => this.itemIdsByTopic(topics.map(t => t.id!)));
+    const topicsWithCount = topics.map(t => ({ ...t, itemCount: itemIds.get(t.id!)?.length || 0 }));
+    this.zone.run(() => {
+      this.topicsLoaded = true;
+      this.topicsSubject.next(topicsWithCount);
     });
-    const topicsWithCount = topics.map(t => ({ ...t, itemCount: countMap.get(t.id!) || 0 }));
-    this.topicsSubject.next(topicsWithCount);
+    void this.refreshCovers(topicsWithCount, itemIds);
+  }
+
+  /**
+   * Item ids per topic in play order (`order`, then id — the same as sortBy('order')), read from
+   * the indexes alone. Reading the item records instead would open every picture and voice clip.
+   * One bulk key read per topic (in parallel) is ~5× faster than a cursor stepping through every
+   * item key, which held up the first topic cards on a slow PC.
+   */
+  private async itemIdsByTopic(topicIds: number[]): Promise<Map<number, number[]>> {
+    const [perTopic, inPlayOrder] = await Promise.all([
+      Promise.all(topicIds.map(id => db.items.where('topicId').equals(id).primaryKeys())),
+      db.items.orderBy('order').primaryKeys()
+    ]);
+    const rank = new Map<number, number>();
+    inPlayOrder.forEach((id, index) => rank.set(id as number, index));
+    // Items without an `order` are not in that index; they go last, by id.
+    const byPlayOrder = (a: number, b: number) => (rank.get(a) ?? Infinity) - (rank.get(b) ?? Infinity) || a - b;
+    return new Map(topicIds.map((id, i) => [id, (perTopic[i] as number[]).sort(byPlayOrder)]));
+  }
+
+  private async refreshCovers(topics: Topic[], itemIds: Map<number, number[]>): Promise<void> {
+    const run = ++this.coverRun;
+    const pending = new Map<number, number[]>();
+    for (const topic of topics) {
+      if (topic.id != null && !this.coverUrls.has(topic.id)) pending.set(topic.id, itemIds.get(topic.id) ?? []);
+    }
+
+    // Look at each topic's first item, then the second for those without a picture, and so on —
+    // usually a single read of one item per topic.
+    const found = new Map<number, Blob | null>();
+    for (let index = 0; pending.size; index++) {
+      const asked = [...pending].filter(([topicId, ids]) => {
+        if (index < ids.length) return true;
+        found.set(topicId, null);
+        pending.delete(topicId);
+        return false;
+      });
+      if (!asked.length) break;
+      const items = await db.items.bulkGet(asked.map(([, ids]) => ids[index]));
+      if (run !== this.coverRun) return;
+      asked.forEach(([topicId], i) => {
+        const image = items[i]?.image;
+        if (!image) return;
+        found.set(topicId, image);
+        pending.delete(topicId);
+      });
+    }
+
+    const liveIds = new Set(topics.map(topic => topic.id));
+    for (const topicId of [...this.coverUrls.keys()]) {
+      if (!liveIds.has(topicId)) this.dropCover(topicId);
+    }
+    for (const [topicId, image] of found) {
+      this.coverUrls.set(topicId, image ? URL.createObjectURL(image) : '');
+    }
+    this.coverUrlsSubject.next(new Map(this.coverUrls));
+  }
+
+  // Also cancels a cover lookup still running, which may have read the topic's items before a change.
+  private dropCover(topicId: number): void {
+    this.coverRun++;
+    const url = this.coverUrls.get(topicId);
+    if (url) URL.revokeObjectURL(url);
+    this.coverUrls.delete(topicId);
   }
 
   // Public method to refresh from outside (e.g., after import)
   async refresh() {
+    for (const topicId of [...this.coverUrls.keys()]) this.dropCover(topicId);
     await this.refreshTopics();
   }
 
@@ -49,6 +124,7 @@ export class DbService {
     await db.items.where('topicId').equals(id).delete();
     await db.speakingResults.where('topicId').equals(id).delete();
     await db.topics.delete(id);
+    this.dropCover(id);
     await this.refreshTopics();
   }
 
@@ -68,6 +144,7 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
     createdAt: now
   }));
   await db.items.bulkAdd(itemsToAdd);
+  this.dropCover(topicId);
   await this.refreshTopics();
 }
 
@@ -104,6 +181,7 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
       await db.leaderboardScores.where('itemId').anyOf(removedIds).delete();
     }
 
+    this.dropCover(topicId);
     await this.refreshTopics();
   }
 

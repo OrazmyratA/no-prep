@@ -5,8 +5,13 @@ import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService, SupportedLanguage } from '../../core/language';
 import { ResizeService } from '../../core/resize';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { shuffled, TrackedAudio, isTypingTarget, GameCountdown } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameCountdownComponent } from '../../shared/game-countdown';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface GridCell {
   letter: string;
@@ -86,7 +91,7 @@ interface WordSearchBoard {
 
 @Component({
   selector: 'app-word-search',
-  standalone: false,
+  imports: [CommonModule, GameCountdownComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './word-search.html',
   styleUrls: ['./word-search.css']
 })

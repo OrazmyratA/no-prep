@@ -25,7 +25,7 @@ describe('GameFinishOverlayComponent', () => {
     });
 
     await TestBed.configureTestingModule({
-      declarations: [GameFinishOverlayComponent],
+      imports: [GameFinishOverlayComponent],
       providers: [{ provide: GameFinishConfettiService, useValue: confettiService }]
     }).compileComponents();
 

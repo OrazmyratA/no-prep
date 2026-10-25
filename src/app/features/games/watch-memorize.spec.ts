@@ -8,7 +8,7 @@ describe('WatchMemorizeComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [WatchMemorizeComponent]
+      imports: [WatchMemorizeComponent]
     })
     .compileComponents();
 

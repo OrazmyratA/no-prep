@@ -63,7 +63,7 @@ export class BookCreatorGuidePreviewController {
     this.creator.previewGuideCurrentTime = 0;
     this.creator.previewGuideDuration = 0;
     this.creator.previewGuidePaused = true;
-    this.creator.previewOwlImage = 'assets/gifs/owl-corner.gif';
+    this.creator.previewOwlImage = 'assets/gifs/owl-corner.webp';
   }
 
   selectGuideTrack(element: BookElement, track: GuideAudioTrack): void {

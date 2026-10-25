@@ -8,7 +8,7 @@ describe('AnagramComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [AnagramComponent]
+      imports: [AnagramComponent]
     })
     .compileComponents();
 

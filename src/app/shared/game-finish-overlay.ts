@@ -10,6 +10,8 @@ import {
   Output
 } from '@angular/core';
 import confetti from 'canvas-confetti';
+import { CommonModule } from '@angular/common';
+import { TranslatePipe } from './translate-pipe';
 
 export interface GameFinishRanking {
   position?: number;
@@ -92,7 +94,7 @@ export class GameFinishConfettiService {
 
 @Component({
   selector: 'app-game-finish-overlay',
-  standalone: false,
+  imports: [CommonModule, TranslatePipe],
   templateUrl: './game-finish-overlay.html',
   styleUrls: ['./game-finish-overlay.css']
 })

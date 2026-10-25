@@ -3,9 +3,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 import { isTypingTarget } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface Ball {
   id: number;
@@ -89,7 +93,7 @@ interface PendingMove {
 
 @Component({
   selector: 'app-ball-sort',
-  standalone: false,
+  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './ball-sort.html',
   styleUrls: ['./ball-sort.css']
 })

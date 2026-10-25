@@ -1,6 +1,8 @@
 <div class="game-container">
   <!-- Video background -->
-  <video class="video-background" autoplay muted loop>
+  <!-- [muted]: Angular creates the element in code, where the muted attribute alone does not mute it
+       and the browser then refuses to autoplay without a click first. -->
+  <video class="video-background" autoplay [muted]="true" loop>
     <source src="assets/videos/underwater.mp4" type="video/mp4">
   </video>
 
@@ -63,14 +65,15 @@
           <ng-template #leftSentenceText>{{ word }}</ng-template>
         </div>
       </div>
-      <div class="floating-area" #leftContainer>
+      <div class="floating-area" [class.move-by-translate]="moveByTranslate" #leftContainer>
         <div *ngFor="let tile of teams.left.floatingWords; trackBy: trackByWordTile" 
              class="floating-word"
              [class.image-mode]="reverseMode && tile.image"
              [class.sound-locked]="!currentSoundSentence"
              [class.shake]="isTileShaking('left', tile.id)"
-             [style.top.%]="tile.top" 
-             [style.left.%]="tile.left"
+             [style.top.%]="moveByTranslate ? null : tile.top" 
+             [style.left.%]="moveByTranslate ? null : tile.left" 
+             [style.translate]="moveByTranslate ? offsetIn(teams.left, tile) : null"
              (pointerdown)="onWordPress($event, 'left', tile)">
           <ng-container *ngIf="reverseMode && tile.image && tile.itemId !== undefined; else leftTileText">
             <img [src]="imageUrl(tile.image, tile.itemId)" [alt]="tile.word" class="tile-image floating-image">
@@ -79,8 +82,9 @@
         </div>
         <div *ngFor="let mine of teams.left.mines; trackBy: trackByMine" 
              class="floating-mine" 
-             [style.top.%]="mine.top" 
-             [style.left.%]="mine.left"
+             [style.top.%]="moveByTranslate ? null : mine.top" 
+             [style.left.%]="moveByTranslate ? null : mine.left" 
+             [style.translate]="moveByTranslate ? offsetIn(teams.left, mine) : null"
              (pointerdown)="onMinePress($event, 'left', mine)">
           <img src="assets/images/mine.png" alt="mine" class="mine-image">
         </div>
@@ -98,7 +102,7 @@
 
     <!-- Center anchor divider -->
     <div *ngIf="!singleTeamMode" class="center-divider">
-      <img src="assets/images/anchor.png" alt="anchor" class="anchor-image">
+      <img src="assets/images/anchor.webp" alt="anchor" class="anchor-image">
     </div>
 
     <!-- Right team side -->
@@ -118,14 +122,15 @@
           <ng-template #rightSentenceText>{{ word }}</ng-template>
         </div>
       </div>
-      <div class="floating-area" #rightContainer>
+      <div class="floating-area" [class.move-by-translate]="moveByTranslate" #rightContainer>
         <div *ngFor="let tile of teams.right.floatingWords; trackBy: trackByWordTile" 
              class="floating-word"
              [class.image-mode]="reverseMode && tile.image"
              [class.sound-locked]="!currentSoundSentence"
              [class.shake]="isTileShaking('right', tile.id)"
-             [style.top.%]="tile.top" 
-             [style.left.%]="tile.left"
+             [style.top.%]="moveByTranslate ? null : tile.top" 
+             [style.left.%]="moveByTranslate ? null : tile.left" 
+             [style.translate]="moveByTranslate ? offsetIn(teams.right, tile) : null"
              (pointerdown)="onWordPress($event, 'right', tile)">
           <ng-container *ngIf="reverseMode && tile.image && tile.itemId !== undefined; else rightTileText">
             <img [src]="imageUrl(tile.image, tile.itemId)" [alt]="tile.word" class="tile-image floating-image">
@@ -134,8 +139,9 @@
         </div>
         <div *ngFor="let mine of teams.right.mines; trackBy: trackByMine" 
              class="floating-mine" 
-             [style.top.%]="mine.top" 
-             [style.left.%]="mine.left"
+             [style.top.%]="moveByTranslate ? null : mine.top" 
+             [style.left.%]="moveByTranslate ? null : mine.left" 
+             [style.translate]="moveByTranslate ? offsetIn(teams.right, mine) : null"
              (pointerdown)="onMinePress($event, 'right', mine)">
           <img src="assets/images/mine.png" alt="mine" class="mine-image">
         </div>

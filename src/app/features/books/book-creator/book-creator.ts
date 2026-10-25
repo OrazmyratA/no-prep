@@ -161,7 +161,7 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   canSwitchBook = async (): Promise<boolean> => this.confirmSaveBeforeLeaving();
   previewGuideElementId: string | null = null;
   previewBubbleText = '';
-  previewOwlImage = 'assets/gifs/owl-corner.gif';
+  previewOwlImage = 'assets/gifs/owl-corner.webp';
   previewGuideImageUrl = '';
   previewGuideX = 0.5;
   previewGuideY = 0.5;

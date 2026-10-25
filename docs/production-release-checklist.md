@@ -46,6 +46,18 @@ Check that the installer includes:
 - `node_modules/@ffmpeg-installer/**/*`
 - `native/security-core/*.node`
 
+`build.files` in `package.json` also leaves out packages the desktop main process never loads —
+they are bundled into `dist/` by Angular or belong to the Android build (`@angular`, `@capacitor`,
+`rxjs`, `dexie`, …; installer 187 → 140 MB). If main-process code starts using one of them, it works
+in development and breaks only once installed, so check the packaged build:
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE=1; release\win-unpacked\No-Prep.exe scripts\check-packaged-app.cjs release\win-unpacked\resources; Remove-Item Env:ELECTRON_RUN_AS_NODE
+```
+
+It must end with "All … main-process packages load". `pdfjs-dist` (legacy build) and `@napi-rs/canvas`
+must stay: the main process counts PDF pages with pdf.js, which needs that canvas just to load.
+
 Before sharing the installer, smoke test:
 
 - Open an existing book.

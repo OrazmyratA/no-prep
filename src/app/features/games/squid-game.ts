@@ -1,11 +1,16 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { getTeamIndexForKey, getTeamKeyboardKeys, teamKeyboardShortcutLabel } from './team-keyboard-layout';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 import { shuffled, TrackedAudio, isTypingTarget, GameCountdown } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameCountdownComponent } from '../../shared/game-countdown';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface QuizOption {
   id: number;
@@ -33,7 +38,7 @@ interface QuizState {
 
 @Component({
   selector: 'app-squid-game',
-  standalone: false,
+  imports: [CommonModule, GameCountdownComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './squid-game.html',
   styleUrls: ['./squid-game.css']
 })
@@ -259,7 +264,7 @@ export class SquidGameComponent implements OnInit, OnDestroy {
       this.computeFinishLine();
       this.cdr.detectChanges();
     };
-    img.src = 'assets/images/squid-game-back.png';
+    img.src = 'assets/images/squid-game-back.webp';
   }
 
   private computeFinishLine() {

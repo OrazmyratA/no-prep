@@ -39,8 +39,7 @@ describe('ReadingDetectiveComponent', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
     await TestBed.configureTestingModule({
-      declarations: [ReadingDetectiveComponent],
-      imports: [TranslatePipe],
+      imports: [ReadingDetectiveComponent, TranslatePipe],
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['id', '1']]) } } },
         { provide: Router, useValue: router },

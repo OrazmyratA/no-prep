@@ -73,6 +73,12 @@
                 }
               ],
               "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/app/core/language-dictionary.ts",
+                  "with": "src/app/core/language-dictionary.generated.ts"
+                }
+              ],
               "optimization": {
                 "scripts": true,
                 "styles": {

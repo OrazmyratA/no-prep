@@ -37,7 +37,7 @@ export class BookReaderSpeakingAiController {
     this.reader.speakingPanelExpanded = true;
     this.reader.moveOwlToElement(element, page);
     this.reader.owlTeaching = false;
-    this.reader.owlImage = 'assets/gifs/owl-corner.gif';
+    this.reader.owlImage = 'assets/gifs/owl-corner.webp';
     void this.reader.refreshSpeakingRuntimeStatus(element);
     this.reader.forceUiRefresh();
   }

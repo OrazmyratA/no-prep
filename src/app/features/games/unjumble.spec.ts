@@ -8,7 +8,7 @@ describe('UnjumbleComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [UnjumbleComponent]
+      imports: [UnjumbleComponent]
     })
     .compileComponents();
 

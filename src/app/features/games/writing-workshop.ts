@@ -6,7 +6,7 @@ import { LanguageService } from '../../core/language';
 import { AiTopicError, AiTopicProviderId, AiTopicService } from '../../core/ai-topic/ai-topic.service';
 import { WritingCheckResult, WritingGapFeedback, gapFeedbackKey } from '../../core/ai-topic/writing-check';
 import { LANGUAGE_NAMES } from '../topics/ai-topic-dialog/ai-topic-dialog';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { ConfettiInstance, ConfettiOptions, GameFinishConfettiService } from '../../shared/game-finish-overlay';
 import { TrackedAudio, isTypingTarget, TimerBag, shuffled } from './game-utils';
 import {
@@ -21,6 +21,9 @@ import {
   tokenLabel,
   tokenizeSentence
 } from './writing-text';
+import { CommonModule } from '@angular/common';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 // Writing Workshop (docs/writing-workshop.md): the student rebuilds a model text paragraph by
 // paragraph. Each item is one sentence - its image is the question, its text the answer. A
@@ -60,7 +63,7 @@ const CONFETTI_COLORS = ['#facc15', '#38bdf8', '#fb7185', '#34d399', '#a78bfa', 
 
 @Component({
   selector: 'app-writing-workshop',
-  standalone: false,
+  imports: [CommonModule, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './writing-workshop.html',
   styleUrls: ['./writing-workshop.css']
 })

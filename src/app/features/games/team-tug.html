@@ -33,13 +33,13 @@
       <video
         autoplay
         loop
-        muted
+        [muted]="true"
         playsinline
         class="character-video"
         [style.left]="characterPosition + '%'"
         [style.width]="characterWidth + '%'"
       >
-        <source src="assets/videos/playing.mp4" type="video/mp4" />
+        <source src="assets/videos/playing.webm" type="video/webm" />
       </video>
     </section>
 

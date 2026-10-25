@@ -8,6 +8,10 @@
 /release
 native/security-core/target/
 
+# Per-language texts for production builds (npm run build -> scripts/split-translations.js)
+/src/app/core/i18n/
+/src/app/core/language-dictionary.generated.ts
+
 # Node
 /node_modules
 npm-debug.log

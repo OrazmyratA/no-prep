@@ -33,10 +33,13 @@ import {
   SpeakingTaskType,
   turnSeconds
 } from '../../core/speaking-exams';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { ConfettiInstance, ConfettiOptions, GameFinishConfettiService } from '../../shared/game-finish-overlay';
 import { isTypingTarget, TimerBag } from './game-utils';
 import { buildSpeakingTest, findPowerWords, isInArea, SpPart, SpTurn } from './speaking-model';
+import { CommonModule } from '@angular/common';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 // Talk Show (docs/talk-show.md): a speaking mock exam - Starters, Movers, Flyers, KET, PET, IELTS.
 // The examiner's lines are read aloud, the candidate answers "on air" against a soft timer, the
@@ -89,7 +92,7 @@ const RECORD_SETTING_KEY = 'talkShowRecordAnswers';
 
 @Component({
   selector: 'app-talk-show',
-  standalone: false,
+  imports: [CommonModule, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './talk-show.html',
   styleUrls: ['./talk-show.css']
 })

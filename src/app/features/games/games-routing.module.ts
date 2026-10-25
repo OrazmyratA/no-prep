@@ -1,57 +1,33 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { SpinWheelComponent } from './spin-wheel';
-import { FlipTilesComponent } from './flip-tiles';
-import { RevealGameComponent } from './reveal-game';
-import { MatchPairsComponent } from './match-pairs';
-import { BallSortComponent } from './ball-sort';
-import { WatchMemorizeComponent } from './watch-memorize';
-import { AnagramComponent } from './anagram';
-import { UnjumbleComponent } from './unjumble';
-import { WritingWorkshopComponent } from './writing-workshop';
-import { ReadingDetectiveComponent } from './reading-detective';
-import { TalkShowComponent } from './talk-show';
-import { WordSearchComponent } from './word-search';
-import { PopBalloonComponent } from './pop-balloon';
-import { SpotlightComponent } from './spotlight';
-import { TeamTugComponent } from './team-tug';
-import { CupClashComponent } from './cup-clash';
-import { OddOneOutComponent } from './odd-one-out';
-import { TestAbcComponent } from './test-abc';
-import { TeamSentenceComponent } from './team-sentence';
-import { SpellingCheckComponent } from './spelling-check';
-import { SquidGameComponent } from './squid-game';
-import { RockPaperScissorsComponent } from './rock-paper-scissors';
-import { TracingComponent } from './tracing';
-import { LineTraceMatchComponent } from './line-trace-match';
-import { FlashcardHuntComponent } from './flashcard-hunt';
 
+// One lazy chunk per game: starting a game downloads and parses only that game.
 const routes: Routes = [
-  { path: 'spin-wheel', component: SpinWheelComponent },
-  { path: 'flip-tiles', component: FlipTilesComponent },
-  { path: 'reveal-game', component: RevealGameComponent },
-  { path: 'match-pairs', component: MatchPairsComponent },
-  { path: 'ball-sort', component: BallSortComponent },
-  { path: 'watch-memorize', component: WatchMemorizeComponent },
-  { path: 'anagram', component: AnagramComponent },
-  { path: 'unjumble', component: UnjumbleComponent },
-  { path: 'writing-workshop', component: WritingWorkshopComponent },
-  { path: 'reading-detective', component: ReadingDetectiveComponent },
-  { path: 'talk-show', component: TalkShowComponent },
-  { path: 'word-search', component: WordSearchComponent },
-  { path: 'pop-balloon', component: PopBalloonComponent },
-  { path: 'spotlight', component: SpotlightComponent },
-  { path: 'team-tug', component: TeamTugComponent},
-  { path: 'cup-clash', component: CupClashComponent },
-  { path: 'odd-one-out', component: OddOneOutComponent },
-  { path: 'test-abc', component: TestAbcComponent },
-  { path: 'team-sentence', component: TeamSentenceComponent },
-  { path: 'spelling-check', component: SpellingCheckComponent },
-  { path: 'squid-game', component: SquidGameComponent },
-  { path: 'rock-paper-scissors', component: RockPaperScissorsComponent },
-  { path: 'tracing', component: TracingComponent },
-  { path: 'line-trace-match', component: LineTraceMatchComponent },
-  { path: 'flashcard-hunt', component: FlashcardHuntComponent }
+  { path: 'spin-wheel', loadComponent: () => import('./spin-wheel').then(m => m.SpinWheelComponent) },
+  { path: 'flip-tiles', loadComponent: () => import('./flip-tiles').then(m => m.FlipTilesComponent) },
+  { path: 'reveal-game', loadComponent: () => import('./reveal-game').then(m => m.RevealGameComponent) },
+  { path: 'match-pairs', loadComponent: () => import('./match-pairs').then(m => m.MatchPairsComponent) },
+  { path: 'ball-sort', loadComponent: () => import('./ball-sort').then(m => m.BallSortComponent) },
+  { path: 'watch-memorize', loadComponent: () => import('./watch-memorize').then(m => m.WatchMemorizeComponent) },
+  { path: 'anagram', loadComponent: () => import('./anagram').then(m => m.AnagramComponent) },
+  { path: 'unjumble', loadComponent: () => import('./unjumble').then(m => m.UnjumbleComponent) },
+  { path: 'writing-workshop', loadComponent: () => import('./writing-workshop').then(m => m.WritingWorkshopComponent) },
+  { path: 'reading-detective', loadComponent: () => import('./reading-detective').then(m => m.ReadingDetectiveComponent) },
+  { path: 'talk-show', loadComponent: () => import('./talk-show').then(m => m.TalkShowComponent) },
+  { path: 'word-search', loadComponent: () => import('./word-search').then(m => m.WordSearchComponent) },
+  { path: 'pop-balloon', loadComponent: () => import('./pop-balloon').then(m => m.PopBalloonComponent) },
+  { path: 'spotlight', loadComponent: () => import('./spotlight').then(m => m.SpotlightComponent) },
+  { path: 'team-tug', loadComponent: () => import('./team-tug').then(m => m.TeamTugComponent) },
+  { path: 'cup-clash', loadComponent: () => import('./cup-clash').then(m => m.CupClashComponent) },
+  { path: 'odd-one-out', loadComponent: () => import('./odd-one-out').then(m => m.OddOneOutComponent) },
+  { path: 'test-abc', loadComponent: () => import('./test-abc').then(m => m.TestAbcComponent) },
+  { path: 'team-sentence', loadComponent: () => import('./team-sentence').then(m => m.TeamSentenceComponent) },
+  { path: 'spelling-check', loadComponent: () => import('./spelling-check').then(m => m.SpellingCheckComponent) },
+  { path: 'squid-game', loadComponent: () => import('./squid-game').then(m => m.SquidGameComponent) },
+  { path: 'rock-paper-scissors', loadComponent: () => import('./rock-paper-scissors').then(m => m.RockPaperScissorsComponent) },
+  { path: 'tracing', loadComponent: () => import('./tracing').then(m => m.TracingComponent) },
+  { path: 'line-trace-match', loadComponent: () => import('./line-trace-match').then(m => m.LineTraceMatchComponent) },
+  { path: 'flashcard-hunt', loadComponent: () => import('./flashcard-hunt').then(m => m.FlashcardHuntComponent) }
 ];
 
 @NgModule({

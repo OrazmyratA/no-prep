@@ -3,8 +3,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { isTypingTarget, TimerBag, GameCountdown } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameCountdownComponent } from '../../shared/game-countdown';
+import { GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 interface Team {
   name: string;
@@ -19,7 +24,7 @@ interface TeamChoice {
 
 @Component({
   selector: 'app-team-tug',
-  standalone: false,
+  imports: [CommonModule, GameCountdownComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './team-tug.html',
   styleUrls: ['./team-tug.css']
 })

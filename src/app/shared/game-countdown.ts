@@ -1,9 +1,11 @@
 import { Component, Input } from '@angular/core';
 import { CountdownLabel } from '../features/games/game-utils';
+import { CommonModule } from '@angular/common';
+import { TranslatePipe } from './translate-pipe';
 
 @Component({
   selector: 'app-game-countdown',
-  standalone: false,
+  imports: [CommonModule, TranslatePipe],
   templateUrl: './game-countdown.html',
   styleUrls: ['./game-countdown.css']
 })

@@ -1,9 +1,10 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const archiverModule = require('archiver');
-const extractZip = require('extract-zip');
-const yauzl = require('yauzl');
+// The zip libraries are loaded when a book is first exported/imported, not while the app starts.
+const loadArchiver = () => require('archiver');
+const loadExtractZip = () => require('extract-zip');
+const loadYauzl = () => require('yauzl');
 const {
   MAX_ZIP_ENTRIES,
   ZIP_IFMT,
@@ -73,7 +74,7 @@ function createArchiveUtils({ sendProgress }) {
     await fsp.mkdir(destinationDir, { recursive: true });
     await validateZipPackageEntries(packagePath);
     let processedBytes = 0;
-    await extractZip(packagePath, {
+    await loadExtractZip()(packagePath, {
       dir: destinationDir,
       onEntry: (entry) => {
         processedBytes += Number(entry.uncompressedSize || entry.compressedSize || 0);
@@ -94,6 +95,7 @@ function createArchiveUtils({ sendProgress }) {
 }
 
 function createZipArchive(options) {
+  const archiverModule = loadArchiver();
   if (typeof archiverModule === 'function') {
     return archiverModule('zip', options);
   }
@@ -119,7 +121,7 @@ function isZipEntrySymlink(entry) {
 
 async function validateZipPackageEntries(packagePath) {
   return new Promise((resolve, reject) => {
-    yauzl.open(packagePath, { lazyEntries: true }, (openError, zipfile) => {
+    loadYauzl().open(packagePath, { lazyEntries: true }, (openError, zipfile) => {
       if (openError) {
         reject(openError);
         return;
@@ -154,7 +156,7 @@ async function validateZipPackageEntries(packagePath) {
 
 async function getZipUncompressedSize(packagePath) {
   return new Promise((resolve, reject) => {
-    yauzl.open(packagePath, { lazyEntries: true }, (openError, zipfile) => {
+    loadYauzl().open(packagePath, { lazyEntries: true }, (openError, zipfile) => {
       if (openError) {
         reject(openError);
         return;

@@ -4,19 +4,6 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
 
 
 
-  'bookSwitcherSwitchBook': {
-    en: 'Switch book',
-    tk: 'Kitaby üýtget',
-    ru: 'Сменить книгу',
-    cn: '切换图书',
-    cde: 'Buch wechseln',
-    es: 'Cambiar libro',
-    fr: 'Changer de livre',
-    kr: '책 전환',
-    sa: 'تبديل الكتاب',
-    vi: 'Đổi sách',
-  },
-
 
 
 
@@ -36,34 +23,9 @@ export const BOOK_LIBRARY_TRANSLATIONS: TranslationDictionary = {
 
 
 
-  'bookSwitcherPagesCount': {
-    en: '{count} pages',
-    tk: '{count} sahypa',
-    ru: '{count} страниц',
-    cn: '{count} 页',
-    cde: '{count} Seiten',
-    es: '{count} páginas',
-    fr: '{count} pages',
-    kr: '{count}페이지',
-    sa: '{count} صفحة',
-    vi: '{count} trang',
-  },
 
 
 
-
-  'bookSwitcherNoBooks': {
-    en: 'No books found.',
-    tk: 'Kitap tapylmady.',
-    ru: 'Книги не найдены.',
-    cn: '未找到图书。',
-    cde: 'Keine Bücher gefunden.',
-    es: 'No se encontraron libros.',
-    fr: 'Aucun livre trouvé.',
-    kr: '책을 찾을 수 없습니다.',
-    sa: 'لم يتم العثور على كتب.',
-    vi: 'Không tìm thấy sách nào.',
-  },
 
 
 

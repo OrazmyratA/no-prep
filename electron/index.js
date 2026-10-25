@@ -5,6 +5,23 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 
 app.setName('No-Prep');
+
+// One copy of the installed app at a time. A second launch (an impatient double click on a slow
+// PC) used to start another app on the same data: its page waited ~6 s for the storage lock held by
+// the first, and could not save settings. Now it just brings the open window forward. Runs from
+// source are left alone, so a dev launch still works next to the installed app.
+const isPrimaryInstance = !app.isPackaged || app.requestSingleInstanceLock();
+if (!isPrimaryInstance) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+}
+
 Menu.setApplicationMenu(null);
 protocol.registerSchemesAsPrivileged([
   {
@@ -454,6 +471,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (!isPrimaryInstance) return;
   registerBookAssetProtocol();
   createWindow();
 

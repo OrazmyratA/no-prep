@@ -1,9 +1,11 @@
 import { Component, EventEmitter, HostListener, Output } from '@angular/core';
 import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { TranslatePipe } from './translate-pipe';
 
 @Component({
   selector: 'app-sandwich-menu',
-  standalone: false,
+  imports: [CommonModule, TranslatePipe],
   templateUrl: './sandwich-menu.html',
   styleUrls: ['./sandwich-menu.css']
 })

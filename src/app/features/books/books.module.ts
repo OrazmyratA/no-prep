@@ -1,29 +1,8 @@
-import { LessonPlanPanelComponent } from './book-creator/lesson-plan-panel/lesson-plan-panel';
-import { TaskPrepPanelComponent } from './book-creator/task-prep-panel/task-prep-panel';
 import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { SharedModule } from '../../shared/shared.module';
 import { BooksRoutingModule } from './books-routing.module';
-import { BookCreatorComponent } from './book-creator/book-creator';
-import { BookCreatorEditorSurfaceComponent } from './book-creator/book-creator-editor-surface';
-import { BookCreatorInspectorComponent } from './book-creator/book-creator-inspector';
-import { BookCreatorPageStripComponent } from './book-creator/book-creator-page-strip';
-import { BookCreatorToolbarComponent } from './book-creator/book-creator-toolbar';
-import { BookReaderGuideAudioControlsComponent } from './book-reader/book-reader-guide-audio-controls';
-import { BookReaderComponent } from './book-reader/book-reader';
-import { BookReaderPageFrameComponent } from './book-reader/book-reader-page-frame';
-import { BookReaderPageDrawerComponent } from './book-reader/book-reader-page-drawer';
-import { BookReaderProgressMapComponent } from './book-reader/book-reader-progress-map';
-import { BookReaderSpeakingPanelComponent } from './book-reader/book-reader-speaking-panel';
-import { BookReaderTaskOverlayComponent } from './book-reader/book-reader-task-overlay';
-import { BookReaderToolbarComponent } from './book-reader/book-reader-toolbar';
-import { BookSwitcherComponent } from './book-switcher/book-switcher';
-import { PdfPageCanvasComponent } from './pdf-page-canvas/pdf-page-canvas';
-import { TranslatePipe } from '../../shared/translate-pipe';
 
+// The reader and the creator are lazy modules of their own (see books-routing.module.ts).
 @NgModule({
-  declarations: [BookCreatorComponent, LessonPlanPanelComponent, TaskPrepPanelComponent, BookCreatorEditorSurfaceComponent, BookCreatorInspectorComponent, BookCreatorPageStripComponent, BookCreatorToolbarComponent, BookReaderComponent, BookReaderGuideAudioControlsComponent, BookReaderPageFrameComponent, BookReaderPageDrawerComponent, BookReaderProgressMapComponent, BookReaderSpeakingPanelComponent, BookReaderTaskOverlayComponent, BookReaderToolbarComponent, BookSwitcherComponent, PdfPageCanvasComponent],
-  imports: [CommonModule, FormsModule, SharedModule, BooksRoutingModule, TranslatePipe]
+  imports: [BooksRoutingModule]
 })
 export class BooksModule {}

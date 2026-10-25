@@ -195,7 +195,10 @@ body.app-theme-active:not(.app-theme-excluded) .game-container::after {
   background: conic-gradient(from var(--keyboard-selected-angle, 0deg), transparent 0 58%, #22d3ee 64%, #facc15 72%, #ffffff 78%, transparent 84% 100%);
   pointer-events: none;
   z-index: 30;
-  animation: keyboard-selected-orbit 1.05s linear infinite;
+  /* Three turns, then the ring holds still. It restarts on every keyboard move (the ring belongs to
+     the newly selected element). An endless orbit kept a weak PC's main thread busy most of the time
+     on an idle game screen: the angle is a custom property, which the compositor cannot animate. */
+  animation: keyboard-selected-orbit 1.05s linear 3;
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);

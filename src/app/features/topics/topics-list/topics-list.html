@@ -9,7 +9,7 @@
   <!-- Left side: title + category switch + search -->
   <div class="topics-header-left flex items-center gap-4 min-w-0 flex-1">
     <img
-      src="assets/images/noprep-logo.png"
+      src="assets/images/noprep-logo.webp"
       alt="NoPrep"
       width="500"
       height="500"
@@ -378,7 +378,7 @@
     <ng-container *ngIf="isTopicsCategory">
     <div *ngIf="(filteredTopics$ | async)?.length; else emptyOrNoMatch"
          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      <div *ngFor="let topic of filteredTopics$ | async; trackBy: trackByTopicId"
+      <div *ngFor="let topic of filteredTopics$ | async | slice:0:topicCardLimit; trackBy: trackByTopicId"
            (click)="onTopicClick(topic.id!)"
            class="topics-card topic-card group relative np-card rounded-2xl overflow-hidden transform transition-all duration-300 hover:scale-105"
            [class.topic-armed]="isTopicArmed(topic.id!)">
@@ -429,7 +429,7 @@
         </div>
 
         <div class="topic-cover" [class.has-cover]="!!getTopicCoverUrl(topic)">
-          <img *ngIf="getTopicCoverUrl(topic)" [src]="getTopicCoverUrl(topic)" [alt]="topic.name + ' cover'">
+          <img *ngIf="getTopicCoverUrl(topic)" [src]="getTopicCoverUrl(topic)" [alt]="topic.name + ' cover'" loading="lazy" decoding="async">
           <span *ngIf="!getTopicCoverUrl(topic)">{{ topic.name.charAt(0).toUpperCase() }}</span>
         </div>
 
@@ -462,7 +462,8 @@
 
     <!-- Empty State -->
     <ng-template #emptyState>
-      <div class="text-center py-20">
+      <!-- Only once the topics were read: before that the list is [] without meaning "none". -->
+      <div *ngIf="topicsLoaded" class="text-center py-20">
         <div class="text-8xl mb-4">📚</div>
         <h2 class="text-2xl font-semibold text-ink-soft mb-2">{{ 'noTopicsYet' | translate }}</h2>
         <p class="text-ink-muted mb-6">{{ 'createFirstTopic' | translate }}</p>

@@ -1,71 +1,8 @@
 import { NgModule } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { DragDropModule } from '@angular/cdk/drag-drop'; 
 import { GamesRoutingModule } from './games-routing.module';
-import { SpinWheelComponent } from './spin-wheel';
-import { SharedModule } from '../../shared/shared.module';
-import { FlipTilesComponent } from './flip-tiles'; 
-import { RevealGameComponent } from './reveal-game';
-import { ReactiveFormsModule } from '@angular/forms';
-import { MatchPairsComponent } from './match-pairs';
-import { BallSortComponent } from './ball-sort';
-import { WatchMemorizeComponent } from './watch-memorize';
-import { AnagramComponent } from './anagram';
-import { UnjumbleComponent } from './unjumble';
-import { WritingWorkshopComponent } from './writing-workshop';
-import { ReadingDetectiveComponent } from './reading-detective';
-import { TalkShowComponent } from './talk-show';
-import { WordSearchComponent } from './word-search';
-import { PopBalloonComponent } from './pop-balloon';
-import { SpotlightComponent } from './spotlight';
-import { TeamTugComponent } from './team-tug';
-import { CupClashComponent } from './cup-clash';
-import { OddOneOutComponent } from './odd-one-out';
-import { TestAbcComponent } from './test-abc';
-import { TeamSentenceComponent } from './team-sentence';
-import { TranslatePipe } from "../../shared/translate-pipe";
-import { SpellingCheckComponent } from './spelling-check';
-import { SquidGameComponent } from './squid-game';
-import { RockPaperScissorsComponent } from './rock-paper-scissors';
-import { TracingComponent } from './tracing';
-import { LineTraceMatchComponent } from './line-trace-match';
-import { FlashcardHuntComponent } from './flashcard-hunt';
 
+// The games are standalone components, each lazy-loaded by its route.
 @NgModule({
-  declarations: [
-    SpinWheelComponent, 
-    FlipTilesComponent,
-    RevealGameComponent,
-    MatchPairsComponent,
-    BallSortComponent,
-    WatchMemorizeComponent,
-    AnagramComponent,
-    UnjumbleComponent,
-    WritingWorkshopComponent,
-    ReadingDetectiveComponent,
-    TalkShowComponent,
-    WordSearchComponent,
-    PopBalloonComponent,
-    SpotlightComponent,
-    TeamTugComponent,
-    CupClashComponent,
-    OddOneOutComponent,
-    TestAbcComponent,
-    TeamSentenceComponent,
-    SpellingCheckComponent,
-    SquidGameComponent,
-    RockPaperScissorsComponent,
-    TracingComponent,
-    LineTraceMatchComponent,
-    FlashcardHuntComponent
-  ],
-  imports: [
-    CommonModule,
-    GamesRoutingModule,
-    SharedModule,
-    ReactiveFormsModule,
-    DragDropModule,
-    TranslatePipe
-]
+  imports: [GamesRoutingModule]
 })
 export class GamesModule { }

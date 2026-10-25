@@ -50,8 +50,7 @@ describe('TalkShowComponent', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
     await TestBed.configureTestingModule({
-      declarations: [TalkShowComponent],
-      imports: [TranslatePipe],
+      imports: [TalkShowComponent, TranslatePipe],
       providers: [
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: new Map([['id', '1']]) } } },
         { provide: Router, useValue: router },

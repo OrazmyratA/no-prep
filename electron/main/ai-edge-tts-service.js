@@ -1,4 +1,5 @@
-const { MsEdgeTTS, OUTPUT_FORMAT } = require('msedge-tts');
+// Loaded on first use: requiring msedge-tts (and its axios/ws) at startup delayed the window.
+const loadEdgeTts = () => require('msedge-tts');
 
 const FALLBACK_VOICE = 'en-US-AriaNeural';
 
@@ -20,6 +21,7 @@ function createEdgeTtsService() {
 
   async function getVoices() {
     if (!voicesPromise) {
+      const { MsEdgeTTS } = loadEdgeTts();
       const client = new MsEdgeTTS();
       voicesPromise = client.getVoices().catch((error) => {
         voicesPromise = null;
@@ -58,6 +60,7 @@ function createEdgeTtsService() {
   // cheap, so a couple of retries clears most transient failures instead of surfacing them to the
   // teacher as a hard error.
   async function synthesizeOnce(text, voiceName) {
+    const { MsEdgeTTS, OUTPUT_FORMAT } = loadEdgeTts();
     const client = new MsEdgeTTS();
     try {
       await client.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);

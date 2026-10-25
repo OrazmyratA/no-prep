@@ -14,12 +14,16 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
-import { GameKeyboardShortcut } from '../../shared/game-keyboard-help';
-import { GameFinishRanking } from '../../shared/game-finish-overlay';
+import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
+import { GameFinishRanking, GameFinishOverlayComponent } from '../../shared/game-finish-overlay';
 import { AIT_DEFAULT_ORDER, AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent, parseAitOrder } from '../../shared/ait-content';
 import { getTeamIndexForKey } from './team-keyboard-layout';
 import { TrackedAudio, isTypingTarget, TimerBag, GameCountdown } from './game-utils';
+import { CommonModule } from '@angular/common';
+import { GameCountdownComponent } from '../../shared/game-countdown';
+import { SandwichMenuComponent } from '../../shared/sandwich-menu';
+import { TranslatePipe } from '../../shared/translate-pipe';
 
 type HuntPhase = 'loading' | 'countdown' | 'hunt' | 'transition' | 'quiz' | 'finished';
 type CardState = 'entering' | 'idle' | 'hit' | 'flying' | 'fading';
@@ -114,7 +118,7 @@ const SPEED_LEVELS = [
 
 @Component({
   selector: 'app-flashcard-hunt',
-  standalone: false,
+  imports: [CommonModule, GameCountdownComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './flashcard-hunt.html',
   styleUrls: ['./flashcard-hunt.css']
 })
@@ -352,8 +356,8 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
 
   private createTeams(): HuntTeam[] {
     const defs = [
-      { nameKey: 'flashcardHuntRedTeam', color: 'red' as const, hex: '#ef4444', ballSrc: 'assets/images/red-sticky.png', targetSrc: 'assets/images/red-target.png' },
-      { nameKey: 'flashcardHuntBlueTeam', color: 'blue' as const, hex: '#3b82f6', ballSrc: 'assets/images/blue-sticky.png', targetSrc: 'assets/images/blue-target.png' }
+      { nameKey: 'flashcardHuntRedTeam', color: 'red' as const, hex: '#ef4444', ballSrc: 'assets/images/red-sticky.webp', targetSrc: 'assets/images/red-target.webp' },
+      { nameKey: 'flashcardHuntBlueTeam', color: 'blue' as const, hex: '#3b82f6', ballSrc: 'assets/images/blue-sticky.webp', targetSrc: 'assets/images/blue-target.webp' }
     ].slice(0, this.teamCount);
 
     return defs.map((def, id) => {

@@ -146,6 +146,10 @@
 
 .topic-card {
   min-height: 290px;
+  /* A big library has many more cards than fit on screen: the browser skips style, layout and
+     paint for the off-screen ones until they scroll near the view. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 290px;
 }
 
 .book-cover,
