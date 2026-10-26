@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import imageCompression from 'browser-image-compression';
+import { imageCompressionLibUrl } from '../image-compression';
 import { aiTopicWebBridge } from './ai-topic-web-bridge';
 import { AI_TOPIC_DRAFT_SCHEMA, AiTopicDraft, parseAiTopicDraft } from './ai-topic-draft';
 import { AiTopicRequest, buildAiTopicSystemPrompt, buildAiTopicUserText } from './ai-topic-prompt';
@@ -302,6 +303,7 @@ export class AiTopicService {
       maxSizeMB,
       maxWidthOrHeight: maxSide,
       useWebWorker: true,
+      libURL: imageCompressionLibUrl(),
       fileType: 'image/jpeg'
     });
     const dataUrl = await new Promise<string>((resolve, reject) => {

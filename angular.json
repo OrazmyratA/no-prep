@@ -52,6 +52,11 @@
                 "glob": "soundtouch-processor.js",
                 "input": "node_modules/@soundtouchjs/audio-worklet/.dist",
                 "output": "assets/soundtouch"
+              },
+              {
+                "glob": "browser-image-compression.js",
+                "input": "node_modules/browser-image-compression/dist",
+                "output": "assets/vendor"
               }
             ],
             "styles": [

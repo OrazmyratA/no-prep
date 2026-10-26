@@ -442,6 +442,9 @@ function createWindow() {
         'Content-Security-Policy': [
           "default-src 'self' noprep-book:; " +
           "script-src 'self' 'unsafe-inline'; " +
+          // Picture compression runs in a blob worker that loads the app's own copy of the
+          // library (assets/vendor, see image-compression.ts), so weak PCs don't freeze.
+          "worker-src 'self' blob:; " +
           "style-src 'self' 'unsafe-inline'; " +
           "img-src 'self' noprep-book: data: blob: https://i.ytimg.com https://*.ytimg.com https://pixabay.com https://cdn.pixabay.com; " +
           "media-src 'self' noprep-book: blob: data:; " +

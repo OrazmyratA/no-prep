@@ -1,5 +1,6 @@
 import { Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import imageCompression from 'browser-image-compression';
+import { imageCompressionLibUrl } from '../core/image-compression';
 
 interface CropBoxFraction {
   x: number;
@@ -184,6 +185,7 @@ export class ImageCropDialogComponent implements OnChanges, OnDestroy {
         maxSizeMB: this.maxSizeMB,
         maxWidthOrHeight: this.maxWidthOrHeight,
         useWebWorker: true,
+        libURL: imageCompressionLibUrl(),
         fileType: 'image/jpeg'
       });
     } finally {

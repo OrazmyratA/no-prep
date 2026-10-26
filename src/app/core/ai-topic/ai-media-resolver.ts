@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import imageCompression from 'browser-image-compression';
+import { imageCompressionLibUrl } from '../image-compression';
 import { PixabayImage, PixabaySearchOptions, PixabayService } from '../pixabay';
 import { AudioVoiceService, VOICE_LANGUAGES } from '../audio-voice';
 import { renderTextImage } from '../../shared/text-image';
@@ -312,6 +313,7 @@ export class AiMediaResolverService {
       maxSizeMB: ITEM_IMAGE_MAX_MB,
       maxWidthOrHeight: ITEM_IMAGE_MAX_SIDE,
       useWebWorker: true,
+      libURL: imageCompressionLibUrl(),
       fileType: 'image/jpeg'
     });
   }

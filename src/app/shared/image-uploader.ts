@@ -16,6 +16,7 @@ import { FormBuilder, FormControl } from '@angular/forms';
 import { Browser } from '@capacitor/browser';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import imageCompression from 'browser-image-compression';
+import { imageCompressionLibUrl } from '../core/image-compression';
 import { PixabayResponse, PixabayService, PixabayImage } from '../core/pixabay';
 import { debounceTime, distinctUntilChanged, switchMap, take, takeUntil } from 'rxjs/operators';
 import { of, Subject } from 'rxjs';
@@ -571,6 +572,7 @@ export class ImageUploaderComponent implements OnInit, OnChanges, OnDestroy {
       maxSizeMB: this.maxSizeMB,
       maxWidthOrHeight: this.maxWidthOrHeight,
       useWebWorker: true,
+      libURL: imageCompressionLibUrl(),
       fileType: this.compressionFileType
     };
     return await imageCompression(file, options);
