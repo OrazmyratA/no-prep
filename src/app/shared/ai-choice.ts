@@ -92,9 +92,17 @@ export class AiChoiceComponent implements OnInit {
     return used ? this.langService.translate(voiceSourceNameKey(used)) : '';
   }
 
-  /** The chosen option can't be used now (its key was removed): say so on the button. */
+  /**
+   * The teacher's chosen option can't be used now (its key was removed): warn on the button. The
+   * Text AI shown before any choice (Gemini, nothing linked yet) is only a suggestion, not a
+   * problem: it says "not linked" quietly instead (`suggestionNotLinked`).
+   */
   get currentUnavailable(): boolean {
-    return !!this.current && !this.current.available;
+    return !!this.current && !this.current.available && (this.job !== 'text' || this.choices.hasChosenText);
+  }
+
+  get suggestionNotLinked(): boolean {
+    return !!this.current && !this.current.available && !this.currentUnavailable;
   }
 
   get failureKey(): string {

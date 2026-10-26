@@ -5,7 +5,7 @@ import { AiTopicService } from '../core/ai-topic/ai-topic.service';
 import { AiChoicesService } from '../core/ai-topic/ai-choices';
 
 describe('AiChoiceComponent', () => {
-  async function open(job: 'text' | 'picture' | 'voice') {
+  async function open(job: 'text' | 'picture' | 'voice', linked = true, chosen: string | null = null) {
     localStorage.clear();
     await TestBed.configureTestingModule({
       declarations: [AiChoiceComponent],
@@ -13,11 +13,11 @@ describe('AiChoiceComponent', () => {
         provide: AiTopicService,
         useValue: {
           getProviders: async () => [
-            { id: 'gemini', label: 'Google Gemini', configured: true, keyPageUrl: '', maxImages: 12, supportsImageGeneration: true },
+            { id: 'gemini', label: 'Google Gemini', configured: linked, keyPageUrl: '', maxImages: 12, supportsImageGeneration: true },
             { id: 'openai', label: 'OpenAI', configured: false, keyPageUrl: '', maxImages: 12, supportsImageGeneration: true },
-            { id: 'groq', label: 'Groq', configured: true, keyPageUrl: '', maxImages: 3, supportsImageGeneration: false }
+            { id: 'groq', label: 'Groq', configured: linked, keyPageUrl: '', maxImages: 3, supportsImageGeneration: false }
           ],
-          getSelectedProvider: () => null,
+          getSelectedProvider: () => chosen,
           setSelectedProvider: () => {}
         }
       }]
@@ -54,5 +54,14 @@ describe('AiChoiceComponent', () => {
     expect(choices.voiceSource).toBe('gemini');
     fixture.componentInstance.pick(rows.find(r => r.id === 'openai')!);
     expect(choices.voiceSource).toBe('gemini');
+  });
+
+  it('a suggested Text AI that is not linked is said quietly; a chosen one warns', async () => {
+    const fresh = await open('text', false);
+    expect(fresh.componentInstance.currentUnavailable).toBe(false);
+    expect(fresh.componentInstance.suggestionNotLinked).toBe(true);
+    TestBed.resetTestingModule();
+    const chosen = await open('text', false, 'gemini');
+    expect(chosen.componentInstance.currentUnavailable).toBe(true);
   });
 });

@@ -9,6 +9,7 @@
   <app-ai-logo *ngIf="current" [id]="current.logo"></app-ai-logo>
   <span class="ai-choice-name">{{ current?.name }}</span>
   <span *ngIf="autoUsedName" class="ai-choice-used">({{ autoUsedName }})</span>
+  <span *ngIf="suggestionNotLinked" class="ai-choice-used">({{ 'aiTopicNotLinked' | translate }})</span>
   <span *ngIf="failureKey || currentUnavailable" class="ai-choice-warn-sign" aria-hidden="true">⚠</span>
   <span class="ai-choice-caret" aria-hidden="true">▾</span>
 </button>

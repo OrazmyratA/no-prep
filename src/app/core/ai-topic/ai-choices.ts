@@ -118,6 +118,11 @@ export class AiChoicesService {
     return !!this.provider(id)?.configured;
   }
 
+  /** Whether the teacher has picked a Text AI themselves (else it is only the suggestion). */
+  get hasChosenText(): boolean {
+    return !!this.ai.getSelectedProvider();
+  }
+
   /** The Text AI: the remembered one if it is offered, else the first linked one, else Gemini. */
   get textSource(): AiTopicProviderId {
     // Read each time: the ✨ window and the book creator's AI tools change it too.
