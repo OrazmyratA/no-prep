@@ -5,7 +5,7 @@
   <span class="ai-choice-head-hint">{{ jobHintKey | translate }}</span>
 </div>
 <button type="button" class="ai-choice-btn"
-        [class.ai-choice-warn]="failureKey || currentUnavailable"
+        [class.ai-choice-warn]="failureKey || currentUnavailable || currentProblem"
         [class.ai-choice-compact]="compact"
         [class.ai-choice-btn-header]="isHeader"
         (click)="toggle($event)"
@@ -17,7 +17,7 @@
   <span class="ai-choice-name">{{ current?.name }}</span>
   <span *ngIf="autoUsedName" class="ai-choice-used">({{ autoUsedName }})</span>
   <span *ngIf="suggestionNotLinked" class="ai-choice-used">({{ 'aiTopicNotLinked' | translate }})</span>
-  <span *ngIf="failureKey || currentUnavailable" class="ai-choice-warn-sign" aria-hidden="true">⚠</span>
+  <span *ngIf="failureKey || currentUnavailable || currentProblem" class="ai-choice-warn-sign" aria-hidden="true">⚠</span>
   <span class="ai-choice-caret" aria-hidden="true">▾</span>
 </button>
 
@@ -25,6 +25,7 @@
      [style.top.px]="menuTop" [style.left.px]="menuLeft">
   <p *ngIf="failureKey" class="ai-choice-failure">⚠ {{ failureKey | translate }}</p>
   <p *ngIf="!failureKey && currentUnavailable" class="ai-choice-failure">⚠ {{ 'aiChoiceNotLinkedNow' | translate }}</p>
+  <p *ngIf="!failureKey && !currentUnavailable && currentProblem" class="ai-choice-failure">{{ currentProblem }}</p>
   <div *ngFor="let row of rows" class="ai-choice-row"
        [class.ai-choice-row-off]="!row.available" [class.ai-choice-row-active]="row.id === currentId">
     <button type="button" class="ai-choice-pick" role="option" [attr.aria-selected]="row.id === currentId"
@@ -32,7 +33,8 @@
       <app-ai-logo [id]="row.logo"></app-ai-logo>
       <span class="ai-choice-row-text">
         <span class="ai-choice-row-name">{{ row.name }}</span>
-        <small>{{ row.tagKey | translate }}</small>
+        <small *ngIf="!row.problem">{{ row.tagKey | translate }}</small>
+        <small *ngIf="row.problem" class="ai-choice-row-problem">{{ row.problem }}</small>
       </span>
       <span *ngIf="row.id === currentId" class="ai-choice-check" aria-hidden="true">✓</span>
     </button>

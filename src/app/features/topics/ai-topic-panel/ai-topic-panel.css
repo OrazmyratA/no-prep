@@ -353,6 +353,11 @@
   background: #e0e7ff;
 }
 
+/* The live card, the problem card and the warning, right above Generate. */
+.ai-run-card {
+  margin-bottom: 12px;
+}
+
 /* "Written by: Gemini ▾" at the start of the footer, Generate at its end. */
 .ai-written-by {
   margin-right: auto;

@@ -209,8 +209,22 @@
         <span *ngIf="errorDetail">{{ errorDetail }}</span>
       </div>
 
+      <!-- What Generate is doing now, with Cancel. -->
+      <app-ai-run *ngIf="runView" class="ai-run-card" [view]="runView" [alternative]="alternative"
+                  (cancelled)="cancelRun()"></app-ai-run>
+
+      <!-- Why it stopped, with the way out. -->
+      <app-ai-problem *ngIf="problem as p" class="ai-run-card" [provider]="p.provider" [kind]="p.kind" [detail]="p.detail"
+                      [resetsAt]="resetsAt(p.provider)" [alternative]="alternative"
+                      (useInstead)="useInstead($event, true)" (retry)="generate()" (fixKey)="linking = p.provider"
+                      (dismissed)="problem = null"></app-ai-problem>
+
+      <!-- Known beforehand: the chosen AI won't work right now. -->
+      <app-ai-problem *ngIf="!problem && !generating && knownProblem as known" class="ai-run-card" mode="warning"
+                      [provider]="providerId" [kind]="known.kind" [resetsAt]="known.resetsAt" [alternative]="alternative"
+                      (useInstead)="useInstead($event, false)" (fixKey)="linking = providerId"></app-ai-problem>
+
       <div class="ai-footer">
-        <span *ngIf="generating" class="ai-working"><span class="ai-spinner"></span>{{ 'aiTopicGenerating' | translate }}</span>
         <!-- The same Text choice as over the item text column. -->
         <app-ai-choice job="text" labelKey="aiChoiceWrittenBy" class="ai-written-by"></app-ai-choice>
         <!-- The chosen Text AI has no key yet: say so next to Generate, with the way to link it. -->

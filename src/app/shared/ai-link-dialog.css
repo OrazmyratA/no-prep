@@ -51,6 +51,68 @@
   margin-top: 6px;
 }
 
+/* A linked AI's status: working or what is wrong, today's use, check and credit. */
+.ai-link-status {
+  margin-top: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #bbf7d0;
+  background: linear-gradient(160deg, #f0fdf4, #ffffff 70%);
+}
+
+.ai-link-status-bad {
+  border-color: #fde68a;
+  background: linear-gradient(160deg, #fffbeb, #ffffff 70%);
+}
+
+.ai-link-status-title {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #065f46;
+}
+
+.ai-link-status-bad .ai-link-status-title {
+  color: #92400e;
+}
+
+.ai-link-status-title small {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.ai-link-status-line {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #374151;
+}
+
+.ai-link-status-note {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.ai-link-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-inline-end: 4px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-top-color: #fff;
+  border-radius: 999px;
+  animation: ai-link-spin 0.8s linear infinite;
+}
+
+.ai-link-spinner-dark {
+  border-color: #c7d2fe;
+  border-top-color: #4f46e5;
+}
+
+@keyframes ai-link-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* What linking unlocks: the reason to do it, before the steps. */
 .ai-link-unlocks {
   margin-top: 4px;

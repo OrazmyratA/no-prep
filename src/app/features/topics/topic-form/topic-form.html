@@ -88,10 +88,9 @@
       <div *ngIf="aiResult" class="ai-fill-banner" role="status">
         <div class="ai-fill-banner-main">
           <p class="font-semibold">✨ {{ 'aiTopicDoneBanner' | translate: { count: aiResult.count } }}</p>
-          <p *ngIf="aiProgress" class="ai-fill-progress">
-            <span class="ai-fill-spinner"></span>
-            {{ 'aiTopicPreparingMedia' | translate: { done: aiProgress.done, total: aiProgress.total } }}
-          </p>
+          <!-- Pictures and voices on their way: counts, the clock, why it waits, and Stop. -->
+          <app-ai-run *ngIf="mediaRun" class="ai-fill-run" [view]="mediaRun" cancelKey="aiRunStop"
+                      (cancelled)="stopMedia()"></app-ai-run>
           <ul *ngIf="aiResult.notes.length" class="ai-fill-notes">
             <li *ngFor="let note of aiResult.notes">{{ note }}</li>
           </ul>
@@ -228,6 +227,8 @@
                       {{ (ai === 'gemini' ? 'aiChoicePictureGemini' : 'aiChoicePictureOpenai') | translate }}
                     </button>
                   </div>
+                  <!-- Why this drawing is taking a while ("Gemini is very busy, waiting 6 s"). -->
+                  <span *ngIf="pictureWaitText(item) as wait" class="item-ai-wait" role="status">⏳ {{ wait }}</span>
                 </div>
               </div>
 

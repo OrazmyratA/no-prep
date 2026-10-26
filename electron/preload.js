@@ -70,6 +70,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiTopicClearApiKey: (input) => ipcRenderer.invoke('ai-topic:clear-api-key', input ?? {}),
   aiTopicGenerateDraft: (input) => ipcRenderer.invoke('ai-topic:generate-draft', input ?? {}),
   aiTopicGenerateImage: (input) => ipcRenderer.invoke('ai-topic:generate-image', input ?? {}),
+  aiTopicCheckKey: (input) => ipcRenderer.invoke('ai-topic:check-key', input ?? {}),
+  aiTopicCancel: (input) => ipcRenderer.invoke('ai-topic:cancel', input ?? {}),
+  // What a running AI request is waiting for ({ requestId, kind, ... }); returns the unsubscribe.
+  onAiTopicStatus: (callback) => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('ai-topic:status', listener);
+    return () => ipcRenderer.removeListener('ai-topic:status', listener);
+  },
   getBookAssetUrl: (bookId, relativePath) => ipcRenderer.sendSync('books:get-asset-url', String(bookId ?? ''), String(relativePath ?? '')),
   getBookAssetFileUrl: (bookId, relativePath) => ipcRenderer.sendSync('books:get-asset-file-url', String(bookId ?? ''), String(relativePath ?? '')),
   getBookAssetBytes: (bookId, relativePath) => ipcRenderer.invoke('books:get-asset-bytes', String(bookId ?? ''), String(relativePath ?? '')),

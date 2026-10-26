@@ -191,6 +191,11 @@
   font-size: 0.75rem;
 }
 
+.ai-choice-row-text small.ai-choice-row-problem {
+  color: #b45309;
+  font-weight: 600;
+}
+
 .ai-choice-check {
   color: #4f46e5;
   font-weight: 700;

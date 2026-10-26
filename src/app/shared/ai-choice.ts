@@ -5,6 +5,7 @@ import {
 } from '../core/ai-topic/ai-choices';
 import { AiTopicProviderId, providerShortLabel } from '../core/ai-topic/ai-topic.service';
 import { LanguageService } from '../core/language';
+import { AI_HEALTH_ICONS, AI_HEALTH_TITLE_KEYS, AiHealthJob } from '../core/ai-topic/ai-status';
 
 interface ChoiceRow {
   id: string;
@@ -14,6 +15,8 @@ interface ChoiceRow {
   available: boolean;
   /** The AI to link before this row can be picked. */
   needsKey: AiTopicProviderId | null;
+  /** A known reason it won't work right now ("⛔ ChatGPT has no credit left"), or ''. */
+  problem: string;
 }
 
 const MENU_WIDTH = 300;
@@ -93,7 +96,7 @@ export class AiChoiceComponent implements OnInit {
       : voiceOptions().map(option => this.row(option, option.id, this.langService.translate(voiceSourceNameKey(option.id))));
     if (this.allowNone) {
       const tagKey = this.job === 'picture' ? 'aiChoiceTagPictureNone' : 'aiChoiceTagVoiceNone';
-      rows.push({ id: NONE, logo: NONE, name: this.langService.translate('aiChoiceNone'), tagKey, available: true, needsKey: null });
+      rows.push({ id: NONE, logo: NONE, name: this.langService.translate('aiChoiceNone'), tagKey, available: true, needsKey: null, problem: '' });
     }
     return rows;
   }
@@ -105,7 +108,16 @@ export class AiChoiceComponent implements OnInit {
   private row(option: AiChoiceOption<string>, logo: string, name: string): ChoiceRow {
     // NoPrep AI is "linked" whenever it is offered; the others need their key.
     const available = option.id === 'builtin' || this.choices.isAvailable(option);
-    return { id: option.id, logo, name, tagKey: option.tagKey, available, needsKey: option.needsKey };
+    return { id: option.id, logo, name, tagKey: option.tagKey, available, needsKey: option.needsKey, problem: this.problemOf(option) };
+  }
+
+  /** What is known to be wrong with this option's AI for this job right now. */
+  private problemOf(option: AiChoiceOption<string>): string {
+    if (!option.needsKey || !this.choices.isLinked(option.needsKey)) return '';
+    const health = this.choices.status.problem(option.needsKey, this.job as AiHealthJob);
+    if (!health || health.state === 'ok') return '';
+    const text = this.langService.translate(AI_HEALTH_TITLE_KEYS[health.state], { provider: providerShortLabel(option.needsKey) });
+    return `${AI_HEALTH_ICONS[health.state]} ${text}`;
   }
 
   get current(): ChoiceRow | undefined {
@@ -129,6 +141,11 @@ export class AiChoiceComponent implements OnInit {
 
   get suggestionNotLinked(): boolean {
     return !!this.current && !this.current.available && !this.currentUnavailable;
+  }
+
+  /** The chosen option is known not to work right now. */
+  get currentProblem(): string {
+    return this.current?.problem ?? '';
   }
 
   get failureKey(): string {

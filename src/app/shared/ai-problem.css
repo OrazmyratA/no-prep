@@ -1,0 +1,148 @@
+:host {
+  display: block;
+}
+
+/* An error: what happened and the way out, in a soft red card. */
+.prob {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid #fecaca;
+  background: linear-gradient(160deg, #fff1f2, #ffffff 65%);
+  color: #1f2937;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  animation: prob-in 0.35s ease;
+}
+
+@keyframes prob-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Known beforehand (a warning): amber and lighter. */
+.prob-warning {
+  border-color: #fde68a;
+  background: linear-gradient(160deg, #fffbeb, #ffffff 65%);
+  box-shadow: none;
+  padding: 10px 14px;
+}
+
+/* A slow or busy AI is not the teacher's fault: calmer blue. */
+.prob[data-kind='BUSY'],
+.prob[data-kind='TIMEOUT'],
+.prob[data-kind='OFFLINE'] {
+  border-color: #bfdbfe;
+  background: linear-gradient(160deg, #eff6ff, #ffffff 65%);
+}
+
+.prob-icon {
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.prob-warning .prob-icon {
+  font-size: 1.2rem;
+}
+
+.prob-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.prob-title {
+  font-weight: 800;
+  font-size: 0.98rem;
+}
+
+.prob-warning .prob-title {
+  font-size: 0.9rem;
+}
+
+.prob-help {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.prob-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.prob-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.prob-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.prob-btn-main {
+  border-color: transparent;
+  background: linear-gradient(90deg, #4f46e5, #9333ea);
+  color: #fff;
+}
+
+.prob-btn-main app-ai-logo {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 999px;
+  background: #fff;
+  color: #4f46e5;
+}
+
+.prob-more {
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prob-detail {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f9fafb;
+  color: #4b5563;
+  font-size: 0.78rem;
+  word-break: break-word;
+}
+
+.prob-close {
+  align-self: flex-start;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #9ca3af;
+}
+
+.prob-close:hover {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prob {
+    animation: none;
+  }
+
+  .prob-btn {
+    transition: none;
+  }
+}

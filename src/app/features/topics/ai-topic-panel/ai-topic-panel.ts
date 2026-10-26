@@ -14,6 +14,9 @@ import {
 } from '../../../core/ai-topic/ai-topic.service';
 import { VOICE_LANGUAGES } from '../../../core/audio-voice';
 import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
+import { AiErrorKind, AiRunStatus } from '../../../core/ai-topic/ai-run';
+import { AiHealthState } from '../../../core/ai-topic/ai-status';
+import { AiRunStep, AiRunView } from '../../../shared/ai-run';
 import { LanguageService } from '../../../core/language';
 import {
   AI_RECIPE_GROUPS,
@@ -51,6 +54,17 @@ interface PagePhoto {
   blob: Blob;
   url: string;
 }
+
+/** Why Generate stopped, for the problem card (its way out comes with it). */
+interface RunProblem {
+  provider: AiTopicProviderId;
+  kind: AiErrorKind;
+  detail: string;
+}
+
+const STATE_TO_KIND: Record<Exclude<AiHealthState, 'ok'>, AiErrorKind> = {
+  noCredit: 'NO_CREDIT', notInPlan: 'NOT_IN_PLAN', dailyLimit: 'DAILY_LIMIT', keyRejected: 'KEY_REJECTED', busy: 'BUSY'
+};
 
 /** A PDF with more pages than there is room for: the teacher says which pages to send. */
 interface PdfChoice {
@@ -141,6 +155,11 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   pdfChoice: PdfChoice | null = null;
 
   generating = false;
+  /** What Generate is doing now, for the live card (null when it isn't running). */
+  runView: AiRunView | null = null;
+  private runAbort: AbortController | null = null;
+  /** Why the last Generate stopped. */
+  problem: RunProblem | null = null;
   errorKey = '';
   errorDetail = '';
   dragOver = false;
@@ -180,6 +199,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.runAbort?.abort();
     window.removeEventListener('paste', this.onWindowPaste, true);
     this.pages.forEach(page => URL.revokeObjectURL(page.url));
     void this.pdfChoice?.pdf.close();
@@ -529,6 +549,46 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     this.itemCount = Number.isFinite(count) && count > 0 ? Math.min(count, AI_TOPIC_MAX_ITEMS) : null;
   }
 
+  /** A linked AI to offer when the chosen one can't help now. */
+  get alternative(): AiTopicProviderId | null {
+    return this.choices.alternativeTextAi(this.providerId);
+  }
+
+  /** Known before Generate: the chosen AI won't work right now (no credit, today's limit...). */
+  get knownProblem(): { kind: AiErrorKind; resetsAt: number | null } | null {
+    const health = this.choices.status.problem(this.providerId, 'text');
+    return health && health.state !== 'ok' ? { kind: STATE_TO_KIND[health.state], resetsAt: health.resetsAt ?? null } : null;
+  }
+
+  resetsAt(provider: AiTopicProviderId): number | null {
+    return this.choices.status.problem(provider, 'text')?.resetsAt ?? null;
+  }
+
+  /** "Use Groq instead": switch the Text AI; after a failure, go again at once (prompt and pages stay). */
+  useInstead(provider: AiTopicProviderId, run: boolean): void {
+    this.choices.setTextSource(provider);
+    this.problem = null;
+    if (run) void this.generate();
+  }
+
+  cancelRun(): void {
+    this.runAbort?.abort();
+  }
+
+  private runSteps(): AiRunStep[] {
+    const steps: AiRunStep[] = [];
+    if (this.pages.length) steps.push({ labelKey: 'aiRunStepPages', state: 'done' });
+    steps.push({ labelKey: 'aiRunStepWriting', state: 'active' });
+    if (!this.choices.pictureNoneChosen) steps.push({ labelKey: 'aiRunStepPictures', state: 'todo' });
+    if (!this.choices.voiceNoneChosen) steps.push({ labelKey: 'aiRunStepVoices', state: 'todo' });
+    return steps;
+  }
+
+  private onRunStatus(status: AiRunStatus): void {
+    if (this.runView) this.runView = { ...this.runView, status, statusAt: Date.now() };
+    this.cdr.markForCheck();
+  }
+
   async generate(): Promise<void> {
     if (!this.canGenerate) {
       if (!this.prompt.trim() && !this.pages.length) this.errorKey = 'aiTopicNeedPromptOrPages';
@@ -536,11 +596,23 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     }
     this.generating = true;
     this.clearError();
+    this.problem = null;
+    const provider = this.providerId;
+    this.runAbort = new AbortController();
+    this.runView = {
+      provider,
+      titleKey: 'aiRunTitleTopic',
+      steps: this.runSteps(),
+      startedAt: Date.now(),
+      typicalMs: this.choices.status.typicalMs(provider),
+      status: null,
+      statusAt: 0
+    };
     // The Text AI may have changed since the pages were added; Groq reads fewer of them.
     this.pages.splice(this.maxPages).forEach(page => URL.revokeObjectURL(page.url));
     const chip = this.currentRecipe();
     try {
-      const draft = await this.ai.generateDraft(this.providerId, {
+      const draft = await this.ai.generateDraft(provider, {
         prompt: this.prompt,
         pageCount: this.pages.length,
         itemCount: this.itemCount,
@@ -555,7 +627,10 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
         speakingTest: this.speakingRequest(),
         recipe: chip?.id ?? null,
         recipeVariant: chip ? this.chipVariant(chip) : null
-      }, this.pages.map(page => page.blob));
+      }, this.pages.map(page => page.blob), {
+        signal: this.runAbort.signal,
+        onStatus: status => this.onRunStatus(status)
+      });
       this.generated.emit({
         draft,
         mode: this.hasExistingItems ? this.mode : 'replace',
@@ -565,9 +640,15 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
         exam: this.speakingMode ? this.speakingExam : null
       });
     } catch (error) {
-      this.showError('aiTopicFailed', error);
+      const kind = error instanceof AiTopicError ? error.kind : 'FAILED';
+      // Cancelled: the teacher knows; the prompt and pages are still there.
+      if (kind !== 'CANCELLED') this.problem = { provider, kind, detail: error instanceof AiTopicError ? error.message : '' };
     } finally {
       this.generating = false;
+      this.runView = null;
+      this.runAbort = null;
+      // The answer came over IPC, outside Angular's zone (as in analyseSpeaking and the PDF reading).
+      this.cdr.detectChanges();
     }
   }
 

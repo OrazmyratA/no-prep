@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { AiChoicesService, aiAbilities, aiCost } from '../core/ai-topic/ai-choices';
+import { AI_HEALTH_ICONS, AI_HEALTH_TITLE_KEYS, AiHealth, describeTodayUse } from '../core/ai-topic/ai-status';
 import { AiTopicProviderId, AiTopicProviderStatus, providerShortLabel } from '../core/ai-topic/ai-topic.service';
 import { LanguageService } from '../core/language';
 
@@ -71,10 +72,41 @@ export class AiAccountsComponent implements OnInit, OnDestroy {
     return aiCost(id);
   }
 
-  /** Linked: how to change it. Not linked: what it would unlock. */
+  /** A linked AI's known problem (no credit, today's limit...), or null. */
+  problem(p: AiTopicProviderStatus): AiHealth | null {
+    return p.configured ? this.choices.status.accountProblem(p.id) : null;
+  }
+
+  /** The linked AIs with a problem, for the lines under the row. */
+  get troubled(): { provider: AiTopicProviderStatus; health: AiHealth }[] {
+    return this.providers
+      .map(provider => ({ provider, health: this.problem(provider) }))
+      .filter((entry): entry is { provider: AiTopicProviderStatus; health: AiHealth } => !!entry.health);
+  }
+
+  problemIcon(health: AiHealth): string {
+    return AI_HEALTH_ICONS[health.state];
+  }
+
+  problemText(p: AiTopicProviderStatus, health: AiHealth): string {
+    if (health.state === 'ok') return '';
+    return this.langService.translate(AI_HEALTH_TITLE_KEYS[health.state], { provider: providerShortLabel(p.id) });
+  }
+
+  /** Linked: its state and today's use, and how to change it. Not linked: what it would unlock. */
   hint(p: AiTopicProviderStatus): string {
     const provider = providerShortLabel(p.id);
-    if (p.configured) return this.langService.translate('aiAccountLinkedHint', { provider });
+    if (p.configured) {
+      const t = (key: string, params?: Record<string, unknown>) => this.langService.translate(key, params);
+      const health = this.problem(p);
+      const left = this.choices.status.requestsLeft(p.id);
+      return [
+        health ? this.problemText(p, health) : '',
+        describeTodayUse(this.choices.status.todayUse(p.id), t),
+        left ? t('aiUseRequestsLeft', { n: left.remaining.toLocaleString() }) : '',
+        t('aiAccountLinkedHint', { provider })
+      ].filter(Boolean).join('\n');
+    }
     const abilities = aiAbilities(p.id).map(a => this.langService.translate(a.nameKey)).join(', ');
     return this.langService.translate('aiAccountUnlockHint', { provider, abilities });
   }

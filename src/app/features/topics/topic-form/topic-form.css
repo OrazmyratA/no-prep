@@ -357,20 +357,9 @@
   min-width: 0;
 }
 
-.ai-fill-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #4f46e5;
-}
-
-.ai-fill-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #c7d2fe;
-  border-top-color: #4f46e5;
-  border-radius: 999px;
-  animation: ai-fill-spin 0.8s linear infinite;
+/* Pictures and voices on their way, inside the "done" banner. */
+.ai-fill-run {
+  margin: 8px 0 4px;
 }
 
 @keyframes ai-fill-spin {
@@ -436,6 +425,16 @@
 .item-made-by {
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+/* Why one item's drawing is taking a while. */
+.item-ai-wait {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 0.75rem;
 }
 
 .item-ai-buttons {

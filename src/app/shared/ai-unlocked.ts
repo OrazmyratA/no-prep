@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, ElementRef, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { AiAbility, AiChoicesService, aiAbilities } from '../core/ai-topic/ai-choices';
+import { AI_HEALTH_TITLE_KEYS } from '../core/ai-topic/ai-status';
 import { AiTopicProviderId, providerShortLabel } from '../core/ai-topic/ai-topic.service';
 import { GameFinishConfettiService } from './game-finish-overlay';
 
@@ -47,11 +48,18 @@ export class AiUnlockedComponent implements OnInit, OnDestroy {
     clearTimeout(this.hideTimer);
   }
 
+  /** Linked, but it can't be used yet ("ChatGPT has no credit left"), or ''. */
+  get problemNote(): string {
+    const problem = this.shown ? this.choices.status.accountProblem(this.shown) : null;
+    return problem && problem.state !== 'ok' && problem.state !== 'busy' ? AI_HEALTH_TITLE_KEYS[problem.state] : '';
+  }
+
   get label(): string {
     return this.shown ? providerShortLabel(this.shown) : '';
   }
 
   show(id: AiTopicProviderId): void {
+    if (this.choices.status.accountProblem(id)?.state === 'keyRejected') return;
     this.shown = id;
     this.abilities = aiAbilities(id);
     this.cdr.markForCheck();

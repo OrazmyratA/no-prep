@@ -26,6 +26,33 @@ Agreed with the product owner on 2026-10-26.
     themes, because many school PCs have animations off). What each AI unlocks comes from the
     dropdowns' own option lists (`aiAbilities`), so the two never disagree.
 
+- **What is happening (asked for 2026-10-26, built and checked):** teachers never wait blind, and
+  never meet an error only after minutes.
+  - **No AI tells an app its credit** (OpenAI, Anthropic: no balance endpoint for a normal key;
+    Gemini: AI Studio only). Groq says its requests left today on every answer. So the app shows
+    what it knows for sure (`core/ai-topic/ai-status.ts`): each AI's health per job (working · no
+    credit · today's limit with the reset time · not in the plan · key refused · busy), today's use
+    (topics, pictures, voices, ≈ words), Groq's requests left, and how long Generate usually takes.
+  - **Every request** (desktop IPC and web bridge alike) can be **cancelled** for real, **says what
+    it waits for** (`{ kind: 'wait', reason, seconds }`, `{ kind: 'fallback' }`), reports its usage,
+    and fails with a **kind** (`core/ai-topic/ai-run.ts`).
+  - **Live card** (`shared/ai-run`) while Generate writes: the steps, a clock against the usual time,
+    the reason it waits with a countdown, "slower than usual … cancel and use Groq", and Cancel.
+    After the items, the same card shows "Pictures 3/12 · Voices 5/12" with Stop.
+  - **Problem card** (`shared/ai-problem`): what happened in plain words and the way out — "Use
+    Groq instead" (runs again at once, prompt and pages kept), "See credit on ChatGPT ↗", "Check
+    the key", "Try again". As a warning before Generate when the chosen AI is known not to work.
+  - **Everywhere an AI shows**: a problem badge on its pill in "Your AIs" with a "What to do ›"
+    line, the problem instead of the tag in the dropdowns, and a status card in its Link window
+    (working / problem, checked when, today's use, requests left, "Check now", "See credit").
+  - **Linking a key checks it** with one tiny request; a refused key stays in the window with the
+    reason, and the unlocked card says so when there is no credit yet.
+  - **Drawing stops at the first "no credit" / "not in the plan"**; the rest is searched for free
+    at once, and the teacher is told why.
+  - Checked in the desktop app with a scripted Groq (only Groq's address answered by a fake, fake
+    key): a 6 s wait counted down, Cancel aborted the real request (no error, prompt kept), "no
+    credit" shown after 0.17 s and one request, status card and badges agreed; 0 renderer errors.
+
 **Part A (v1.18.0):**
 - **Tests:** 412 app tests and 16 desktop tests pass; the production build passes.
 - **Checked in the real desktop app** on a fresh profile with no keys:

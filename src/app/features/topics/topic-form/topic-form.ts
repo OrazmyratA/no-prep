@@ -14,11 +14,14 @@ import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
 import { AiTopicPanelResult, LANGUAGE_NAMES } from '../ai-topic-panel/ai-topic-panel';
-import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
+import { AiTopicError, AiTopicService, providerShortLabel } from '../../../core/ai-topic/ai-topic.service';
 import { AiImageChoice, AiMediaResolverService, PictureOrigin, pictureOrigin, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
 import { AiItemDraft } from '../../../core/ai-topic/ai-topic-draft';
 import { AiChoicesService, VoiceSource, pictureSourceNameKey, voiceOptions, voiceSourceNameKey } from '../../../core/ai-topic/ai-choices';
 import { SpeechProvider, speechErrorMessageKey } from '../../../core/speech-error';
+import { AiErrorKind, AiRunOptions, AiRunStatus } from '../../../core/ai-topic/ai-run';
+import { AiRunView } from '../../../shared/ai-run';
+import { problemTitleKey } from '../../../shared/ai-problem';
 import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
 import { AudioVoiceService, getStoredVoiceLanguage } from '../../../core/audio-voice';
 import { GAMES } from '../games.config';
@@ -103,6 +106,13 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private voicingItems = new WeakSet<AbstractControl>();
   // Pictures Generate could not draw (and searched for free instead) in the current fill.
   private aiDrawFailures = 0;
+  // Why drawing stopped in the current fill (no credit, not in the plan...): the rest is searched.
+  private aiDrawStopped: AiErrorKind | null = null;
+  /** Pictures and voices being made after Generate, for the live card (with Stop). */
+  mediaRun: AiRunView | null = null;
+  private mediaAbort: AbortController | null = null;
+  // Why one item's drawing is waiting ("Gemini is very busy, waiting 6 s").
+  private pictureWait = new WeakMap<AbstractControl, string>();
   // Which voice made each item's clip, for the "Voice: …" line.
   private voiceMadeBy = new WeakMap<AbstractControl, { audio: Blob; provider: SpeechProvider }>();
   // Per-item "✨": fills just this item's image + audio from its own text, no dialog needed.
@@ -519,28 +529,65 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       poorGameNameKeys: GAMES.filter(game => poorIds.has(game.id)).map(game => game.nameKey)
     };
     this.aiProgress = { done: 0, total: groups.length };
+    const noPictures = this.choices.pictureNoneChosen;
+    const noVoices = this.choices.voiceNoneChosen;
+    const pictureTotal = noPictures ? 0 : draft.items.length;
+    const voiceTotal = noVoices ? 0 : draft.items.filter(item => item.audioText).length;
+    let picturesDone = 0;
+    let voicesDone = 0;
+    this.mediaAbort = new AbortController();
+    const mediaSignal = this.mediaAbort.signal;
+    this.mediaRun = {
+      provider: drawWith ?? 'search',
+      titleKey: 'aiRunTitleMedia',
+      steps: [],
+      startedAt: Date.now(),
+      typicalMs: null,
+      status: null,
+      statusAt: 0,
+      clockOnly: true
+    };
+    const showMediaSteps = () => {
+      if (!this.mediaRun) return;
+      const step = (labelKey: string, done: number, total: number) =>
+        ({ labelKey, state: done >= total ? 'done' as const : 'active' as const, done, total });
+      this.mediaRun = {
+        ...this.mediaRun,
+        fraction: (picturesDone + voicesDone) / Math.max(1, pictureTotal + voiceTotal),
+        steps: [
+          { labelKey: 'aiRunStepItems', state: 'done' },
+          ...(pictureTotal ? [step('aiRunStepPictures', picturesDone, pictureTotal)] : []),
+          ...(voiceTotal ? [step('aiRunStepVoices', voicesDone, voiceTotal)] : [])
+        ]
+      };
+    };
+    showMediaSteps();
+    const onDrawStatus = (status: AiRunStatus) => {
+      if (this.mediaRun) this.mediaRun = { ...this.mediaRun, status, statusAt: Date.now() };
+    };
 
     const voiceLanguage = result.voiceLanguage === 'auto'
       ? this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage())
       : result.voiceLanguage;
 
     const voice = this.choices.voiceSource;
-    const noPictures = this.choices.pictureNoneChosen;
-    const noVoices = this.choices.voiceNoneChosen;
     let voiceError: unknown = null;
     this.aiDrawFailures = 0;
+    this.aiDrawStopped = null;
     let next = 0;
     const worker = async () => {
-      while (next < draft.items.length && runId === this.aiRunId) {
+      // Stop: no new item is started; the ones on their way are still placed.
+      while (next < draft.items.length && runId === this.aiRunId && !mediaSignal.aborted) {
         const index = next++;
         const item = draft.items[index];
         const [picture, audio] = await Promise.all([
-          noPictures ? null : this.resolveAiItemPicture(item, pages, cardColors[index], drawWith),
+          noPictures ? null : this.resolveAiItemPicture(item, pages, cardColors[index], drawWith, { signal: mediaSignal, onStatus: onDrawStatus })
+            .finally(() => this.zone.run(() => { picturesDone++; showMediaSteps(); })),
           item.audioText && !noVoices
             ? this.audioVoice.synthesizeVoice(item.audioText, voiceLanguage, voice).catch(error => {
                 voiceError ??= error;
                 return null;
-              })
+              }).finally(() => this.zone.run(() => { voicesDone++; showMediaSteps(); }))
             : null
         ]);
         // Compression resolves from a Web Worker, outside Angular's zone.
@@ -562,17 +609,28 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.zone.run(() => {
       if (runId !== this.aiRunId) return;
       this.aiProgress = null;
+      this.mediaRun = null;
+      this.mediaAbort = null;
       // Once, not per item: the missing voices are marked by their empty players.
       if (voiceError) {
         const key = speechErrorMessageKey(voiceError);
         this.choices.markFailed('voice', key);
         showAppNotification(this.langService.translate(key), 'error');
       }
-      if (this.aiDrawFailures) {
+      if (this.aiDrawStopped && drawWith) {
+        // Said plainly: why drawing stopped, and that the other pictures were searched for free.
+        const why = this.langService.translate(problemTitleKey(this.aiDrawStopped), { provider: providerShortLabel(drawWith) });
+        showAppNotification(`${why} ${this.langService.translate('aiDrawRestSearched')}`, 'error');
+      } else if (this.aiDrawFailures) {
         this.choices.markFailed('picture', 'aiTopicGenerateImageFailed');
         showAppNotification(this.langService.translate('aiDrawFellBack'), 'error');
       }
     });
+  }
+
+  /** Stop making pictures and voices: the items and what is already made stay (Undo still works). */
+  stopMedia() {
+    this.mediaAbort?.abort();
   }
 
   /**
@@ -591,14 +649,19 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   /** One generated item's picture: drawn by `drawWith` when the plan wants a searched one, else as planned. */
   private async resolveAiItemPicture(
-    item: AiItemDraft, pages: Blob[], cardColor: string, drawWith: 'gemini' | 'openai' | null
+    item: AiItemDraft, pages: Blob[], cardColor: string, drawWith: 'gemini' | 'openai' | null, run?: AiRunOptions
   ): Promise<{ blob: Blob | null; choice: AiImageChoice | null; madeBy: PictureMadeBy } | null> {
-    if (drawWith && item.imageKind === 'search') {
+    // Once drawing can't work (no credit, not in the plan...), the rest is searched straight away
+    // instead of every item failing in turn.
+    if (drawWith && item.imageKind === 'search' && !this.aiDrawStopped && !run?.signal?.aborted) {
       const choice = { ...this.aiMedia.choiceForText(plainText(item.text), cardColor), query: item.imageQuery, style: item.imageStyle };
       try {
-        const blob = await this.aiMedia.generateImage(choice, drawWith);
+        const blob = await this.aiMedia.generateImage(choice, drawWith, run);
         if (blob) return { blob, choice, madeBy: drawWith };
-      } catch {
+      } catch (error) {
+        const kind = error instanceof AiTopicError ? error.kind : 'FAILED';
+        if (kind === 'CANCELLED') return null;
+        if (['NO_CREDIT', 'NOT_IN_PLAN', 'KEY_REJECTED', 'DAILY_LIMIT'].includes(kind)) this.aiDrawStopped ??= kind;
         // Searched for free below instead; the teacher is told once at the end.
       }
       this.aiDrawFailures++;
@@ -615,6 +678,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   undoAiFill() {
     if (!this.aiUndoSnapshot) return;
+    this.mediaAbort?.abort();
+    this.mediaRun = null;
     this.aiRunId++;
     this.items.clear();
     this.aiUndoSnapshot.controls.forEach(control => this.items.push(control));
@@ -784,8 +849,15 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       this.aiImageChoices.set(item, choice);
     }
     const token = this.startPictureRequest(item, provider);
+    const onStatus = (status: AiRunStatus) => {
+      if (!this.isLatestPictureRequest(item, token)) return;
+      const name = providerShortLabel(provider);
+      this.pictureWait.set(item, status.kind === 'fallback'
+        ? this.langService.translate('aiRunFallback', { provider: name })
+        : this.langService.translate(status.reason === 'minuteLimit' ? 'aiRunWaitLimit' : 'aiRunWaitBusy', { provider: name, seconds: status.seconds }));
+    };
     try {
-      const blob = await this.aiMedia.generateImage(choice, provider);
+      const blob = await this.aiMedia.generateImage(choice, provider, { onStatus });
       if (!blob) throw new Error('No picture');
       this.zone.run(() => {
         this.choices.markWorked('picture');
@@ -793,11 +865,20 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       });
     } catch (error) {
       this.zone.run(() => this.choices.markFailed('picture', 'aiTopicGenerateImageFailed'));
+      // What happened, in plain words ("ChatGPT has no credit left"), then the AI's own words.
+      const kind = error instanceof AiTopicError ? error.kind : 'FAILED';
+      const why = this.langService.translate(problemTitleKey(kind), { provider: providerShortLabel(provider) });
       const detail = error instanceof AiTopicError && error.message ? ` ${error.message}` : '';
-      showAppNotification(this.langService.translate('aiTopicGenerateImageFailed') + detail, 'error');
+      showAppNotification(why + detail, 'error');
     } finally {
+      this.pictureWait.delete(item);
       this.finishPictureRequest(item, token);
     }
+  }
+
+  /** Why this item's drawing is waiting, or ''. */
+  pictureWaitText(item: AbstractControl): string {
+    return this.isPictureBusy(item) ? this.pictureWait.get(item) ?? '' : '';
   }
 
   /** Shows a picture on the item and remembers it, so ◀ can bring it back after trying others. */

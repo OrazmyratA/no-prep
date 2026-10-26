@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { AiTopicPanelComponent } from './ai-topic-panel';
-import { AiTopicService } from '../../../core/ai-topic/ai-topic.service';
+import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
 import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
 import { LanguageService } from '../../../core/language';
 
@@ -196,5 +196,83 @@ describe('AiTopicPanelComponent page photos', () => {
     expect(panel.pages.length).toBe(1);
     outside.remove();
     vi.restoreAllMocks();
+  });
+});
+
+describe('AiTopicPanelComponent: what is happening', () => {
+  let remembered: string;
+  let generateDraft: ReturnType<typeof vi.fn>;
+
+  async function open(fail: (provider: string) => AiTopicError | null) {
+    localStorage.clear();
+    remembered = 'gemini';
+    const draft = { topicName: 'T', language: 'en', notes: [], items: [] };
+    generateDraft = vi.fn(async (provider: string, _request: unknown, _pages: unknown, options?: { signal?: AbortSignal; onStatus?: (s: unknown) => void }) => {
+      options?.onStatus?.({ kind: 'fallback' });
+      const error = fail(provider);
+      if (error) throw error;
+      return draft;
+    });
+    await TestBed.configureTestingModule({
+      declarations: [AiTopicPanelComponent],
+      providers: [{
+        provide: AiTopicService,
+        useValue: {
+          isAvailable: true,
+          getProviders: async () => [
+            { id: 'gemini', label: 'gemini', configured: true, keyPageUrl: '', maxImages: 12 },
+            { id: 'groq', label: 'groq', configured: true, keyPageUrl: '', maxImages: 3 }
+          ],
+          getSelectedProvider: () => remembered,
+          setSelectedProvider: (id: string) => { remembered = id; },
+          generateDraft
+        }
+      }]
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AiTopicPanelComponent);
+    await fixture.componentInstance.ngOnInit();
+    await TestBed.inject(AiChoicesService).loadProviders();
+    fixture.componentInstance.prompt = 'farm animals';
+    return fixture.componentInstance;
+  }
+
+  it('shows the live card while it works, then why it stopped, with a working AI to use instead', async () => {
+    const panel = await open(provider => provider === 'gemini' ? new AiTopicError('Quota exceeded per day', 'DAILY_LIMIT') : null);
+    const generated = vi.fn();
+    panel.generated.subscribe(generated);
+
+    const run = panel.generate();
+    expect(panel.runView?.provider).toBe('gemini');
+    expect(panel.runView?.steps.map(step => step.state)).toEqual(['active', 'todo', 'todo']);
+    await run;
+    expect(panel.runView).toBeNull();
+    expect(panel.problem).toEqual({ provider: 'gemini', kind: 'DAILY_LIMIT', detail: 'Quota exceeded per day' });
+    expect(panel.alternative).toBe('groq');
+
+    // One click: switch and go again, with the same prompt.
+    panel.useInstead('groq', true);
+    await vi.waitFor(() => expect(generated).toHaveBeenCalled());
+    expect(generateDraft.mock.calls[1][0]).toBe('groq');
+    expect(generateDraft.mock.calls[1][1].prompt).toBe('farm animals');
+    expect(panel.problem).toBeNull();
+  });
+
+  it('a cancelled Generate shows no error; the prompt stays', async () => {
+    const panel = await open(() => new AiTopicError('', 'CANCELLED'));
+    await panel.generate();
+    expect(panel.problem).toBeNull();
+    expect(panel.prompt).toBe('farm animals');
+  });
+
+  it('passes the live status on to the card', async () => {
+    const panel = await open(() => null);
+    let seen: unknown = null;
+    generateDraft.mockImplementationOnce(async (_p: string, _r: unknown, _pages: unknown, options: { onStatus: (s: unknown) => void }) => {
+      options.onStatus({ kind: 'wait', reason: 'busy', seconds: 6 });
+      seen = panel.runView?.status;
+      return { topicName: 'T', language: 'en', notes: [], items: [] };
+    });
+    await panel.generate();
+    expect(seen).toEqual({ kind: 'wait', reason: 'busy', seconds: 6 });
   });
 });

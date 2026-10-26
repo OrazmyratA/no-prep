@@ -29,6 +29,8 @@ import { AiLinkDialogComponent } from './ai-link-dialog';
 import { AiChoiceComponent } from './ai-choice';
 import { AiAccountsComponent } from './ai-accounts';
 import { AiUnlockedComponent } from './ai-unlocked';
+import { AiRunComponent } from './ai-run';
+import { AiProblemComponent } from './ai-problem';
 
 @NgModule({
   declarations: [
@@ -57,6 +59,8 @@ import { AiUnlockedComponent } from './ai-unlocked';
     AiChoiceComponent,
     AiAccountsComponent,
     AiUnlockedComponent,
+    AiRunComponent,
+    AiProblemComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -88,7 +92,9 @@ import { AiUnlockedComponent } from './ai-unlocked';
     AiLinkDialogComponent,
     AiChoiceComponent,
     AiAccountsComponent,
-    AiUnlockedComponent
+    AiUnlockedComponent,
+    AiRunComponent,
+    AiProblemComponent
   ]
 })
 export class SharedModule { }

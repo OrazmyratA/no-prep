@@ -4,6 +4,7 @@
 import { Injectable, NgZone } from '@angular/core';
 import { Subject } from 'rxjs';
 import { AiTopicProviderId, AiTopicProviderStatus, AiTopicService } from './ai-topic.service';
+import { AiStatusService } from './ai-status';
 import type { SpeechProvider } from '../speech-error';
 
 declare const window: any;
@@ -137,7 +138,8 @@ export class AiChoicesService {
   /** Which voice Automatic used last, for "Automatic (OpenAI)". */
   lastAutoVoice: SpeechProvider | null = null;
 
-  constructor(private ai: AiTopicService, private zone: NgZone) {}
+  // AiStatusService is made here, so it hears every AI call from the start.
+  constructor(private ai: AiTopicService, private zone: NgZone, readonly status: AiStatusService) {}
 
   /** Loads the AI list once; `force` after a key changed. */
   loadProviders(force = false): Promise<void> {
@@ -229,6 +231,16 @@ export class AiChoicesService {
     return !option.needsKey || this.isLinked(option.needsKey);
   }
 
+  /**
+   * A linked Text AI to offer when this one can't help now (no credit, today's limit...): the
+   * first in the dropdown's order with no known problem, or null.
+   */
+  alternativeTextAi(except: AiTopicProviderId): AiTopicProviderId | null {
+    const offered = (id: AiTopicProviderId) => id === 'builtin' ? !!this.provider('builtin') : this.isLinked(id);
+    return TEXT_OPTIONS.map(option => option.id)
+      .find(id => id !== except && offered(id) && !this.status.problem(id, 'text')) ?? null;
+  }
+
   markFailed(job: AiJob, messageKey: string): void {
     this.failures[job] = messageKey;
   }
@@ -236,5 +248,7 @@ export class AiChoicesService {
   markWorked(job: AiJob, voice?: SpeechProvider): void {
     delete this.failures[job];
     if (job === 'voice' && voice && this.voice === 'auto') this.lastAutoVoice = voice;
+    // Voices made with a teacher's key count in that AI's "today".
+    if (job === 'voice' && (voice === 'openai' || voice === 'gemini')) this.status.recordVoice(voice);
   }
 }

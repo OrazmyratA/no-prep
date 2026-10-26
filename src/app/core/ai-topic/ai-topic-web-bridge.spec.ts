@@ -68,7 +68,7 @@ describe('aiTopicWebBridge generateDraft', () => {
       schema: { type: 'object', additionalProperties: false }
     });
 
-    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}' } });
+    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}', usage: {} } });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, any];
     expect(url).toContain('generativelanguage.googleapis.com');
@@ -86,7 +86,7 @@ describe('aiTopicWebBridge generateDraft', () => {
 
     const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'gemini', systemPrompt: 's', userText: 'u', schema: {} });
 
-    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}' } });
+    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}', usage: {} } });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash:');
   });
@@ -95,6 +95,29 @@ describe('aiTopicWebBridge generateDraft', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { code: 'insufficient_quota', message: 'You have no credits remaining.' } }), { status: 429 })));
     const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'openai', systemPrompt: 's', userText: 'u', schema: {} });
     expect(!result.ok && result.message).toContain('no credit left');
+    expect(!result.ok && result.error).toBe('NO_CREDIT');
+  });
+
+  it('says why it waits, and Cancel stops at once without sending again', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: { message: 'Rate limit reached. Please try again in 3s.' } }), { status: 429 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+    const statuses: unknown[] = [];
+    const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'openai', systemPrompt: 's', userText: 'u', schema: {} }, {
+      signal: controller.signal,
+      onStatus: status => { statuses.push(status); controller.abort(); }
+    });
+    expect(statuses).toEqual([{ kind: 'wait', reason: 'minuteLimit', seconds: 4 }]);
+    expect(!result.ok && result.error).toBe('CANCELLED');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads Groq\'s requests left today and the tokens used', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '{"ok":true}' } }], usage: { total_tokens: 321 }
+    }), { status: 200, headers: { 'x-ratelimit-remaining-requests': '999', 'x-ratelimit-limit-requests': '1000' } })));
+    const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'groq', systemPrompt: 's', userText: 'u', schema: {} });
+    expect(result.ok && result.result.usage).toEqual({ tokens: 321, remainingToday: 999, limitToday: 1000 });
   });
 
   it('calls OpenAI with an Authorization header and reads output_text', async () => {
@@ -103,7 +126,7 @@ describe('aiTopicWebBridge generateDraft', () => {
 
     const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'openai', systemPrompt: 's', userText: 'u', schema: {} });
 
-    expect(result).toEqual({ ok: true, result: { text: '{"a":1}' } });
+    expect(result).toEqual({ ok: true, result: { text: '{"a":1}', usage: {} } });
     const [url, init] = fetchMock.mock.calls[0] as [string, any];
     expect(url).toBe('https://api.openai.com/v1/responses');
     expect(init.headers['Authorization']).toBe('Bearer oa-key');
@@ -117,7 +140,7 @@ describe('aiTopicWebBridge generateDraft', () => {
 
     const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'groq', systemPrompt: 's', userText: 'u', schema: {} });
 
-    expect(result).toEqual({ ok: true, result: { text: '{"b":2}' } });
+    expect(result).toEqual({ ok: true, result: { text: '{"b":2}', usage: {} } });
   });
 
   it('maps a 401 to a clear "key rejected" message without retrying', async () => {
@@ -155,7 +178,7 @@ describe('aiTopicWebBridge generateImage', () => {
 
     const result = await aiTopicWebBridge.aiTopicGenerateImage({ provider: 'openai', prompt: 'a cat' });
 
-    expect(result).toEqual({ ok: true, result: { imageBase64: 'ZmFrZQ==', mimeType: 'image/png' } });
+    expect(result).toEqual({ ok: true, result: { imageBase64: 'ZmFrZQ==', mimeType: 'image/png', usage: {} } });
     const [url] = fetchMock.mock.calls[0] as [string, any];
     expect(url).toBe('https://api.openai.com/v1/images/generations');
   });
@@ -208,7 +231,7 @@ describe('aiTopicWebBridge generateDraft (Anthropic)', () => {
 
     const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'anthropic', systemPrompt: 's', userText: 'u', schema: {} });
 
-    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}' } });
+    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}', usage: {} } });
     const AnthropicModule = (await import('@anthropic-ai/sdk')).default as any;
     expect(__create).toHaveBeenCalledTimes(1);
     const [[call]] = [__create.mock.calls[0]];

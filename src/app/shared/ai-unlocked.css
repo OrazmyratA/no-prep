@@ -101,6 +101,16 @@
   color: #6b7280;
 }
 
+.unl-note {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .unl-close {
   align-self: flex-start;
   width: 28px;
