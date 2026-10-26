@@ -310,15 +310,19 @@
       [style.left.%]="badge.x * 100"
       [style.top.%]="badge.y * 100"
       aria-hidden="true">{{ badge.correct ? '✓' : '✗' }}</span>
-
-    <button
-      type="button"
-      class="guide-bubble"
-      [class.expanded]="reader.guideBubbleExpanded"
-      *ngIf="primary && reader.guideBubbleText"
-      (click)="reader.toggleGuideBubble($event)"
-      [title]="(reader.guideBubbleExpanded ? 'readerCollapseTeacherText' : 'readerExpandTeacherText') | translate">
-      {{ reader.guideBubbleText }}
-    </button>
   </div>
+
+  <!-- Sibling of .page-content, not a child of it: during a focus zoom, .page-content is scaled
+       and shifted to crop into the focus rect, which would drag a bubble positioned inside it
+       far outside the visible frame. .page-frame itself stays the real, visible box in both
+       states, so anchoring here keeps the bubble in view whether focus is expanded or not. -->
+  <button
+    type="button"
+    class="guide-bubble"
+    [class.expanded]="reader.guideBubbleExpanded"
+    *ngIf="primary && reader.guideBubbleText"
+    (click)="reader.toggleGuideBubble($event)"
+    [title]="(reader.guideBubbleExpanded ? 'readerCollapseTeacherText' : 'readerExpandTeacherText') | translate">
+    {{ reader.guideBubbleText }}
+  </button>
 </div>
