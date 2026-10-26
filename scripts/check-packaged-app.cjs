@@ -11,7 +11,8 @@ const Module = require('module');
 const { pathToFileURL } = require('url');
 
 const resources = process.argv[2];
-const asar = path.join(resources || '', 'app.asar');
+// Absolute: newer Node (Electron 41+) refuses a relative path in Module.createRequire below.
+const asar = path.resolve(resources || '', 'app.asar');
 if (!resources || !fs.existsSync(asar)) { console.error('usage: check-packaged-app.cjs <resources folder with app.asar>'); process.exit(2); }
 const pkg = JSON.parse(fs.readFileSync(path.join(asar, 'package.json'), 'utf8'));
 const mainRequire = Module.createRequire(path.join(asar, 'electron', 'main', 'index.js'));
