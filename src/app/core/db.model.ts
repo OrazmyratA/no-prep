@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { BookAnnotations, BookLastPosition, BookLessonProgress, BookSpeakingAttempt, BookTaskResponse } from './book.model';
+import { Team } from '../shared/leaderboard-team.model';
 
 export interface Topic {
   id?: number;
@@ -88,6 +89,20 @@ export interface LeaderboardScore {
   updatedAt: Date;
 }
 
+/**
+ * A class list's saved team setup — one row per topic, so leaving the leaderboard (e.g. tapping
+ * Add student to go edit the roster) and coming back restores the same teams instead of making
+ * the teacher divide students into teams all over again. `mode` is the Individual/Team toggle
+ * they were on, saved alongside so returning lands back on the same view too. Deleted outright
+ * (not left as an empty row) once the teacher has no teams left — see saveLeaderboardTeams.
+ */
+export interface LeaderboardTeamSetup {
+  topicId: number;
+  teams: Team[];
+  mode: 'individual' | 'team';
+  updatedAt: Date;
+}
+
 /** One student's marks in a saved Talk Show test (docs/talk-show.md §6). */
 export interface SpeakingResultCandidate {
   name: string;
@@ -151,6 +166,7 @@ export class AppDatabase extends Dexie {
   bookLessonProgress!: Table<BookLessonProgress, string>;
   bookLastPosition!: Table<BookLastPosition, string>;
   speakingResults!: Table<SpeakingResult, number>;
+  leaderboardTeams!: Table<LeaderboardTeamSetup, number>;
 
   constructor() {
     super('NoPrepDB');
@@ -259,6 +275,22 @@ export class AppDatabase extends Dexie {
       bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
       bookLastPosition: 'key, profileId, bookId, updatedAt',
       speakingResults: '++id, topicId, createdAt, *studentNames'
+    });
+    this.version(11).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
+      bookLastPosition: 'key, profileId, bookId, updatedAt',
+      speakingResults: '++id, topicId, createdAt, *studentNames',
+      leaderboardTeams: 'topicId, updatedAt'
     });
   }
 }

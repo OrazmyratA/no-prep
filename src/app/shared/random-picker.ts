@@ -744,9 +744,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   private async loadTopic(topicId: number) {
     this.loadingTopic = true;
     this.cdr.detectChanges();
-    const [items, scoreRows] = await Promise.all([
+    const [items, scoreRows, savedTeams] = await Promise.all([
       this.dbService.getItemsSnapshot(topicId),
-      this.dbService.getLeaderboardScores(topicId)
+      this.dbService.getLeaderboardScores(topicId),
+      this.dbService.getLeaderboardTeams(topicId)
     ]);
     if (this.destroyed) return;
 
@@ -762,8 +763,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.showReveal = false;
     this.revealVisible = false;
     this.selectedEntry = null;
-    // A new class list invalidates any teams built for the old one.
-    this.teams = [];
+    // Restores this class list's own saved teams (see db.ts's LeaderboardTeamSetup) — a genuinely
+    // different class list naturally gets [] here since it never had any saved, same as before.
+    // Must happen before reshuffleWheelOrder()/chunkByTeam() below, which both read this.teams.
+    this.teams = savedTeams?.teams ?? [];
     this.reshuffleWheelOrder();
     this.absentItemIds = new Set();
     this.undoStack = [];
@@ -777,7 +780,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.columnsTeam = this.chunkByTeam(this.initialOrder);
     this.rankingAppliedIndividual = false;
     this.rankingAppliedTeam = false;
-    this.mode = 'individual';
+    this.mode = savedTeams?.mode ?? 'individual';
     this.showTeamSetup = false;
     this.showWheel = false;
     this.showTimer = false;
@@ -968,7 +971,15 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
       this.showTeamSetup = true;
     }
     this.mode = next;
+    this.persistTeamSetup();
     this.cdr.detectChanges();
+  }
+
+  // Saves this class list's teams + which mode the teacher was on, so leaving the leaderboard
+  // (e.g. Add student bouncing out to the topic editor) and coming back restores it instead of
+  // making them divide students into teams again — see db.ts's LeaderboardTeamSetup.
+  private persistTeamSetup() {
+    if (this.selectedTopicId != null) void this.dbService.saveLeaderboardTeams(this.selectedTopicId, this.teams, this.mode);
   }
 
   openTeamSetup() {
@@ -984,6 +995,7 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.columnsTeam = this.chunkByTeam(this.flattenColumns(this.columnsTeam));
     this.showTeamSetup = false;
     this.mode = 'team';
+    this.persistTeamSetup();
     // Team composition just changed — the wheel's spread-out-by-team order was computed against
     // the old teams (or no teams at all) and no longer reflects who's actually on which side.
     this.reshuffleWheelOrder();

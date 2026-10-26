@@ -1,6 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { db, Topic, Item, LeaderboardScore, CefrLevel, SpeakingExam } from './db.model';
+import { Team } from '../shared/leaderboard-team.model';
 
 @Injectable({ providedIn: 'root' })
 export class DbService {
@@ -123,6 +124,7 @@ export class DbService {
   async deleteTopic(id: number): Promise<void> {
     await db.items.where('topicId').equals(id).delete();
     await db.speakingResults.where('topicId').equals(id).delete();
+    await db.leaderboardTeams.delete(id);
     await db.topics.delete(id);
     this.dropCover(id);
     await this.refreshTopics();
@@ -179,6 +181,7 @@ async addItems(topicId: number, items: Omit<Item, 'id' | 'topicId' | 'createdAt'
     if (removedIds.length) {
       await db.items.bulkDelete(removedIds);
       await db.leaderboardScores.where('itemId').anyOf(removedIds).delete();
+      await this.pruneLeaderboardTeamMembers(topicId, removedIds);
     }
 
     this.dropCover(topicId);
@@ -262,5 +265,34 @@ async duplicateTopic(topicId: number): Promise<number | null> {
       if (row.baselinePoints == null) continue;
       await db.leaderboardScores.update(row.id!, { points: row.points + row.baselinePoints, baselinePoints: null, updatedAt: now });
     }
+  }
+
+  // ===== Leaderboard team setup (per class list — see LeaderboardTeamSetup) =====
+
+  async getLeaderboardTeams(topicId: number): Promise<{ teams: Team[]; mode: 'individual' | 'team' } | null> {
+    const row = await db.leaderboardTeams.get(topicId);
+    return row ? { teams: row.teams, mode: row.mode } : null;
+  }
+
+  // Deletes the row outright once there are no teams left, rather than writing an empty one —
+  // "no row" and "a row with teams: []" would behave identically on the next load anyway, and
+  // this keeps a teacher who never uses Team mode from accumulating empty rows.
+  async saveLeaderboardTeams(topicId: number, teams: Team[], mode: 'individual' | 'team'): Promise<void> {
+    if (!teams.length) {
+      await db.leaderboardTeams.delete(topicId);
+      return;
+    }
+    await db.leaderboardTeams.put({ topicId, teams, mode, updatedAt: new Date() });
+  }
+
+  // Keeps a saved team setup in sync when a student is removed from the roster via the topic
+  // editor — otherwise their id lingers in memberItemIds forever, invisibly "on" a team that
+  // never shows them again (roster lookups already filter to real items elsewhere).
+  private async pruneLeaderboardTeamMembers(topicId: number, removedIds: number[]): Promise<void> {
+    const row = await db.leaderboardTeams.get(topicId);
+    if (!row) return;
+    const removedSet = new Set(removedIds);
+    const teams = row.teams.map(t => ({ ...t, memberItemIds: t.memberItemIds.filter(id => !removedSet.has(id)) }));
+    await db.leaderboardTeams.put({ ...row, teams, updatedAt: new Date() });
   }
 }
