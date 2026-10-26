@@ -9,8 +9,12 @@ Agreed with the product owner on 2026-10-26. Branch: `smoothness-optimisation` (
   - 🔄 steps through the Pixabay results and ◀ ▶ go back;
   - unlinked AIs are greyed with Link;
   - the ✨ window shows the Picture/Voice choices, and its Link button opens the Link window.
+- **Checked in a browser** (web build, no keys):
+  - no Windows voice in the list;
+  - unlinked AIs are greyed, and the suggested Text AI says "(not linked)" without a warning;
+  - ✨ gave a Pixabay picture in about 3 s, with no voice error when no voice is linked;
+  - picture compression runs in a worker that loads the app's own library copy.
 - **Not done yet:**
-  - the web build in a browser;
   - drawing and voices with real OpenAI/Gemini keys (they cost money: only with the owner's consent);
   - checking the tags against current prices and limits.
 
