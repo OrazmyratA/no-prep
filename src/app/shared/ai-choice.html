@@ -1,11 +1,18 @@
+<!-- Above an item column: what this column's helper does. -->
+<div *ngIf="isHeader" class="ai-choice-head">
+  <span class="ai-choice-head-icon" aria-hidden="true">{{ jobIcon }}</span>
+  <span class="ai-choice-head-label">{{ jobLabelKey | translate }}</span>
+  <span class="ai-choice-head-hint">{{ jobHintKey | translate }}</span>
+</div>
 <button type="button" class="ai-choice-btn"
         [class.ai-choice-warn]="failureKey || currentUnavailable"
         [class.ai-choice-compact]="compact"
+        [class.ai-choice-btn-header]="isHeader"
         (click)="toggle($event)"
         aria-haspopup="listbox" [attr.aria-expanded]="open"
         [attr.title]="(jobLabelKey | translate) + ': ' + (current?.name ?? '')">
-  <span class="ai-choice-job" aria-hidden="true">{{ jobIcon }}</span>
-  <span *ngIf="!compact" class="ai-choice-label">{{ jobLabelKey | translate }}:</span>
+  <span *ngIf="!isHeader" class="ai-choice-job" aria-hidden="true">{{ jobIcon }}</span>
+  <span *ngIf="!compact && !isHeader" class="ai-choice-label">{{ jobLabelKey | translate }}:</span>
   <app-ai-logo *ngIf="current" [id]="current.logo"></app-ai-logo>
   <span class="ai-choice-name">{{ current?.name }}</span>
   <span *ngIf="autoUsedName" class="ai-choice-used">({{ autoUsedName }})</span>

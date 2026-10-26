@@ -1,7 +1,8 @@
 <div class="ai-panel" role="region" [attr.aria-label]="'aiTopicTitle' | translate">
 
-      <!-- Which AIs are linked, and who does each job: ✨ Text, 🖼 Picture, 🔊 Voice. -->
-      <app-ai-job-bar class="ai-panel-bar"></app-ai-job-bar>
+      <!-- Which AIs are linked, and what linking more unlocks. Who does each job is chosen over the
+           item columns below; Generate shows its writer next to the button. -->
+      <app-ai-accounts class="ai-panel-bar"></app-ai-accounts>
       <p *ngIf="isBuiltin" class="ai-hint ai-tip">{{ 'aiTopicBuiltinHint' | translate }}</p>
 
       <!-- Prompt -->
@@ -210,6 +211,8 @@
 
       <div class="ai-footer">
         <span *ngIf="generating" class="ai-working"><span class="ai-spinner"></span>{{ 'aiTopicGenerating' | translate }}</span>
+        <!-- The same Text choice as over the item text column. -->
+        <app-ai-choice job="text" labelKey="aiChoiceWrittenBy" class="ai-written-by"></app-ai-choice>
         <!-- The chosen Text AI has no key yet: say so next to Generate, with the way to link it. -->
         <button *ngIf="needsKey && provider" type="button" class="ai-link-first" (click)="linking = providerId">
           🔑 {{ 'aiTopicLinkFirst' | translate: { provider: provider.label } }}

@@ -76,13 +76,13 @@
         <label class="text-sm font-semibold text-ink-soft">{{ 'itemsLabel' | translate }}</label>
       </div>
 
-      <!-- "Create with AI" folded: who does each job for the item ✨, one click from changing it. -->
-      <button *ngIf="!aiPanelOpen" type="button" class="topic-ai-summary" (click)="toggleAiPanel()"
-              [disabled]="!licenseService.fullAccess" [attr.title]="'aiTopicTitle' | translate">
-        <span><span aria-hidden="true">✨</span> {{ aiTextSummary }}</span>
-        <span><span aria-hidden="true">🖼</span> {{ aiPictureSummaryKey | translate }}</span>
-        <span><span aria-hidden="true">🔊</span> {{ aiVoiceSummaryKey | translate }}</span>
-      </button>
+      <!-- Who fills each column, right above it: the item text, its picture, its voice
+           (docs/ai-choices-plan.md). Same grid as the items below, so each sits over its column. -->
+      <div class="item-ai-headers ml-12 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <app-ai-choice job="text" variant="header"></app-ai-choice>
+        <app-ai-choice job="picture" variant="header" [allowNone]="true"></app-ai-choice>
+        <app-ai-choice job="voice" variant="header" [allowNone]="true"></app-ai-choice>
+      </div>
 
       <!-- Result of the last AI fill -->
       <div *ngIf="aiResult" class="ai-fill-banner" role="status">
@@ -285,6 +285,8 @@
       </button>
     </div>
   </form>
+  <!-- The moment an AI is linked (from "Your AIs", a column's dropdown or "Link it first"). -->
+  <app-ai-unlocked></app-ai-unlocked>
   <app-point-area-editor *ngIf="areaEditor as editor"
                          [scene]="editor.scene" [instruction]="editor.instruction" [area]="editor.area"
                          (saved)="onAreaSaved($event)" (closed)="areaEditor = null">

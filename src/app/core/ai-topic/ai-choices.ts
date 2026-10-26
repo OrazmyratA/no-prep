@@ -1,7 +1,8 @@
 // One AI per job (docs/ai-choices-plan.md): the teacher picks who writes the items (Text), who
 // makes their pictures (Picture) and who speaks them (Voice). Each choice is remembered app-wide;
 // the Text choice is the same setting the ✨ window and the book creator's AI tools already use.
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
+import { Subject } from 'rxjs';
 import { AiTopicProviderId, AiTopicProviderStatus, AiTopicService } from './ai-topic.service';
 import type { SpeechProvider } from '../speech-error';
 
@@ -59,6 +60,33 @@ export function voiceSourceNameKey(id: VoiceSource | 'edge'): string {
   }[id];
 }
 
+/** One thing linking an AI lets the teacher use: its job icon, its name and its tag. */
+export interface AiAbility {
+  icon: string;
+  nameKey: string;
+  tagKey: string;
+}
+
+/**
+ * What linking an AI unlocks, from the same lists the dropdowns show (so they never disagree):
+ * writing topics, its voice, its drawing.
+ */
+export function aiAbilities(id: AiTopicProviderId, desktop = isDesktop()): AiAbility[] {
+  const abilities: AiAbility[] = [];
+  const text = TEXT_OPTIONS.find(option => option.needsKey === id);
+  if (text) abilities.push({ icon: '✨', nameKey: 'aiAbilityWrite', tagKey: text.tagKey });
+  const voice = voiceOptions(desktop).find(option => option.needsKey === id);
+  if (voice) abilities.push({ icon: '🔊', nameKey: voiceSourceNameKey(voice.id), tagKey: voice.tagKey });
+  const picture = PICTURE_OPTIONS.find(option => option.needsKey === id);
+  if (picture) abilities.push({ icon: '🎨', nameKey: pictureSourceNameKey(picture.id), tagKey: picture.tagKey });
+  return abilities;
+}
+
+/** Gemini and Groq have free plans; ChatGPT and Claude need paid credit. */
+export function aiCost(id: AiTopicProviderId): 'free' | 'paid' | null {
+  return id === 'gemini' || id === 'groq' ? 'free' : id === 'openai' || id === 'anthropic' ? 'paid' : null;
+}
+
 function isDesktop(): boolean {
   return typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function';
 }
@@ -101,19 +129,33 @@ export class AiChoicesService {
   providers: AiTopicProviderStatus[] = [];
   private loading: Promise<void> | null = null;
 
+  /** An AI that has just been linked (its key saved), for the "unlocked" card. */
+  readonly linked$ = new Subject<AiTopicProviderId>();
+
   /** Why a job last failed (a translation key), shown on its dropdown until it next works. */
   readonly failures: Partial<Record<AiJob, string>> = {};
   /** Which voice Automatic used last, for "Automatic (OpenAI)". */
   lastAutoVoice: SpeechProvider | null = null;
 
-  constructor(private ai: AiTopicService) {}
+  constructor(private ai: AiTopicService, private zone: NgZone) {}
 
   /** Loads the AI list once; `force` after a key changed. */
   loadProviders(force = false): Promise<void> {
     if (!this.loading || force) {
-      this.loading = this.ai.getProviders().then(providers => { this.providers = providers; });
+      const before = this.providers.length ? new Set(this.providers.filter(p => p.configured).map(p => p.id)) : null;
+      this.loading = this.ai.getProviders().then(providers => {
+        this.providers = providers;
+        // Only a change seen after a first load counts (not the keys already there at start).
+        // The list comes over IPC, outside Angular's zone: tell the listeners inside it so they repaint.
+        if (before) providers.filter(p => p.configured && p.id !== 'builtin' && !before.has(p.id)).forEach(p => this.zone.run(() => this.linked$.next(p.id)));
+      });
     }
     return this.loading;
+  }
+
+  /** The AIs that take a key (NoPrep AI is included and needs none). */
+  get linkableProviders(): AiTopicProviderStatus[] {
+    return this.providers.filter(p => p.id !== 'builtin');
   }
 
   provider(id: AiTopicProviderId): AiTopicProviderStatus | undefined {

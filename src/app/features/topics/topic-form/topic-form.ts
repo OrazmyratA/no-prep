@@ -14,7 +14,7 @@ import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
 import { AiTopicPanelResult, LANGUAGE_NAMES } from '../ai-topic-panel/ai-topic-panel';
-import { AiTopicError, AiTopicService, providerShortLabel } from '../../../core/ai-topic/ai-topic.service';
+import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
 import { AiImageChoice, AiMediaResolverService, PictureOrigin, pictureOrigin, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
 import { AiItemDraft } from '../../../core/ai-topic/ai-topic-draft';
 import { AiChoicesService, VoiceSource, pictureSourceNameKey, voiceOptions, voiceSourceNameKey } from '../../../core/ai-topic/ai-choices';
@@ -302,19 +302,6 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private setAiPanelOpen(open: boolean) {
     this.aiPanelOpen = open;
     if (open) this.aiPanelCreated = true;
-  }
-
-  /** The folded panel's summary: who does each job for the item ✨. */
-  get aiTextSummary(): string {
-    return providerShortLabel(this.choices.textSource);
-  }
-
-  get aiPictureSummaryKey(): string {
-    return this.choices.pictureNoneChosen ? 'aiChoiceNone' : pictureSourceNameKey(this.choices.pictureSource);
-  }
-
-  get aiVoiceSummaryKey(): string {
-    return this.choices.voiceNoneChosen ? 'aiChoiceNone' : voiceSourceNameKey(this.choices.voiceSource);
   }
 
   ngAfterViewInit(): void {

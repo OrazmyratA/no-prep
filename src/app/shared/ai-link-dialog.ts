@@ -1,6 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { AiTopicError, AiTopicProviderId, AiTopicProviderStatus, AiTopicService } from '../core/ai-topic/ai-topic.service';
-import { AiChoicesService } from '../core/ai-topic/ai-choices';
+import { AiAbility, AiChoicesService, aiAbilities } from '../core/ai-topic/ai-choices';
 import { LanguageService } from '../core/language';
 import { PlatformService } from '../core/platform';
 import { ConfirmationService } from './confirmation';
@@ -46,6 +46,11 @@ export class AiLinkDialogComponent {
 
   get showKeyBox(): boolean {
     return !this.linked || this.changing;
+  }
+
+  /** What linking this AI unlocks, shown before the key box. */
+  get abilities(): AiAbility[] {
+    return aiAbilities(this.providerId);
   }
 
   get showWebKeyNotice(): boolean {

@@ -1,0 +1,203 @@
+:host {
+  display: block;
+}
+
+/* Each AI's own colour (--brand) and a light tint of it (--brand-soft) for its linked pill. */
+[data-ai='gemini'] { --brand: #4f6ef7; --brand-soft: #eef1ff; }
+[data-ai='openai'] { --brand: #10a37f; --brand-soft: #e8f7f2; }
+[data-ai='anthropic'] { --brand: #d97757; --brand-soft: #fbefe9; }
+[data-ai='groq'] { --brand: #f43e01; --brand-soft: #fff0ea; }
+[data-ai='builtin'] { --brand: #7c3aed; --brand-soft: #f3edff; }
+
+.acc {
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid #e0e7ff;
+  background: linear-gradient(180deg, #ffffff, #f8faff);
+}
+
+.acc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 10px;
+}
+
+.acc-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #374151;
+}
+
+.acc-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.acc-progress-all {
+  color: #b45309;
+}
+
+.acc-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.acc-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.acc-dots i.acc-dot-on {
+  background: var(--brand, #6366f1);
+}
+
+.acc-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Not linked: grey and dashed, with what it costs and "+ Link". */
+.acc-ai {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  border: 1.5px dashed #cbd5e1;
+  background: #fff;
+  color: #64748b;
+  font-size: 0.85rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.acc-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #94a3b8;
+  filter: grayscale(1);
+  transition: filter 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.acc-name {
+  font-weight: 600;
+}
+
+.acc-cost {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.acc-cost-free {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.acc-add {
+  color: #4338ca;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+button.acc-ai:hover {
+  transform: translateY(-1px);
+  border-color: var(--brand, #a5b4fc);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+button.acc-ai:hover .acc-logo {
+  filter: none;
+  color: var(--brand);
+}
+
+button.acc-ai:focus-visible {
+  outline: 2px solid var(--brand, #6366f1);
+  outline-offset: 2px;
+}
+
+/* Linked: its own colours, a ✓ badge and a soft glow. */
+.acc-ai-linked {
+  border: 1.5px solid var(--brand);
+  background: var(--brand-soft);
+  color: #1f2937;
+  box-shadow: 0 0 0 3px var(--brand-soft), 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+.acc-ai-linked .acc-logo {
+  filter: none;
+  background: #fff;
+  color: var(--brand);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.acc-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.acc-ai-static {
+  cursor: default;
+}
+
+/* Linked a moment ago. */
+.acc-ai-new {
+  animation: acc-pop 0.9s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.acc-ai-new .acc-badge {
+  animation: acc-badge-in 0.6s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes acc-pop {
+  0% { transform: scale(0.92); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes acc-badge-in {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+/* Windows animations off (many school PCs): a slower, smaller pop rather than none. */
+@media (prefers-reduced-motion: reduce) {
+  .acc-ai-new {
+    animation: acc-pop-gentle 1.4s ease;
+  }
+
+  @keyframes acc-pop-gentle {
+    0% { transform: scale(0.97); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+}

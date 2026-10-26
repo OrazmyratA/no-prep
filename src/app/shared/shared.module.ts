@@ -27,7 +27,8 @@ import { LogoNotificationBellComponent } from './logo-notification-bell';
 import { AiLogoComponent } from './ai-logo';
 import { AiLinkDialogComponent } from './ai-link-dialog';
 import { AiChoiceComponent } from './ai-choice';
-import { AiJobBarComponent } from './ai-job-bar';
+import { AiAccountsComponent } from './ai-accounts';
+import { AiUnlockedComponent } from './ai-unlocked';
 
 @NgModule({
   declarations: [
@@ -54,7 +55,8 @@ import { AiJobBarComponent } from './ai-job-bar';
     AiLogoComponent,
     AiLinkDialogComponent,
     AiChoiceComponent,
-    AiJobBarComponent,
+    AiAccountsComponent,
+    AiUnlockedComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -85,7 +87,8 @@ import { AiJobBarComponent } from './ai-job-bar';
     AiLogoComponent,
     AiLinkDialogComponent,
     AiChoiceComponent,
-    AiJobBarComponent
+    AiAccountsComponent,
+    AiUnlockedComponent
   ]
 })
 export class SharedModule { }

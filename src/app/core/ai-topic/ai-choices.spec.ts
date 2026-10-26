@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { AiChoicesService, voiceOptions } from './ai-choices';
+import { AiChoicesService, aiAbilities, aiCost, voiceOptions } from './ai-choices';
 import { AiTopicService } from './ai-topic.service';
 
 describe('AiChoicesService', () => {
@@ -79,5 +79,38 @@ describe('AiChoicesService', () => {
     choices.markFailed('picture', 'aiTopicGenerateImageFailed');
     choices.setPictureSource('search');
     expect(choices.failures.picture).toBeUndefined();
+  });
+
+  it('tells when an AI becomes linked, but not for the keys already there at start', async () => {
+    const providers = [{ id: 'gemini', configured: true }, { id: 'groq', configured: false }, { id: 'openai', configured: false }];
+    const choices = create(providers);
+    const linked: string[] = [];
+    choices.linked$.subscribe(id => linked.push(id));
+
+    await choices.loadProviders();
+    expect(linked).toEqual([]);
+
+    providers[1].configured = true;
+    await choices.loadProviders(true);
+    expect(linked).toEqual(['groq']);
+
+    // Removing a key is not an unlock.
+    providers[1].configured = false;
+    await choices.loadProviders(true);
+    expect(linked).toEqual(['groq']);
+  });
+});
+
+describe('aiAbilities', () => {
+  it('lists what linking each AI unlocks, from the dropdowns\' own options', () => {
+    expect(aiAbilities('gemini', true).map(a => a.nameKey)).toEqual(['aiAbilityWrite', 'aiChoiceVoiceGemini', 'aiChoicePictureGemini']);
+    expect(aiAbilities('openai', true).map(a => a.nameKey)).toEqual(['aiAbilityWrite', 'aiChoiceVoiceOpenai', 'aiChoicePictureOpenai']);
+    expect(aiAbilities('groq', true).map(a => a.nameKey)).toEqual(['aiAbilityWrite']);
+    expect(aiAbilities('anthropic', true).map(a => a.tagKey)).toEqual(['aiChoiceTagTextClaude']);
+  });
+
+  it('marks the free and the paid AIs', () => {
+    expect([aiCost('gemini'), aiCost('groq'), aiCost('openai'), aiCost('anthropic'), aiCost('builtin')])
+      .toEqual(['free', 'free', 'paid', 'paid', null]);
   });
 });

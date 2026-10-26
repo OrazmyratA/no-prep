@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, HostListener, Input, OnInit, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnInit, Output } from '@angular/core';
 import {
   AiChoiceOption, AiChoicesService, AiJob, PICTURE_OPTIONS, PictureSource, TEXT_OPTIONS, VoiceSource,
   pictureSourceNameKey, voiceOptions, voiceSourceNameKey
@@ -36,6 +36,15 @@ export class AiChoiceComponent implements OnInit {
   @Input() compact = false;
   /** Topics: a "None" row for Picture and Voice (no pictures / no voices). */
   @Input() allowNone = false;
+  /** 'header': above an item column, a label and a short hint over a full-width button. */
+  @Input() variant: 'pill' | 'header' = 'pill';
+  /** Another label than the job's ("Written by" next to Generate). */
+  @Input() labelKey = '';
+
+  @HostBinding('class.ai-choice-host-header')
+  get isHeader(): boolean {
+    return this.variant === 'header';
+  }
   @Output() changed = new EventEmitter<string>();
 
   open = false;
@@ -58,7 +67,12 @@ export class AiChoiceComponent implements OnInit {
   }
 
   get jobLabelKey(): string {
-    return { text: 'aiChoiceJobText', picture: 'aiChoiceJobPicture', voice: 'aiChoiceJobVoice' }[this.job];
+    return this.labelKey || { text: 'aiChoiceJobText', picture: 'aiChoiceJobPicture', voice: 'aiChoiceJobVoice' }[this.job];
+  }
+
+  /** What the job does, under a column header ("writes the items"). */
+  get jobHintKey(): string {
+    return { text: 'aiJobHintText', picture: 'aiJobHintPicture', voice: 'aiJobHintVoice' }[this.job];
   }
 
   get currentId(): string {

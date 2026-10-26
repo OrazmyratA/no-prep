@@ -253,28 +253,11 @@
   color: #374151;
 }
 
-/* "Create with AI" folded: who does each job for the item ✨; a click opens it. */
-.topic-ai-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin-bottom: 4px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid #e0e7ff;
-  background: #f8faff;
-  color: #374151;
-  font-size: 0.8rem;
-  text-align: left;
-}
-
-.topic-ai-summary:hover:not(:disabled) {
-  background: #eef2ff;
-}
-
-.topic-ai-summary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Text / Picture / Voice over their item columns: the item card's inner padding (1rem) plus its
+   1px border, so each header lines up with the column under it. */
+.item-ai-headers {
+  padding-inline: calc(1rem + 1px);
+  margin-bottom: 2px;
 }
 
 /* Per-item ✨: fills just this item's image + audio, sitting inside the text input. */

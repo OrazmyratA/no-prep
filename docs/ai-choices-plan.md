@@ -10,6 +10,22 @@ Agreed with the product owner on 2026-10-26.
   - ✨ in the name field folds it; the summary line reads "✨ Gemini 🖼 Free search 🔊 None" and opens it again;
   - a saved topic opens for editing folded; 0 renderer errors. 415 app tests pass; the production build passes.
 
+- **Part B+ (asked for after Part B, same day), built and checked:**
+  - **The job dropdowns sit over their item columns** (✨ Text · writes the items, 🖼 Picture ·
+    finds or draws each picture, 🔊 Voice · reads each item aloud), on the items' own grid; their
+    left edges match the columns to the pixel. They are always shown, so the folded summary line
+    was removed. On a phone they stack above the items.
+  - **Generate shows its writer**: "✨ Written by: Gemini ▾" in the panel's footer (the same Text choice).
+  - **"Your AIs" rewards linking**: "1 of 4 linked" with a dot per AI (🏆 "All AIs linked" at 4);
+    linked AIs in their own colours with a ✓ and a soft glow; the others greyed and dashed with a
+    FREE / PAID tag and "+ Link"; hovering says what linking would unlock.
+  - **The Link window starts with "Linking unlocks"** (writing, voice, drawing, with their tags).
+  - **The moment a key is linked** (from anywhere in the topic form): the pill pops into colour and
+    a card says "🎉 Unlocked · Gemini is linked! You can now use: …", with a small confetti burst in
+    the AI's colours. With Windows animations off it is smaller and slower, not gone (as the season
+    themes, because many school PCs have animations off). What each AI unlocks comes from the
+    dropdowns' own option lists (`aiAbilities`), so the two never disagree.
+
 **Part A (v1.18.0):**
 - **Tests:** 412 app tests and 16 desktop tests pass; the production build passes.
 - **Checked in the real desktop app** on a fresh profile with no keys:

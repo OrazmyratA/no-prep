@@ -9,6 +9,17 @@
     </div>
 
     <ng-container *ngIf="showKeyBox; else linkedView">
+      <!-- Not linked yet: what it unlocks first, then how. -->
+      <div *ngIf="!linked && abilities.length" class="ai-link-unlocks">
+        <p class="ai-link-unlocks-title">{{ 'aiLinkUnlocks' | translate }}</p>
+        <ul>
+          <li *ngFor="let ability of abilities">
+            <span aria-hidden="true">{{ ability.icon }}</span>
+            <strong>{{ ability.nameKey | translate }}</strong>
+            <small>{{ ability.tagKey | translate }}</small>
+          </li>
+        </ul>
+      </div>
       <p class="ai-link-hint">{{ 'aiTopicLinkSteps' | translate }}</p>
       <p *ngIf="providerId === 'gemini'" class="ai-link-hint ai-link-tip">{{ 'aiTopicGeminiTip' | translate }}</p>
       <p *ngIf="showWebKeyNotice" class="ai-link-hint ai-link-tip">{{ 'aiTopicWebKeyNotice' | translate }}</p>
