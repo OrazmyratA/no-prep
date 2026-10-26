@@ -13,8 +13,8 @@ import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
-import { AiTopicDialogResult, LANGUAGE_NAMES } from '../ai-topic-dialog/ai-topic-dialog';
-import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
+import { AiTopicPanelResult, LANGUAGE_NAMES } from '../ai-topic-panel/ai-topic-panel';
+import { AiTopicError, AiTopicService, providerShortLabel } from '../../../core/ai-topic/ai-topic.service';
 import { AiImageChoice, AiMediaResolverService, PictureOrigin, pictureOrigin, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
 import { AiItemDraft } from '../../../core/ai-topic/ai-topic-draft';
 import { AiChoicesService, VoiceSource, pictureSourceNameKey, voiceOptions, voiceSourceNameKey } from '../../../core/ai-topic/ai-choices';
@@ -74,10 +74,13 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private expandedAudioItems = new WeakSet<AbstractControl>();
   @ViewChild('topicNameInput') topicNameInput?: ElementRef<HTMLInputElement>;
 
-  aiDialogOpen = false;
-  // Book pages sent from a game marker's "Create with AI"; used once when the dialog opens.
+  // "Create with AI" under the topic name (docs/ai-choices-plan.md, Part B). Made on first open,
+  // then only folded, so what the teacher typed there stays until they leave the topic.
+  aiPanelOpen = false;
+  aiPanelCreated = false;
+  // Book pages sent from a game marker's "Create with AI"; the panel takes them when it is made.
   aiInitialPages: Blob[] = [];
-  // Pages attached through the ✨ AI dialog, kept around (unlike the AI-fill loop's own local
+  // Pages attached through "Create with AI", kept around (unlike the AI-fill loop's own local
   // `pages`) so every item's 📖 "crop from a page" button stays usable afterward — not just
   // items the AI filled. Only in memory for this edit session; never saved with the topic.
   aiAttachedPages: Blob[] = [];
@@ -282,16 +285,36 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
       this.addItem();
     }
 
+    // Open on a new topic and when a book sends pages; folded when editing a topic.
     const bookPages = this.aiPageHandoff.take();
-    if (bookPages.length) {
-      this.aiInitialPages = bookPages;
-      this.aiDialogOpen = true;
-    }
+    if (bookPages.length) this.aiInitialPages = bookPages;
+    if (!this.isEdit || bookPages.length) this.setAiPanelOpen(true);
   }
 
-  closeAiDialog() {
-    this.aiDialogOpen = false;
-    this.aiInitialPages = [];
+  toggleAiPanel() {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    this.setAiPanelOpen(!this.aiPanelOpen);
+  }
+
+  private setAiPanelOpen(open: boolean) {
+    this.aiPanelOpen = open;
+    if (open) this.aiPanelCreated = true;
+  }
+
+  /** The folded panel's summary: who does each job for the item ✨. */
+  get aiTextSummary(): string {
+    return providerShortLabel(this.choices.textSource);
+  }
+
+  get aiPictureSummaryKey(): string {
+    return this.choices.pictureNoneChosen ? 'aiChoiceNone' : pictureSourceNameKey(this.choices.pictureSource);
+  }
+
+  get aiVoiceSummaryKey(): string {
+    return this.choices.voiceNoneChosen ? 'aiChoiceNone' : voiceSourceNameKey(this.choices.voiceSource);
   }
 
   ngAfterViewInit(): void {
@@ -457,14 +480,6 @@ isAudioPanelOpen(item: AbstractControl): boolean {
   return this.expandedAudioItems.has(item) || !!item.get('audio')?.value;
 }
 
-  openAiDialog() {
-    if (!this.licenseService.fullAccess) {
-      this.licenseService.requestReopen();
-      return;
-    }
-    this.aiDialogOpen = true;
-  }
-
   get aiExistingItemTexts(): string[] {
     return this.items.controls
       .map(c => String(c.get('text')?.value || '').trim())
@@ -475,8 +490,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     return this.items.controls.some(c => this.itemHasContent(c));
   }
 
-  async onAiDraft(result: AiTopicDialogResult) {
-    this.closeAiDialog();
+  async onAiDraft(result: AiTopicPanelResult) {
+    // Folded, so the new items are in view; the prompt and pages stay for another go.
+    this.setAiPanelOpen(false);
     const drawWith = await this.confirmDrawing(result.draft.items);
     const { pages } = result;
     // A prompt-only re-run (no photos this time) shouldn't wipe out pages attached earlier —
@@ -522,6 +538,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       : result.voiceLanguage;
 
     const voice = this.choices.voiceSource;
+    const noPictures = this.choices.pictureNoneChosen;
+    const noVoices = this.choices.voiceNoneChosen;
     let voiceError: unknown = null;
     this.aiDrawFailures = 0;
     let next = 0;
@@ -530,8 +548,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         const index = next++;
         const item = draft.items[index];
         const [picture, audio] = await Promise.all([
-          this.resolveAiItemPicture(item, pages, cardColors[index], drawWith),
-          item.audioText
+          noPictures ? null : this.resolveAiItemPicture(item, pages, cardColors[index], drawWith),
+          item.audioText && !noVoices
             ? this.audioVoice.synthesizeVoice(item.audioText, voiceLanguage, voice).catch(error => {
                 voiceError ??= error;
                 return null;
@@ -577,7 +595,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
    */
   private async confirmDrawing(items: AiItemDraft[]): Promise<'gemini' | 'openai' | null> {
     const source = this.choices.pictureSource;
-    if (source === 'search' || !this.choices.isLinked(source)) return null;
+    if (this.choices.pictureNoneChosen || source === 'search' || !this.choices.isLinked(source)) return null;
     const count = items.filter(item => item.imageKind === 'search').length;
     if (count <= FREE_DRAW_WITHOUT_ASKING) return source;
     const ai = this.langService.translate(pictureSourceNameKey(source));
@@ -628,8 +646,10 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     return this.fillingItems.has(item);
   }
 
+  /** Picture and Voice both "None" leave the item ✨ nothing to make. */
   canFillItemWithAi(item: AbstractControl): boolean {
-    return !!this.itemWords(item) && !this.fillingItems.has(item);
+    return !!this.itemWords(item) && !this.fillingItems.has(item)
+      && !(this.choices.pictureNoneChosen && this.choices.voiceNoneChosen);
   }
 
   /** The item text as students hear it: game marks (#, *, [ ]) removed, the rest as typed. */
@@ -657,8 +677,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       await Promise.all([
         // On the web with no voice linked, Automatic has nothing to use: the picture still comes,
         // and the audio panel already says how to get voices. A voice chosen by name still says why.
-        voice === 'auto' && !this.audioVoice.canSynthesize ? null : this.makeItemVoice(item, voice),
-        source === 'search' ? this.searchItemPicture(item) : this.drawItemPicture(item, source)
+        this.choices.voiceNoneChosen || (voice === 'auto' && !this.audioVoice.canSynthesize) ? null : this.makeItemVoice(item, voice),
+        this.choices.pictureNoneChosen ? null
+          : source === 'search' ? this.searchItemPicture(item) : this.drawItemPicture(item, source)
       ]);
     } finally {
       this.zone.run(() => this.fillingItems.delete(item));

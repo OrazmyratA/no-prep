@@ -3,8 +3,9 @@ import { AiChoicesService } from '../core/ai-topic/ai-choices';
 import { AiTopicProviderId, AiTopicProviderStatus, providerShortLabel } from '../core/ai-topic/ai-topic.service';
 
 /**
- * Above a topic's items: which AIs are linked (click one to link, change or remove its key) and
- * who does each job — ✨ Text, 🖼 Picture, 🔊 Voice (docs/ai-choices-plan.md).
+ * At the top of a topic's "Create with AI": which AIs are linked (click one to link, change or
+ * remove its key) and who does each job — ✨ Text, 🖼 Picture, 🔊 Voice (docs/ai-choices-plan.md).
+ * Picture and Voice offer "None" here (the topic gets no pictures / no voices).
  */
 @Component({
   selector: 'app-ai-job-bar',
@@ -25,8 +26,8 @@ import { AiTopicProviderId, AiTopicProviderStatus, providerShortLabel } from '..
       </div>
       <div class="ai-bar-jobs">
         <app-ai-choice job="text"></app-ai-choice>
-        <app-ai-choice job="picture"></app-ai-choice>
-        <app-ai-choice job="voice"></app-ai-choice>
+        <app-ai-choice job="picture" [allowNone]="true"></app-ai-choice>
+        <app-ai-choice job="voice" [allowNone]="true"></app-ai-choice>
       </div>
     </div>
     <app-ai-link-dialog *ngIf="linking" [providerId]="linking" (closed)="linking = null"></app-ai-link-dialog>

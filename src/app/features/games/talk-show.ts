@@ -14,7 +14,7 @@ import { PlatformFileService } from '../../core/platform-file';
 import { ConfirmationService } from '../../shared/confirmation';
 import { AiTopicError, AiTopicProviderId, AiTopicService } from '../../core/ai-topic/ai-topic.service';
 import { SpeakingFeedback, SpeakingFeedbackCandidate } from '../../core/ai-topic/speaking-feedback';
-import { LANGUAGE_NAMES } from '../topics/ai-topic-dialog/ai-topic-dialog';
+import { LANGUAGE_NAMES } from '../topics/ai-topic-panel/ai-topic-panel';
 import { showAppNotification } from '../../core/notification';
 import { dateStamp, htmlLang, printHtml } from '../../core/print-html';
 import { LanguageService } from '../../core/language';

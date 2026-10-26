@@ -179,26 +179,100 @@
 }
 
 /* AI topic fill */
-.ai-fill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 14px;
+/* ✨ inside the topic name field: opens and folds "Create with AI" under it. */
+.topic-name-field {
+  position: relative;
+}
+
+.topic-name-field input {
+  padding-right: 3.25rem;
+}
+
+.topic-name-ai {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: linear-gradient(90deg, #4f46e5, #9333ea);
   color: #fff;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  line-height: 1;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
 }
 
-.ai-fill-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+.topic-name-ai:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.45);
 }
 
-.ai-fill-btn:disabled {
+.topic-name-ai-open {
+  filter: saturate(0.6) brightness(1.1);
+}
+
+.topic-name-ai:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.topic-ai-area {
+  margin-top: 12px;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  border: 1px solid #e0e7ff;
+  background: #f8fafc;
+}
+
+.topic-ai-area-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.topic-ai-area-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #4f46e5, #9333ea);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.topic-ai-area-fold {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: #6b7280;
+}
+
+.topic-ai-area-fold:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* "Create with AI" folded: who does each job for the item ✨; a click opens it. */
+.topic-ai-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-bottom: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #e0e7ff;
+  background: #f8faff;
+  color: #374151;
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.topic-ai-summary:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
+.topic-ai-summary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -366,11 +440,6 @@
 .ai-swap-spin {
   display: inline-block;
   animation: ai-fill-spin 0.8s linear infinite;
-}
-
-.topic-ai-bar {
-  display: block;
-  margin-bottom: 4px;
 }
 
 /* Under an item's picture / player: what made it, and the buttons to make another. */

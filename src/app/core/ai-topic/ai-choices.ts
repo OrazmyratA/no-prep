@@ -65,6 +65,10 @@ function isDesktop(): boolean {
 
 const PICTURE_KEY = 'aiPictureSource';
 const VOICE_KEY = 'aiVoiceSource';
+// "None" for a topic's pictures or voices. Kept apart from the source, so the audio panel and the
+// guide dot (which have no None) keep using the chosen voice.
+const PICTURE_OFF_KEY = 'aiPictureOff';
+const VOICE_OFF_KEY = 'aiVoiceOff';
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -90,6 +94,8 @@ export class AiChoicesService {
   // Read once and then kept here, so every dropdown bound to these follows a change at once.
   private picture: PictureSource = read(PICTURE_KEY, PICTURE_OPTIONS.map(o => o.id), 'search');
   private voice: VoiceSource = read(VOICE_KEY, voiceOptions().map(o => o.id), 'auto');
+  private pictureNone = read(PICTURE_OFF_KEY, ['1', '0'], '0') === '1';
+  private voiceNone = read(VOICE_OFF_KEY, ['1', '0'], '0') === '1';
 
   /** Which AIs the app offers and which are linked; refreshed after a key is linked or removed. */
   providers: AiTopicProviderStatus[] = [];
@@ -144,6 +150,26 @@ export class AiChoicesService {
     this.picture = source;
     write(PICTURE_KEY, source);
     delete this.failures.picture;
+  }
+
+  /** Topics: "None" = Generate and the item ✨ make no pictures. */
+  get pictureNoneChosen(): boolean {
+    return this.pictureNone;
+  }
+
+  setPictureNone(none: boolean): void {
+    this.pictureNone = none;
+    write(PICTURE_OFF_KEY, none ? '1' : '0');
+  }
+
+  /** Topics: "None" = Generate and the item ✨ make no voices. */
+  get voiceNoneChosen(): boolean {
+    return this.voiceNone;
+  }
+
+  setVoiceNone(none: boolean): void {
+    this.voiceNone = none;
+    write(VOICE_OFF_KEY, none ? '1' : '0');
   }
 
   get voiceSource(): VoiceSource {

@@ -104,17 +104,22 @@ describe('TopicForm', () => {
     expect(component.items.length).toBe(itemCount);
   });
 
-  it('opens the AI dialog with pages handed over from a book marker, once', async () => {
+  it('opens "Create with AI" with pages handed over from a book marker, once', async () => {
     const handoff = TestBed.inject(AiPageHandoffService);
     const page = new Blob(['page']);
     handoff.give([page]);
     component.ngOnInit();
-    expect(component.aiDialogOpen).toBe(true);
+    expect(component.aiPanelOpen).toBe(true);
     expect(component.aiInitialPages).toEqual([page]);
     expect(handoff.take()).toEqual([]);
+  });
 
-    component.closeAiDialog();
-    expect(component.aiInitialPages).toEqual([]);
+  it('opens "Create with AI" on a new topic, and only folds it after that', () => {
+    expect(component.aiPanelOpen).toBe(true);
+    component.toggleAiPanel();
+    expect(component.aiPanelOpen).toBe(false);
+    // Still made: what the teacher typed in it stays while it is folded.
+    expect(component.aiPanelCreated).toBe(true);
   });
 
   it('retries a half-finished save as an update, not a second topic', async () => {

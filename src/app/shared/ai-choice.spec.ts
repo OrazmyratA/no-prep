@@ -56,6 +56,24 @@ describe('AiChoiceComponent', () => {
     expect(choices.voiceSource).toBe('gemini');
   });
 
+  it('offers "None" only where asked; it keeps the voice that the audio panel uses', async () => {
+    const fixture = await open('voice');
+    const choice = fixture.componentInstance;
+    const choices = TestBed.inject(AiChoicesService);
+    expect(choice.rows.some(r => r.id === 'none')).toBe(false);
+
+    choice.allowNone = true;
+    choice.pick(choice.rows.find(r => r.id === 'gemini')!);
+    choice.pick(choice.rows.find(r => r.id === 'none')!);
+    expect(choices.voiceNoneChosen).toBe(true);
+    expect(choice.currentId).toBe('none');
+    expect(choices.voiceSource).toBe('gemini');
+
+    choice.pick(choice.rows.find(r => r.id === 'auto')!);
+    expect(choices.voiceNoneChosen).toBe(false);
+    expect(choices.voiceSource).toBe('auto');
+  });
+
   it('a suggested Text AI that is not linked is said quietly; a chosen one warns', async () => {
     const fresh = await open('text', false);
     expect(fresh.componentInstance.currentUnavailable).toBe(false);

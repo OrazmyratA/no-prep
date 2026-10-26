@@ -7,12 +7,12 @@ import { TopicsListComponent } from './topics-list/topics-list';
 import { TopicFormComponent } from './topic-form/topic-form';
 import { SharedModule } from '../../shared/shared.module';
 import { ActivitySelectComponent } from './activity-select/activity-select';
-import { AiTopicDialogComponent } from './ai-topic-dialog/ai-topic-dialog';
+import { AiTopicPanelComponent } from './ai-topic-panel/ai-topic-panel';
 import { PointAreaEditorComponent } from './point-area-editor/point-area-editor';
 import { TranslatePipe } from "../../shared/translate-pipe";
 
 @NgModule({
-  declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent, AiTopicDialogComponent, PointAreaEditorComponent],
+  declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent, AiTopicPanelComponent, PointAreaEditorComponent],
   imports: [
     CommonModule,
     FormsModule,

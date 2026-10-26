@@ -4,7 +4,7 @@ import { ExerciseKind, PreparedExercise, TaskPrepResult } from '../../../core/ai
 import { GridAnchor, circleBox, gridCells, inkBox, markSize, marksAfter, marksInCorner, matchDots, placeGaps, separateBoxes, squareBox } from '../../../core/ai-topic/task-gaps';
 import { BookElement, BookElementType, BookPage, BookWordBank } from '../../../core/book.model';
 import { PdfTextItem, findBlanks, findInstructionEnd, findPhrases, snapBoxToText, textInBox } from '../../../core/pdf-text';
-import { LANGUAGE_NAMES } from '../../topics/ai-topic-dialog/ai-topic-dialog';
+import { LANGUAGE_NAMES } from '../../topics/ai-topic-panel/ai-topic-panel';
 import { PdfPageCanvasComponent } from '../pdf-page-canvas/pdf-page-canvas';
 import { AiPagesResult } from './book-creator-game-controller';
 import { A4_RATIO, pageRatio } from './lesson-plan-icons';

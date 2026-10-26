@@ -1,8 +1,16 @@
 # One AI per job: text, picture, voice
 
-Agreed with the product owner on 2026-10-26. Branch: `smoothness-optimisation` (or a branch from it).
+Agreed with the product owner on 2026-10-26.
 
-**Status (2026-10-26): Part A built, uncommitted.**
+**Status (2026-10-26): Part A released in v1.18.0. Part B built on branch `next-release` for v1.19.0.**
+- **Part B checked** in the real desktop app on a fresh profile with no keys:
+  - a new topic opens "Create with AI" under the name, with the AI row and the three dropdowns at its top;
+  - Voice lists "🚫 None" last; with it, the item ✨ gave a Pixabay picture and no voice (about 1 s);
+  - the unlinked Text AI shows "🔑 Link Google Gemini first" next to a disabled Generate, which opens the Link window;
+  - ✨ in the name field folds it; the summary line reads "✨ Gemini 🖼 Free search 🔊 None" and opens it again;
+  - a saved topic opens for editing folded; 0 renderer errors. 415 app tests pass; the production build passes.
+
+**Part A (v1.18.0):**
 - **Tests:** 412 app tests and 16 desktop tests pass; the production build passes.
 - **Checked in the real desktop app** on a fresh profile with no keys:
   - ✨ on "apple" gave a Pixabay picture and the Windows voice in about 8 s;
@@ -165,6 +173,62 @@ Above the items list in the topic form:
 - Each dropdown gets "None", which replaces the window's Pictures/Voice Auto · On · Off.
 - The window is removed. The book creator's "Create with AI" already hands its pages to the topic
   form, so it needs no window of its own.
+
+### Part B in detail (v1.19.0, planned 2026-10-26)
+
+**What the teacher sees**
+
+```
+ Topic name  [ Animals at the zoo                         ✨ ]
+ ┌ Create with AI ─────────────────────────────────────────── ▴ ┐
+ │ AIs:  [Gemini ✓] [OpenAI ✓] [Groq + Link] [Claude + Link]     │
+ │ ✨ Text: Gemini ▾   🖼 Picture: Free search ▾   🔊 Voice: Windows ▾ │
+ │ Prompt chips (Vocabulary · Sentences · Reading · …)          │
+ │ [ prompt …                                                 ] │
+ │ Level: Auto A1 A2 …   ✏️ simple wording                       │
+ │ (reading tasks / speaking parts when that chip is chosen)    │
+ │ [ 📷 Add page photos or a PDF ]  [ 📋 Paste ]                 │
+ │ ⚙️ items: Auto · voice language: Auto     ➕ Add / 🔁 Replace  │
+ │                                              [ ✨ Generate ]  │
+ └──────────────────────────────────────────────────────────────┘
+ Items
+ 1. [ lion            ✨ ]  …
+```
+
+- **✨ in the name field** opens and closes the area. It is open on a new, empty topic and when the
+  book creator sends pages; closed when editing a topic that has items.
+- **When it is closed**, a one-line summary stays above the items, so the item ✨ still shows who
+  does each job: `✨ Gemini · 🖼 Free search · 🔊 Windows voice`. Clicking it opens the area.
+- **"None" in Picture and Voice** replaces the window's Pictures / Voice *Auto · On · Off*.
+  - Picture None: Generate makes no pictures, and the item ✨ makes only the voice.
+  - Voice None: no voices, and the item ✨ makes only the picture.
+  - Otherwise the Text AI decides per item, which is today's *Auto*. *On* (force a picture on every
+    item, even headings) goes away.
+- **The provider pills and the key box** in the window are gone: the AI row and the Text dropdown
+  do that job.
+- **Generate** works as now: items go straight into the list, the Undo banner stays, and the area
+  folds up after a successful Generate so the new items are in view.
+- **Ctrl+Enter** in the prompt generates. Escape no longer closes anything (the area isn't a window).
+- What the teacher typed (prompt, chip, pages, options) stays while the area is folded, and is
+  cleared when they leave the topic.
+
+**How it is built**
+
+1. Turn `AiTopicDialogComponent` into `AiTopicPanelComponent` (`app-ai-topic-panel`): the same
+   logic, no overlay, header, Cancel or Escape; it reads the job choices from `AiChoicesService`.
+   Its tests move with it.
+2. Topic form: ✨ inside the name field, the fold-out area under it, the closed summary line;
+   `openAiDialog` / `closeAiDialog` become open/close of the area. `onAiDraft` stays.
+3. `AiChoiceComponent`: a "None" option for Picture and Voice (`[allowNone]`, only in the panel's
+   AI bar), remembered like the others; the item ✨ and Generate respect it. "None" is stored next
+   to the chosen source (`aiPictureOff` / `aiVoiceOff`), not instead of it, so the audio panel and
+   the book creator's guide dot, which have no None, keep using the chosen voice.
+4. Book creator → topic form with pages: opens the area with the pages attached (today it opens
+   the window).
+5. Remove the window's own CSS and the unused keys in 10 languages; add the new ones.
+6. Check: tests, production build, and the real desktop app and web build (new topic, edit topic,
+   book creator pages, item ✨ with None, Generate + Undo), with a fresh profile and free choices
+   only.
 
 ## Build steps (Part A)
 

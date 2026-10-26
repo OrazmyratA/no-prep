@@ -10,7 +10,7 @@ import {
 import {
   LESSON_INTERACTIONS, LessonClass, LessonPlan, LessonStage, LessonTopic, gamesForRecipe, planMinutes
 } from '../../../core/ai-topic/lesson-plan';
-import { LANGUAGE_NAMES } from '../../topics/ai-topic-dialog/ai-topic-dialog';
+import { LANGUAGE_NAMES } from '../../topics/ai-topic-panel/ai-topic-panel';
 import { BookElement, BookPage, StoredLessonPlan } from '../../../core/book.model';
 import { buildLessonPlanHtml } from '../../../core/ai-topic/lesson-plan-report';
 import { showAppNotification } from '../../../core/notification';

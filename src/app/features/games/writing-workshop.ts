@@ -5,7 +5,7 @@ import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
 import { AiTopicError, AiTopicProviderId, AiTopicService } from '../../core/ai-topic/ai-topic.service';
 import { WritingCheckResult, WritingGapFeedback, gapFeedbackKey } from '../../core/ai-topic/writing-check';
-import { LANGUAGE_NAMES } from '../topics/ai-topic-dialog/ai-topic-dialog';
+import { LANGUAGE_NAMES } from '../topics/ai-topic-panel/ai-topic-panel';
 import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { ConfettiInstance, ConfettiOptions, GameFinishConfettiService } from '../../shared/game-finish-overlay';
 import { TrackedAudio, isTypingTarget, TimerBag, shuffled } from './game-utils';

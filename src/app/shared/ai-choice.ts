@@ -17,6 +17,7 @@ interface ChoiceRow {
 }
 
 const MENU_WIDTH = 300;
+const NONE = 'none';
 
 /**
  * One job's AI dropdown (docs/ai-choices-plan.md): ✨ Text, 🖼 Picture or 🔊 Voice. Best first,
@@ -33,6 +34,8 @@ export class AiChoiceComponent implements OnInit {
   @Input() job: AiJob = 'voice';
   /** Icon only before the name, no "Voice:" label (inside a small panel). */
   @Input() compact = false;
+  /** Topics: a "None" row for Picture and Voice (no pictures / no voices). */
+  @Input() allowNone = false;
   @Output() changed = new EventEmitter<string>();
 
   open = false;
@@ -60,6 +63,7 @@ export class AiChoiceComponent implements OnInit {
 
   get currentId(): string {
     if (this.job === 'text') return this.choices.textSource;
+    if (this.allowNone && this.noneChosen) return NONE;
     return this.job === 'picture' ? this.choices.pictureSource : this.choices.voiceSource;
   }
 
@@ -70,10 +74,18 @@ export class AiChoiceComponent implements OnInit {
         : TEXT_OPTIONS.filter(option => option.id !== 'builtin');
       return listed.map(option => this.row(option, option.id, providerShortLabel(option.id)));
     }
-    if (this.job === 'picture') {
-      return PICTURE_OPTIONS.map(option => this.row(option, option.id, this.langService.translate(pictureSourceNameKey(option.id))));
+    const rows = this.job === 'picture'
+      ? PICTURE_OPTIONS.map(option => this.row(option, option.id, this.langService.translate(pictureSourceNameKey(option.id))))
+      : voiceOptions().map(option => this.row(option, option.id, this.langService.translate(voiceSourceNameKey(option.id))));
+    if (this.allowNone) {
+      const tagKey = this.job === 'picture' ? 'aiChoiceTagPictureNone' : 'aiChoiceTagVoiceNone';
+      rows.push({ id: NONE, logo: NONE, name: this.langService.translate('aiChoiceNone'), tagKey, available: true, needsKey: null });
     }
-    return voiceOptions().map(option => this.row(option, option.id, this.langService.translate(voiceSourceNameKey(option.id))));
+    return rows;
+  }
+
+  private get noneChosen(): boolean {
+    return this.job === 'picture' ? this.choices.pictureNoneChosen : this.job === 'voice' && this.choices.voiceNoneChosen;
   }
 
   private row(option: AiChoiceOption<string>, logo: string, name: string): ChoiceRow {
@@ -124,9 +136,16 @@ export class AiChoiceComponent implements OnInit {
 
   pick(row: ChoiceRow): void {
     if (!row.available) return;
-    if (this.job === 'text') this.choices.setTextSource(row.id as AiTopicProviderId);
-    else if (this.job === 'picture') this.choices.setPictureSource(row.id as PictureSource);
-    else this.choices.setVoiceSource(row.id as VoiceSource);
+    const none = row.id === NONE;
+    if (this.job === 'text') {
+      this.choices.setTextSource(row.id as AiTopicProviderId);
+    } else if (this.job === 'picture') {
+      if (!none) this.choices.setPictureSource(row.id as PictureSource);
+      this.choices.setPictureNone(none);
+    } else {
+      if (!none) this.choices.setVoiceSource(row.id as VoiceSource);
+      if (this.allowNone) this.choices.setVoiceNone(none);
+    }
     this.open = false;
     this.changed.emit(row.id);
   }

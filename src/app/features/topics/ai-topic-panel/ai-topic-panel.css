@@ -1,54 +1,11 @@
-.ai-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 10000;
-}
-
-/* Season packs restyle the frame (shell, header, footer); the section cards stay light paper. */
-.ai-dialog {
-  background: var(--np-dialog, #f8fafc);
-  border-radius: 18px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3), 0 0 0 1px var(--np-dialog-border, transparent);
-  scrollbar-color: var(--np-dialog-scrollbar, auto);
-  width: min(680px, 100%);
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  padding: 18px 20px;
+/* Create with AI, inside the topic form under the name: the form gives it its frame. */
+.ai-panel {
   color: #1f2937;
 }
 
-.ai-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  padding: 0 2px;
-}
-
-.ai-header h2 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  background: var(--np-dialog-title, linear-gradient(90deg, #4f46e5, #9333ea));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.ai-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  color: var(--np-dialog-muted, #9ca3af);
-}
-
-.ai-close:hover:not(:disabled) {
-  background: var(--np-dialog-chip, #e5e7eb);
-  color: var(--np-dialog-ink, #4b5563);
+.ai-panel-bar {
+  display: block;
+  margin-bottom: 12px;
 }
 
 /* Every section is its own clean card — a plain white surface against the dialog's light grey
@@ -107,51 +64,6 @@
   min-height: 96px;
 }
 
-.ai-providers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ai-provider {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  background: #fff;
-}
-
-.ai-provider small {
-  color: #9ca3af;
-}
-
-.ai-provider .ai-linked {
-  color: #059669;
-  font-weight: 700;
-}
-
-.ai-provider-active {
-  border-color: #6366f1;
-  background: #eef2ff;
-  color: #3730a3;
-  font-weight: 600;
-}
-
-.ai-key-setup {
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-}
-
-.ai-key-title {
-  font-weight: 600;
-}
-
 .ai-key-row {
   display: flex;
   flex-wrap: wrap;
@@ -162,19 +74,6 @@
 .ai-key-row .ai-input {
   flex: 1 1 220px;
   width: auto;
-}
-
-.ai-media-choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.ai-key-actions {
-  display: flex;
-  gap: 14px;
-  margin-top: 6px;
 }
 
 .ai-primary,
@@ -198,8 +97,7 @@
 
 .ai-primary:disabled,
 .ai-secondary:disabled,
-.ai-link:disabled,
-.ai-icon-link:disabled {
+.ai-link:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -212,18 +110,6 @@
 
 .ai-danger {
   color: #dc2626;
-}
-
-.ai-icon-link {
-  font-size: 1rem;
-  line-height: 1;
-  padding: 4px 6px;
-  border-radius: 6px;
-  background: transparent;
-}
-
-.ai-icon-link:hover:not(:disabled) {
-  background: #f3f4f6;
 }
 
 .ai-pages {
@@ -448,14 +334,23 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  border-top: 1px solid var(--np-dialog-line, #e5e7eb);
+  border-top: 1px solid #e5e7eb;
   padding-top: 14px;
 }
 
-.ai-footer .ai-secondary {
-  border-color: var(--np-dialog-line, #d1d5db);
-  background: var(--np-dialog-chip, #fff);
-  color: var(--np-dialog-chip-ink, #374151);
+/* The chosen Text AI has no key yet: next to Generate, the way to link it. */
+.ai-link-first {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px dashed #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ai-link-first:hover {
+  background: #e0e7ff;
 }
 
 .ai-working {
@@ -463,7 +358,7 @@
   align-items: center;
   gap: 8px;
   margin-right: auto;
-  color: var(--np-dialog-heading, #4f46e5);
+  color: #4f46e5;
   font-size: 0.9rem;
 }
 
