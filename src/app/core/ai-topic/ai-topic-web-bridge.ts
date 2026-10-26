@@ -26,11 +26,16 @@ const PROVIDERS: Record<AiTopicWebProviderId, { model: string; maxImages: number
 
 // Only these two providers can generate images; see ai-media-resolver.ts.
 const IMAGE_PROVIDERS: Partial<Record<AiTopicWebProviderId, { model: string }>> = {
-  openai: { model: 'gpt-image-1' },
-  gemini: { model: 'gemini-3-flash-image' }
+  openai: { model: 'gpt-image-2.5-flare' },
+  gemini: { model: 'gemini-nano-banana-2.1' }
 };
 
 const REQUEST_TIMEOUT_MS = 180000;
+// Same as the desktop (electron/main/ai-topic-service.js): when Google's newest Flash is overloaded
+// (503, or no answer in time), the older Flash gets one try.
+const GEMINI_FALLBACK_MODEL = 'gemini-3.5-flash';
+const GEMINI_PRIMARY_TIMEOUT_MS = 90000;
+const OVERLOADED_STATUSES = new Set([500, 502, 503, 504]);
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
 const RETRY_DELAYS_MS = [2000, 6000];
 const MAX_RETRY_WAIT_MS = 60000;
@@ -129,13 +134,22 @@ function normalizeInput(input: any): NormalizedRequest {
 
 // ---- shared fetch + error handling (ported from electron/main/ai-topic-service.js) ----
 
-async function postJson(url: string, headers: Record<string, string>, body: unknown): Promise<any> {
+/**
+ * `failWhenOverloaded`: a timeout or an overloaded answer is thrown at once (marked `overloaded`)
+ * instead of being waited out, so the caller can try another model.
+ */
+async function postJson(
+  url: string,
+  headers: Record<string, string>,
+  body: unknown,
+  { timeoutMs = REQUEST_TIMEOUT_MS, failWhenOverloaded = false } = {}
+): Promise<any> {
   let response: Response;
   for (let attempt = 0; ; attempt++) {
     // AbortSignal.timeout() would be simpler, but its browser support isn't guaranteed on the
     // older iOS Safari versions this web path specifically needs to reach.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       response = await fetch(url, {
         method: 'POST',
@@ -145,7 +159,7 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
       });
     } catch (error: any) {
       if (error?.name === 'AbortError') {
-        throw new Error('The AI took too long to answer. Please try again.');
+        throw Object.assign(new Error('The AI took too long to answer. Please try again.'), { overloaded: failWhenOverloaded });
       }
       throw new Error('Could not reach the AI service. Check your internet connection.');
     } finally {
@@ -153,6 +167,10 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
     }
     if (response.ok) return response.json();
     const errorText = await response.text().catch(() => '');
+    // Also a free plan's daily limit: Google counts it per model, so the older Flash still has its own.
+    if (failWhenOverloaded && (OVERLOADED_STATUSES.has(response.status) || (response.status === 429 && isDailyLimit(errorText) && !isNotInFreePlan(errorText)))) {
+      throw Object.assign(new Error(httpErrorMessage(response.status, errorText)), { overloaded: true });
+    }
     const delay = retryDelay(response, errorText, attempt);
     if (delay === null) {
       throw new Error(httpErrorMessage(response.status, errorText));
@@ -164,7 +182,8 @@ async function postJson(url: string, headers: Record<string, string>, body: unkn
 /** How long to wait before trying a busy AI again, or null to give up now. */
 function retryDelay(response: Response, errorText: string, attempt: number): number | null {
   if (!RETRY_STATUSES.has(response.status) || attempt >= RETRY_DELAYS_MS.length) return null;
-  if (isDailyLimit(errorText) || isTooLarge(errorText)) return null;
+  // Waiting cannot help: a daily limit, a request too big for the plan, no credit, or no free plan.
+  if (isDailyLimit(errorText) || isTooLarge(errorText) || isNoCredit(errorText) || isNotInFreePlan(errorText)) return null;
   const asked = askedWaitMs(response, errorText);
   if (asked !== null) return asked <= MAX_RETRY_WAIT_MS ? Math.max(asked + 500, RETRY_DELAYS_MS[attempt]) : null;
   return RETRY_DELAYS_MS[attempt];
@@ -205,10 +224,27 @@ function providerReason(errorText: string): string {
   return message.replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
+function isNoCredit(errorText: string): boolean {
+  return /insufficient_quota|no credits remaining|credit balance is too low/i.test(String(errorText || ''));
+}
+
+/** Gemini's answer for something its free plan never allows: a free-tier quota of 0 (image models). */
+function isNotInFreePlan(errorText: string): boolean {
+  const text = String(errorText || '');
+  return /free_tier/i.test(text) && /limit: 0\b/.test(text);
+}
+
 function httpErrorMessage(status: number, errorText = ''): string {
-  if (status === 401 || status === 403) return 'The AI rejected your API key. Check that it is correct and active.';
   const reason = providerReason(errorText);
   const because = reason ? ` (${reason})` : '';
+  // Checked first: these come as 429 (OpenAI, Gemini), 400 (Claude) or 402, and waiting never helps.
+  if (isNotInFreePlan(errorText)) {
+    return `This AI's free plan does not include this (for example drawing pictures). Add billing on its website, or pick another AI.${because}`;
+  }
+  if (isNoCredit(errorText)) {
+    return `Your account with this AI has no credit left. Add credit on its website, or pick another AI.${because}`;
+  }
+  if (status === 401 || status === 403) return 'The AI rejected your API key. Check that it is correct and active.';
   if (status === 413 || (status === 429 && isTooLarge(errorText))) {
     return `This request is too big for this AI's plan. Send fewer pages, or pick another AI.${because}`;
   }
@@ -299,8 +335,16 @@ function readGeminiText(data: any): string {
 }
 
 async function generateWithGemini(req: NormalizedRequest): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
-  const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, buildGeminiBody(req));
+  const url = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const headers = { 'x-goog-api-key': req.apiKey };
+  const body = buildGeminiBody(req);
+  let data: any;
+  try {
+    data = await postJson(url(req.model), headers, body, { timeoutMs: GEMINI_PRIMARY_TIMEOUT_MS, failWhenOverloaded: true });
+  } catch (error: any) {
+    if (!error?.overloaded) throw error;
+    data = await postJson(url(GEMINI_FALLBACK_MODEL), headers, body);
+  }
   return readGeminiText(data);
 }
 
@@ -426,6 +470,8 @@ async function generateImageWithOpenAi(req: { apiKey: string; model: string; pro
     model: req.model,
     prompt: req.prompt,
     size: '1024x1024',
+    // A flashcard picture: medium is clear enough and costs far less than high.
+    quality: 'medium',
     n: 1
   });
   const entry = data?.data?.[0];

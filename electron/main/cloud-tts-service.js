@@ -3,7 +3,9 @@
 // Model IDs checked 2026-10; providers rename them, so re-check if synthesis starts failing.
 const OPENAI_TTS_MODEL = 'gpt-4o-mini-tts';
 const OPENAI_VOICE = 'alloy';
-const GEMINI_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+// gemini-2.5-flash-preview-tts is served only to keys that used it before, so new teachers got no
+// Gemini voice; 3.8 Flash TTS has a free plan. gpt-4o-mini-tts shuts down 2027-01-06.
+const GEMINI_TTS_MODEL = 'gemini-3.8-flash-tts';
 const GEMINI_VOICE = 'Kore';
 
 const REQUEST_TIMEOUT_MS = 30_000;

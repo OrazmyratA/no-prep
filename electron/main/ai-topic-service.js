@@ -20,6 +20,14 @@ const PROVIDERS = {
 
 const REQUEST_TIMEOUT_MS = 180000;
 
+// Google's newest Flash is sometimes "experiencing high demand" for hours: on 2026-10-26 3.8 and 3.7
+// answered 503 or hung past a minute while 3.5 answered in 10 s. Then the older Flash gets one try
+// instead of the teacher waiting 3 minutes for an error.
+const GEMINI_FALLBACK_MODEL = 'gemini-3.5-flash';
+// How long the newest Flash may take before the fallback is tried (a 12-page topic takes ~1 min).
+const GEMINI_PRIMARY_TIMEOUT_MS = 90000;
+const OVERLOADED_STATUSES = new Set([500, 502, 503, 504]);
+
 // A busy AI (an overloaded model, a per-minute limit) usually frees up within seconds, so these
 // answers are tried again before the teacher sees an error. The wait the AI asks for is used
 // when it gives one (header or message); a wait over a minute (a daily limit) is not waited for.
@@ -30,10 +38,11 @@ const MAX_RETRY_WAIT_MS = 60000;
 // "Generate a picture" (explicit, teacher-triggered — never automatic; see ai-media-resolver.ts).
 // Only these two providers can generate images; Anthropic and Groq have no image-gen API, and the
 // NoPrep AI proxy has no image endpoint yet (same "not built yet" state as Android TTS).
-// Model IDs checked 2026-09-29; providers rename/retire image models often — re-check before release.
+// Model IDs checked 2026-10-26 (gpt-image-1 was shut down 2026-10-23; gemini-3-flash-image never
+// existed): providers rename/retire image models often — re-check before every release.
 const IMAGE_PROVIDERS = {
-  openai: { model: 'gpt-image-1' },
-  gemini: { model: 'gemini-3-flash-image' }
+  openai: { model: 'gpt-image-2.5-flare' },
+  gemini: { model: 'gemini-nano-banana-2.1' }
 };
 
 function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '', fetchImpl, wait }) {
@@ -97,7 +106,11 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     };
   }
 
-  async function postJson(url, headers, body, { friendlyErrors = false } = {}) {
+  /**
+   * `failWhenOverloaded`: a timeout or an overloaded answer is thrown at once (marked
+   * `overloaded`) instead of being waited out, so the caller can try another model.
+   */
+  async function postJson(url, headers, body, { friendlyErrors = false, timeoutMs = REQUEST_TIMEOUT_MS, failWhenOverloaded = false } = {}) {
     let response;
     for (let attempt = 0; ; attempt++) {
       try {
@@ -105,16 +118,20 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+          signal: AbortSignal.timeout(timeoutMs)
         });
       } catch (error) {
         if (error?.name === 'TimeoutError') {
-          throw new Error('The AI took too long to answer. Please try again.');
+          throw Object.assign(new Error('The AI took too long to answer. Please try again.'), { overloaded: failWhenOverloaded });
         }
         throw new Error('Could not reach the AI service. Check your internet connection.');
       }
       if (response.ok) return response.json();
       const errorText = await response.text().catch(() => '');
+      // Also a free plan's daily limit: Google counts it per model, so the older Flash still has its own.
+      if (failWhenOverloaded && (OVERLOADED_STATUSES.has(response.status) || (response.status === 429 && isDailyLimit(errorText) && !isNotInFreePlan(errorText)))) {
+        throw Object.assign(new Error(httpErrorMessage(response.status, errorText)), { overloaded: true });
+      }
       // The NoPrep AI proxy's own 429 is an hourly or daily limit: waiting seconds will not help.
       const delay = friendlyErrors && response.status === 429 ? null : retryDelay(response, errorText, attempt);
       if (delay === null) {
@@ -137,7 +154,8 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
   /** How long to wait before trying a busy AI again, or null to give up now. */
   function retryDelay(response, errorText, attempt) {
     if (!RETRY_STATUSES.has(response.status) || attempt >= RETRY_DELAYS_MS.length) return null;
-    if (isDailyLimit(errorText) || isTooLarge(errorText)) return null;
+    // Waiting cannot help: a daily limit, a request too big for the plan, no credit, or no free plan.
+    if (isDailyLimit(errorText) || isTooLarge(errorText) || isNoCredit(errorText) || isNotInFreePlan(errorText)) return null;
     const asked = askedWaitMs(response, errorText);
     if (asked !== null) return asked <= MAX_RETRY_WAIT_MS ? Math.max(asked + 500, RETRY_DELAYS_MS[attempt]) : null;
     return RETRY_DELAYS_MS[attempt];
@@ -161,6 +179,16 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return /Request too large|reduce max_tokens/i.test(String(errorText || ''));
   }
 
+  function isNoCredit(errorText) {
+    return /insufficient_quota|no credits remaining|credit balance is too low/i.test(String(errorText || ''));
+  }
+
+  /** Gemini's answer for something its free plan never allows: a free-tier quota of 0 (image models). */
+  function isNotInFreePlan(errorText) {
+    const text = String(errorText || '');
+    return /free_tier/i.test(text) && /limit: 0\b/.test(text);
+  }
+
   function isDailyLimit(errorText) {
     return /per ?day|PerDay|daily/i.test(String(errorText || ''));
   }
@@ -179,9 +207,16 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
   }
 
   function httpErrorMessage(status, errorText) {
-    if (status === 401 || status === 403) return 'The AI rejected your API key. Check that it is correct and active.';
     const reason = providerReason(errorText);
     const because = reason ? ` (${reason})` : '';
+    // Checked first: these come as 429 (OpenAI, Gemini), 400 (Claude) or 402, and waiting never helps.
+    if (isNotInFreePlan(errorText)) {
+      return `This AI's free plan does not include this (for example drawing pictures). Add billing on its website, or pick another AI.${because}`;
+    }
+    if (isNoCredit(errorText)) {
+      return `Your account with this AI has no credit left. Add credit on its website, or pick another AI.${because}`;
+    }
+    if (status === 401 || status === 403) return 'The AI rejected your API key. Check that it is correct and active.';
     if (status === 413 || (status === 429 && isTooLarge(errorText))) {
       return `This request is too big for this AI's plan. Send fewer pages, or pick another AI.${because}`;
     }
@@ -271,8 +306,17 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
   }
 
   async function generateWithGemini(req) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
-    const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, buildGeminiBody(req));
+    const url = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+    const headers = { 'x-goog-api-key': req.apiKey };
+    const body = buildGeminiBody(req);
+    let data;
+    try {
+      data = await postJson(url(req.model), headers, body, { timeoutMs: GEMINI_PRIMARY_TIMEOUT_MS, failWhenOverloaded: true });
+    } catch (error) {
+      if (!error?.overloaded) throw error;
+      console.warn(`Gemini ${req.model} is overloaded; trying ${GEMINI_FALLBACK_MODEL}.`);
+      data = await postJson(url(GEMINI_FALLBACK_MODEL), headers, body);
+    }
     return readGeminiText(data);
   }
 
@@ -404,6 +448,8 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
       model: req.model,
       prompt: req.prompt,
       size: '1024x1024',
+      // A flashcard picture: medium is clear enough and costs far less than high.
+      quality: 'medium',
       n: 1
     });
     const entry = data?.data?.[0];

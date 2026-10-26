@@ -78,6 +78,25 @@ describe('aiTopicWebBridge generateDraft', () => {
     expect(body.generationConfig.responseSchema.additionalProperties).toBeUndefined();
   });
 
+  it('falls back to the older Gemini Flash when the newest one is overloaded', async () => {
+    const fetchMock = vi.fn(async (url: string, _init: any) => /3\.8-flash/.test(url)
+      ? new Response(JSON.stringify({ error: { message: 'high demand' } }), { status: 503 })
+      : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'gemini', systemPrompt: 's', userText: 'u', schema: {} });
+
+    expect(result).toEqual({ ok: true, result: { text: '{"ok":true}' } });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash:');
+  });
+
+  it('says plainly when the AI account has no credit left', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { code: 'insufficient_quota', message: 'You have no credits remaining.' } }), { status: 429 })));
+    const result = await aiTopicWebBridge.aiTopicGenerateDraft({ provider: 'openai', systemPrompt: 's', userText: 'u', schema: {} });
+    expect(!result.ok && result.message).toContain('no credit left');
+  });
+
   it('calls OpenAI with an Authorization header and reads output_text', async () => {
     const fetchMock = vi.fn(async (_url: string, _init: any) => new Response(JSON.stringify({ output_text: '{"a":1}' }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);

@@ -57,8 +57,8 @@ that cannot do a job is not listed for that job.
 | Option | Tag |
 |---|---|
 | Free search (book page, Pixabay, word card) | Recommended · free |
-| Gemini drawing | Costs per picture |
-| OpenAI drawing | Best drawing · costs most |
+| Gemini drawing (`gemini-nano-banana-2.1`) | Paid Gemini plan only · costs per picture (~$0.034) |
+| ChatGPT drawing (`gpt-image-2.5-flare`, medium) | Needs credit on ChatGPT · costs per picture |
 
 **🔊 Voice**
 | Option | Tag | Where |
@@ -72,7 +72,11 @@ The Microsoft Edge online voices stay inside **Automatic** only: they have been 
 2026-10-13 and come back by themselves when fixed (see `tts-fallback` notes in
 electron/main/speech-service.js).
 
-Tags are checked against the providers' current prices and limits before release.
+Checked against the providers' own pages on 2026-10-26: `gpt-image-1` was shut down on
+2026-10-23 and `gemini-3-flash-image` never existed (both drawing buttons failed); the Gemini voice
+moved to `gemini-3.8-flash-tts` (free plan) because `gemini-2.5-flash-preview-tts` only serves keys
+that used it before. `gpt-4o-mini-tts` shuts down 2027-01-06: replace it before then. Gemini text
+falls back to `gemini-3.5-flash` when 3.8 is overloaded or at its free daily limit.
 
 ## What the teacher sees (Part A, this release)
 
