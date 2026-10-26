@@ -5,8 +5,15 @@
 //      through its retries; it is tried again later and comes back by itself once fixed.
 //   2. The teacher's own OpenAI/Gemini key, if one is linked (cloud-tts-service.js).
 //   3. The voices built into Windows (windows-tts-service.js): offline and always there, plainer.
-// The result says which one spoke (`provider`), so the app can tell the teacher.
+// That order is the teacher's "Automatic" voice. A voice they chose themselves (input.voice:
+// 'windows' | 'openai' | 'gemini') is the only one tried: a hidden fallback would make a clip
+// that is not what they picked. The result says which one spoke (`provider`), so the app can tell
+// the teacher.
 const EDGE_PAUSE_AFTER_FAILURE_MS = 10 * 60 * 1000;
+
+function speechError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
 
 function createSpeechService({ edge, cloud, windows, now = () => Date.now() }) {
   let edgePausedUntil = 0;
@@ -27,6 +34,16 @@ function createSpeechService({ edge, cloud, windows, now = () => Date.now() }) {
   async function synthesizeSpeech(input) {
     const text = String(input?.text || '').trim();
     if (!text) return { audioBase64: '', mimeType: 'audio/mpeg', provider: 'none' };
+
+    const voice = input?.voice;
+    if (voice === 'windows') {
+      if (!windows.available) throw speechError('UNAVAILABLE', 'Windows voices are not available.');
+      return { ...(await windows.synthesizeSpeech(input)), provider: 'windows' };
+    }
+    if (voice === 'openai' || voice === 'gemini') {
+      if (!cloud.hasKey(voice)) throw speechError('NOT_LINKED', `${voice} is not linked.`);
+      return cloud.synthesizeSpeech(input, voice);
+    }
 
     const fromEdge = await tryEdge(input);
     if (fromEdge) return fromEdge;
@@ -49,7 +66,7 @@ function createSpeechService({ edge, cloud, windows, now = () => Date.now() }) {
         if (error?.code === 'NO_VOICE_FOR_LANGUAGE' || !cloudError) throw error;
       }
     }
-    throw cloudError || Object.assign(new Error('Speech synthesis failed.'), { code: 'UNAVAILABLE' });
+    throw cloudError || speechError('UNAVAILABLE', 'Speech synthesis failed.');
   }
 
   return { synthesizeSpeech };

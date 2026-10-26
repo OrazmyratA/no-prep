@@ -1,0 +1,37 @@
+<button type="button" class="ai-choice-btn"
+        [class.ai-choice-warn]="failureKey || currentUnavailable"
+        [class.ai-choice-compact]="compact"
+        (click)="toggle($event)"
+        aria-haspopup="listbox" [attr.aria-expanded]="open"
+        [attr.title]="(jobLabelKey | translate) + ': ' + (current?.name ?? '')">
+  <span class="ai-choice-job" aria-hidden="true">{{ jobIcon }}</span>
+  <span *ngIf="!compact" class="ai-choice-label">{{ jobLabelKey | translate }}:</span>
+  <app-ai-logo *ngIf="current" [id]="current.logo"></app-ai-logo>
+  <span class="ai-choice-name">{{ current?.name }}</span>
+  <span *ngIf="autoUsedName" class="ai-choice-used">({{ autoUsedName }})</span>
+  <span *ngIf="failureKey || currentUnavailable" class="ai-choice-warn-sign" aria-hidden="true">⚠</span>
+  <span class="ai-choice-caret" aria-hidden="true">▾</span>
+</button>
+
+<div *ngIf="open" class="ai-choice-menu" role="listbox" [attr.aria-label]="jobLabelKey | translate"
+     [style.top.px]="menuTop" [style.left.px]="menuLeft">
+  <p *ngIf="failureKey" class="ai-choice-failure">⚠ {{ failureKey | translate }}</p>
+  <p *ngIf="!failureKey && currentUnavailable" class="ai-choice-failure">⚠ {{ 'aiChoiceNotLinkedNow' | translate }}</p>
+  <div *ngFor="let row of rows" class="ai-choice-row"
+       [class.ai-choice-row-off]="!row.available" [class.ai-choice-row-active]="row.id === currentId">
+    <button type="button" class="ai-choice-pick" role="option" [attr.aria-selected]="row.id === currentId"
+            [disabled]="!row.available" (click)="pick(row)">
+      <app-ai-logo [id]="row.logo"></app-ai-logo>
+      <span class="ai-choice-row-text">
+        <span class="ai-choice-row-name">{{ row.name }}</span>
+        <small>{{ row.tagKey | translate }}</small>
+      </span>
+      <span *ngIf="row.id === currentId" class="ai-choice-check" aria-hidden="true">✓</span>
+    </button>
+    <button *ngIf="!row.available && row.needsKey" type="button" class="ai-choice-link" (click)="link(row)">
+      + {{ 'aiChoiceLink' | translate }}
+    </button>
+  </div>
+</div>
+
+<app-ai-link-dialog *ngIf="linking" [providerId]="linking" (closed)="onLinkClosed($event)"></app-ai-link-dialog>

@@ -6,6 +6,7 @@ import { syncLegacyGuideAudioFiles } from '../../../core/guide-timeline';
 import { showAppNotification } from '../../../core/notification';
 import { decodeAudioBlobToMonoWav } from '../../../core/audio-wav';
 import { SpeechProvider, speechErrorMessageKey } from '../../../core/speech-error';
+import { AiChoicesService, voiceSourceNameKey } from '../../../core/ai-topic/ai-choices';
 
 const MAX_GUIDE_RECORDING_MS = 10 * 60 * 1000;
 const GUIDE_RECORDING_TIMESLICE_MS = 1000;
@@ -48,13 +49,20 @@ export class BookCreatorGuideAudioController {
     try {
       let generated: Blob;
       let provider: SpeechProvider;
+      const choices: AiChoicesService = this.creator.aiChoices;
+      const voice = choices.voiceSource;
       try {
-        ({ blob: generated, provider } = await this.creator.audioVoice.synthesizeVoice(text, this.creator.guideSpeechLanguage));
+        ({ blob: generated, provider } = await this.creator.audioVoice.synthesizeVoice(text, this.creator.guideSpeechLanguage, voice));
       } catch (error) {
-        showAppNotification(this.creator.languageService.translate(speechErrorMessageKey(error)), 'error');
+        const key = speechErrorMessageKey(error);
+        choices.markFailed('voice', key);
+        showAppNotification(this.creator.languageService.translate(key), 'error');
         return;
       }
-      if (provider === 'windows') {
+      choices.markWorked('voice', provider);
+      this.creator.guideSpeechMadeWithKey = voiceSourceNameKey(provider);
+      // Automatic had to fall back to Windows' offline voice: say why it sounds plainer.
+      if (voice === 'auto' && provider === 'windows') {
         showAppNotification(this.creator.languageService.translate('speechWindowsVoiceNote'), 'info');
       }
       // Re-encode to WAV, as for recordings, so the clip has a seekable duration for the timeline.

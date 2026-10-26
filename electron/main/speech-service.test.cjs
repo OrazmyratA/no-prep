@@ -12,7 +12,10 @@ function setup({ edge, cloud, hasKey = true, windows, windowsAvailable = true })
   const calls = { edge: 0, cloud: 0, windows: 0 };
   const service = createSpeechService({
     edge: { synthesizeSpeech: async (i) => { calls.edge++; return edge(i); } },
-    cloud: { hasKey: () => hasKey, synthesizeSpeech: async (i) => { calls.cloud++; return cloud(i); } },
+    cloud: {
+      hasKey: (only) => typeof hasKey === 'function' ? hasKey(only) : hasKey,
+      synthesizeSpeech: async (i, only) => { calls.cloud++; return cloud(i, only); }
+    },
     windows: { available: windowsAvailable, synthesizeSpeech: async (i) => { calls.windows++; return windows(i); } },
     now: () => clock
   });
@@ -55,6 +58,31 @@ test('no Windows voice for the language is reported, never another language', as
 test('without Windows voices the AI key reason is reported', async () => {
   const { service } = setup({ edge: failing('DOWN'), cloud: failing('KEY_REJECTED'), windows: failing('X'), windowsAvailable: false });
   await assert.rejects(service.synthesizeSpeech({ text: 'a' }), { code: 'KEY_REJECTED' });
+});
+
+test('a chosen Windows voice is the only one tried', async () => {
+  const { service, calls } = setup({ edge: async () => clip('edge'), cloud: async () => clip('ai'), windows: async () => clip('win') });
+  assert.equal((await service.synthesizeSpeech({ text: 'a', voice: 'windows' })).provider, 'windows');
+  assert.deepEqual(calls, { edge: 0, cloud: 0, windows: 1 });
+});
+
+test('a chosen AI voice that fails is reported, not replaced by another voice', async () => {
+  const { service, calls } = setup({ edge: async () => clip('edge'), cloud: failing('RATE_LIMITED'), windows: async () => clip('win') });
+  await assert.rejects(service.synthesizeSpeech({ text: 'a', voice: 'gemini' }), { code: 'RATE_LIMITED' });
+  assert.deepEqual(calls, { edge: 0, cloud: 1, windows: 0 });
+});
+
+test('a chosen AI voice is asked for by name', async () => {
+  let asked = null;
+  const { service } = setup({ edge: failing('X'), cloud: async (_i, only) => { asked = only; return { ...clip('ai'), provider: only }; }, windows: failing('X') });
+  assert.equal((await service.synthesizeSpeech({ text: 'a', voice: 'openai' })).provider, 'openai');
+  assert.equal(asked, 'openai');
+});
+
+test('a chosen AI voice without its key says it is not linked', async () => {
+  const { service, calls } = setup({ edge: failing('X'), cloud: failing('X'), hasKey: (only) => only !== 'gemini', windows: failing('X') });
+  await assert.rejects(service.synthesizeSpeech({ text: 'a', voice: 'gemini' }), { code: 'NOT_LINKED' });
+  assert.equal(calls.cloud, 0);
 });
 
 // ---- cloud voices ----
@@ -126,4 +154,13 @@ test('cloud: clips are requested one at a time', async () => {
   const c = cloudWith({ openai: 'o' }, Array.from({ length: 4 }, () => () => response(200, 'mp3')));
   await Promise.all(['a', 'b', 'c', 'd'].map((text) => c.service.synthesizeSpeech({ text })));
   assert.equal(c.maxInFlight(), 1);
+});
+
+test('cloud: asked for one voice, the other key is not used', async () => {
+  const c = cloudWith({ openai: 'o', gemini: 'g' }, [() => response(429, 'Quota exceeded for GenerateRequestsPerDay')]);
+  await assert.rejects(c.service.synthesizeSpeech({ text: 'a' }, 'gemini'), { code: 'RATE_LIMITED' });
+  assert.equal(c.urls.length, 1);
+  assert.match(c.urls[0], /generativelanguage/);
+  assert.equal(c.service.hasKey('openai'), true);
+  assert.equal(cloudWith({ gemini: 'g' }, []).service.hasKey('openai'), false);
 });

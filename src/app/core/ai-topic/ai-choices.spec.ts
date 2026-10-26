@@ -1,0 +1,83 @@
+import { TestBed } from '@angular/core/testing';
+
+import { AiChoicesService, voiceOptions } from './ai-choices';
+import { AiTopicService } from './ai-topic.service';
+
+describe('AiChoicesService', () => {
+  let remembered: string | null;
+
+  function create(providers: { id: string; configured: boolean }[]) {
+    TestBed.configureTestingModule({
+      providers: [{
+        provide: AiTopicService,
+        useValue: {
+          getProviders: async () => providers.map(p => ({ ...p, label: p.id, keyPageUrl: '', maxImages: 12 })),
+          getSelectedProvider: () => remembered,
+          setSelectedProvider: (id: string) => { remembered = id; }
+        }
+      }]
+    });
+    return TestBed.inject(AiChoicesService);
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    remembered = null;
+  });
+
+  it('starts on free picture search and the Automatic voice', () => {
+    const choices = create([]);
+    expect(choices.pictureSource).toBe('search');
+    expect(choices.voiceSource).toBe('auto');
+  });
+
+  it('remembers the picture and voice choices', () => {
+    const choices = create([]);
+    choices.setPictureSource('gemini');
+    choices.setVoiceSource('openai');
+    TestBed.resetTestingModule();
+    const again = create([]);
+    expect(again.pictureSource).toBe('gemini');
+    expect(again.voiceSource).toBe('openai');
+  });
+
+  it('Text follows the remembered AI, else the first linked one, else Gemini', async () => {
+    const choices = create([{ id: 'gemini', configured: false }, { id: 'groq', configured: true }]);
+    await choices.loadProviders();
+    expect(choices.textSource).toBe('groq');
+    remembered = 'gemini';
+    expect(choices.textSource).toBe('gemini');
+    remembered = 'builtin'; // not offered here
+    expect(choices.textSource).toBe('groq');
+  });
+
+  it('an option needing a key is available only once that AI is linked', async () => {
+    const choices = create([{ id: 'gemini', configured: true }, { id: 'openai', configured: false }]);
+    await choices.loadProviders();
+    const voices = voiceOptions(true);
+    expect(choices.isAvailable(voices.find(v => v.id === 'gemini')!)).toBe(true);
+    expect(choices.isAvailable(voices.find(v => v.id === 'openai')!)).toBe(false);
+    expect(choices.isAvailable(voices.find(v => v.id === 'windows')!)).toBe(true);
+  });
+
+  it('offers the Windows voice only in the desktop app', () => {
+    expect(voiceOptions(true).map(v => v.id)).toContain('windows');
+    expect(voiceOptions(false).map(v => v.id)).not.toContain('windows');
+  });
+
+  it('marks a failed job until it works again, and remembers which voice Automatic used', () => {
+    const choices = create([]);
+    choices.markFailed('voice', 'speechErrorRateLimited');
+    expect(choices.failures.voice).toBe('speechErrorRateLimited');
+    choices.markWorked('voice', 'windows');
+    expect(choices.failures.voice).toBeUndefined();
+    expect(choices.lastAutoVoice).toBe('windows');
+  });
+
+  it('choosing another option clears that job’s failure', () => {
+    const choices = create([]);
+    choices.markFailed('picture', 'aiTopicGenerateImageFailed');
+    choices.setPictureSource('search');
+    expect(choices.failures.picture).toBeUndefined();
+  });
+});

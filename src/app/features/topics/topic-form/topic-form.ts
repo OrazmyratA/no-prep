@@ -14,18 +14,37 @@ import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
 import { AiTopicDialogResult, LANGUAGE_NAMES } from '../ai-topic-dialog/ai-topic-dialog';
-import { AiTopicProviderId, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
-import { AiImageChoice, AiMediaResolverService, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
+import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
+import { AiImageChoice, AiMediaResolverService, PictureOrigin, pictureOrigin, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
+import { AiItemDraft } from '../../../core/ai-topic/ai-topic-draft';
+import { AiChoicesService, VoiceSource, pictureSourceNameKey, voiceOptions, voiceSourceNameKey } from '../../../core/ai-topic/ai-choices';
+import { SpeechProvider, speechErrorMessageKey } from '../../../core/speech-error';
 import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
-import { getStoredVoiceLanguage } from '../../../core/audio-voice';
+import { AudioVoiceService, getStoredVoiceLanguage } from '../../../core/audio-voice';
 import { GAMES } from '../games.config';
-import { isHeading, isRemovedSentence, isTaskItem, paragraphColor, paragraphIndexes, startsParagraph } from '../../games/writing-text';
+import { isHeading, isRemovedSentence, isTaskItem, paragraphColor, paragraphIndexes, plainText, startsParagraph } from '../../games/writing-text';
 import { parseTaskItem } from '../../games/reading-tasks';
 import { showAppNotification } from '../../../core/notification';
 import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
 
 // Items whose pictures/audio are fetched at the same time after an AI fill.
 const AI_MEDIA_CONCURRENCY = 3;
+// Generate draws up to this many pictures without asking first (each costs the teacher's credit).
+const FREE_DRAW_WITHOUT_ASKING = 3;
+// Pictures kept per item for ◀ ▶.
+const MAX_PICTURE_HISTORY = 12;
+
+type PictureMadeBy = PictureOrigin | 'gemini' | 'openai' | 'own';
+
+const PICTURE_MADE_BY_KEYS: Record<PictureMadeBy, string> = {
+  page: 'aiMadeByPage', pixabay: 'aiMadeByPixabay', wordCard: 'aiMadeByWordCard', generated: 'aiMadeByAi',
+  gemini: 'aiChoicePictureGemini', openai: 'aiChoicePictureOpenai', own: 'aiMadeByOwn'
+};
+
+interface PictureHistory {
+  entries: { blob: Blob; madeBy: PictureMadeBy; cardText: string }[];
+  index: number;
+}
 
 interface AiFillResult {
   count: number;
@@ -72,12 +91,17 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private aiRunId = 0;
   // Picture alternatives for AI-filled items, behind the "another picture" button.
   private aiImageChoices = new WeakMap<AbstractControl, AiImageChoice>();
-  private swappingImages = new WeakSet<AbstractControl>();
-  private generatingImages = new WeakSet<AbstractControl>();
-  // The provider that produced the current AI fill, kept only so "Generate a picture" (own-key
-  // OpenAI/Gemini only) knows which key to use; irrelevant once the teacher edits items by hand.
-  private aiDraftProviderId: AiTopicProviderId | null = null;
-  aiImageGenerationAvailable = false;
+  // Picture requests per item: the newest wins (a teacher clicking 🎨 Gemini then 🎨 OpenAI sees
+  // OpenAI's), and the busy button spins.
+  private pictureRequests = new WeakMap<AbstractControl, number>();
+  private pictureBusy = new WeakMap<AbstractControl, string>();
+  // The pictures each item has had this session, for ◀ ▶ (not saved with the topic).
+  private pictureHistory = new WeakMap<AbstractControl, PictureHistory>();
+  private voicingItems = new WeakSet<AbstractControl>();
+  // Pictures Generate could not draw (and searched for free instead) in the current fill.
+  private aiDrawFailures = 0;
+  // Which voice made each item's clip, for the "Voice: …" line.
+  private voiceMadeBy = new WeakMap<AbstractControl, { audio: Blob; provider: SpeechProvider }>();
   // Per-item "✨": fills just this item's image + audio from its own text, no dialog needed.
   private fillingItems = new WeakSet<AbstractControl>();
 
@@ -94,7 +118,9 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     private aiMedia: AiMediaResolverService,
     private ai: AiTopicService,
     private zone: NgZone,
-    private aiPageHandoff: AiPageHandoffService
+    private aiPageHandoff: AiPageHandoffService,
+    public choices: AiChoicesService,
+    private audioVoice: AudioVoiceService
   ) {
     this.topicForm = this.fb.group({
       name: ['', Validators.required],
@@ -268,17 +294,6 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     this.aiInitialPages = [];
   }
 
-  /** The lesson pack makes several new topics, so only a new, empty topic outside a book offers it. */
-  get lessonPackAvailable(): boolean {
-    return !this.topicId && !this.returnToBookId && !this.aiInitialPages.length && !this.hasFilledItems;
-  }
-
-  onLessonPackSaved(count: number) {
-    this.closeAiDialog();
-    showAppNotification(this.langService.translate('aiPackSaved', { n: count }), 'success');
-    this.router.navigate(['/topics']);
-  }
-
   ngAfterViewInit(): void {
     window.setTimeout(() => this.topicNameInput?.nativeElement.focus(), 60);
   }
@@ -392,7 +407,8 @@ onImageSelected(blob: Blob | null, index: number) {
   // The teacher picked their own picture, so the AI's alternatives no longer apply.
   this.aiImageChoices.delete(item);
   if (blob) {
-    this.expandedImageItems.add(item);
+    // Kept among the item's pictures, so trying an AI one after it can come back to it with ◀.
+    this.showPicture(item, blob, 'own', '');
   } else {
     this.expandedImageItems.delete(item);
   }
@@ -461,6 +477,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   async onAiDraft(result: AiTopicDialogResult) {
     this.closeAiDialog();
+    const drawWith = await this.confirmDrawing(result.draft.items);
     const { pages } = result;
     // A prompt-only re-run (no photos this time) shouldn't wipe out pages attached earlier —
     // every item's 📖 "crop from a page" button should keep working on whatever was last attached.
@@ -468,8 +485,6 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     // Point & place answer areas come on the page photo: move them onto the scene picture.
     const draft = { ...result.draft, items: pointAreasToScene(result.draft.items) };
     const runId = ++this.aiRunId;
-    this.aiDraftProviderId = result.providerId;
-    this.aiImageGenerationAvailable = result.imageGenerationAvailable;
     this.aiUndoSnapshot = {
       name: this.topicForm.value.name ?? '',
       level: this.topicForm.value.level ?? '',
@@ -506,23 +521,33 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       ? this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage())
       : result.voiceLanguage;
 
+    const voice = this.choices.voiceSource;
+    let voiceError: unknown = null;
+    this.aiDrawFailures = 0;
     let next = 0;
     const worker = async () => {
       while (next < draft.items.length && runId === this.aiRunId) {
         const index = next++;
         const item = draft.items[index];
         const [picture, audio] = await Promise.all([
-          this.aiMedia.resolveImage(item, pages, cardColors[index]).catch(() => null),
-          this.aiMedia.resolveAudio(item.audioText, voiceLanguage)
+          this.resolveAiItemPicture(item, pages, cardColors[index], drawWith),
+          item.audioText
+            ? this.audioVoice.synthesizeVoice(item.audioText, voiceLanguage, voice).catch(error => {
+                voiceError ??= error;
+                return null;
+              })
+            : null
         ]);
         // Compression resolves from a Web Worker, outside Angular's zone.
         this.zone.run(() => {
           if (runId !== this.aiRunId) return;
           const group = groups[index];
           if (picture?.choice) this.aiImageChoices.set(group, picture.choice);
-          if (picture?.blob) group.patchValue({ image: picture.blob, imageText: wordCardText(picture.choice) });
+          if (picture?.blob) this.showPicture(group, picture.blob, picture.madeBy, wordCardText(picture.choice));
           if (audio) {
-            group.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: item.audioText });
+            group.patchValue({ audio: audio.blob, audioSource: audio.blob, audioPitch: 0, audioSpeed: 1, audioText: item.audioText });
+            this.voiceMadeBy.set(group, { audio: audio.blob, provider: audio.provider });
+            this.choices.markWorked('voice', audio.provider);
           }
           if (this.aiProgress) this.aiProgress.done++;
         });
@@ -530,8 +555,51 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     };
     await Promise.all(Array.from({ length: AI_MEDIA_CONCURRENCY }, worker));
     this.zone.run(() => {
-      if (runId === this.aiRunId) this.aiProgress = null;
+      if (runId !== this.aiRunId) return;
+      this.aiProgress = null;
+      // Once, not per item: the missing voices are marked by their empty players.
+      if (voiceError) {
+        const key = speechErrorMessageKey(voiceError);
+        this.choices.markFailed('voice', key);
+        showAppNotification(this.langService.translate(key), 'error');
+      }
+      if (this.aiDrawFailures) {
+        this.choices.markFailed('picture', 'aiTopicGenerateImageFailed');
+        showAppNotification(this.langService.translate('aiDrawFellBack'), 'error');
+      }
     });
+  }
+
+  /**
+   * Generate with an AI chosen for pictures draws every picture the plan wants searched (word
+   * cards, page crops and no-picture items stay as planned). That costs per picture, so more than
+   * a few are drawn only after the teacher says yes; otherwise they are searched for free.
+   */
+  private async confirmDrawing(items: AiItemDraft[]): Promise<'gemini' | 'openai' | null> {
+    const source = this.choices.pictureSource;
+    if (source === 'search' || !this.choices.isLinked(source)) return null;
+    const count = items.filter(item => item.imageKind === 'search').length;
+    if (count <= FREE_DRAW_WITHOUT_ASKING) return source;
+    const ai = this.langService.translate(pictureSourceNameKey(source));
+    return await this.confirmationService.confirm(this.langService.translate('aiDrawManyConfirm', { n: count, ai })) ? source : null;
+  }
+
+  /** One generated item's picture: drawn by `drawWith` when the plan wants a searched one, else as planned. */
+  private async resolveAiItemPicture(
+    item: AiItemDraft, pages: Blob[], cardColor: string, drawWith: 'gemini' | 'openai' | null
+  ): Promise<{ blob: Blob | null; choice: AiImageChoice | null; madeBy: PictureMadeBy } | null> {
+    if (drawWith && item.imageKind === 'search') {
+      const choice = { ...this.aiMedia.choiceForText(plainText(item.text), cardColor), query: item.imageQuery, style: item.imageStyle };
+      try {
+        const blob = await this.aiMedia.generateImage(choice, drawWith);
+        if (blob) return { blob, choice, madeBy: drawWith };
+      } catch {
+        // Searched for free below instead; the teacher is told once at the end.
+      }
+      this.aiDrawFailures++;
+    }
+    const picture = await this.aiMedia.resolveImage(item, pages, cardColor).catch(() => null);
+    return picture ? { ...picture, madeBy: picture.choice ? pictureOrigin(picture.choice) : 'wordCard' } : null;
   }
 
   /** Word card colour for an item: its Writing Workshop paragraph (leading `*` marks), blue without marks. */
@@ -556,136 +624,256 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.aiUndoSnapshot = null;
   }
 
-  hasAiImageChoice(item: AbstractControl): boolean {
-    return this.aiImageChoices.has(item);
-  }
-
   isFillingItem(item: AbstractControl): boolean {
     return this.fillingItems.has(item);
   }
 
   canFillItemWithAi(item: AbstractControl): boolean {
-    return !!String(item.get('text')?.value || '').trim() && !this.fillingItems.has(item);
+    return !!this.itemWords(item) && !this.fillingItems.has(item);
+  }
+
+  /** The item text as students hear it: game marks (#, *, [ ]) removed, the rest as typed. */
+  private itemWords(item: AbstractControl): string {
+    return plainText(String(item.get('text')?.value || ''));
   }
 
   /**
-   * Per-item "✨": the teacher already typed this item's text by hand; this fills just its image
-   * and audio, the same per-item decision the bulk AI fill makes, without opening the dialog or
-   * touching any other item. Always asks for both media (unlike the bulk fill's Auto/On/Off), since
-   * clicking this one button is itself the teacher asking for both.
+   * Per-item "✨": the teacher typed this item's text; this fills its picture and its voice at the
+   * same time, each by its own chosen helper (the AI bar above the items). The voice reads the text
+   * as it is; the picture is searched (the Text AI picks a good search word, if one is linked) or
+   * drawn by the chosen AI. One failing never stops the other.
    */
   async fillItemWithAi(item: AbstractControl) {
     if (!this.licenseService.fullAccess) {
       this.licenseService.requestReopen();
       return;
     }
-    const text = String(item.get('text')?.value || '').trim();
-    if (!text || this.fillingItems.has(item)) return;
-    if (!this.ai.isAvailable) {
-      showAppNotification(this.langService.translate('aiTopicDesktopOnly'), 'error');
-      return;
-    }
-
+    if (!this.canFillItemWithAi(item)) return;
     this.fillingItems.add(item);
     try {
-      const { start } = await this.ai.getStartProvider();
-      if (!start?.configured) {
-        showAppNotification(this.langService.translate('aiTopicFillItemNeedsLink'), 'error');
-        return;
-      }
-      const draft = await this.ai.generateDraft(start.id, {
-        prompt: '', pageCount: 0, itemCount: 1, images: 'on', audio: 'on',
-        existingItems: [], teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
-        singleItemText: text
-      }, []);
-      const itemDraft = draft.items[0];
-      if (!itemDraft) {
-        showAppNotification(this.langService.translate('aiTopicFillItemFailed'), 'error');
-        return;
-      }
-      const voiceLanguage = this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage());
-      // The teacher asked for a recording: read the item itself when the AI gave no words to say
-      // (not a gap sentence, whose blanks cannot be read).
-      const spoken = itemDraft.audioText || (text.includes('_') ? '' : text);
-      const [picture, audio] = await Promise.all([
-        this.aiMedia.resolveImage(itemDraft, [], this.paragraphCardColor(item)).catch(() => null),
-        this.aiMedia.resolveAudio(spoken, voiceLanguage).catch(() => null)
+      await this.choices.loadProviders();
+      const source = this.choices.pictureSource;
+      const voice = this.choices.voiceSource;
+      await Promise.all([
+        // On the web with no voice linked, Automatic has nothing to use: the picture still comes,
+        // and the audio panel already says how to get voices. A voice chosen by name still says why.
+        voice === 'auto' && !this.audioVoice.canSynthesize ? null : this.makeItemVoice(item, voice),
+        source === 'search' ? this.searchItemPicture(item) : this.drawItemPicture(item, source)
       ]);
-      this.zone.run(() => {
-        if (picture?.choice) this.aiImageChoices.set(item, picture.choice);
-        if (picture?.blob) {
-          item.patchValue({ image: picture.blob, imageText: wordCardText(picture.choice) });
-          this.expandedImageItems.add(item);
-        }
-        if (audio) {
-          item.patchValue({ audio, audioSource: audio, audioPitch: 0, audioSpeed: 1, audioText: spoken });
-          this.expandedAudioItems.add(item);
-        } else if (spoken && this.aiMedia.canMakeAudio) {
-          // Text-to-speech is available here but still didn't answer (offline, or the service
-          // refused): say so. On a platform without text-to-speech at all (web, Android),
-          // resolveAudio() always returns null — that's not a failure, so stay quiet; the
-          // audio panel's own "desktop only" hint already explains it, and the picture still
-          // got filled above.
-          showAppNotification(this.langService.translate('aiTopicFillItemNoAudio'), 'error');
-        }
-        // So the follow-up "another picture"/"generate a picture" buttons work for this item too.
-        this.aiDraftProviderId = start.id;
-        this.aiImageGenerationAvailable = !!start.supportsImageGeneration;
-      });
-    } catch {
-      showAppNotification(this.langService.translate('aiTopicFillItemFailed'), 'error');
     } finally {
       this.zone.run(() => this.fillingItems.delete(item));
     }
   }
 
-  isSwappingImage(item: AbstractControl): boolean {
-    return this.swappingImages.has(item);
+  // ---- Pictures: 🔄 another one, 🎨 drawn by an AI, ◀ ▶ back to an earlier one ----
+
+  readonly drawingAis: ('gemini' | 'openai')[] = ['gemini', 'openai'];
+
+  isPictureBusy(item: AbstractControl): boolean {
+    return this.pictureBusy.has(item);
   }
 
-  /** "Another picture" on an AI item: the next search result, then the word card, and round. */
-  async swapAiImage(item: AbstractControl) {
-    const choice = this.aiImageChoices.get(item);
-    if (!choice || this.swappingImages.has(item)) return;
-    this.swappingImages.add(item);
-    try {
-      const blob = await this.aiMedia.nextImage(choice);
-      this.zone.run(() => {
-        if (blob && this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob, imageText: wordCardText(choice) });
-      });
-    } finally {
-      this.zone.run(() => this.swappingImages.delete(item));
-    }
+  /** Which button is working on this item's picture, for its spinner. */
+  pictureBusyWith(item: AbstractControl): string {
+    return this.pictureBusy.get(item) ?? '';
   }
 
-  isGeneratingAiImage(item: AbstractControl): boolean {
-    return this.generatingImages.has(item);
+  /** Starts a picture request; a newer one for the same item makes this one's result be dropped. */
+  private startPictureRequest(item: AbstractControl, busyWith: string): number {
+    const token = (this.pictureRequests.get(item) ?? 0) + 1;
+    this.pictureRequests.set(item, token);
+    this.pictureBusy.set(item, busyWith);
+    return token;
+  }
+
+  private finishPictureRequest(item: AbstractControl, token: number): void {
+    this.zone.run(() => {
+      if (this.pictureRequests.get(item) === token) this.pictureBusy.delete(item);
+    });
+  }
+
+  private isLatestPictureRequest(item: AbstractControl, token: number): boolean {
+    return this.pictureRequests.get(item) === token;
   }
 
   /**
-   * "Generate a picture" on an AI item: always draws a fresh one (never reused from cache),
-   * since the teacher clicking this again is asking for something different. Unlike
-   * swapAiImage/"another picture", this is the only path that costs the teacher's AI quota, so
-   * it is never called automatically — only from this explicit button.
+   * The free picture: the Text AI plans it (a search word and style, a word card, or none) when it
+   * is linked; otherwise the item's own words are searched.
    */
-  async generateAiImage(item: AbstractControl) {
-    const choice = this.aiImageChoices.get(item);
-    if (!choice || !this.aiDraftProviderId || this.generatingImages.has(item)) return;
-    this.generatingImages.add(item);
+  private async searchItemPicture(item: AbstractControl): Promise<void> {
+    const words = this.itemWords(item);
+    const token = this.startPictureRequest(item, 'search');
     try {
-      const blob = await this.aiMedia.generateImage(choice, this.aiDraftProviderId);
-      if (!blob) {
-        showAppNotification(this.langService.translate('aiTopicGenerateImageFailed'), 'error');
-        return;
-      }
+      const plan = await this.planItemPicture(words);
+      const draft: AiItemDraft = plan ?? {
+        text: words, imageKind: 'search', imageQuery: words, imageStyle: 'photo',
+        imagePage: -1, imageCrop: { x: 0, y: 0, width: 0, height: 0 }, audioText: ''
+      };
+      const picture = await this.aiMedia.resolveImage(draft, [], this.paragraphCardColor(item)).catch(() => null);
       this.zone.run(() => {
-        if (this.aiImageChoices.get(item) === choice) item.patchValue({ image: blob, imageText: wordCardText(choice) });
+        if (!this.isLatestPictureRequest(item, token)) return;
+        if (picture?.choice) this.aiImageChoices.set(item, picture.choice);
+        if (picture?.blob && picture.choice) this.showPicture(item, picture.blob, pictureOrigin(picture.choice), wordCardText(picture.choice));
       });
-    } catch {
-      showAppNotification(this.langService.translate('aiTopicGenerateImageFailed'), 'error');
     } finally {
-      this.zone.run(() => this.generatingImages.delete(item));
+      this.finishPictureRequest(item, token);
     }
+  }
+
+  /** The Text AI's plan for one typed item's picture, or null (none linked, or it failed). */
+  private async planItemPicture(words: string): Promise<AiItemDraft | null> {
+    const provider = this.choices.textSource;
+    if (provider !== 'builtin' && !this.choices.isLinked(provider)) return null;
+    try {
+      const draft = await this.ai.generateDraft(provider, {
+        prompt: '', pageCount: 0, itemCount: 1, images: 'on', audio: 'off',
+        existingItems: [], teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
+        singleItemText: words
+      }, []);
+      this.zone.run(() => this.choices.markWorked('text'));
+      return draft.items[0] ?? null;
+    } catch {
+      // The picture still comes, searched by the item's own words.
+      this.zone.run(() => this.choices.markFailed('text', 'aiChoiceTextFailed'));
+      return null;
+    }
+  }
+
+  /** "Another picture" (free): the next search result, page crop or word card, and round. */
+  async swapAiImage(item: AbstractControl) {
+    const words = this.itemWords(item);
+    if (!words) return;
+    let choice = this.aiImageChoices.get(item);
+    if (!choice) {
+      choice = this.aiMedia.choiceForText(words, this.paragraphCardColor(item));
+      this.aiImageChoices.set(item, choice);
+    }
+    const token = this.startPictureRequest(item, 'search');
+    try {
+      const blob = await this.aiMedia.nextImage(choice);
+      this.zone.run(() => {
+        if (blob && this.isLatestPictureRequest(item, token)) this.showPicture(item, blob, pictureOrigin(choice!), wordCardText(choice));
+      });
+    } finally {
+      this.finishPictureRequest(item, token);
+    }
+  }
+
+  /**
+   * 🎨 A new picture drawn by this AI, for this item only. Costs the teacher's AI credit, so it
+   * runs only when they ask: this button, or ✨ with that AI chosen for pictures.
+   */
+  async drawItemPicture(item: AbstractControl, provider: 'gemini' | 'openai') {
+    const words = this.itemWords(item);
+    if (!words) return;
+    if (!this.choices.isLinked(provider)) {
+      showAppNotification(this.langService.translate('aiChoiceNotLinkedNow'), 'error');
+      return;
+    }
+    let choice = this.aiImageChoices.get(item);
+    if (!choice) {
+      choice = this.aiMedia.choiceForText(words, this.paragraphCardColor(item));
+      this.aiImageChoices.set(item, choice);
+    }
+    const token = this.startPictureRequest(item, provider);
+    try {
+      const blob = await this.aiMedia.generateImage(choice, provider);
+      if (!blob) throw new Error('No picture');
+      this.zone.run(() => {
+        this.choices.markWorked('picture');
+        if (this.isLatestPictureRequest(item, token)) this.showPicture(item, blob, provider, '');
+      });
+    } catch (error) {
+      this.zone.run(() => this.choices.markFailed('picture', 'aiTopicGenerateImageFailed'));
+      const detail = error instanceof AiTopicError && error.message ? ` ${error.message}` : '';
+      showAppNotification(this.langService.translate('aiTopicGenerateImageFailed') + detail, 'error');
+    } finally {
+      this.finishPictureRequest(item, token);
+    }
+  }
+
+  /** Shows a picture on the item and remembers it, so ◀ can bring it back after trying others. */
+  private showPicture(item: AbstractControl, blob: Blob, madeBy: PictureMadeBy, cardText: string): void {
+    item.patchValue({ image: blob, imageText: cardText });
+    this.expandedImageItems.add(item);
+    const history = this.pictureHistory.get(item) ?? { entries: [], index: -1 };
+    history.entries.push({ blob, madeBy, cardText });
+    if (history.entries.length > MAX_PICTURE_HISTORY) history.entries.shift();
+    history.index = history.entries.length - 1;
+    this.pictureHistory.set(item, history);
+  }
+
+  pictureHistoryCount(item: AbstractControl): number {
+    return this.pictureHistory.get(item)?.entries.length ?? 0;
+  }
+
+  canStepPicture(item: AbstractControl, step: -1 | 1): boolean {
+    const history = this.pictureHistory.get(item);
+    if (!history || this.isPictureBusy(item)) return false;
+    const next = history.index + step;
+    return next >= 0 && next < history.entries.length;
+  }
+
+  stepPicture(item: AbstractControl, step: -1 | 1): void {
+    const history = this.pictureHistory.get(item);
+    if (!history || !this.canStepPicture(item, step)) return;
+    history.index += step;
+    const entry = history.entries[history.index];
+    item.patchValue({ image: entry.blob, imageText: entry.cardText });
+  }
+
+  /** Translation key of "what made this picture", or '' when unknown (an older saved one). */
+  pictureMadeByKey(item: AbstractControl): string {
+    const history = this.pictureHistory.get(item);
+    const entry = history?.entries[history.index];
+    if (!entry || entry.blob !== item.get('image')?.value) return '';
+    return PICTURE_MADE_BY_KEYS[entry.madeBy];
+  }
+
+  // ---- Voices ----
+
+  /** The voice buttons under an item's player: every voice but Automatic. */
+  readonly itemVoices: VoiceSource[] = voiceOptions().map(option => option.id).filter(id => id !== 'auto');
+
+  isVoicing(item: AbstractControl): boolean {
+    return this.voicingItems.has(item);
+  }
+
+  voiceUsable(voice: VoiceSource): boolean {
+    return this.choices.isAvailable(voiceOptions().find(option => option.id === voice)!);
+  }
+
+  voiceNameKey(voice: VoiceSource | SpeechProvider): string {
+    return voiceSourceNameKey(voice);
+  }
+
+  /** Speaks the item text as it is, with this voice (✨ uses the Voice choice). */
+  async makeItemVoice(item: AbstractControl, voice: VoiceSource): Promise<void> {
+    const words = this.itemWords(item);
+    if (!words || this.voicingItems.has(item)) return;
+    this.voicingItems.add(item);
+    try {
+      const made = await this.audioVoice.synthesizeVoice(words, getStoredVoiceLanguage(), voice);
+      this.zone.run(() => {
+        item.patchValue({ audio: made.blob, audioSource: made.blob, audioPitch: 0, audioSpeed: 1, audioText: words });
+        this.expandedAudioItems.add(item);
+        this.voiceMadeBy.set(item, { audio: made.blob, provider: made.provider });
+        this.choices.markWorked('voice', made.provider);
+      });
+    } catch (error) {
+      const key = speechErrorMessageKey(error);
+      this.zone.run(() => this.choices.markFailed('voice', key));
+      showAppNotification(this.langService.translate(key), 'error');
+    } finally {
+      this.zone.run(() => this.voicingItems.delete(item));
+    }
+  }
+
+  /** Translation key of the voice that made this item's clip, or '' (recorded, or older). */
+  voiceMadeByKey(item: AbstractControl): string {
+    const made = this.voiceMadeBy.get(item);
+    // The untouched clip stays as audioSource while pitch/speed changes make new `audio`.
+    return made && made.audio === item.get('audioSource')?.value ? voiceSourceNameKey(made.provider) : '';
   }
 
   private itemHasContent(item: AbstractControl): boolean {

@@ -760,13 +760,19 @@
               <option *ngFor="let lang of creator.voiceLanguages" [value]="lang.code" [selected]="lang.code === creator.guideSpeechLanguage">{{ lang.label }}</option>
             </select>
           </div>
-          <button
-            type="button"
-            class="guide-speech-generate"
-            [disabled]="creator.generatingGuideSpeech || !creator.guideSpeechText.trim()"
-            (click)="creator.generateGuideDotSpeech(element)">
-            {{ (creator.generatingGuideSpeech ? 'save' : 'generateVoice') | translate }}{{ creator.generatingGuideSpeech ? '…' : '' }}
-          </button>
+          <div class="guide-speech-actions">
+            <button
+              type="button"
+              class="guide-speech-generate"
+              [disabled]="creator.generatingGuideSpeech || !creator.guideSpeechText.trim()"
+              (click)="creator.generateGuideDotSpeech(element)">
+              {{ (creator.generatingGuideSpeech ? 'save' : 'generateVoice') | translate }}{{ creator.generatingGuideSpeech ? '…' : '' }}
+            </button>
+            <app-ai-choice job="voice" [compact]="true"></app-ai-choice>
+          </div>
+          <p class="guide-speech-note" *ngIf="creator.guideSpeechMadeWithKey && !creator.generatingGuideSpeech">
+            🔊 {{ creator.guideSpeechMadeWithKey | translate }}
+          </p>
         </ng-container>
       </div>
       <div class="guide-place-hint" *ngIf="creator.placingGuidePin">Click the book page to place this position.</div>

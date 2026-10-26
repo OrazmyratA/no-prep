@@ -7,68 +7,35 @@
               [attr.aria-label]="'cancel' | translate">✕</button>
     </div>
 
-    <ng-container *ngIf="!packRun">
       <!-- Which AI: the provider pills carry their own names, so no section label needed. -->
       <div class="ai-section">
         <div class="ai-providers" role="group" [attr.aria-label]="'aiTopicAiSource' | translate">
           <button type="button" *ngFor="let p of providers"
                   class="ai-provider" [class.ai-provider-active]="p.id === providerId"
                   [disabled]="generating" (click)="selectProvider(p.id)" [title]="p.label">
-            <span class="ai-provider-logo" aria-hidden="true" [ngSwitch]="p.id">
-              <svg *ngSwitchCase="'gemini'" viewBox="0 0 24 24"><path d="M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81"/></svg>
-              <svg *ngSwitchCase="'openai'" viewBox="0 0 24 24"><path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/></svg>
-              <svg *ngSwitchCase="'anthropic'" viewBox="0 0 24 24"><path d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"/></svg>
-              <svg *ngSwitchCase="'groq'" viewBox="0 0 33 33"><path fill="#F43E01" d="M.54.39h32v32h-32z"/><path fill="#fff" d="m18.445 4.406-9.468 13.74 7.341.665-1.69 9.578 9.469-13.74-7.342-.664 1.69-9.579Z"/></svg>
-              <span *ngSwitchDefault class="ai-provider-sparkle">✨</span>
-            </span>
+            <app-ai-logo [id]="p.id"></app-ai-logo>
             <span class="ai-provider-name">{{ providerShortLabel(p.id) }}</span>
             <small *ngIf="!p.configured">{{ 'aiTopicNotLinked' | translate }}</small>
             <small *ngIf="p.configured" class="ai-linked">✓</small>
           </button>
         </div>
 
-        <div *ngIf="provider && editingKey" class="ai-key-setup">
-          <p class="ai-key-title">{{ 'aiTopicLinkTitle' | translate: { provider: provider.label } }}</p>
-          <p class="ai-hint">{{ 'aiTopicLinkSteps' | translate }}</p>
-          <p *ngIf="provider.id === 'gemini'" class="ai-hint ai-tip">{{ 'aiTopicGeminiTip' | translate }}</p>
-          <p *ngIf="showWebKeyNotice" class="ai-hint ai-tip">{{ 'aiTopicWebKeyNotice' | translate }}</p>
-          <div class="ai-key-row">
-            <button type="button" class="ai-secondary" (click)="openKeyPage()">{{ 'aiTopicOpenKeyPage' | translate }}</button>
-            <input type="password" class="ai-input" autocomplete="off" spellcheck="false"
-                   [value]="keyInput" (input)="keyInput = $any($event.target).value"
-                   (keydown.enter)="$event.preventDefault(); saveKey()"
-                   [placeholder]="'aiTopicApiKeyPlaceholder' | translate">
-            <button type="button" class="ai-primary" (click)="saveKey()" [disabled]="!keyInput.trim() || savingKey">
-              {{ 'aiTopicSaveKey' | translate }}
-            </button>
-            <button *ngIf="provider.configured" type="button" class="ai-link" (click)="editingKey = false">
-              {{ 'cancel' | translate }}
-            </button>
-          </div>
-        </div>
-
         <p *ngIf="isBuiltin" class="ai-hint ai-tip">{{ 'aiTopicBuiltinHint' | translate }}</p>
 
-        <div *ngIf="provider?.configured && !editingKey && !isBuiltin" class="ai-key-actions">
-          <button type="button" class="ai-icon-link" (click)="editingKey = true" [disabled]="generating"
-                  [attr.aria-label]="'aiTopicChangeKey' | translate" [title]="'aiTopicChangeKey' | translate">✏️</button>
-          <button type="button" class="ai-icon-link ai-danger" (click)="removeKey()" [disabled]="generating"
-                  [attr.aria-label]="'aiTopicRemoveKey' | translate" [title]="'aiTopicRemoveKey' | translate">🗑️</button>
+        <div *ngIf="needsKey && provider" class="ai-key-setup">
+          <button type="button" class="ai-primary" (click)="linking = providerId">
+            {{ 'aiTopicLinkTitle' | translate: { provider: provider.label } }}
+          </button>
         </div>
-      </div>
-
-      <!-- Lesson pack: one topic per ticked box. Always shown so the dialog keeps its shape;
-           greyed out when the form already holds a topic (a pack makes new topics). -->
-      <div class="ai-section ai-pack" [class.ai-pack-off]="!packAvailable">
-        <span class="ai-label">{{ 'aiPackTitle' | translate }}</span>
-        <div class="ai-pack-boxes">
-          <label *ngFor="let box of packBoxes" class="ai-pack-box" [class.ai-pack-box-on]="packTicked.has(box.id)">
-            <input type="checkbox" [checked]="packTicked.has(box.id)" [disabled]="generating || !packAvailable"
-                   (change)="togglePackBox(box)">
-            <span aria-hidden="true">{{ box.icon }}</span> {{ box.labelKey | translate }}
-          </label>
+        <div *ngIf="provider?.configured && !isBuiltin" class="ai-key-actions">
+          <button type="button" class="ai-icon-link" (click)="linking = providerId" [disabled]="generating"
+                  [attr.aria-label]="'aiTopicChangeKey' | translate" [title]="'aiTopicChangeKey' | translate">✏️ 🔑</button>
         </div>
-        <p class="ai-hint">{{ (packAvailable ? 'aiPackHint' : 'aiPackUnavailable') | translate }}</p>
+        <!-- Who makes the pictures and the voices of what this AI writes (shared with the topic form). -->
+        <div class="ai-media-choices">
+          <app-ai-choice job="picture"></app-ai-choice>
+          <app-ai-choice job="voice"></app-ai-choice>
+        </div>
       </div>
 
       <!-- Prompt -->
@@ -99,8 +66,8 @@
         </div>
         <textarea #promptInput id="aiTopicPrompt" class="ai-input ai-prompt" rows="4" [disabled]="generating"
                   [value]="prompt" (input)="prompt = $any($event.target).value"
-                  [placeholder]="(packMode ? 'aiPackNotePlaceholder' : 'aiTopicPromptPlaceholder') | translate"></textarea>
-        <div *ngIf="!speakingMode || packMode" class="ai-levels">
+                  [placeholder]="'aiTopicPromptPlaceholder' | translate"></textarea>
+        <div *ngIf="!speakingMode" class="ai-levels">
           <span class="ai-levels-label">{{ 'aiTopicLevel' | translate }}</span>
           <div class="ai-level-chips" role="radiogroup" [attr.aria-label]="'aiTopicLevel' | translate">
             <button type="button" class="ai-level" role="radio" [disabled]="generating"
@@ -111,14 +78,14 @@
                     [title]="cefrExamNames[l]" (click)="level = l">{{ l }}</button>
           </div>
           <span *ngIf="level" class="ai-levels-exam">{{ cefrExamNames[level] }}</span>
-          <label *ngIf="!speakingMode || packMode" class="ai-task ai-simple" [title]="'aiTopicSimpleHint' | translate">
+          <label *ngIf="!speakingMode" class="ai-task ai-simple" [title]="'aiTopicSimpleHint' | translate">
             <input type="checkbox" [checked]="simpleWording" [disabled]="generating" (change)="setSimpleWording($any($event.target).checked)">
             <span>✏️ {{ 'aiTopicSimple' | translate }}</span>
           </label>
         </div>
 
         <!-- Speaking test (Talk Show): the exam, Analyse, and the parts the AI makes -->
-        <div *ngIf="speakingMode && !packMode" class="ai-reading-tasks ai-speaking">
+        <div *ngIf="speakingMode" class="ai-reading-tasks ai-speaking">
           <span class="ai-levels-label">🗣️ {{ 'aiSpeakingExam' | translate }}</span>
           <div class="ai-level-chips" role="radiogroup" [attr.aria-label]="'aiSpeakingExam' | translate">
             <button *ngFor="let e of speakingExams" type="button" class="ai-level" role="radio" [disabled]="generating || analysing"
@@ -239,7 +206,7 @@
           <span aria-hidden="true">⚙️</span>
         </button>
         <div *ngIf="optionsOpen" class="ai-options">
-          <label *ngIf="!packMode" [attr.title]="'aiTopicItemCount' | translate">
+          <label [attr.title]="'aiTopicItemCount' | translate">
             <span aria-hidden="true">🔢</span>
             <input type="number" min="1" [max]="maxItems" class="ai-input ai-number" [disabled]="generating"
                    [value]="itemCount ?? ''" (input)="setItemCount($any($event.target).value)"
@@ -293,62 +260,10 @@
         <span *ngIf="generating" class="ai-working"><span class="ai-spinner"></span>{{ 'aiTopicGenerating' | translate }}</span>
         <button type="button" class="ai-secondary" (click)="close()" [disabled]="generating">{{ 'cancel' | translate }}</button>
         <button type="button" class="ai-primary" (click)="generate()" [disabled]="!canGenerate"
-                title="Ctrl+Enter">✨ {{ packMode ? ('aiPackCreate' | translate: { n: packTicked.size }) : ('aiTopicGenerate' | translate) }}</button>
-      </div>
-    </ng-container>
-
-    <!-- Lesson pack review: one card per topic -->
-    <ng-container *ngIf="packRun as run">
-      <div class="ai-section">
-        <label class="ai-label" for="aiPackLessonName">{{ 'aiPackLessonName' | translate }}</label>
-        <input id="aiPackLessonName" class="ai-input" [value]="lessonNameValue" [disabled]="savingPack"
-               (input)="setLessonName($any($event.target).value)">
+                title="Ctrl+Enter">✨ {{ 'aiTopicGenerate' | translate }}</button>
       </div>
 
-      <div class="ai-pack-cards">
-        <div *ngFor="let card of run.activeCards" class="ai-pack-card"
-             [class.ai-pack-card-ready]="card.status === 'ready'"
-             [class.ai-pack-card-failed]="card.status === 'failed'">
-          <div class="ai-pack-card-head">
-            <span aria-hidden="true">{{ card.box.icon }}</span>
-            <strong>{{ packTopicName(card) }}</strong>
-            <button type="button" class="ai-pack-remove" (click)="removePackCard(card)" [disabled]="savingPack"
-                    [title]="'aiPackRemove' | translate" [attr.aria-label]="'aiPackRemove' | translate">✕</button>
-          </div>
-
-          <div class="ai-pack-status" [ngSwitch]="card.status">
-            <span *ngSwitchCase="'generating'" class="ai-working"><span class="ai-spinner"></span>{{ 'aiPackStatusGenerating' | translate }}</span>
-            <ng-container *ngSwitchCase="'media'">
-              <span>{{ 'aiPackStatusMedia' | translate: { done: card.mediaDone, total: card.items.length } }}</span>
-              <span class="ai-pack-bar"><span [style.width.%]="card.items.length ? card.mediaDone * 100 / card.items.length : 0"></span></span>
-            </ng-container>
-            <span *ngSwitchCase="'ready'" class="ai-pack-ready">✓ {{ 'aiPackItems' | translate: { n: card.items.length } }}</span>
-            <ng-container *ngSwitchCase="'failed'">
-              <span class="ai-pack-failed">⚠ {{ 'aiTopicFailed' | translate }}</span>
-              <span *ngIf="card.error" class="ai-pack-error">{{ card.error }}</span>
-              <button type="button" class="ai-secondary ai-pack-retry" (click)="retryPackCard(card)">↻ {{ 'aiPackRetry' | translate }}</button>
-            </ng-container>
-          </div>
-
-          <p *ngIf="card.items.length" class="ai-pack-preview">{{ packPreview(card) }}</p>
-          <ul *ngIf="card.notes.length" class="ai-pack-notes">
-            <li *ngFor="let note of card.notes">💡 {{ note }}</li>
-          </ul>
-        </div>
-      </div>
-      <p *ngIf="!run.activeCards.length" class="ai-info">{{ 'aiPackNothingLeft' | translate }}</p>
-
-      <div *ngIf="errorKey" class="ai-error" role="alert">
-        <strong>{{ errorKey | translate }}</strong>
-        <span *ngIf="errorDetail">{{ errorDetail }}</span>
-      </div>
-
-      <div class="ai-footer">
-        <span *ngIf="savingPack" class="ai-working"><span class="ai-spinner"></span>{{ 'aiPackSaving' | translate }}</span>
-        <button type="button" class="ai-secondary" (click)="backToSetup()" [disabled]="savingPack">← {{ 'aiPackBack' | translate }}</button>
-        <button type="button" class="ai-primary" (click)="savePack()" [disabled]="!run.canSave || savingPack"
-                title="Ctrl+Enter">💾 {{ 'aiPackSaveAll' | translate: { n: run.activeCards.length } }}</button>
-      </div>
-    </ng-container>
   </div>
 </div>
+
+<app-ai-link-dialog *ngIf="linking" [providerId]="linking" (closed)="onLinkClosed($event)"></app-ai-link-dialog>

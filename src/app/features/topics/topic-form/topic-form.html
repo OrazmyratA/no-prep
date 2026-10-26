@@ -62,6 +62,9 @@
         <label class="text-sm font-semibold text-ink-soft">{{ 'itemsLabel' | translate }}</label>
       </div>
 
+      <!-- Who does each job for ✨ and Generate: Text, Picture, Voice (docs/ai-choices-plan.md). -->
+      <app-ai-job-bar class="topic-ai-bar"></app-ai-job-bar>
+
       <!-- Result of the last AI fill -->
       <div *ngIf="aiResult" class="ai-fill-banner" role="status">
         <div class="ai-fill-banner-main">
@@ -181,22 +184,32 @@
                     (imageCropped)="onImageCropped($event, i)">
                   </app-image-uploader>
                 </div>
-                <button *ngIf="hasAiImageChoice(item) && item.get('image')?.value"
-                        type="button" class="ai-swap-btn"
-                        (pointerdown)="$event.stopPropagation()"
-                        (click)="swapAiImage(item)"
-                        [disabled]="isSwappingImage(item)">
-                  <span [class.ai-swap-spin]="isSwappingImage(item)">↻</span>
-                  {{ 'aiTopicSwapPicture' | translate }}
-                </button>
-                <button *ngIf="aiImageGenerationAvailable && hasAiImageChoice(item) && item.get('image')?.value"
-                        type="button" class="ai-swap-btn ai-generate-btn"
-                        (pointerdown)="$event.stopPropagation()"
-                        (click)="generateAiImage(item)"
-                        [disabled]="isGeneratingAiImage(item)">
-                  <span [class.ai-swap-spin]="isGeneratingAiImage(item)">✨</span>
-                  {{ 'aiTopicGeneratePicture' | translate }}
-                </button>
+                <!-- ◀ ▶ earlier pictures, 🔄 another free one, 🎨 drawn by an AI: this item only. -->
+                <div *ngIf="isImagePanelOpen(item) && canFillItemWithAi(item)" class="item-ai-tools"
+                     (pointerdown)="$event.stopPropagation()">
+                  <span *ngIf="pictureMadeByKey(item) as madeBy" class="item-made-by">🖼 {{ madeBy | translate }}</span>
+                  <div class="item-ai-buttons">
+                    <ng-container *ngIf="pictureHistoryCount(item) > 1">
+                      <button type="button" class="item-ai-btn item-ai-step" (click)="stepPicture(item, -1)"
+                              [disabled]="!canStepPicture(item, -1)" [attr.aria-label]="'aiPicturePrevious' | translate"
+                              [title]="'aiPicturePrevious' | translate">◀</button>
+                      <button type="button" class="item-ai-btn item-ai-step" (click)="stepPicture(item, 1)"
+                              [disabled]="!canStepPicture(item, 1)" [attr.aria-label]="'aiPictureNext' | translate"
+                              [title]="'aiPictureNext' | translate">▶</button>
+                    </ng-container>
+                    <button type="button" class="item-ai-btn" (click)="swapAiImage(item)"
+                            [title]="'aiChoiceTagPictureSearch' | translate">
+                      <span [class.ai-swap-spin]="pictureBusyWith(item) === 'search'">↻</span>
+                      {{ 'aiTopicSwapPicture' | translate }}
+                    </button>
+                    <button *ngFor="let ai of drawingAis" type="button" class="item-ai-btn item-ai-draw"
+                            (click)="drawItemPicture(item, ai)" [disabled]="!choices.isLinked(ai)"
+                            [title]="(choices.isLinked(ai) ? (ai === 'gemini' ? 'aiChoiceTagPictureGemini' : 'aiChoiceTagPictureOpenai') : 'aiChoiceNotLinkedNow') | translate">
+                      <app-ai-logo [id]="ai" [class.ai-swap-spin]="pictureBusyWith(item) === ai"></app-ai-logo>
+                      {{ (ai === 'gemini' ? 'aiChoicePictureGemini' : 'aiChoicePictureOpenai') | translate }}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <!-- Audio uploader -->
@@ -218,6 +231,20 @@
                     [initialText]="item.get('audioText')?.value"
                     (voiceChange)="onVoiceChange($event, i)">
                   </app-audio-uploader>
+                </div>
+                <!-- The item text spoken again by one voice: this item only. -->
+                <div *ngIf="isAudioPanelOpen(item) && canFillItemWithAi(item)" class="item-ai-tools"
+                     (pointerdown)="$event.stopPropagation()">
+                  <span *ngIf="voiceMadeByKey(item) as madeBy" class="item-made-by">🔊 {{ madeBy | translate }}</span>
+                  <div class="item-ai-buttons">
+                    <button *ngFor="let voice of itemVoices" type="button" class="item-ai-btn"
+                            (click)="makeItemVoice(item, voice)" [disabled]="!voiceUsable(voice) || isVoicing(item)"
+                            [title]="(voiceUsable(voice) ? 'aiVoiceSayAgain' : 'aiChoiceNotLinkedNow') | translate">
+                      <app-ai-logo [id]="voice"></app-ai-logo>
+                      {{ voiceNameKey(voice) | translate }}
+                    </button>
+                    <span *ngIf="isVoicing(item)" class="item-ai-working ai-swap-spin" aria-hidden="true">↻</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -243,9 +270,7 @@
                        [existingItemTexts]="aiExistingItemTexts"
                        [hasExistingItems]="hasFilledItems"
                        [initialPages]="aiInitialPages"
-                       [packAvailable]="lessonPackAvailable"
                        (generated)="onAiDraft($event)"
-                       (packSaved)="onLessonPackSaved($event)"
                        (closed)="closeAiDialog()">
   </app-ai-topic-dialog>
   <app-point-area-editor *ngIf="areaEditor as editor"

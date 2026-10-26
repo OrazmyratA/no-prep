@@ -11,7 +11,7 @@ const MAX_RETRIES = 2;
 const MAX_RETRY_WAIT_MS = 20_000;
 
 class SpeechProviderError extends Error {
-  /** code: KEY_REJECTED | NO_CREDIT | RATE_LIMITED | UNAVAILABLE */
+  /** code: NOT_LINKED | KEY_REJECTED | NO_CREDIT | RATE_LIMITED | UNAVAILABLE */
   constructor(code, message) {
     super(message);
     this.code = code;
@@ -106,14 +106,16 @@ function createCloudTtsService({ getApiKey, fetchImpl = (...args) => fetch(...ar
 
   const PROVIDERS = [['openai', withOpenAi], ['gemini', withGemini]];
 
-  function hasKey() {
-    return PROVIDERS.some(([id]) => !!String(getApiKey(id) || '').trim());
+  /** Whether a key is linked: for `only` ('openai' | 'gemini'), or for either. */
+  function hasKey(only) {
+    return PROVIDERS.some(([id]) => (!only || id === only) && !!String(getApiKey(id) || '').trim());
   }
 
-  /** OpenAI, then Gemini — whichever keys are linked. Throws the last provider's error. */
-  async function synthesizeOnce(text) {
-    let lastError = new SpeechProviderError('UNAVAILABLE', 'No AI key is linked.');
+  /** OpenAI, then Gemini — whichever keys are linked (or just `only`). Throws the last provider's error. */
+  async function synthesizeOnce(text, only) {
+    let lastError = new SpeechProviderError('NOT_LINKED', 'No AI key is linked.');
     for (const [id, run] of PROVIDERS) {
+      if (only && id !== only) continue;
       const key = String(getApiKey(id) || '').trim();
       if (!key) continue;
       try {
@@ -125,9 +127,10 @@ function createCloudTtsService({ getApiKey, fetchImpl = (...args) => fetch(...ar
     throw lastError;
   }
 
-  function synthesizeSpeech(input) {
+  /** `only`: the teacher chose this voice, so no other is tried. */
+  function synthesizeSpeech(input, only) {
     const text = String(input?.text || '').trim();
-    const run = queue.then(() => synthesizeOnce(text));
+    const run = queue.then(() => synthesizeOnce(text, only));
     queue = run.catch(() => {});
     return run;
   }

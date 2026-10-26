@@ -68,6 +68,24 @@ describe('audio-voice-web-bridge', () => {
     expect(url).toContain('generativelanguage.googleapis.com');
   });
 
+  it('uses only the voice the teacher chose', async () => {
+    saveKey('openai', 'oa-key');
+    saveKey('gemini', 'gem-key');
+    const fetchMock = vi.fn(async (_url: string, _init: any) => new Response('limit', { status: 401 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(synthesizeSpeechWeb('Hi', 'en-US', 'gemini')).rejects.toMatchObject({ code: 'KEY_REJECTED' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toContain('generativelanguage.googleapis.com');
+  });
+
+  it('says a chosen voice is not linked, and that Windows voices are desktop only', async () => {
+    saveKey('openai', 'oa-key');
+    await expect(synthesizeSpeechWeb('Hi', 'en-US', 'gemini')).rejects.toMatchObject({ code: 'NOT_LINKED' });
+    await expect(synthesizeSpeechWeb('Hi', 'en-US', 'windows')).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  });
+
   it('prefers OpenAI over Gemini when both are linked', async () => {
     saveKey('openai', 'oa-key');
     saveKey('gemini', 'gem-key');

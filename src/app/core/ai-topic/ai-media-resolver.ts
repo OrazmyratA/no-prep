@@ -54,6 +54,16 @@ export function wordCardText(choice: AiImageChoice | null | undefined): string {
   return choice && choice.index === WORD_CARD_INDEX ? choice.cardText : '';
 }
 
+/** Where an item's shown picture came from, for the "Picture: …" line under it. */
+export type PictureOrigin = 'page' | 'pixabay' | 'wordCard' | 'generated';
+
+export function pictureOrigin(choice: AiImageChoice): PictureOrigin {
+  if (choice.index === GENERATED_INDEX) return 'generated';
+  if (choice.index === PAGE_CROP_INDEX) return 'page';
+  if (choice.index === WORD_CARD_INDEX) return 'wordCard';
+  return 'pixabay';
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return new Promise(resolve => {
     const timer = setTimeout(() => resolve(null), ms);
@@ -95,6 +105,18 @@ export class AiMediaResolverService {
     choice.generated = blob;
     choice.index = GENERATED_INDEX;
     return blob;
+  }
+
+  /**
+   * Picture options for an item from its own words, with no AI planning: searched as they are
+   * ("another picture"), drawn from them, or shown as a word card. `words` is the item text
+   * without game marks.
+   */
+  choiceForText(words: string, cardBackground = WORD_CARD_BACKGROUND): AiImageChoice {
+    return {
+      query: words, style: 'photo', cardText: words, cardBackground,
+      pageCrop: null, hits: null, generated: null, index: WORD_CARD_INDEX
+    };
   }
 
   /**

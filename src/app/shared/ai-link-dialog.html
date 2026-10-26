@@ -1,0 +1,39 @@
+<div appBodyPortal class="ai-link-overlay" (click)="close()">
+  <div class="ai-link-dialog" role="dialog" aria-modal="true"
+       [attr.aria-label]="'aiTopicLinkTitle' | translate: { provider: provider?.label ?? '' }"
+       (click)="$event.stopPropagation()">
+    <div class="ai-link-header">
+      <app-ai-logo [id]="providerId"></app-ai-logo>
+      <h2>{{ 'aiTopicLinkTitle' | translate: { provider: provider?.label ?? '' } }}</h2>
+      <button type="button" class="ai-link-close" (click)="close()" [attr.aria-label]="'cancel' | translate">✕</button>
+    </div>
+
+    <ng-container *ngIf="showKeyBox; else linkedView">
+      <p class="ai-link-hint">{{ 'aiTopicLinkSteps' | translate }}</p>
+      <p *ngIf="providerId === 'gemini'" class="ai-link-hint ai-link-tip">{{ 'aiTopicGeminiTip' | translate }}</p>
+      <p *ngIf="showWebKeyNotice" class="ai-link-hint ai-link-tip">{{ 'aiTopicWebKeyNotice' | translate }}</p>
+      <div class="ai-link-row">
+        <button type="button" class="ai-link-secondary" (click)="openKeyPage()">{{ 'aiTopicOpenKeyPage' | translate }}</button>
+        <input type="password" class="ai-link-input" autocomplete="off" spellcheck="false" autofocus
+               [value]="keyInput" (input)="keyInput = $any($event.target).value"
+               (keydown.enter)="$event.preventDefault(); save()"
+               [placeholder]="'aiTopicApiKeyPlaceholder' | translate">
+        <button type="button" class="ai-link-primary" (click)="save()" [disabled]="!keyInput.trim() || saving">
+          {{ 'aiTopicSaveKey' | translate }}
+        </button>
+      </div>
+    </ng-container>
+
+    <ng-template #linkedView>
+      <p class="ai-link-hint ai-link-ok">✓ {{ 'aiLinkLinked' | translate }}</p>
+      <div class="ai-link-row">
+        <button type="button" class="ai-link-secondary" (click)="changing = true">✏️ {{ 'aiTopicChangeKey' | translate }}</button>
+        <button type="button" class="ai-link-secondary ai-link-danger" (click)="remove()">🗑️ {{ 'aiTopicRemoveKey' | translate }}</button>
+      </div>
+    </ng-template>
+
+    <p *ngIf="errorKey" class="ai-link-error" role="alert">
+      {{ errorKey | translate }}<span *ngIf="errorDetail"> {{ errorDetail }}</span>
+    </p>
+  </div>
+</div>

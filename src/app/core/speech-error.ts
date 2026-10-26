@@ -1,9 +1,9 @@
 // Why text-to-speech failed, shared by the desktop (electron/main/speech-service.js sends these
 // codes) and the web bridge, so the teacher gets a reason they can act on instead of silence.
 export type SpeechProvider = 'edge' | 'openai' | 'gemini' | 'windows';
-export type SpeechErrorCode = 'NO_VOICE_FOR_LANGUAGE' | 'KEY_REJECTED' | 'NO_CREDIT' | 'RATE_LIMITED' | 'UNAVAILABLE';
+export type SpeechErrorCode = 'NOT_LINKED' | 'NO_VOICE_FOR_LANGUAGE' | 'KEY_REJECTED' | 'NO_CREDIT' | 'RATE_LIMITED' | 'UNAVAILABLE';
 
-const CODES: readonly SpeechErrorCode[] = ['NO_VOICE_FOR_LANGUAGE', 'KEY_REJECTED', 'NO_CREDIT', 'RATE_LIMITED', 'UNAVAILABLE'];
+const CODES: readonly SpeechErrorCode[] = ['NOT_LINKED', 'NO_VOICE_FOR_LANGUAGE', 'KEY_REJECTED', 'NO_CREDIT', 'RATE_LIMITED', 'UNAVAILABLE'];
 
 export class SpeechError extends Error {
   constructor(readonly code: SpeechErrorCode) {
@@ -20,6 +20,7 @@ export function speechErrorCode(value: unknown): SpeechErrorCode {
 export function speechErrorMessageKey(error: unknown): string {
   const code = error instanceof SpeechError ? error.code : 'UNAVAILABLE';
   return {
+    NOT_LINKED: 'speechErrorNotLinked',
     NO_VOICE_FOR_LANGUAGE: 'speechErrorNoVoice',
     KEY_REJECTED: 'speechErrorKeyRejected',
     NO_CREDIT: 'speechErrorNoCredit',

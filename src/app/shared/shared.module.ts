@@ -24,6 +24,10 @@ import { LeaderboardTeamSetupComponent } from './leaderboard-team-setup';
 import { LeaderboardTimerComponent } from './leaderboard-timer';
 import { AitSelectorComponent } from './ait-selector';
 import { LogoNotificationBellComponent } from './logo-notification-bell';
+import { AiLogoComponent } from './ai-logo';
+import { AiLinkDialogComponent } from './ai-link-dialog';
+import { AiChoiceComponent } from './ai-choice';
+import { AiJobBarComponent } from './ai-job-bar';
 
 @NgModule({
   declarations: [
@@ -47,6 +51,10 @@ import { LogoNotificationBellComponent } from './logo-notification-bell';
     LeaderboardTimerComponent,
     AitSelectorComponent,
     LogoNotificationBellComponent,
+    AiLogoComponent,
+    AiLinkDialogComponent,
+    AiChoiceComponent,
+    AiJobBarComponent,
   ],
   providers: [ConfirmationService],
   imports: [
@@ -73,7 +81,11 @@ import { LogoNotificationBellComponent } from './logo-notification-bell';
     LeaderboardTimerComponent,
     AitSelectorComponent,
     BodyPortalDirective,
-    LogoNotificationBellComponent
+    LogoNotificationBellComponent,
+    AiLogoComponent,
+    AiLinkDialogComponent,
+    AiChoiceComponent,
+    AiJobBarComponent
   ]
 })
 export class SharedModule { }

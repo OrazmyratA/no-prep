@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { hasWebTtsProvider, synthesizeSpeechWeb } from './audio-voice-web-bridge';
 import { SpeechError, SpeechProvider, speechErrorCode } from './speech-error';
+import type { VoiceSource } from './ai-topic/ai-choices';
 
 const PROCESSOR_URL = 'assets/soundtouch/soundtouch-processor.js';
 
@@ -56,26 +57,27 @@ export class AudioVoiceService {
     return typeof window?.electronAPI?.aiSpeakingSynthesizeSpeech === 'function' || hasWebTtsProvider();
   }
 
-  /** For batches (AI topics, lesson packs): the clip, or null when no voice could make it. */
-  async synthesize(text: string, language: string): Promise<Blob | null> {
+  /** For batches (the lesson planner's topics): the clip, or null when no voice could make it. */
+  async synthesize(text: string, language: string, voice: VoiceSource = 'auto'): Promise<Blob | null> {
     try {
-      return (await this.synthesizeVoice(text, language)).blob;
+      return (await this.synthesizeVoice(text, language, voice)).blob;
     } catch {
       return null;
     }
   }
 
   /**
-   * The clip and which voice made it (desktop: Edge's free voices, the teacher's OpenAI/Gemini
-   * key, or Windows' offline voices — see electron/main/speech-service.js). Throws a SpeechError
+   * The clip and which voice made it. 'auto' = the best that works now (desktop: Edge's free
+   * voices, the teacher's OpenAI/Gemini key, or Windows' offline voices — see
+   * electron/main/speech-service.js); any other voice is the only one tried. Throws a SpeechError
    * whose code says why, for a message the teacher can act on.
    */
-  async synthesizeVoice(text: string, language: string): Promise<{ blob: Blob; provider: SpeechProvider }> {
+  async synthesizeVoice(text: string, language: string, voice: VoiceSource = 'auto'): Promise<{ blob: Blob; provider: SpeechProvider }> {
     const api = window?.electronAPI;
-    if (typeof api?.aiSpeakingSynthesizeSpeech !== 'function') return synthesizeSpeechWeb(text, language);
+    if (typeof api?.aiSpeakingSynthesizeSpeech !== 'function') return synthesizeSpeechWeb(text, language, voice);
     let response: any;
     try {
-      response = await api.aiSpeakingSynthesizeSpeech({ text, language });
+      response = await api.aiSpeakingSynthesizeSpeech({ text, language, voice });
     } catch {
       throw new SpeechError('UNAVAILABLE');
     }

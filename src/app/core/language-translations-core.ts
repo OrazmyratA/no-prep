@@ -2639,6 +2639,19 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
 
 // Text-to-speech: why a voice could not be made (core/speech-error.ts), and the note shown when
 // Windows' offline voice made it because the online voices failed.
+'speechErrorNotLinked': {
+  en: 'This voice’s AI isn’t linked. Link it, or choose another voice (🔊 list).',
+  tk: 'Bu sesiň AI-sy baglanmadyk. Ony baglaň ýa-da başga ses saýlaň (🔊 sanaw).',
+  ru: 'ИИ для этого голоса не привязан. Привяжите его или выберите другой голос (список 🔊).',
+  cn: '这个语音所需的 AI 尚未关联。请关联它，或选择其他语音（🔊 列表）。',
+  cde: 'Die KI dieser Stimme ist nicht verknüpft. Verknüpfe sie oder wähle eine andere Stimme (🔊-Liste).',
+  es: 'La IA de esta voz no está vinculada. Vincúlala o elige otra voz (lista 🔊).',
+  fr: 'L’IA de cette voix n’est pas liée. Liez-la ou choisissez une autre voix (liste 🔊).',
+  kr: '이 음성의 AI가 연결되어 있지 않습니다. 연결하거나 다른 음성을 선택하세요 (🔊 목록).',
+  sa: 'الذكاء الاصطناعي لهذا الصوت غير مرتبط. اربطه أو اختر صوتًا آخر (قائمة 🔊).',
+  vi: 'AI của giọng này chưa được liên kết. Hãy liên kết hoặc chọn giọng khác (danh sách 🔊).',
+},
+
 'speechErrorNoVoice': {
   en: 'This computer has no voice for this language. Add one in Windows Settings → Time & language → Speech, or link an OpenAI or Gemini key (✨ button).',
   tk: 'Bu kompýuterde bu dil üçin ses ýok. Ony Windows sazlamalarynda → Wagt we dil → Gepleşik bölüminde goşuň ýa-da OpenAI ýa-da Gemini açaryny baglaň (✨ düwme).',

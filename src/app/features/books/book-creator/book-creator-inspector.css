@@ -1431,6 +1431,17 @@
   background: #ffffff;
 }
 
+.guide-speech-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.guide-speech-actions .guide-speech-generate {
+  flex: 1;
+}
+
 .guide-speech-generate {
   padding: 0.4rem 0.6rem;
   border: none;

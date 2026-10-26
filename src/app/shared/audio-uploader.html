@@ -56,14 +56,17 @@
         <option *ngFor="let lang of voiceLanguages" [value]="lang.code" [selected]="lang.code === voiceLanguage">{{ lang.label }}</option>
       </select>
     </div>
-    <button type="button" (click)="generateVoice()"
-            [disabled]="isGenerating || !voiceText.trim()"
-            class="flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded bg-blue-500 text-white disabled:opacity-60">
-      <span *ngIf="isGenerating" class="audio-spinner" aria-hidden="true"></span>
-      {{ 'generateVoice' | translate }}
-    </button>
-    <p *ngIf="madeWithWindowsVoice && !isGenerating" class="text-xs text-gray-500 m-0">
-      {{ 'speechWindowsVoiceNote' | translate }}
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button" (click)="generateVoice()"
+              [disabled]="isGenerating || !voiceText.trim()"
+              class="flex-1 flex items-center justify-center gap-2 py-1.5 text-sm font-medium rounded bg-blue-500 text-white disabled:opacity-60">
+        <span *ngIf="isGenerating" class="audio-spinner" aria-hidden="true"></span>
+        {{ 'generateVoice' | translate }}
+      </button>
+      <app-ai-choice job="voice" [compact]="true"></app-ai-choice>
+    </div>
+    <p *ngIf="madeWithKey && !isGenerating" class="text-xs text-gray-500 m-0">
+      🔊 {{ madeWithKey | translate }}<ng-container *ngIf="windowsFallback"> · {{ 'speechWindowsVoiceNote' | translate }}</ng-container>
     </p>
   </div>
   <div class="p-3">

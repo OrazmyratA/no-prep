@@ -1,5 +1,6 @@
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { LessonPackService } from '../../../core/ai-topic/lesson-pack.service';
+import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
 import { PlatformService } from '../../../core/platform';
 import { loadHtml2Canvas } from '../html2canvas-loader';
 import { CREATOR_SHORTCUTS } from '../book-shortcuts';
@@ -178,6 +179,8 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   guideSpeechText = '';
   guideSpeechLanguage = getStoredVoiceLanguage();
   generatingGuideSpeech = false;
+  // Which voice made the last guide speech clip, for the "Voice: …" line (translation key).
+  guideSpeechMadeWithKey = '';
   requestingMicPermission = false;
   savingRecording = false;
   selectedGuideTrackId: string | null = null;
@@ -355,6 +358,7 @@ Tomorrow I will help my mom.`;
   /** The ✨ AI lesson plan panel's state (docs/ai-lesson-planner.md). */
   /** Makes the lesson plan's topics (the lesson pack engine). */
   readonly lessonPack = inject(LessonPackService);
+  readonly aiChoices = inject(AiChoicesService);
   readonly platform = inject(PlatformService);
   readonly lessonPlanner = new BookCreatorLessonPlanController(this);
   readonly taskPrep = new BookCreatorTaskPrepController(this);

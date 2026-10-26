@@ -8,6 +8,7 @@
 import { getWebApiKey } from './ai-topic/ai-topic-web-bridge';
 import { encodeWavBlob } from './audio-wav';
 import { SpeechError, SpeechErrorCode, SpeechProvider } from './speech-error';
+import type { VoiceSource } from './ai-topic/ai-choices';
 
 // Model IDs checked 2026-10 — like the image-gen models in ai-topic-service.js, providers rename
 // these; re-check before release if synthesis starts failing with an "unknown model" error.
@@ -30,21 +31,27 @@ export function hasWebTtsProvider(): boolean {
 // go out three at once and mostly come back as "too many requests" — silently, as no audio.
 let queue: Promise<unknown> = Promise.resolve();
 
-/** OpenAI, then Gemini — whichever keys are linked. Throws a SpeechError saying why it failed. */
-export function synthesizeSpeechWeb(text: string, _language: string): Promise<SpeechResult> {
-  const run = queue.then(() => synthesizeNow(text.trim()));
+/**
+ * 'auto': OpenAI, then Gemini — whichever keys are linked. A voice the teacher chose is the only
+ * one tried. Throws a SpeechError saying why it failed.
+ */
+export function synthesizeSpeechWeb(text: string, _language: string, voice: VoiceSource = 'auto'): Promise<SpeechResult> {
+  const run = queue.then(() => synthesizeNow(text.trim(), voice));
   queue = run.catch(() => undefined);
   return run;
 }
 
-async function synthesizeNow(text: string): Promise<SpeechResult> {
+async function synthesizeNow(text: string, voice: VoiceSource): Promise<SpeechResult> {
   if (!text) throw new SpeechError('UNAVAILABLE');
-  let lastError = new SpeechError('UNAVAILABLE');
+  // Windows' voices exist only in the desktop app.
+  if (voice === 'windows') throw new SpeechError('UNAVAILABLE');
+  let lastError = new SpeechError(voice === 'auto' ? 'UNAVAILABLE' : 'NOT_LINKED');
   const providers: [SpeechProvider, (text: string, key: string) => Promise<{ blob: Blob; mimeType: string }>][] = [
     ['openai', synthesizeWithOpenAi],
     ['gemini', synthesizeWithGemini]
   ];
   for (const [provider, run] of providers) {
+    if (voice !== 'auto' && provider !== voice) continue;
     const key = getWebApiKey(provider).trim();
     if (!key) continue;
     try {

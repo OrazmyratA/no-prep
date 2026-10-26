@@ -1,5 +1,9 @@
 # Lesson pack — implementation plan
 
+> **2026-10-26: the Lesson Pack screen was removed from the ✨ window** (one topic at a time; see
+> docs/ai-choices-plan.md). Its engine, `LessonPackService`, stays: the book creator's Lesson
+> planner runs on it. The rest of this file describes the original screen.
+
 Status: **built** 2026-10-07 (steps 1-5), uncommitted. Verified with unit tests and in the browser with a faked AI; not yet tried with a real AI in Electron.
 
 ## 1. What it is

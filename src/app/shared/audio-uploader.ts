@@ -25,7 +25,8 @@ import {
 } from '../core/audio-voice';
 import { LanguageService } from '../core/language';
 import { showAppNotification } from '../core/notification';
-import { speechErrorMessageKey } from '../core/speech-error';
+import { SpeechProvider, speechErrorMessageKey } from '../core/speech-error';
+import { AiChoicesService, voiceSourceNameKey } from '../core/ai-topic/ai-choices';
 
 interface NativeAudioRecorderPlugin {
   start(): Promise<void>;
@@ -81,8 +82,10 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   voiceText = '';
   voiceLanguage = 'en-US';
   isGenerating = false;
-  // Set when the last generated clip came from Windows' offline voices (the online ones failed).
-  madeWithWindowsVoice = false;
+  // Which voice made the last generated clip, for the "Voice: …" line.
+  madeWith: SpeechProvider | null = null;
+  // Automatic had to fall back to Windows' offline voice: worth saying why it sounds plainer.
+  windowsFallback = false;
   isRendering = false;
   textPanelOpen = false;
   private renderSeq = 0;
@@ -107,9 +110,14 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     private zone: NgZone,
     private cdr: ChangeDetectorRef,
     public voice: AudioVoiceService,
-    private languageService: LanguageService
+    private languageService: LanguageService,
+    private choices: AiChoicesService
   ) {
     this.voiceLanguage = getStoredVoiceLanguage();
+  }
+
+  get madeWithKey(): string {
+    return this.madeWith ? voiceSourceNameKey(this.madeWith) : '';
   }
 
   get canGenerateVoice(): boolean {
@@ -411,20 +419,25 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
     this.isGenerating = true;
     this.cdr.detectChanges();
     let made: Awaited<ReturnType<AudioVoiceService['synthesizeVoice']>> | null = null;
+    const voice = this.choices.voiceSource;
     let failure: unknown = null;
     try {
-      made = await this.voice.synthesizeVoice(text, this.voiceLanguage);
+      made = await this.voice.synthesizeVoice(text, this.voiceLanguage, voice);
     } catch (error) {
       failure = error;
     }
     this.zone.run(() => {
       this.isGenerating = false;
       if (!made) {
-        showAppNotification(this.languageService.translate(speechErrorMessageKey(failure)), 'error');
+        const key = speechErrorMessageKey(failure);
+        this.choices.markFailed('voice', key);
+        showAppNotification(this.languageService.translate(key), 'error');
         this.cdr.detectChanges();
         return;
       }
-      this.madeWithWindowsVoice = made.provider === 'windows';
+      this.madeWith = made.provider;
+      this.windowsFallback = voice === 'auto' && made.provider === 'windows';
+      this.choices.markWorked('voice', made.provider);
       this.sourceBlob = made.blob;
       this.voiceText = text;
       void this.renderAndApply(true);
