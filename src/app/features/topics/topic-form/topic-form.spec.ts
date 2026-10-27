@@ -114,7 +114,10 @@ describe('TopicForm', () => {
     expect(handoff.take()).toEqual([]);
   });
 
-  it('opens "Create with AI" on a new topic, and only folds it after that', () => {
+  it('keeps "Create with AI" folded on a new topic until ✨ is clicked', () => {
+    expect(component.aiPanelOpen).toBe(false);
+    expect(component.aiPanelCreated).toBe(false);
+    component.toggleAiPanel();
     expect(component.aiPanelOpen).toBe(true);
     component.toggleAiPanel();
     expect(component.aiPanelOpen).toBe(false);

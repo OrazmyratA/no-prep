@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnDestroy, Output } from '@angular/core';
 import { AiTopicError, AiTopicProviderId, AiTopicProviderStatus, AiTopicService, providerShortLabel } from '../core/ai-topic/ai-topic.service';
 import { AiAbility, AiChoicesService, aiAbilities } from '../core/ai-topic/ai-choices';
 import { AI_BILLING_URLS, AI_HEALTH_ICONS, AI_HEALTH_TITLE_KEYS, AiHealth, describeTodayUse } from '../core/ai-topic/ai-status';
@@ -19,7 +19,7 @@ declare const window: any;
   templateUrl: './ai-link-dialog.html',
   styleUrls: ['./ai-link-dialog.css']
 })
-export class AiLinkDialogComponent {
+export class AiLinkDialogComponent implements OnDestroy {
   @Input({ required: true }) providerId!: AiTopicProviderId;
   /** Emitted when the window closes; `true` when the AI is linked afterwards. */
   @Output() closed = new EventEmitter<boolean>();
@@ -32,13 +32,15 @@ export class AiLinkDialogComponent {
   errorDetail = '';
   /** "Is this key working?" is being asked (one tiny request). */
   checking = false;
+  private destroyed = false;
 
   constructor(
     private ai: AiTopicService,
     private choices: AiChoicesService,
     private langService: LanguageService,
     private platform: PlatformService,
-    private confirmation: ConfirmationService
+    private confirmation: ConfirmationService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   get provider(): AiTopicProviderStatus | undefined {
@@ -86,6 +88,7 @@ export class AiLinkDialogComponent {
       this.errorDetail = error instanceof AiTopicError ? error.message : '';
     } finally {
       this.saving = false;
+      this.redraw();
     }
   }
 
@@ -114,7 +117,17 @@ export class AiLinkDialogComponent {
       return error instanceof AiTopicError ? error.kind : 'FAILED';
     } finally {
       this.checking = false;
+      this.redraw();
     }
+  }
+
+  /** The desktop's answers arrive outside Angular's zone: without this the spinner kept turning. */
+  private redraw(): void {
+    if (!this.destroyed) this.cdr.detectChanges();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
   }
 
   // ---- Status card (linked) ----

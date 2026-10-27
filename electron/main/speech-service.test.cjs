@@ -130,6 +130,23 @@ test('cloud: waits as asked on a rate limit, then succeeds', async () => {
   assert.equal(wav.length, 44 + 8);
 });
 
+test('cloud: a whole WAV from Gemini keeps only its sound (no header click, no C2PA noise)', async () => {
+  const sound = Buffer.from([1, 0, 2, 0, 3, 0, 4, 0]);
+  const fmt = Buffer.alloc(24);
+  fmt.write('fmt ', 0); fmt.writeUInt32LE(16, 4); fmt.writeUInt16LE(1, 8); fmt.writeUInt16LE(1, 10);
+  fmt.writeUInt32LE(24000, 12); fmt.writeUInt32LE(48000, 16); fmt.writeUInt16LE(2, 20); fmt.writeUInt16LE(16, 22);
+  const data = Buffer.alloc(8); data.write('data', 0); data.writeUInt32LE(sound.length, 4);
+  const c2pa = Buffer.concat([Buffer.from('C2PA'), Buffer.from([6, 0, 0, 0]), Buffer.from('jumbc2')]);
+  const inner = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(4), Buffer.from('WAVE'), fmt, data, sound, c2pa]);
+  const c = cloudWith({ gemini: 'k' }, [
+    () => response(200, { candidates: [{ content: { parts: [{ inlineData: { data: inner.toString('base64') } }] } }] })
+  ]);
+  const wav = Buffer.from((await c.service.synthesizeSpeech({ text: 'apple' })).audioBase64, 'base64');
+  assert.equal(wav.length, 44 + sound.length);
+  assert.deepEqual(wav.subarray(44), sound);
+  assert.equal(wav.readUInt32LE(24), 24000);
+});
+
 test('cloud: a daily limit is not retried', async () => {
   const c = cloudWith({ gemini: 'k' }, [() => response(429, 'Quota exceeded for GenerateRequestsPerDay')]);
   await assert.rejects(c.service.synthesizeSpeech({ text: 'a' }), { code: 'RATE_LIMITED' });

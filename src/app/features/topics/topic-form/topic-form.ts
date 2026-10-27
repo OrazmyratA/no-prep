@@ -295,10 +295,12 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
       this.addItem();
     }
 
-    // Open on a new topic and when a book sends pages; folded when editing a topic.
+    // Folded until ✨ is clicked; open only when a book sends pages (the teacher asked for the AI).
     const bookPages = this.aiPageHandoff.take();
-    if (bookPages.length) this.aiInitialPages = bookPages;
-    if (!this.isEdit || bookPages.length) this.setAiPanelOpen(true);
+    if (bookPages.length) {
+      this.aiInitialPages = bookPages;
+      this.setAiPanelOpen(true);
+    }
   }
 
   toggleAiPanel() {

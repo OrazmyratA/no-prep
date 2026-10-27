@@ -54,6 +54,25 @@ function encodeWav(pcm16, sampleRate) {
   return Buffer.concat([header, pcm16]);
 }
 
+/**
+ * Gemini's sound: older voices send raw 16-bit PCM (mono, 24 kHz), 3.8 Flash TTS a whole WAV file
+ * with a C2PA "made by AI" chunk after the sound. Wrapping that again played its header as a click
+ * and the C2PA chunk as loud noise, so only the "data" chunk is kept.
+ */
+function geminiPcm(bytes) {
+  const tag = (at) => bytes.toString('ascii', at, at + 4);
+  if (bytes.length >= 12 && tag(0) === 'RIFF' && tag(8) === 'WAVE') {
+    let sampleRate = 24000;
+    for (let at = 12; at + 8 <= bytes.length;) {
+      const size = bytes.readUInt32LE(at + 4);
+      if (tag(at) === 'fmt ' && at + 12 <= bytes.length) sampleRate = bytes.readUInt32LE(at + 12);
+      if (tag(at) === 'data') return { pcm: bytes.subarray(at + 8, Math.min(bytes.length, at + 8 + size)), sampleRate };
+      at += 8 + size + (size & 1);
+    }
+  }
+  return { pcm: bytes, sampleRate: 24000 };
+}
+
 function createCloudTtsService({ getApiKey, fetchImpl = (...args) => fetch(...args), wait = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
   // One request at a time: free plans allow only a few per minute, and a burst (a topic's worth of
   // items at once) used to fail almost entirely.
@@ -102,8 +121,8 @@ function createCloudTtsService({ getApiKey, fetchImpl = (...args) => fetch(...ar
     const data = await response.json();
     const part = (data?.candidates?.[0]?.content?.parts || []).find((p) => p?.inlineData?.data);
     if (!part) throw new SpeechProviderError('UNAVAILABLE', 'The speech service returned no audio.');
-    // Raw 16-bit PCM, mono, 24 kHz.
-    return { audioBase64: encodeWav(Buffer.from(part.inlineData.data, 'base64'), 24000).toString('base64'), mimeType: 'audio/wav' };
+    const { pcm, sampleRate } = geminiPcm(Buffer.from(part.inlineData.data, 'base64'));
+    return { audioBase64: encodeWav(pcm, sampleRate).toString('base64'), mimeType: 'audio/wav' };
   }
 
   const PROVIDERS = [['openai', withOpenAi], ['gemini', withGemini]];
