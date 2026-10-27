@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  # Rebuild a release that already exists (e.g. after a CI fix): pick its tag, the AAB is added to it.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build, e.g. v1.18.0'
+        required: true
 
 jobs:
   build-android:
@@ -14,6 +20,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -48,5 +56,6 @@ jobs:
       - name: Upload AAB to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           files: android/app/build/outputs/bundle/release/app-release.aab
           generate_release_notes: true
