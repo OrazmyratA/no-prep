@@ -287,6 +287,11 @@
         <button type="button" class="ts-btn ts-btn-primary" (click)="next()" title="Enter / →">
           {{ (part.type === 'STORY' && phase !== 'asking' && storyIndex < turn.pictures.length - 1 ? 'talkShowNextPicture' : 'talkShowNext') | translate }} ▶
         </button>
+        <!-- Enough of this part: leave its other questions out. -->
+        <button *ngIf="turnsLeftInPart > 0" type="button" class="ts-btn ts-btn-skip" (click)="skipPart()" title="Shift + →">
+          {{ (onLastPart ? 'talkShowSkipToEnd' : 'talkShowSkipPart') | translate }} ⏭
+          <small class="ts-skip-left">{{ 'talkShowSkipLeft' | translate: { n: turnsLeftInPart } }}</small>
+        </button>
       </div>
 
       <div class="ts-desk-tools">

@@ -569,6 +569,16 @@
   margin-left: 0;
 }
 
+.ai-speaking-too-long {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
 .ai-speaking-unit {
   min-width: 4.5rem;
   color: #64748b;

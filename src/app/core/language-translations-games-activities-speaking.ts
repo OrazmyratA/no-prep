@@ -1149,6 +1149,58 @@ export const GAME_SPEAKING_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   vi: 'AI viết các phần tài liệu chưa có',
 },
 
+'aiSpeakingTooLong': {
+  en: 'This test would have about {n} items, but one topic holds at most {max}. Lower a part or untick one, so the end isn\'t cut off.',
+  tk: 'Bu synagda takmynan {n} element bolar, ýöne bir tema iň köp {max} element sygdyrýar. Ahyry kesilmez ýaly, bir bölümi azaldyň ýa-da belligini aýyryň.',
+  ru: 'В этом тесте будет около {n} элементов, а в одну тему помещается не больше {max}. Уменьшите или снимите одну часть, чтобы конец не обрезался.',
+  cn: '这个测试大约有 {n} 个项目，但一个主题最多只能放 {max} 个。请减少或取消某个部分，以免结尾被截掉。',
+  cde: 'Dieser Test hätte etwa {n} Elemente, ein Thema fasst aber höchstens {max}. Verkleinere einen Teil oder wähle einen ab, damit das Ende nicht abgeschnitten wird.',
+  es: 'Esta prueba tendría unos {n} elementos, pero un tema admite como máximo {max}. Reduce una parte o desmárcala para que no se corte el final.',
+  fr: 'Ce test aurait environ {n} éléments, mais un thème en contient au plus {max}. Réduisez ou décochez une partie pour que la fin ne soit pas coupée.',
+  kr: '이 시험은 약 {n}개 항목이 되지만 한 주제에는 최대 {max}개까지만 들어가요. 끝부분이 잘리지 않도록 한 파트를 줄이거나 선택 해제해 주세요.',
+  sa: 'سيحتوي هذا الاختبار على نحو {n} عنصرًا، لكن الموضوع الواحد يتسع لـ {max} على الأكثر. قلّل جزءًا أو ألغِ تحديده حتى لا تُقطع النهاية.',
+  vi: 'Bài kiểm tra này sẽ có khoảng {n} mục, nhưng một chủ đề chỉ chứa tối đa {max}. Hãy giảm hoặc bỏ chọn một phần để phần cuối không bị cắt.',
+},
+
+'talkShowSkipPart': {
+  en: 'Next part',
+  tk: 'Indiki bölüm',
+  ru: 'Следующая часть',
+  cn: '下一部分',
+  cde: 'Nächster Teil',
+  es: 'Siguiente parte',
+  fr: 'Partie suivante',
+  kr: '다음 파트',
+  sa: 'الجزء التالي',
+  vi: 'Phần tiếp theo',
+},
+
+'talkShowSkipToEnd': {
+  en: 'Finish the test',
+  tk: 'Synagy tamamla',
+  ru: 'Завершить тест',
+  cn: '结束测试',
+  cde: 'Test beenden',
+  es: 'Terminar la prueba',
+  fr: 'Terminer le test',
+  kr: '시험 끝내기',
+  sa: 'إنهاء الاختبار',
+  vi: 'Kết thúc bài kiểm tra',
+},
+
+'talkShowSkipLeft': {
+  en: 'skips {n} left',
+  tk: 'galan {n} sany geçilýär',
+  ru: 'пропустит оставшиеся: {n}',
+  cn: '跳过剩下的 {n} 个',
+  cde: 'überspringt {n} weitere',
+  es: 'salta {n} restantes',
+  fr: 'saute les {n} restants',
+  kr: '남은 {n}개 건너뛰기',
+  sa: 'يتخطى {n} متبقية',
+  vi: 'bỏ qua {n} câu còn lại',
+},
+
 'aiSpeakingUnit_ASK': {
   en: 'questions',
   tk: 'sorag',

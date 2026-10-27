@@ -4,6 +4,7 @@ import {
   CEFR_EXAM_NAMES, DEFAULT_READING_TASKS, ReadingTasksRequest, SpeakingTestRequest, simpleWordingFor
 } from '../../../core/ai-topic/ai-topic-prompt';
 import { AI_TOPIC_MAX_ITEMS } from '../../../core/ai-topic/ai-topic-draft';
+import { SPEAKING_PART_MAX, speakingItemCount } from '../../../core/ai-topic/speaking-analysis';
 import { CEFR_LEVELS, CefrLevel, SpeakingExam } from '../../../core/db.model';
 import { defaultPartCount, examForLevel, SPEAKING_EXAM_LIST, SPEAKING_EXAMS, SpeakingTaskType } from '../../../core/speaking-exams';
 import {
@@ -114,6 +115,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   readonly cefrLevels = CEFR_LEVELS;
   readonly cefrExamNames = CEFR_EXAM_NAMES;
   readonly maxItems = AI_TOPIC_MAX_ITEMS;
+  readonly speakingPartMax = SPEAKING_PART_MAX;
 
   /** The AI whose key the Link window is open for (the Text AI, from "Link it first"). */
   linking: AiTopicProviderId | null = null;
@@ -220,7 +222,17 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   get canGenerate(): boolean {
     return !this.generating && !this.analysing && !this.readingPdf && !!this.provider && !this.needsKey
       && (!!this.prompt.trim() || this.pages.length > 0)
-      && (!this.speakingMode || this.speakingRows.some(row => row.on));
+      && (!this.speakingMode || (this.speakingRows.some(row => row.on) && !this.speakingTooLong));
+  }
+
+  /** How many items the ticked speaking parts make (one topic holds AI_TOPIC_MAX_ITEMS at most). */
+  get speakingItems(): number {
+    return speakingItemCount(this.speakingRows.filter(row => row.on));
+  }
+
+  /** Over the limit, the end of the test would be cut off: said, and Generate waits. */
+  get speakingTooLong(): boolean {
+    return this.speakingItems > AI_TOPIC_MAX_ITEMS;
   }
 
   /**
@@ -342,7 +354,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
 
   setSpeakingCount(row: SpeakingPartRow, value: string): void {
     const count = Math.round(Number(value));
-    row.count = Number.isFinite(count) ? Math.max(1, Math.min(10, count)) : 1;
+    row.count = Number.isFinite(count) ? Math.max(1, Math.min(SPEAKING_PART_MAX, count)) : 1;
   }
 
   private speakingRequest(): SpeakingTestRequest | null {

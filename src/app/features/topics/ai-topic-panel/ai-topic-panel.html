@@ -97,7 +97,7 @@
             <label *ngFor="let row of speakingRows" class="ai-task ai-speaking-row">
               <input type="checkbox" [checked]="row.on" [disabled]="generating || analysing" (change)="toggleSpeakingRow(row)">
               <span>{{ ('talkShowTask_' + row.type) | translate }}</span>
-              <input *ngIf="row.on" type="number" min="1" max="10" class="ai-input ai-task-count"
+              <input *ngIf="row.on" type="number" min="1" [max]="speakingPartMax" class="ai-input ai-task-count"
                      [disabled]="generating || analysing" [value]="row.count"
                      [title]="('aiSpeakingUnit_' + row.type) | translate"
                      (input)="setSpeakingCount(row, $any($event.target).value)">
@@ -107,6 +107,9 @@
               </span>
             </label>
           </div>
+          <p *ngIf="speakingTooLong" class="ai-speaking-too-long" role="alert">
+            ⚠️ {{ 'aiSpeakingTooLong' | translate: { n: speakingItems, max: maxItems } }}
+          </p>
           <label *ngIf="speakingAnalysed" class="ai-task ai-speaking-fill">
             <input type="checkbox" [checked]="speakingFill" [disabled]="generating || analysing" (change)="setSpeakingFill(!speakingFill)">
             <span>{{ 'aiSpeakingFill' | translate }}</span>
