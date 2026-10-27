@@ -21,16 +21,38 @@
           </div>
         </div>
 
-        <!-- Two-sided chips (gap-fill, Q&A): which side students get -->
+        <!-- Two-sided chips (definitions, gap-fill, Q&A...): which side students get, with a tiny
+             example item for each, so the choice is seen rather than explained. -->
         <div *ngIf="activeChip?.variants && activeChip as chip" class="ai-variants" role="radiogroup"
              [attr.aria-label]="'aiVariantLabel' | translate">
           <span class="ai-chip-group-label">{{ 'aiVariantLabel' | translate }}</span>
-          <label *ngFor="let variant of recipeVariants" class="ai-variant" [class.ai-variant-on]="chipVariant(chip) === variant">
-            <input type="radio" name="aiRecipeVariant" [checked]="chipVariant(chip) === variant" [disabled]="generating"
-                   (change)="setChipVariant(chip, variant)">
-            <span>{{ ('aiVariant_' + variant) | translate }}</span>
-          </label>
+          <div class="ai-variant-options">
+            <label *ngFor="let variant of recipeVariants" class="ai-variant" [class.ai-variant-on]="chipVariant(chip) === variant">
+              <span class="ai-variant-head">
+                <input type="radio" name="aiRecipeVariant" [checked]="chipVariant(chip) === variant" [disabled]="generating"
+                       (change)="setChipVariant(chip, variant)">
+                <span>{{ ('aiVariant_' + variant) | translate }}</span>
+              </span>
+              <span *ngIf="chip.example as example" class="ai-variant-example" aria-hidden="true">
+                <ng-container *ngTemplateOutlet="exampleSides; context: {
+                  word: example.word,
+                  clue: example.clueKey ? (example.clueKey | translate) : example.clue,
+                  findCard: variant === 'findCard' }"></ng-container>
+              </span>
+            </label>
+          </div>
         </div>
+        <ng-template #exampleSides let-word="word" let-clue="clue" let-findCard="findCard">
+          <span class="ai-ex-side">
+            <span class="ai-ex-tag">{{ 'aiVariantText' | translate }}<ng-container *ngIf="!findCard"> · <b>{{ 'aiVariantAnswer' | translate }}</b></ng-container></span>
+            <span class="ai-ex-text" [class.ai-ex-answer]="!findCard">{{ findCard ? clue : word }}</span>
+          </span>
+          <span class="ai-ex-arrow">⇄</span>
+          <span class="ai-ex-side">
+            <span class="ai-ex-tag">{{ 'aiVariantCard' | translate }}<ng-container *ngIf="findCard"> · <b>{{ 'aiVariantAnswer' | translate }}</b></ng-container></span>
+            <span class="ai-ex-card" [class.ai-ex-answer]="findCard">{{ findCard ? word : clue }}</span>
+          </span>
+        </ng-template>
         <textarea #promptInput id="aiTopicPrompt" class="ai-input ai-prompt" rows="4" [disabled]="generating"
                   [value]="prompt" (input)="prompt = $any($event.target).value"
                   [placeholder]="'aiTopicPromptPlaceholder' | translate"></textarea>

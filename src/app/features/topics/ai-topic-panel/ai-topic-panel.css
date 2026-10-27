@@ -660,16 +660,32 @@
   border: 1px solid #e0e7ff;
 }
 
+.ai-variant-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
 .ai-variant {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
   border: 1px solid transparent;
   font-size: 0.85rem;
   color: #475569;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-variant:hover { background: rgba(255, 255, 255, 0.6); }
+
+.ai-variant-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ai-variant input { accent-color: #4f46e5; }
@@ -678,5 +694,68 @@
   background: #fff;
   border-color: #a5b4fc;
   color: #3730a3;
-  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.12);
+}
+
+.ai-variant-on .ai-variant-head { font-weight: 600; }
+
+/* The example item: what is on the text, what is on the card, and which one is the answer. */
+.ai-variant-example {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+  opacity: 0.75;
+}
+
+.ai-variant-on .ai-variant-example { opacity: 1; }
+
+.ai-ex-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ai-ex-tag {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.ai-ex-tag b { color: #15803d; font-weight: 700; }
+
+.ai-ex-text,
+.ai-ex-card {
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.ai-ex-text {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.ai-ex-card {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  color: #1e3a8a;
+  text-align: center;
+}
+
+.ai-ex-answer {
+  outline: 2px solid #86efac;
+  outline-offset: 1px;
+}
+
+.ai-ex-arrow {
+  align-self: center;
+  margin-top: 12px;
+  color: #a5b4fc;
 }

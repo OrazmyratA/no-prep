@@ -122,7 +122,7 @@ describe('AiTopicPanelComponent generate', () => {
     await component.generate();
     expect(generateDraft.mock.calls[0][1].recipeVariant).toBe('findCard');
 
-    component.applyChip(component.promptChips.find(c => c.id === 'translation')!);
+    component.applyChip(component.promptChips.find(c => c.id === 'pictures')!);
     expect(component.activeChip?.variants).toBeUndefined();
     await component.generate();
     expect(generateDraft.mock.calls[1][1].recipeVariant).toBeNull();

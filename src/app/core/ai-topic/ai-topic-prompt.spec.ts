@@ -111,6 +111,8 @@ describe('ai-topic-prompt', () => {
     const groups = new Set(AI_RECIPE_GROUPS.map(group => group.id));
     expect(AI_TOPIC_RECIPES.length).toBe(15);
     expect(AI_TOPIC_RECIPES.every(recipe => groups.has(recipe.group))).toBe(true);
-    expect(AI_TOPIC_RECIPES.filter(recipe => recipe.variants).map(recipe => recipe.id)).toEqual(['gapFill', 'qa']);
+    expect(AI_TOPIC_RECIPES.filter(recipe => recipe.variants).map(recipe => recipe.id)).toEqual(
+      ['definitions', 'translation', 'synonyms', 'verbForms', 'collocations', 'gapFill', 'qa']
+    );
   });
 });

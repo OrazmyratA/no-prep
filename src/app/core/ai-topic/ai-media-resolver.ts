@@ -121,6 +121,11 @@ export class AiMediaResolverService {
     };
   }
 
+  /** A word card with these words, in the AI's card look (blue unless a colour is given). */
+  wordCard(words: string, cardBackground = WORD_CARD_BACKGROUND): Promise<Blob> {
+    return this.renderWordCard(words, cardBackground);
+  }
+
   /**
    * Finds, crops or draws the item's picture. `pages` are the book-page photos the teacher
    * attached (same order as `imagePage` refers to); pass [] when there were none. A failed page

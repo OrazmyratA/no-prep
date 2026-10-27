@@ -72,8 +72,32 @@
 
     <!-- Items section -->
     <div class="mb-8">
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center gap-3 mb-4">
         <label class="text-sm font-semibold text-ink-soft">{{ 'itemsLabel' | translate }}</label>
+        <!-- One topic, both ways: the text goes on the card, the card's words become the text. -->
+        <button *ngIf="canSwapSides || swapping" type="button" class="swap-sides-btn" (click)="swapSides()"
+                [disabled]="swapping" [title]="'topicSwapSidesHint' | translate">
+          <span class="swap-sides-icon" [class.swap-sides-spin]="swapping" aria-hidden="true">⇄</span>
+          {{ 'topicSwapSides' | translate }}
+        </button>
+      </div>
+
+      <div *ngIf="swapResult" class="swap-result" role="status">
+        <div class="swap-result-main">
+          <p class="swap-result-title">
+            <span aria-hidden="true">⇄</span> {{ (swapResult.back ? 'topicSwapBack' : 'topicSwapDone') | translate: { n: swapResult.swapped } }}
+          </p>
+          <p *ngIf="swapResult.kept" class="swap-result-note">{{ 'topicSwapKept' | translate: { n: swapResult.kept } }}</p>
+          <div *ngIf="swapResult.needVoice.length" class="swap-result-voices">
+            <span>🔊 {{ 'topicSwapNeedVoice' | translate: { n: swapResult.needVoice.length } }}</span>
+            <button *ngIf="canMakeSwapVoices" type="button" class="swap-result-make" (click)="makeSwapVoices()"
+                    [disabled]="makingSwapVoices">
+              <span *ngIf="makingSwapVoices" class="swap-result-spinner" aria-hidden="true"></span>
+              {{ (makingSwapVoices ? 'topicSwapMakingVoices' : 'topicSwapMakeVoices') | translate }}
+            </button>
+          </div>
+        </div>
+        <button type="button" class="ai-fill-dismiss" (click)="swapResult = null" [attr.aria-label]="'cancel' | translate">✕</button>
       </div>
 
       <!-- Who fills each column, right above it: the item text, its picture, its voice

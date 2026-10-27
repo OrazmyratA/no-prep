@@ -125,6 +125,56 @@ describe('TopicForm', () => {
     expect(component.aiPanelCreated).toBe(true);
   });
 
+  describe('⇄ swap text and cards', () => {
+    const voice = new Blob(['voice of elephant']);
+
+    beforeEach(() => {
+      // Word cards are drawn on a canvas, which jsdom has not got.
+      (component as any).aiMedia.wordCard = async (words: string) => Object.assign(new Blob([]), { words });
+      component.items.clear();
+      component.items.push(component.createItemFormGroup(null, 'elephant', new Blob(['card']), voice,
+        { audioSource: voice, audioText: 'elephant', imageText: 'a very big grey animal' }));
+      component.items.push(component.createItemFormGroup(null, 'cat', new Blob(['photo'])));
+      component.items.push(component.createItemFormGroup(null, '# Animals', new Blob(['card']), null, { imageText: 'Animals' }));
+    });
+
+    it('swaps only items with a word card and plain text, and sets their voice aside', async () => {
+      expect(component.canSwapSides).toBe(true);
+      await component.swapSides();
+
+      const [word, photo, heading] = component.items.controls.map(item => item.value);
+      expect(word.text).toBe('a very big grey animal');
+      expect(word.imageText).toBe('elephant');
+      expect(word.image.words).toBe('elephant');
+      // The old voice would say the answer now.
+      expect(word.audio).toBeNull();
+      expect(photo.text).toBe('cat');
+      expect(heading.text).toBe('# Animals');
+      expect(component.swapResult?.swapped).toBe(1);
+      expect(component.swapResult?.kept).toBe(1);
+      expect(component.swapResult?.needVoice.length).toBe(1);
+    });
+
+    it('swapping back brings the first voice back, at no cost', async () => {
+      await component.swapSides();
+      await component.swapSides();
+
+      const word = component.items.at(0).value;
+      expect(word.text).toBe('elephant');
+      expect(word.imageText).toBe('a very big grey animal');
+      expect(word.audio).toBe(voice);
+      expect(word.audioText).toBe('elephant');
+      expect(component.swapResult?.needVoice.length).toBe(0);
+      expect(component.swapResult?.back).toBe(true);
+    });
+
+    it('is not offered when no item has a word card', () => {
+      component.items.removeAt(2);
+      component.items.removeAt(0);
+      expect(component.canSwapSides).toBe(false);
+    });
+  });
+
   it('retries a half-finished save as an update, not a second topic', async () => {
     component.topicForm.patchValue({ name: 'Fruits' });
     addItem('apple');

@@ -49,6 +49,14 @@ interface PictureHistory {
   index: number;
 }
 
+interface ItemVoice {
+  audio: Blob | null;
+  audioSource: Blob | null;
+  audioPitch: number | null;
+  audioSpeed: number | null;
+  audioText: string;
+}
+
 interface AiFillResult {
   count: number;
   notes: string[];
@@ -117,6 +125,13 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private voiceMadeBy = new WeakMap<AbstractControl, { audio: Blob; provider: SpeechProvider }>();
   // Per-item "✨": fills just this item's image + audio from its own text, no dialog needed.
   private fillingItems = new WeakSet<AbstractControl>();
+  // ⇄ Swap text and cards: what the last swap did, for the line under the heading.
+  // `back`: this swap undid the one before (the line says so instead of "on the cards now").
+  swapResult: { swapped: number; kept: number; needVoice: AbstractControl[]; back: boolean } | null = null;
+  swapping = false;
+  makingSwapVoices = false;
+  // The voice each item had for each of its texts, so swapping back brings it back for free.
+  private voicesByText = new WeakMap<AbstractControl, Map<string, ItemVoice>>();
 
   constructor(
     private fb: FormBuilder,
@@ -500,6 +515,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     // Point & place answer areas come on the page photo: move them onto the scene picture.
     const draft = { ...result.draft, items: pointAreasToScene(result.draft.items) };
     const runId = ++this.aiRunId;
+    this.swapResult = null;
     this.aiUndoSnapshot = {
       name: this.topicForm.value.name ?? '',
       level: this.topicForm.value.level ?? '',
@@ -689,6 +705,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.aiUndoSnapshot = null;
     this.aiResult = null;
     this.aiProgress = null;
+    this.swapResult = null;
   }
 
   dismissAiResult() {
@@ -965,6 +982,103 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     const made = this.voiceMadeBy.get(item);
     // The untouched clip stays as audioSource while pitch/speed changes make new `audio`.
     return made && made.audio === item.get('audioSource')?.value ? voiceSourceNameKey(made.provider) : '';
+  }
+
+  // ---- ⇄ Swap text and cards ----
+
+  /**
+   * Items whose two sides can swap: plain text (no game marks) and a word card. A photo can't
+   * become text, so items with one stay as they are.
+   */
+  private swappableItems(): AbstractControl[] {
+    return this.items.controls.filter(item => {
+      const text = String(item.get('text')?.value ?? '').replace(/\s+/g, ' ').trim();
+      const card = String(item.get('imageText')?.value ?? '').trim();
+      return !!text && !!card && !!item.get('image')?.value && plainText(text) === text;
+    });
+  }
+
+  get canSwapSides(): boolean {
+    return !this.swapping && !this.aiProgress && this.swappableItems().length > 0;
+  }
+
+  /**
+   * One Definitions (or Translation, Gap-fill...) topic, played both ways: the text goes on the
+   * card and the card's words become the text, for every item that has a word card. Free, no AI;
+   * clicking again swaps back. The voice reads the text, so a voice that said the old text would
+   * now say the answer: it is set aside (and comes back on swapping back), and the line under the
+   * heading offers to make the new ones.
+   */
+  async swapSides() {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    const swappable = this.swappableItems();
+    if (!swappable.length || this.swapping) return;
+    this.swapping = true;
+    const needVoice: AbstractControl[] = [];
+    try {
+      await Promise.all(swappable.map(async item => {
+        const text = String(item.get('text')!.value).replace(/\s+/g, ' ').trim();
+        const card = String(item.get('imageText')!.value).trim();
+        const color = this.cardColorFor(item) || undefined;
+        const blob = await this.aiMedia.wordCard(text, color);
+        this.zone.run(() => {
+          const voices = this.voicesByText.get(item) ?? new Map<string, ItemVoice>();
+          this.voicesByText.set(item, voices);
+          const hadVoice = !!item.get('audio')?.value;
+          if (hadVoice) voices.set(text, this.itemVoice(item));
+          item.patchValue({ text: card });
+          this.aiImageChoices.set(item, this.aiMedia.choiceForText(text, color));
+          this.showPicture(item, blob, 'wordCard', text);
+          const earlier = voices.get(card);
+          if (earlier) {
+            item.patchValue(earlier);
+          } else if (hadVoice) {
+            item.patchValue({ audio: null, audioSource: null, audioPitch: null, audioSpeed: null, audioText: '' });
+            needVoice.push(item);
+          }
+        });
+      }));
+      // Said to the teacher: items with a photo stayed. (Headings and other marked items stay
+      // silently: they are the topic's structure, not word pairs.)
+      const photos = this.items.controls.filter(item => !swappable.includes(item)
+        && !!item.get('text')?.value && !!item.get('image')?.value && !item.get('imageText')?.value).length;
+      const back = !!this.swapResult && !this.swapResult.back;
+      this.swapResult = { swapped: swappable.length, kept: photos, needVoice, back };
+    } finally {
+      this.swapping = false;
+    }
+  }
+
+  /** The new voices after a swap, one after another, with the Voice choice. */
+  async makeSwapVoices() {
+    const result = this.swapResult;
+    if (!result || this.makingSwapVoices) return;
+    this.makingSwapVoices = true;
+    try {
+      for (const item of [...result.needVoice]) {
+        if (!this.items.controls.includes(item) || item.get('audio')?.value) continue;
+        await this.makeItemVoice(item, this.choices.voiceSource);
+        // The first failure is already explained; the rest would only repeat it.
+        if (!item.get('audio')?.value) break;
+        result.needVoice = result.needVoice.filter(other => other !== item);
+      }
+    } finally {
+      this.zone.run(() => (this.makingSwapVoices = false));
+    }
+  }
+
+  /** Whether "Make the voices" can work: a voice is chosen (not None) and can speak here. */
+  get canMakeSwapVoices(): boolean {
+    const voice = this.choices.voiceSource;
+    return !this.choices.voiceNoneChosen && (voice !== 'auto' || this.audioVoice.canSynthesize);
+  }
+
+  private itemVoice(item: AbstractControl): ItemVoice {
+    const value = item.value;
+    return { audio: value.audio, audioSource: value.audioSource, audioPitch: value.audioPitch, audioSpeed: value.audioSpeed, audioText: value.audioText };
   }
 
   private itemHasContent(item: AbstractControl): boolean {

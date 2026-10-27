@@ -404,6 +404,100 @@
   opacity: 0.4;
 }
 
+/* ⇄ Swap text and cards: next to the Items heading. */
+.swap-sides-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, #ffffff, #eef2ff);
+  color: #4338ca;
+  font-weight: 600;
+  font-size: 0.82rem;
+  box-shadow: 0 1px 2px rgba(67, 56, 202, 0.08);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.swap-sides-btn:hover:not(:disabled) {
+  border-color: #818cf8;
+  box-shadow: 0 3px 10px rgba(67, 56, 202, 0.18);
+  transform: translateY(-1px);
+}
+
+.swap-sides-btn:disabled { opacity: 0.7; cursor: progress; }
+
+.swap-sides-icon {
+  display: inline-block;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.swap-sides-btn:hover:not(:disabled) .swap-sides-icon { transform: scaleX(-1); transition: transform 0.25s ease; }
+.swap-sides-spin { animation: ai-fill-spin 0.9s linear infinite; }
+
+.swap-result {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #14532d;
+  font-size: 0.88rem;
+  animation: swap-result-in 0.25s ease-out;
+}
+
+.swap-result-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.swap-result-title { font-weight: 600; }
+.swap-result-note { color: #4b5563; }
+
+.swap-result-voices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #92400e;
+}
+
+.swap-result-make {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid #86efac;
+  background: #fff;
+  color: #15803d;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.swap-result-make:hover:not(:disabled) { background: #dcfce7; }
+.swap-result-make:disabled { opacity: 0.7; cursor: progress; }
+
+.swap-result-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 2px solid #bbf7d0;
+  border-top-color: #15803d;
+  animation: ai-fill-spin 0.8s linear infinite;
+}
+
+@keyframes swap-result-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swap-sides-spin, .swap-result-spinner, .swap-result { animation: none; }
+  .swap-sides-btn:hover:not(:disabled) { transform: none; }
+}
+
 .topic-name-missing {
   border-color: #ef4444;
   box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
