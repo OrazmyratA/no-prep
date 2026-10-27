@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - run: npm ci
@@ -51,7 +51,10 @@ jobs:
           PROPS
 
       - name: Build release AAB
-        run: cd android && chmod +x gradlew && ./gradlew bundleRelease
+        # gradle.properties names the developer's Windows JDK; here the runner's JDK 21 is used.
+        run: |
+          sed -i '/^org\.gradle\.java\.home=/d' android/gradle.properties
+          cd android && chmod +x gradlew && ./gradlew bundleRelease
 
       - name: Upload AAB to GitHub Release
         uses: softprops/action-gh-release@v2
