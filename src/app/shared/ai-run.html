@@ -1,0 +1,41 @@
+<section class="run" [attr.data-ai]="view.provider" role="status" aria-live="polite">
+  <header class="run-head">
+    <span class="run-logo"><app-ai-logo [id]="view.provider"></app-ai-logo></span>
+    <span class="run-title">{{ view.titleKey | translate: { provider: name } }}</span>
+    <button type="button" class="run-cancel" (click)="cancelled.emit()">✕ {{ cancelKey | translate }}</button>
+  </header>
+
+  <ol class="run-steps">
+    <li *ngFor="let step of view.steps; trackBy: trackStep" class="run-step" [class.run-step-done]="step.state === 'done'"
+        [class.run-step-active]="step.state === 'active'">
+      <span class="run-dot" aria-hidden="true">
+        <ng-container *ngIf="step.state === 'done'">✓</ng-container>
+      </span>
+      <span class="run-step-label">
+        {{ step.labelKey | translate }}<span *ngIf="step.total" class="run-count"> {{ step.done ?? 0 }}/{{ step.total }}</span>
+      </span>
+    </li>
+  </ol>
+
+  <div class="run-time">
+    <div class="run-bar" [class.run-bar-unknown]="progress === null" [class.run-bar-slow]="slow">
+      <span [style.width.%]="progress === null ? null : progress * 100"></span>
+    </div>
+    <span class="run-clock">⏱ {{ clock }}</span>
+    <ng-container *ngIf="!view.clockOnly">
+    <span *ngIf="typicalSeconds as usual; else firstTime" class="run-usual">
+      · {{ 'aiRunUsually' | translate: { provider: name, seconds: usual } }}
+    </span>
+    <ng-template #firstTime><span class="run-usual">· {{ 'aiRunFirstTime' | translate }}</span></ng-template>
+    </ng-container>
+  </div>
+
+  <!-- Why it waits, said the moment it is known. -->
+  <p *ngIf="view.status?.kind === 'fallback'" class="run-why">🐢 {{ 'aiRunFallback' | translate: { provider: name } }}</p>
+  <p *ngIf="waitLeft !== null" class="run-why">
+    ⏳ {{ waitKey | translate: { provider: name, seconds: waitLeft } }}
+  </p>
+  <p *ngIf="slow && waitLeft === null" class="run-why run-why-slow">
+    🐌 {{ (alternative ? 'aiRunSlowAlternative' : 'aiRunSlow') | translate: { provider: name, alternative: alternativeName } }}
+  </p>
+</section>

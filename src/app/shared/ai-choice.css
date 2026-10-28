@@ -23,6 +23,65 @@
   background: #f5f7ff;
 }
 
+/* Above an item column: small label + hint, then the button across the column. */
+:host(.ai-choice-host-header) {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.ai-choice-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding-inline-start: 4px;
+  white-space: nowrap;
+}
+
+.ai-choice-head-icon {
+  font-size: 0.9rem;
+}
+
+.ai-choice-head-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--np-ink-soft, 75 85 99));
+}
+
+.ai-choice-head-hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.75rem;
+  color: rgb(var(--np-ink-muted, 107 114 128));
+}
+
+.ai-choice-btn-header {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  border-color: #e0e7ff;
+  font-size: 0.9rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 14px rgba(79, 70, 229, 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.ai-choice-btn-header:hover {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 18px rgba(79, 70, 229, 0.12);
+}
+
+.ai-choice-btn-header .ai-choice-caret {
+  margin-inline-start: auto;
+}
+
+.ai-choice-btn-header[aria-expanded='true'] {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.25);
+}
+
 .ai-choice-compact {
   padding: 3px 8px;
   font-size: 0.8rem;
@@ -130,6 +189,11 @@
 .ai-choice-row-text small {
   color: #6b7280;
   font-size: 0.75rem;
+}
+
+.ai-choice-row-text small.ai-choice-row-problem {
+  color: #b45309;
+  font-weight: 600;
 }
 
 .ai-choice-check {

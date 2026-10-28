@@ -30,7 +30,8 @@ Phase 1a code map:
   `userData/ai-topic-keys.json` (encrypted with `safeStorage`; Groq shares the AI Speaking key).
 - `src/app/core/ai-topic/` — draft schema + validator, the AI instructions, game-suitability
   check, the service, and the media resolver (Pixabay / word card / Edge TTS).
-- `src/app/features/topics/ai-topic-dialog/` — the dialog; `topic-form` applies the draft,
+- `src/app/features/topics/ai-topic-panel/` — "Create with AI", under the topic name (it was a
+  window until v1.18.0; see docs/ai-choices-plan.md, Part B); `topic-form` applies the draft,
   shows progress, notes and **Undo AI fill**.
 - `src/app/shared/text-image.ts` — word-card drawing, shared with the image uploader.
 - `src/app/core/language-translations-ai-topic.ts` — all strings in the 10 languages.

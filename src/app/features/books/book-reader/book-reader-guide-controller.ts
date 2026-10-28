@@ -6,6 +6,7 @@ import {
 } from '../../../core/book.model';
 import {
   getGuideTracks,
+  getGuideTrackTrimRange,
   getOrderedGuidePins
 } from '../../../core/guide-timeline';
 import {
@@ -52,7 +53,11 @@ export class BookReaderGuideController {
     const input = event.target as HTMLInputElement | null;
     const value = Number(input?.value);
     if (!Number.isFinite(value)) return;
-    this.reader.activeAudio.currentTime = clamp(value, 0, this.reader.guideAudioDuration || this.reader.activeAudio.duration || 0);
+    this.reader.activeAudio.currentTime = clamp(
+      value,
+      this.reader.guideAudioRangeStart || 0,
+      this.reader.guideAudioDuration || this.reader.activeAudio.duration || 0
+    );
     this.reader.guideAudioCurrentTime = this.reader.activeAudio.currentTime;
     if (this.reader.activeGuideElement && this.reader.activeGuidePage && this.reader.activeGuideTrackIndex >= 0) {
       this.applyReaderGuideState(
@@ -111,7 +116,10 @@ export class BookReaderGuideController {
         if (token !== this.reader.guidePlaybackToken) return;
         this.reader.guideSegmentIndex = index;
         this.reader.activeGuideTrackIndex = index;
-        this.applyReaderGuideState(element, page, index, 0, true);
+        // Prime the owl at the trimmed start, not literal 0 - a track with the first part
+        // trimmed away should never flash the pin that belongs to the skipped portion.
+        const primingRange = getGuideTrackTrimRange(track, track.duration || 0);
+        this.applyReaderGuideState(element, page, index, primingRange.start, true);
         await this.playAudioTrack(track, element, page, index, token);
       }
     } else {
@@ -161,6 +169,7 @@ export class BookReaderGuideController {
     this.reader.guideAudioPaused = false;
     this.reader.guideAudioCurrentTime = 0;
     this.reader.guideAudioDuration = 0;
+    this.reader.guideAudioRangeStart = 0;
     this.reader.guideSegmentIndex = -1;
     this.reader.guideSegmentCount = 0;
     this.reader.activeGuideElement = null;
@@ -222,20 +231,45 @@ export class BookReaderGuideController {
       this.reader.guideAudioPaused = false;
       this.reader.guideAudioCurrentTime = 0;
       this.reader.guideAudioDuration = 0;
+      this.reader.guideAudioRangeStart = 0;
       this.reader.guideAudioResolver = resolve;
+
+      // Shared by a natural end and an early stop at the trim end flag, so both leave the
+      // same clean state instead of duplicating the teardown in two places.
+      const finish = (atTime: number) => {
+        this.applyReaderGuideState(element, page, trackIndex, atTime, true);
+        this.reader.guideAudioResolver = null;
+        this.reader.activeAudio = null;
+        this.reader.guideAudioCurrentTime = 0;
+        this.reader.guideAudioDuration = 0;
+        this.reader.guideAudioPaused = false;
+        resolve();
+      };
+
       audio.onloadedmetadata = () => {
         if (token !== this.reader.guidePlaybackToken) return;
-        this.reader.guideAudioDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-        if (this.reader.guideAudioDuration > 0) {
-          track.duration = this.reader.guideAudioDuration;
-        }
+        const rawDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
+        if (rawDuration > 0) track.duration = rawDuration;
+        const range = getGuideTrackTrimRange(track, rawDuration);
+        this.reader.guideAudioRangeStart = range.start;
+        this.reader.guideAudioDuration = range.end;
+        if (range.start > 0) audio.currentTime = range.start;
         this.refreshGuideAudioControls();
       };
       audio.ontimeupdate = () => {
         if (token !== this.reader.guidePlaybackToken) return;
+        const rawDuration = Number.isFinite(audio.duration) ? audio.duration : (track.duration || 0);
+        const range = getGuideTrackTrimRange(track, rawDuration);
+        // Non-destructive trim: the file plays on past the end flag unless stopped here -
+        // this is where the reader actually honors "only play this range".
+        if (range.end > 0 && rawDuration > 0 && range.end < rawDuration && audio.currentTime >= range.end - 0.03) {
+          audio.pause();
+          finish(range.end);
+          return;
+        }
         this.reader.guideAudioCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-        if (!this.reader.guideAudioDuration && Number.isFinite(audio.duration)) {
-          this.reader.guideAudioDuration = audio.duration;
+        if (!this.reader.guideAudioDuration && rawDuration) {
+          this.reader.guideAudioDuration = range.end;
         }
         this.applyReaderGuideState(element, page, trackIndex, this.reader.guideAudioCurrentTime);
         this.refreshGuideAudioControls();
@@ -254,13 +288,7 @@ export class BookReaderGuideController {
       };
       audio.onended = () => {
         if (token !== this.reader.guidePlaybackToken) return;
-        this.applyReaderGuideState(element, page, trackIndex, audio.duration || this.reader.guideAudioDuration, true);
-        this.reader.guideAudioResolver = null;
-        this.reader.activeAudio = null;
-        this.reader.guideAudioCurrentTime = 0;
-        this.reader.guideAudioDuration = 0;
-        this.reader.guideAudioPaused = false;
-        resolve();
+        finish(audio.duration || this.reader.guideAudioDuration);
       };
       audio.onerror = () => {
         if (token !== this.reader.guidePlaybackToken) return;
@@ -293,10 +321,15 @@ export class BookReaderGuideController {
     const tracks = getGuideTracks(element);
     let activePin: GuideTimelinePin | null = null;
     for (let index = 0; index <= trackIndex && index < tracks.length; index++) {
-      const limit = index < trackIndex ? Number.POSITIVE_INFINITY : time + 0.01;
-      const pin = [...(tracks[index].pins || [])]
+      const track = tracks[index];
+      const isCurrentTrack = index === trackIndex;
+      const limit = isCurrentTrack ? time + 0.01 : Number.POSITIVE_INFINITY;
+      // A pin scheduled before this track's trim start belongs to the skipped head of the
+      // recording - it must never surface as "active" just because playback starts past it.
+      const floor = isCurrentTrack ? getGuideTrackTrimRange(track, track.duration || 0).start : 0;
+      const pin = [...(track.pins || [])]
         .sort((a, b) => a.time - b.time)
-        .filter((candidate) => candidate.time <= limit)
+        .filter((candidate) => candidate.time <= limit && candidate.time >= floor - 0.01)
         .pop();
       if (pin) activePin = pin;
     }

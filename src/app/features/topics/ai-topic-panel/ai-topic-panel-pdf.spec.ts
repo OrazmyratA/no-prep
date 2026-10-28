@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
-import { AiTopicDialogComponent } from './ai-topic-dialog';
+import { AiTopicPanelComponent } from './ai-topic-panel';
 import { AiTopicService, pageBudgetMb } from '../../../core/ai-topic/ai-topic.service';
 import { PdfPagesService } from '../../../core/ai-topic/pdf-pages';
+import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
 
 function fakePdf(pageCount: number) {
   return {
@@ -13,33 +14,32 @@ function fakePdf(pageCount: number) {
   };
 }
 
-describe('AiTopicDialogComponent PDF pages', () => {
+describe('AiTopicPanelComponent PDF pages', () => {
   const openPdf = vi.fn();
 
   async function open(maxImages = 12) {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:page');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     await TestBed.configureTestingModule({
-      declarations: [AiTopicDialogComponent],
+      declarations: [AiTopicPanelComponent],
       providers: [{ provide: PdfPagesService, useValue: { open: openPdf } }, {
         provide: AiTopicService,
         useValue: {
           isAvailable: true,
-          getStartProvider: async () => {
-            const gemini = { id: 'gemini', label: 'Gemini', keyPageUrl: '', configured: true, maxImages, supportsImageGeneration: true };
-            return { providers: [gemini], start: gemini };
-          },
+          getProviders: async () => [{ id: 'gemini', label: 'Gemini', keyPageUrl: '', configured: true, maxImages, supportsImageGeneration: true }],
+          getSelectedProvider: () => 'gemini',
           setSelectedProvider: () => {}
         }
       }]
     }).compileComponents();
-    const fixture = TestBed.createComponent(AiTopicDialogComponent);
+    const fixture = TestBed.createComponent(AiTopicPanelComponent);
     await fixture.componentInstance.ngOnInit();
+    await TestBed.inject(AiChoicesService).loadProviders();
     return fixture.componentInstance;
   }
 
   const pdfFile = (name = 'unit5.pdf') => new File(['%PDF'], name, { type: 'application/pdf' });
-  const chooseFiles = (dialog: AiTopicDialogComponent, files: File[]) =>
+  const chooseFiles = (dialog: AiTopicPanelComponent, files: File[]) =>
     (dialog as unknown as { addFiles(files: File[]): Promise<void> }).addFiles(files);
 
   afterEach(() => {

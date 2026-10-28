@@ -1,23 +1,24 @@
 import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { AiTopicDraft } from '../../../core/ai-topic/ai-topic-draft';
 import {
-  AiMediaMode, CEFR_EXAM_NAMES, DEFAULT_READING_TASKS, ReadingTasksRequest, SpeakingTestRequest, simpleWordingFor
+  CEFR_EXAM_NAMES, DEFAULT_READING_TASKS, ReadingTasksRequest, SpeakingTestRequest, simpleWordingFor
 } from '../../../core/ai-topic/ai-topic-prompt';
 import { AI_TOPIC_MAX_ITEMS } from '../../../core/ai-topic/ai-topic-draft';
+import { SPEAKING_PART_MAX, speakingItemCount } from '../../../core/ai-topic/speaking-analysis';
 import { CEFR_LEVELS, CefrLevel, SpeakingExam } from '../../../core/db.model';
 import { defaultPartCount, examForLevel, SPEAKING_EXAM_LIST, SPEAKING_EXAMS, SpeakingTaskType } from '../../../core/speaking-exams';
 import {
-  AI_TOPIC_PROVIDERS,
   AiTopicError,
   AiTopicProviderId,
   AiTopicProviderStatus,
-  AiTopicService,
-  providerShortLabel
+  AiTopicService
 } from '../../../core/ai-topic/ai-topic.service';
 import { VOICE_LANGUAGES } from '../../../core/audio-voice';
 import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
+import { AiErrorKind, AiRunStatus } from '../../../core/ai-topic/ai-run';
+import { AiHealthState } from '../../../core/ai-topic/ai-status';
+import { AiRunStep, AiRunView } from '../../../shared/ai-run';
 import { LanguageService } from '../../../core/language';
-import { PlatformService } from '../../../core/platform';
 import {
   AI_RECIPE_GROUPS,
   AI_RECIPE_VARIANTS,
@@ -29,7 +30,7 @@ import {
 import { isPdfFile, OpenedPdf, PdfPagesService } from '../../../core/ai-topic/pdf-pages';
 import { parsePageList } from '../../../core/ai-topic/page-list';
 
-export interface AiTopicDialogResult {
+export interface AiTopicPanelResult {
   draft: AiTopicDraft;
   mode: 'append' | 'replace';
   /** 'auto' = follow the language the AI detected. */
@@ -55,6 +56,17 @@ interface PagePhoto {
   url: string;
 }
 
+/** Why Generate stopped, for the problem card (its way out comes with it). */
+interface RunProblem {
+  provider: AiTopicProviderId;
+  kind: AiErrorKind;
+  detail: string;
+}
+
+const STATE_TO_KIND: Record<Exclude<AiHealthState, 'ok'>, AiErrorKind> = {
+  noCredit: 'NO_CREDIT', notInPlan: 'NOT_IN_PLAN', dailyLimit: 'DAILY_LIMIT', keyRejected: 'KEY_REJECTED', busy: 'BUSY'
+};
+
 /** A PDF with more pages than there is room for: the teacher says which pages to send. */
 interface PdfChoice {
   name: string;
@@ -74,19 +86,18 @@ export const LANGUAGE_NAMES: Record<string, string> = {
 };
 
 @Component({
-  selector: 'app-ai-topic-dialog',
+  selector: 'app-ai-topic-panel',
   standalone: false,
-  templateUrl: './ai-topic-dialog.html',
-  styleUrls: ['./ai-topic-dialog.css']
+  templateUrl: './ai-topic-panel.html',
+  styleUrls: ['./ai-topic-panel.css']
 })
-export class AiTopicDialogComponent implements OnInit, OnDestroy {
+export class AiTopicPanelComponent implements OnInit, OnDestroy {
   /** Texts already in the form; when non-empty the teacher chooses add vs replace. */
   @Input() existingItemTexts: string[] = [];
   @Input() hasExistingItems = false;
   /** Book pages to start with (from a book's game marker). */
   @Input() initialPages: Blob[] = [];
-  @Output() generated = new EventEmitter<AiTopicDialogResult>();
-  @Output() closed = new EventEmitter<void>();
+  @Output() generated = new EventEmitter<AiTopicPanelResult>();
 
   @ViewChild('promptInput') promptInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('pagesInput') pagesInput?: ElementRef<HTMLInputElement>;
@@ -101,26 +112,18 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   /** Gap-fill / Q&A: which side students get, per chip (until picked, the chip's default). */
   variantChoice: Partial<Record<AiRecipeId, AiRecipeVariantId>> = {};
   readonly voiceLanguages = VOICE_LANGUAGES;
-  readonly mediaModes: AiMediaMode[] = ['auto', 'on', 'off'];
   readonly cefrLevels = CEFR_LEVELS;
   readonly cefrExamNames = CEFR_EXAM_NAMES;
   readonly maxItems = AI_TOPIC_MAX_ITEMS;
+  readonly speakingPartMax = SPEAKING_PART_MAX;
 
-  // Shown immediately so the picker is never an empty card while the real statuses load over
-  // IPC — 'builtin' is left out here since whether NoPrep AI is offered depends on that call.
-  providers: AiTopicProviderStatus[] = AI_TOPIC_PROVIDERS
-    .filter(info => info.id !== 'builtin')
-    .map(info => ({ ...info, configured: false, maxImages: 3, supportsImageGeneration: false }));
-  providerId: AiTopicProviderId = 'gemini';
-  /** The AI whose key the Link window is open for. */
+  /** The AI whose key the Link window is open for (the Text AI, from "Link it first"). */
   linking: AiTopicProviderId | null = null;
 
   prompt = '';
   pages: PagePhoto[] = [];
   optionsOpen = false;
   itemCount: number | null = null;
-  imagesMode: AiMediaMode = 'auto';
-  audioMode: AiMediaMode = 'auto';
   voiceLanguage = 'auto';
   mode: 'append' | 'replace' = 'append';
   level: CefrLevel | null = null;
@@ -154,6 +157,11 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   pdfChoice: PdfChoice | null = null;
 
   generating = false;
+  /** What Generate is doing now, for the live card (null when it isn't running). */
+  runView: AiRunView | null = null;
+  private runAbort: AbortController | null = null;
+  /** Why the last Generate stopped. */
+  problem: RunProblem | null = null;
   errorKey = '';
   errorDetail = '';
   dragOver = false;
@@ -163,27 +171,24 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     private langService: LanguageService,
     private pdfPages: PdfPagesService,
     private cdr: ChangeDetectorRef,
-    private platform: PlatformService,
-    private choices: AiChoicesService
+    public choices: AiChoicesService,
+    private host: ElementRef<HTMLElement>
   ) {}
 
   async ngOnInit(): Promise<void> {
     window.addEventListener('paste', this.onWindowPaste, true);
-    // The AI bar has usually loaded the list already: show it at once (asking the main process
-    // again can take a few seconds, and the placeholders read as "nothing linked").
-    if (this.choices.providers.length) {
-      this.providers = this.choices.providers;
-      this.providerId = this.choices.textSource;
-    }
-    const { providers, start } = await this.ai.getStartProvider();
-    this.providers = providers;
-    this.providerId = start?.id ?? 'gemini';
+    void this.choices.loadProviders();
     // Pages sent from a book's game marker arrive ready to use.
     if (this.initialPages.length) {
       this.addPages(this.initialPages.map((blob, i) => new File([blob], `page-${i + 1}.jpg`, { type: blob.type || 'image/jpeg' })));
       const pagesChip = this.promptChips.find(chip => chip.id === 'pages');
       if (pagesChip && !this.prompt.trim()) this.prompt = this.langService.translate(pagesChip.promptKey);
     }
+  }
+
+  /** The ✨ Text AI chosen at the top of the panel (shared app-wide). */
+  get providerId(): AiTopicProviderId {
+    return this.choices.textSource;
   }
 
   get isBuiltin(): boolean {
@@ -196,18 +201,14 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.runAbort?.abort();
     window.removeEventListener('paste', this.onWindowPaste, true);
     this.pages.forEach(page => URL.revokeObjectURL(page.url));
     void this.pdfChoice?.pdf.close();
   }
 
   get provider(): AiTopicProviderStatus | undefined {
-    return this.providers.find(p => p.id === this.providerId);
-  }
-
-  /** Short, teacher-recognizable name shown next to each provider's logo in the picker. */
-  providerShortLabel(id: AiTopicProviderId): string {
-    return providerShortLabel(id);
+    return this.choices.provider(this.providerId);
   }
 
   get maxPages(): number {
@@ -219,23 +220,19 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   }
 
   get canGenerate(): boolean {
-    return !this.generating && !this.analysing && !this.readingPdf && !!this.provider?.configured
+    return !this.generating && !this.analysing && !this.readingPdf && !!this.provider && !this.needsKey
       && (!!this.prompt.trim() || this.pages.length > 0)
-      && (!this.speakingMode || this.speakingRows.some(row => row.on));
+      && (!this.speakingMode || (this.speakingRows.some(row => row.on) && !this.speakingTooLong));
   }
 
-  /** An AI that isn't linked yet opens the Link window first. */
-  selectProvider(id: AiTopicProviderId): void {
-    const status = this.providers.find(p => p.id === id);
-    if (id !== 'builtin' && !status?.configured) {
-      this.linking = id;
-      return;
-    }
-    this.providerId = id;
-    this.ai.setSelectedProvider(id);
-    this.clearError();
-    // Groq reads fewer pages per request than the others.
-    this.pages.splice(this.maxPages).forEach(page => URL.revokeObjectURL(page.url));
+  /** How many items the ticked speaking parts make (one topic holds AI_TOPIC_MAX_ITEMS at most). */
+  get speakingItems(): number {
+    return speakingItemCount(this.speakingRows.filter(row => row.on));
+  }
+
+  /** Over the limit, the end of the test would be cut off: said, and Generate waits. */
+  get speakingTooLong(): boolean {
+    return this.speakingItems > AI_TOPIC_MAX_ITEMS;
   }
 
   /**
@@ -320,7 +317,7 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
 
   /** Analyse needs something to read: pages or the teacher's own text (not just the chip's prompt). */
   get canAnalyse(): boolean {
-    return !this.generating && !this.analysing && !!this.provider?.configured
+    return !this.generating && !this.analysing && !!this.provider && !this.needsKey
       && (this.pages.length > 0 || !!this.withoutChipPrompt(this.prompt));
   }
 
@@ -357,7 +354,7 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
 
   setSpeakingCount(row: SpeakingPartRow, value: string): void {
     const count = Math.round(Number(value));
-    row.count = Number.isFinite(count) ? Math.max(1, Math.min(10, count)) : 1;
+    row.count = Number.isFinite(count) ? Math.max(1, Math.min(SPEAKING_PART_MAX, count)) : 1;
   }
 
   private speakingRequest(): SpeakingTestRequest | null {
@@ -391,12 +388,10 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     return Number(this.readingTasks[key]) || 0;
   }
 
-  /** The Link window closed: refresh the list, and use the AI if it is linked now. */
-  async onLinkClosed(linked: boolean): Promise<void> {
-    const id = this.linking;
+  /** The Link window closed; it has refreshed the AI list itself. */
+  onLinkClosed(): void {
     this.linking = null;
-    this.providers = await this.ai.getProviders();
-    if (linked && id) this.selectProvider(id);
+    this.clearError();
   }
 
   onFilesChosen(event: Event): void {
@@ -406,12 +401,13 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Ctrl+V anywhere while the dialog is open adds the copied image as a page. It listens on
-   * window in the capture phase, so the item image uploaders listening on the document never
-   * see it. Pasting text into the prompt box still works as usual.
+   * Ctrl+V while the panel has the focus (the prompt box, a chip...) adds the copied image as a
+   * page. It listens on window in the capture phase, so the item image uploaders listening on the
+   * document don't take it too; elsewhere on the page they paste as before. Pasting text into the
+   * prompt box still works as usual.
    */
   private readonly onWindowPaste = (event: ClipboardEvent): void => {
-    if (this.generating) return;
+    if (this.generating || !this.host.nativeElement.contains(document.activeElement)) return;
     const files = this.clipboardImages(event.clipboardData);
     if (!files.length) return;
     event.preventDefault();
@@ -565,6 +561,46 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     this.itemCount = Number.isFinite(count) && count > 0 ? Math.min(count, AI_TOPIC_MAX_ITEMS) : null;
   }
 
+  /** A linked AI to offer when the chosen one can't help now. */
+  get alternative(): AiTopicProviderId | null {
+    return this.choices.alternativeTextAi(this.providerId);
+  }
+
+  /** Known before Generate: the chosen AI won't work right now (no credit, today's limit...). */
+  get knownProblem(): { kind: AiErrorKind; resetsAt: number | null } | null {
+    const health = this.choices.status.problem(this.providerId, 'text');
+    return health && health.state !== 'ok' ? { kind: STATE_TO_KIND[health.state], resetsAt: health.resetsAt ?? null } : null;
+  }
+
+  resetsAt(provider: AiTopicProviderId): number | null {
+    return this.choices.status.problem(provider, 'text')?.resetsAt ?? null;
+  }
+
+  /** "Use Groq instead": switch the Text AI; after a failure, go again at once (prompt and pages stay). */
+  useInstead(provider: AiTopicProviderId, run: boolean): void {
+    this.choices.setTextSource(provider);
+    this.problem = null;
+    if (run) void this.generate();
+  }
+
+  cancelRun(): void {
+    this.runAbort?.abort();
+  }
+
+  private runSteps(): AiRunStep[] {
+    const steps: AiRunStep[] = [];
+    if (this.pages.length) steps.push({ labelKey: 'aiRunStepPages', state: 'done' });
+    steps.push({ labelKey: 'aiRunStepWriting', state: 'active' });
+    if (!this.choices.pictureNoneChosen) steps.push({ labelKey: 'aiRunStepPictures', state: 'todo' });
+    if (!this.choices.voiceNoneChosen) steps.push({ labelKey: 'aiRunStepVoices', state: 'todo' });
+    return steps;
+  }
+
+  private onRunStatus(status: AiRunStatus): void {
+    if (this.runView) this.runView = { ...this.runView, status, statusAt: Date.now() };
+    this.cdr.markForCheck();
+  }
+
   async generate(): Promise<void> {
     if (!this.canGenerate) {
       if (!this.prompt.trim() && !this.pages.length) this.errorKey = 'aiTopicNeedPromptOrPages';
@@ -572,14 +608,29 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     }
     this.generating = true;
     this.clearError();
+    this.problem = null;
+    const provider = this.providerId;
+    this.runAbort = new AbortController();
+    this.runView = {
+      provider,
+      titleKey: 'aiRunTitleTopic',
+      steps: this.runSteps(),
+      startedAt: Date.now(),
+      typicalMs: this.choices.status.typicalMs(provider),
+      status: null,
+      statusAt: 0
+    };
+    // The Text AI may have changed since the pages were added; Groq reads fewer of them.
+    this.pages.splice(this.maxPages).forEach(page => URL.revokeObjectURL(page.url));
     const chip = this.currentRecipe();
     try {
-      const draft = await this.ai.generateDraft(this.providerId, {
+      const draft = await this.ai.generateDraft(provider, {
         prompt: this.prompt,
         pageCount: this.pages.length,
         itemCount: this.itemCount,
-        images: this.imagesMode,
-        audio: this.audioMode,
+        // "None" in the Picture / Voice choice: the AI plans none; otherwise it decides per item.
+        images: this.choices.pictureNoneChosen ? 'off' : 'auto',
+        audio: this.choices.voiceNoneChosen ? 'off' : 'auto',
         existingItems: this.hasExistingItems && this.mode === 'append' ? this.existingItemTexts : [],
         teacherLanguage: LANGUAGE_NAMES[this.langService.currentLang] ?? 'English',
         level: this.level,
@@ -588,7 +639,10 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
         speakingTest: this.speakingRequest(),
         recipe: chip?.id ?? null,
         recipeVariant: chip ? this.chipVariant(chip) : null
-      }, this.pages.map(page => page.blob));
+      }, this.pages.map(page => page.blob), {
+        signal: this.runAbort.signal,
+        onStatus: status => this.onRunStatus(status)
+      });
       this.generated.emit({
         draft,
         mode: this.hasExistingItems ? this.mode : 'replace',
@@ -598,9 +652,15 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
         exam: this.speakingMode ? this.speakingExam : null
       });
     } catch (error) {
-      this.showError('aiTopicFailed', error);
+      const kind = error instanceof AiTopicError ? error.kind : 'FAILED';
+      // Cancelled: the teacher knows; the prompt and pages are still there.
+      if (kind !== 'CANCELLED') this.problem = { provider, kind, detail: error instanceof AiTopicError ? error.message : '' };
     } finally {
       this.generating = false;
+      this.runView = null;
+      this.runAbort = null;
+      // The answer came over IPC, outside Angular's zone (as in analyseSpeaking and the PDF reading).
+      this.cdr.detectChanges();
     }
   }
 
@@ -613,19 +673,11 @@ export class AiTopicDialogComponent implements OnInit, OnDestroy {
     this.simpleOverride = on === simpleWordingFor(this.level) ? null : on;
   }
 
-  close(): void {
-    if (this.generating || this.analysing || this.readingPdf) return;
-    this.closed.emit();
-  }
-
-  @HostListener('document:keydown', ['$event'])
+  /** Ctrl+Enter inside the panel generates. */
+  @HostListener('keydown', ['$event'])
   onKeydown(event: KeyboardEvent): void {
-    // The Link window on top handles its own keys.
     if (this.linking) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.close();
-    } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
       event.preventDefault();
       void this.generate();
     }

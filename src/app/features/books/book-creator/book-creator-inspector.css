@@ -1059,6 +1059,28 @@
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35);
 }
 
+/* ＋ : add a picture (the uploader below then adds instead of editing). */
+.answer-key-add {
+  display: grid;
+  place-items: center;
+  border-style: dashed;
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 1.4rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.answer-key-add:hover { background: #dbeafe; }
+
+.answer-key-uploader-label {
+  margin: 0.4rem 0 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+}
+
 .answer-key-thumb img {
   width: 100%;
   height: 100%;
@@ -1569,14 +1591,84 @@
   will-change: left;
 }
 
+.guide-track-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
 .guide-track-timer {
-  align-self: flex-end;
   font-size: 0.64rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
   color: #94a3b8;
   pointer-events: none;
+}
+
+.guide-trim-reset {
+  flex-shrink: 0;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.66rem;
+}
+
+.guide-trim-range {
+  position: absolute;
+  top: 50%;
+  height: 0.34rem;
+  transform: translateY(-50%);
+  background: rgba(37, 99, 235, 0.16);
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.guide-trim-flag {
+  position: absolute;
+  top: -0.1rem;
+  bottom: 0;
+  width: 0.9rem;
+  transform: translateX(-50%);
+  border: none;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 5;
+  padding: 0;
+}
+
+.guide-trim-flag::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.guide-trim-flag::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 0.62rem;
+  height: 0.62rem;
+  transform: translate(-50%, -30%);
+  border-radius: 0.16rem;
+  background: currentColor;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+}
+
+.guide-trim-flag-start {
+  color: #16a34a;
+}
+
+.guide-trim-flag-end {
+  color: #dc2626;
 }
 
 .guide-pitch-row {
@@ -1635,6 +1727,22 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
+.guide-timeline-pin.outside-trim {
+  opacity: 0.4;
+  filter: grayscale(0.8);
+}
+
+.guide-pin-trim-warning {
+  margin: 0 0 0.5rem;
+  padding: 0.42rem 0.55rem;
+  border-radius: 0.4rem;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .guide-place-hint {
   border-radius: 0.42rem;
   background: #dbeafe;
@@ -1663,23 +1771,6 @@
   width: 100%;
   min-height: 2.35rem;
   justify-content: center;
-}
-
-.guide-pin-image {
-  display: grid;
-  place-items: center;
-  min-height: 5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.42rem;
-  background: #f8fafc;
-  overflow: hidden;
-}
-
-.guide-pin-image img {
-  display: block;
-  width: 100%;
-  max-height: 10rem;
-  object-fit: contain;
 }
 
 .tiny-btn {

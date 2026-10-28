@@ -45,10 +45,47 @@ const IMAGE_PROVIDERS = {
   gemini: { model: 'gemini-nano-banana-2.1' }
 };
 
+// Every failure says what kind it is, so the app can show the right help (docs/ai-choices-plan.md,
+// "What is happening"): the teacher sees the reason at once instead of a long spinner.
+const ERROR_KINDS = ['NO_CREDIT', 'NOT_IN_PLAN', 'DAILY_LIMIT', 'KEY_REJECTED', 'BUSY', 'TOO_LARGE', 'TIMEOUT', 'OFFLINE', 'CANCELLED', 'DECLINED', 'FAILED'];
+
+function aiError(message, kind, extra = {}) {
+  return Object.assign(new Error(message), { kind: ERROR_KINDS.includes(kind) ? kind : 'FAILED' }, extra);
+}
+
+/**
+ * A run: `signal` cancels it (the teacher's Cancel), `onStatus` hears what is happening while it
+ * waits ({ kind: 'wait', reason: 'busy' | 'minuteLimit', seconds } or { kind: 'fallback' }), and
+ * `usage` is filled from the answers (tokens; Groq's requests left today).
+ */
+function newRun(run = {}) {
+  return { signal: run.signal || null, onStatus: typeof run.onStatus === 'function' ? run.onStatus : () => {}, usage: {} };
+}
+
 function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '', fetchImpl, wait }) {
   const doFetch = fetchImpl || fetch;
-  const pause = wait || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  const sleep = wait || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const proxyBase = String(proxyUrl || '').replace(/\/+$/, '');
+
+  /** A retry wait that Cancel ends at once. */
+  async function pause(ms, signal) {
+    if (!signal) return sleep(ms);
+    if (signal.aborted) throw cancelled();
+    let onAbort;
+    const aborted = new Promise((_, reject) => {
+      onAbort = () => reject(cancelled());
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+    try {
+      await Promise.race([sleep(ms), aborted]);
+    } finally {
+      signal.removeEventListener('abort', onAbort);
+    }
+  }
+
+  function cancelled() {
+    return aiError('Cancelled.', 'CANCELLED');
+  }
 
   function isConfigured(id) {
     if (id === 'builtin') return !!proxyBase && !!getLicense();
@@ -110,27 +147,33 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
    * `failWhenOverloaded`: a timeout or an overloaded answer is thrown at once (marked
    * `overloaded`) instead of being waited out, so the caller can try another model.
    */
-  async function postJson(url, headers, body, { friendlyErrors = false, timeoutMs = REQUEST_TIMEOUT_MS, failWhenOverloaded = false } = {}) {
+  async function postJson(url, headers, body, { friendlyErrors = false, timeoutMs = REQUEST_TIMEOUT_MS, failWhenOverloaded = false } = {}, run = newRun()) {
     let response;
     for (let attempt = 0; ; attempt++) {
+      if (run.signal?.aborted) throw cancelled();
+      const timeout = AbortSignal.timeout(timeoutMs);
       try {
         response = await doFetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(timeoutMs)
+          signal: run.signal ? AbortSignal.any([timeout, run.signal]) : timeout
         });
       } catch (error) {
-        if (error?.name === 'TimeoutError') {
-          throw Object.assign(new Error('The AI took too long to answer. Please try again.'), { overloaded: failWhenOverloaded });
+        if (run.signal?.aborted) throw cancelled();
+        if (error?.name === 'TimeoutError' || timeout.aborted) {
+          throw aiError('The AI took too long to answer. Please try again.', 'TIMEOUT', { overloaded: failWhenOverloaded });
         }
-        throw new Error('Could not reach the AI service. Check your internet connection.');
+        throw aiError('Could not reach the AI service. Check your internet connection.', 'OFFLINE');
       }
-      if (response.ok) return response.json();
+      if (response.ok) {
+        readLimitHeaders(response, run);
+        return response.json();
+      }
       const errorText = await response.text().catch(() => '');
       // Also a free plan's daily limit: Google counts it per model, so the older Flash still has its own.
       if (failWhenOverloaded && (OVERLOADED_STATUSES.has(response.status) || (response.status === 429 && isDailyLimit(errorText) && !isNotInFreePlan(errorText)))) {
-        throw Object.assign(new Error(httpErrorMessage(response.status, errorText)), { overloaded: true });
+        throw aiError(httpErrorMessage(response.status, errorText), errorKind(response.status, errorText), { overloaded: true });
       }
       // The NoPrep AI proxy's own 429 is an hourly or daily limit: waiting seconds will not help.
       const delay = friendlyErrors && response.status === 429 ? null : retryDelay(response, errorText, attempt);
@@ -143,12 +186,40 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
           } catch {
             // Not our proxy's JSON (e.g. a gateway error page): fall through to the generic text.
           }
-          if (message) throw new Error(message);
+          if (message) throw aiError(message, errorKind(response.status, errorText));
         }
-        throw new Error(httpErrorMessage(response.status, errorText));
+        throw aiError(httpErrorMessage(response.status, errorText), errorKind(response.status, errorText));
       }
-      await pause(delay);
+      // Say why the teacher is waiting, and for how long.
+      run.onStatus({ kind: 'wait', reason: response.status === 429 ? 'minuteLimit' : 'busy', seconds: Math.ceil(delay / 1000) });
+      await pause(delay, run.signal);
     }
+  }
+
+  /** Groq says on every answer how many requests are left today (console.groq.com/docs/rate-limits). */
+  function readLimitHeaders(response, run) {
+    const remaining = Number(response.headers?.get?.('x-ratelimit-remaining-requests'));
+    const limit = Number(response.headers?.get?.('x-ratelimit-limit-requests'));
+    if (Number.isFinite(remaining) && response.headers?.get?.('x-ratelimit-remaining-requests') !== null) {
+      run.usage.remainingToday = remaining;
+      if (Number.isFinite(limit)) run.usage.limitToday = limit;
+    }
+  }
+
+  function addTokens(run, count) {
+    const tokens = Number(count);
+    if (Number.isFinite(tokens) && tokens > 0) run.usage.tokens = (run.usage.tokens || 0) + tokens;
+  }
+
+  /** What kind of failure an AI's error answer is (see ERROR_KINDS). */
+  function errorKind(status, errorText) {
+    if (isNotInFreePlan(errorText)) return 'NOT_IN_PLAN';
+    if (isNoCredit(errorText) || status === 402) return 'NO_CREDIT';
+    if (status === 401 || status === 403) return 'KEY_REJECTED';
+    if (status === 413 || (status === 429 && isTooLarge(errorText))) return 'TOO_LARGE';
+    if (status === 429) return isDailyLimit(errorText) ? 'DAILY_LIMIT' : 'BUSY';
+    if (OVERLOADED_STATUSES.has(status)) return 'BUSY';
+    return 'FAILED';
   }
 
   /** How long to wait before trying a busy AI again, or null to give up now. */
@@ -232,7 +303,7 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return `AI service error (${status}): ${String(errorText || '').slice(0, 200)}`;
   }
 
-  async function generateWithOpenAi(req) {
+  async function generateWithOpenAi(req, run) {
     const content = [
       { type: 'input_text', text: req.userText },
       ...req.images.map((image) => ({
@@ -251,7 +322,8 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
       text: {
         format: { type: 'json_schema', name: 'topic_draft', schema: req.schema, strict: true }
       }
-    });
+    }, {}, run);
+    addTokens(run, data?.usage?.total_tokens);
     if (typeof data?.output_text === 'string' && data.output_text.trim()) {
       return data.output_text;
     }
@@ -259,7 +331,7 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
       .flatMap((entry) => (Array.isArray(entry?.content) ? entry.content : []));
     const refusal = parts.find((part) => part?.type === 'refusal');
     if (refusal) {
-      throw new Error('The AI declined this request. Try rewording the prompt.');
+      throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
     }
     return parts.filter((part) => part?.type === 'output_text').map((part) => part.text || '').join('');
   }
@@ -294,41 +366,64 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     };
   }
 
-  function readGeminiText(data) {
+  function readGeminiText(data, run) {
+    if (run) addTokens(run, data?.usageMetadata?.totalTokenCount);
     const candidate = data?.candidates?.[0];
     if (!candidate) {
-      throw new Error('The AI declined this request. Try rewording the prompt.');
+      throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
     }
     if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
-      throw new Error('The AI declined this request. Try rewording the prompt.');
+      throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
     }
     return (candidate.content?.parts || []).map((part) => part?.text || '').join('');
   }
 
-  async function generateWithGemini(req) {
+  async function generateWithGemini(req, run) {
     const url = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const headers = { 'x-goog-api-key': req.apiKey };
     const body = buildGeminiBody(req);
     let data;
     try {
-      data = await postJson(url(req.model), headers, body, { timeoutMs: GEMINI_PRIMARY_TIMEOUT_MS, failWhenOverloaded: true });
+      data = await postJson(url(req.model), headers, body, { timeoutMs: GEMINI_PRIMARY_TIMEOUT_MS, failWhenOverloaded: true }, run);
     } catch (error) {
       if (!error?.overloaded) throw error;
       console.warn(`Gemini ${req.model} is overloaded; trying ${GEMINI_FALLBACK_MODEL}.`);
-      data = await postJson(url(GEMINI_FALLBACK_MODEL), headers, body);
+      run.onStatus({ kind: 'fallback' });
+      data = await postJson(url(GEMINI_FALLBACK_MODEL), headers, body, {}, run);
     }
-    return readGeminiText(data);
+    return readGeminiText(data, run);
   }
 
-  async function generateWithBuiltin(req) {
+  async function generateWithBuiltin(req, run) {
     const licenseHeader = Buffer.from(JSON.stringify(req.license)).toString('base64');
     const data = await postJson(`${proxyBase}/v1/topic-draft`, { 'X-NoPrep-License': licenseHeader }, buildGeminiBody(req), {
       friendlyErrors: true
-    });
-    return readGeminiText(data);
+    }, run);
+    return readGeminiText(data, run);
   }
 
-  async function generateWithAnthropic(req) {
+  /** Anthropic's SDK errors as our kinds. */
+  function anthropicError(Anthropic, error, run) {
+    if (error instanceof Anthropic.APIUserAbortError || run.signal?.aborted) return cancelled();
+    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+      return aiError(httpErrorMessage(401), 'KEY_REJECTED');
+    }
+    if (error instanceof Anthropic.RateLimitError) {
+      return aiError(httpErrorMessage(429, error.message), errorKind(429, error.message));
+    }
+    if (error instanceof Anthropic.APIConnectionTimeoutError) {
+      return aiError('The AI took too long to answer. Please try again.', 'TIMEOUT');
+    }
+    if (error instanceof Anthropic.APIConnectionError) {
+      return aiError('Could not reach the AI service. Check your internet connection.', 'OFFLINE');
+    }
+    if (error instanceof Anthropic.APIError) {
+      return aiError(httpErrorMessage(error.status, error.message), errorKind(error.status, error.message));
+    }
+    return error;
+  }
+
+  async function generateWithAnthropic(req, run) {
     const Anthropic = loadAnthropic();
     const client = new Anthropic({
       apiKey: req.apiKey,
@@ -359,24 +454,13 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
             { type: 'text', text: req.userText }
           ]
         }]
-      });
+      }, { signal: run.signal || undefined });
     } catch (error) {
-      if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-        throw new Error(httpErrorMessage(401));
-      }
-      if (error instanceof Anthropic.RateLimitError) {
-        throw new Error(httpErrorMessage(429, error.message));
-      }
-      if (error instanceof Anthropic.APIConnectionError) {
-        throw new Error('Could not reach the AI service. Check your internet connection.');
-      }
-      if (error instanceof Anthropic.APIError) {
-        throw new Error(httpErrorMessage(error.status, error.message));
-      }
-      throw error;
+      throw anthropicError(Anthropic, error, run);
     }
+    addTokens(run, (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0));
     if (response.stop_reason === 'refusal') {
-      throw new Error('The AI declined this request. Try rewording the prompt.');
+      throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
     }
     if (response.stop_reason === 'max_tokens') {
       throw new Error('The topic was too long for one request. Ask for fewer items.');
@@ -384,7 +468,7 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return response.content.filter((block) => block.type === 'text').map((block) => block.text).join('');
   }
 
-  async function generateWithGroq(req) {
+  async function generateWithGroq(req, run) {
     const content = [
       { type: 'text', text: req.userText },
       ...req.images.map((image) => ({
@@ -404,35 +488,84 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
       ],
       response_format: { type: 'json_object' },
       max_completion_tokens: 8000
-    });
+    }, {}, run);
+    addTokens(run, data?.usage?.total_tokens);
     const text = String(data?.choices?.[0]?.message?.content || '');
     return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   }
 
-  async function generateDraft(input) {
+  async function generateDraft(input, runOptions) {
     const req = normalizeInput(input);
+    const run = newRun(runOptions);
     let text;
     switch (req.provider) {
-      case 'builtin': text = await generateWithBuiltin(req); break;
-      case 'openai': text = await generateWithOpenAi(req); break;
-      case 'gemini': text = await generateWithGemini(req); break;
-      case 'anthropic': text = await generateWithAnthropic(req); break;
-      case 'groq': text = await generateWithGroq(req); break;
+      case 'builtin': text = await generateWithBuiltin(req, run); break;
+      case 'openai': text = await generateWithOpenAi(req, run); break;
+      case 'gemini': text = await generateWithGemini(req, run); break;
+      case 'anthropic': text = await generateWithAnthropic(req, run); break;
+      case 'groq': text = await generateWithGroq(req, run); break;
     }
     if (!String(text || '').trim()) {
-      throw new Error('The AI returned an empty answer. Please try again.');
+      throw aiError('The AI returned an empty answer. Please try again.', 'FAILED');
     }
-    return { text };
+    return { text, usage: run.usage };
+  }
+
+  /**
+   * "Is this key working?": one tiny request (a word in, a word out) — free on free plans, a tiny
+   * fraction of a cent on paid ones. Run when a key is linked and from "Check now", so a wrong key
+   * or an empty account shows at once, not after a long topic.
+   */
+  async function checkKey(input, runOptions) {
+    const provider = String(input?.provider || '');
+    if (provider === 'builtin') return { usage: {} };
+    const req = normalizeInput({ provider, systemPrompt: 'Answer with one word.', userText: 'Say OK.' });
+    const run = newRun(runOptions);
+    const ask = { timeoutMs: 30000 };
+    switch (provider) {
+      case 'openai': {
+        const data = await postJson('https://api.openai.com/v1/responses', { Authorization: `Bearer ${req.apiKey}` },
+          { model: req.model, input: 'Say OK.', max_output_tokens: 16 }, ask, run);
+        addTokens(run, data?.usage?.total_tokens);
+        break;
+      }
+      case 'gemini': {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
+        const data = await postJson(url, { 'x-goog-api-key': req.apiKey },
+          { contents: [{ role: 'user', parts: [{ text: 'Say OK.' }] }], generationConfig: { maxOutputTokens: 4 } }, ask, run);
+        addTokens(run, data?.usageMetadata?.totalTokenCount);
+        break;
+      }
+      case 'anthropic': {
+        const Anthropic = loadAnthropic();
+        const client = new Anthropic({ apiKey: req.apiKey, timeout: 30000, maxRetries: 0, ...(fetchImpl ? { fetch: fetchImpl } : {}) });
+        try {
+          const response = await client.messages.create({ model: req.model, max_tokens: 4, messages: [{ role: 'user', content: 'Say OK.' }] },
+            { signal: run.signal || undefined });
+          addTokens(run, (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0));
+        } catch (error) {
+          throw anthropicError(Anthropic, error, run);
+        }
+        break;
+      }
+      case 'groq': {
+        const data = await postJson('https://api.groq.com/openai/v1/chat/completions', { Authorization: `Bearer ${req.apiKey}` },
+          { model: req.model, messages: [{ role: 'user', content: 'Say OK.' }], max_completion_tokens: 4 }, ask, run);
+        addTokens(run, data?.usage?.total_tokens);
+        break;
+      }
+    }
+    return { usage: run.usage };
   }
 
   function normalizeImageInput(input) {
     const provider = String(input?.provider || '');
     if (!IMAGE_PROVIDERS[provider]) {
-      throw new Error('This AI cannot generate pictures. Link OpenAI or Gemini for that.');
+      throw aiError('This AI cannot generate pictures. Link OpenAI or Gemini for that.', 'FAILED');
     }
     const apiKey = String(getApiKey(provider) || '').trim();
     if (!apiKey) {
-      throw new Error('This AI is not linked yet. Paste your API key first.');
+      throw aiError('This AI is not linked yet. Paste your API key first.', 'KEY_REJECTED');
     }
     const prompt = String(input?.prompt || '').trim().slice(0, 500);
     if (!prompt) {
@@ -441,7 +574,7 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return { provider, apiKey, model: IMAGE_PROVIDERS[provider].model, prompt };
   }
 
-  async function generateImageWithOpenAi(req) {
+  async function generateImageWithOpenAi(req, run) {
     const data = await postJson('https://api.openai.com/v1/images/generations', {
       Authorization: `Bearer ${req.apiKey}`
     }, {
@@ -451,7 +584,8 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
       // A flashcard picture: medium is clear enough and costs far less than high.
       quality: 'medium',
       n: 1
-    });
+    }, {}, run);
+    addTokens(run, data?.usage?.total_tokens);
     const entry = data?.data?.[0];
     if (!entry?.b64_json) {
       throw new Error('The AI did not return a picture. Please try again.');
@@ -459,15 +593,16 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return { imageBase64: entry.b64_json, mimeType: 'image/png' };
   }
 
-  async function generateImageWithGemini(req) {
+  async function generateImageWithGemini(req, run) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
     const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, {
       contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
       generationConfig: { responseModalities: ['IMAGE'] }
-    });
+    }, {}, run);
+    addTokens(run, data?.usageMetadata?.totalTokenCount);
     const candidate = data?.candidates?.[0];
     if (!candidate || candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
-      throw new Error('The AI declined this request. Try a different picture description.');
+      throw aiError('The AI declined this request. Try a different picture description.', 'DECLINED');
     }
     const part = (candidate.content?.parts || []).find((p) => p?.inlineData?.data);
     if (!part) {
@@ -476,12 +611,14 @@ function createAiTopicService({ getApiKey, getLicense = () => null, proxyUrl = '
     return { imageBase64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
   }
 
-  async function generateImage(input) {
+  async function generateImage(input, runOptions) {
     const req = normalizeImageInput(input);
-    return req.provider === 'openai' ? generateImageWithOpenAi(req) : generateImageWithGemini(req);
+    const run = newRun(runOptions);
+    const image = req.provider === 'openai' ? await generateImageWithOpenAi(req, run) : await generateImageWithGemini(req, run);
+    return { ...image, usage: run.usage };
   }
 
-  return { getStatus, generateDraft, generateImage };
+  return { getStatus, generateDraft, generateImage, checkKey };
 }
 
 module.exports = { createAiTopicService, AI_TOPIC_PROVIDERS: PROVIDERS };

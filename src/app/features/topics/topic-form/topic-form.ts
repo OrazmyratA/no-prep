@@ -13,12 +13,15 @@ import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { LanguageService } from '../../../core/language';
 import { ConfirmationService } from '../../../shared/confirmation';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
-import { AiTopicDialogResult, LANGUAGE_NAMES } from '../ai-topic-dialog/ai-topic-dialog';
-import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
+import { AiTopicPanelResult, LANGUAGE_NAMES } from '../ai-topic-panel/ai-topic-panel';
+import { AiTopicError, AiTopicService, providerShortLabel } from '../../../core/ai-topic/ai-topic.service';
 import { AiImageChoice, AiMediaResolverService, PictureOrigin, pictureOrigin, wordCardText } from '../../../core/ai-topic/ai-media-resolver';
 import { AiItemDraft } from '../../../core/ai-topic/ai-topic-draft';
 import { AiChoicesService, VoiceSource, pictureSourceNameKey, voiceOptions, voiceSourceNameKey } from '../../../core/ai-topic/ai-choices';
 import { SpeechProvider, speechErrorMessageKey } from '../../../core/speech-error';
+import { AiErrorKind, AiRunOptions, AiRunStatus } from '../../../core/ai-topic/ai-run';
+import { AiRunView } from '../../../shared/ai-run';
+import { problemTitleKey } from '../../../shared/ai-problem';
 import { findPoorlySuitedGames } from '../../../core/ai-topic/ai-topic-games';
 import { AudioVoiceService, getStoredVoiceLanguage } from '../../../core/audio-voice';
 import { GAMES } from '../games.config';
@@ -26,6 +29,8 @@ import { isHeading, isRemovedSentence, isTaskItem, paragraphColor, paragraphInde
 import { parseTaskItem } from '../../games/reading-tasks';
 import { showAppNotification } from '../../../core/notification';
 import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
+import { SIGNS_GUIDES, SignsGuideTab, exampleItems } from '../topic-signs-guide/topic-signs';
+import { SignsExampleRequest } from '../topic-signs-guide/topic-signs-guide';
 
 // Items whose pictures/audio are fetched at the same time after an AI fill.
 const AI_MEDIA_CONCURRENCY = 3;
@@ -44,6 +49,14 @@ const PICTURE_MADE_BY_KEYS: Record<PictureMadeBy, string> = {
 interface PictureHistory {
   entries: { blob: Blob; madeBy: PictureMadeBy; cardText: string }[];
   index: number;
+}
+
+interface ItemVoice {
+  audio: Blob | null;
+  audioSource: Blob | null;
+  audioPitch: number | null;
+  audioSpeed: number | null;
+  audioText: string;
 }
 
 interface AiFillResult {
@@ -74,10 +87,13 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private expandedAudioItems = new WeakSet<AbstractControl>();
   @ViewChild('topicNameInput') topicNameInput?: ElementRef<HTMLInputElement>;
 
-  aiDialogOpen = false;
-  // Book pages sent from a game marker's "Create with AI"; used once when the dialog opens.
+  // "Create with AI" under the topic name (docs/ai-choices-plan.md, Part B). Made on first open,
+  // then only folded, so what the teacher typed there stays until they leave the topic.
+  aiPanelOpen = false;
+  aiPanelCreated = false;
+  // Book pages sent from a game marker's "Create with AI"; the panel takes them when it is made.
   aiInitialPages: Blob[] = [];
-  // Pages attached through the ✨ AI dialog, kept around (unlike the AI-fill loop's own local
+  // Pages attached through "Create with AI", kept around (unlike the AI-fill loop's own local
   // `pages`) so every item's 📖 "crop from a page" button stays usable afterward — not just
   // items the AI filled. Only in memory for this edit session; never saved with the topic.
   aiAttachedPages: Blob[] = [];
@@ -100,10 +116,24 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
   private voicingItems = new WeakSet<AbstractControl>();
   // Pictures Generate could not draw (and searched for free instead) in the current fill.
   private aiDrawFailures = 0;
+  // Why drawing stopped in the current fill (no credit, not in the plan...): the rest is searched.
+  private aiDrawStopped: AiErrorKind | null = null;
+  /** Pictures and voices being made after Generate, for the live card (with Stop). */
+  mediaRun: AiRunView | null = null;
+  private mediaAbort: AbortController | null = null;
+  // Why one item's drawing is waiting ("Gemini is very busy, waiting 6 s").
+  private pictureWait = new WeakMap<AbstractControl, string>();
   // Which voice made each item's clip, for the "Voice: …" line.
   private voiceMadeBy = new WeakMap<AbstractControl, { audio: Blob; provider: SpeechProvider }>();
   // Per-item "✨": fills just this item's image + audio from its own text, no dialog needed.
   private fillingItems = new WeakSet<AbstractControl>();
+  // ⇄ Swap text and cards: what the last swap did, for the line under the heading.
+  // `back`: this swap undid the one before (the line says so instead of "on the cards now").
+  swapResult: { swapped: number; kept: number; needVoice: AbstractControl[]; back: boolean } | null = null;
+  swapping = false;
+  makingSwapVoices = false;
+  // The voice each item had for each of its texts, so swapping back brings it back for free.
+  private voicesByText = new WeakMap<AbstractControl, Map<string, ItemVoice>>();
 
   constructor(
     private fb: FormBuilder,
@@ -282,16 +312,25 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
       this.addItem();
     }
 
+    // Folded until ✨ is clicked; open only when a book sends pages (the teacher asked for the AI).
     const bookPages = this.aiPageHandoff.take();
     if (bookPages.length) {
       this.aiInitialPages = bookPages;
-      this.aiDialogOpen = true;
+      this.setAiPanelOpen(true);
     }
   }
 
-  closeAiDialog() {
-    this.aiDialogOpen = false;
-    this.aiInitialPages = [];
+  toggleAiPanel() {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    this.setAiPanelOpen(!this.aiPanelOpen);
+  }
+
+  private setAiPanelOpen(open: boolean) {
+    this.aiPanelOpen = open;
+    if (open) this.aiPanelCreated = true;
   }
 
   ngAfterViewInit(): void {
@@ -457,14 +496,6 @@ isAudioPanelOpen(item: AbstractControl): boolean {
   return this.expandedAudioItems.has(item) || !!item.get('audio')?.value;
 }
 
-  openAiDialog() {
-    if (!this.licenseService.fullAccess) {
-      this.licenseService.requestReopen();
-      return;
-    }
-    this.aiDialogOpen = true;
-  }
-
   get aiExistingItemTexts(): string[] {
     return this.items.controls
       .map(c => String(c.get('text')?.value || '').trim())
@@ -475,8 +506,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     return this.items.controls.some(c => this.itemHasContent(c));
   }
 
-  async onAiDraft(result: AiTopicDialogResult) {
-    this.closeAiDialog();
+  async onAiDraft(result: AiTopicPanelResult) {
+    // Folded, so the new items are in view; the prompt and pages stay for another go.
+    this.setAiPanelOpen(false);
     const drawWith = await this.confirmDrawing(result.draft.items);
     const { pages } = result;
     // A prompt-only re-run (no photos this time) shouldn't wipe out pages attached earlier —
@@ -485,6 +517,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     // Point & place answer areas come on the page photo: move them onto the scene picture.
     const draft = { ...result.draft, items: pointAreasToScene(result.draft.items) };
     const runId = ++this.aiRunId;
+    this.swapResult = null;
     this.aiUndoSnapshot = {
       name: this.topicForm.value.name ?? '',
       level: this.topicForm.value.level ?? '',
@@ -516,6 +549,42 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       poorGameNameKeys: GAMES.filter(game => poorIds.has(game.id)).map(game => game.nameKey)
     };
     this.aiProgress = { done: 0, total: groups.length };
+    const noPictures = this.choices.pictureNoneChosen;
+    const noVoices = this.choices.voiceNoneChosen;
+    const pictureTotal = noPictures ? 0 : draft.items.length;
+    const voiceTotal = noVoices ? 0 : draft.items.filter(item => item.audioText).length;
+    let picturesDone = 0;
+    let voicesDone = 0;
+    this.mediaAbort = new AbortController();
+    const mediaSignal = this.mediaAbort.signal;
+    this.mediaRun = {
+      provider: drawWith ?? 'search',
+      titleKey: 'aiRunTitleMedia',
+      steps: [],
+      startedAt: Date.now(),
+      typicalMs: null,
+      status: null,
+      statusAt: 0,
+      clockOnly: true
+    };
+    const showMediaSteps = () => {
+      if (!this.mediaRun) return;
+      const step = (labelKey: string, done: number, total: number) =>
+        ({ labelKey, state: done >= total ? 'done' as const : 'active' as const, done, total });
+      this.mediaRun = {
+        ...this.mediaRun,
+        fraction: (picturesDone + voicesDone) / Math.max(1, pictureTotal + voiceTotal),
+        steps: [
+          { labelKey: 'aiRunStepItems', state: 'done' },
+          ...(pictureTotal ? [step('aiRunStepPictures', picturesDone, pictureTotal)] : []),
+          ...(voiceTotal ? [step('aiRunStepVoices', voicesDone, voiceTotal)] : [])
+        ]
+      };
+    };
+    showMediaSteps();
+    const onDrawStatus = (status: AiRunStatus) => {
+      if (this.mediaRun) this.mediaRun = { ...this.mediaRun, status, statusAt: Date.now() };
+    };
 
     const voiceLanguage = result.voiceLanguage === 'auto'
       ? this.aiMedia.voiceLanguageFor(draft.language, getStoredVoiceLanguage())
@@ -524,18 +593,21 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     const voice = this.choices.voiceSource;
     let voiceError: unknown = null;
     this.aiDrawFailures = 0;
+    this.aiDrawStopped = null;
     let next = 0;
     const worker = async () => {
-      while (next < draft.items.length && runId === this.aiRunId) {
+      // Stop: no new item is started; the ones on their way are still placed.
+      while (next < draft.items.length && runId === this.aiRunId && !mediaSignal.aborted) {
         const index = next++;
         const item = draft.items[index];
         const [picture, audio] = await Promise.all([
-          this.resolveAiItemPicture(item, pages, cardColors[index], drawWith),
-          item.audioText
+          noPictures ? null : this.resolveAiItemPicture(item, pages, cardColors[index], drawWith, { signal: mediaSignal, onStatus: onDrawStatus })
+            .finally(() => this.zone.run(() => { picturesDone++; showMediaSteps(); })),
+          item.audioText && !noVoices
             ? this.audioVoice.synthesizeVoice(item.audioText, voiceLanguage, voice).catch(error => {
                 voiceError ??= error;
                 return null;
-              })
+              }).finally(() => this.zone.run(() => { voicesDone++; showMediaSteps(); }))
             : null
         ]);
         // Compression resolves from a Web Worker, outside Angular's zone.
@@ -557,17 +629,28 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.zone.run(() => {
       if (runId !== this.aiRunId) return;
       this.aiProgress = null;
+      this.mediaRun = null;
+      this.mediaAbort = null;
       // Once, not per item: the missing voices are marked by their empty players.
       if (voiceError) {
         const key = speechErrorMessageKey(voiceError);
         this.choices.markFailed('voice', key);
         showAppNotification(this.langService.translate(key), 'error');
       }
-      if (this.aiDrawFailures) {
+      if (this.aiDrawStopped && drawWith) {
+        // Said plainly: why drawing stopped, and that the other pictures were searched for free.
+        const why = this.langService.translate(problemTitleKey(this.aiDrawStopped), { provider: providerShortLabel(drawWith) });
+        showAppNotification(`${why} ${this.langService.translate('aiDrawRestSearched')}`, 'error');
+      } else if (this.aiDrawFailures) {
         this.choices.markFailed('picture', 'aiTopicGenerateImageFailed');
         showAppNotification(this.langService.translate('aiDrawFellBack'), 'error');
       }
     });
+  }
+
+  /** Stop making pictures and voices: the items and what is already made stay (Undo still works). */
+  stopMedia() {
+    this.mediaAbort?.abort();
   }
 
   /**
@@ -577,7 +660,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
    */
   private async confirmDrawing(items: AiItemDraft[]): Promise<'gemini' | 'openai' | null> {
     const source = this.choices.pictureSource;
-    if (source === 'search' || !this.choices.isLinked(source)) return null;
+    if (this.choices.pictureNoneChosen || source === 'search' || !this.choices.isLinked(source)) return null;
     const count = items.filter(item => item.imageKind === 'search').length;
     if (count <= FREE_DRAW_WITHOUT_ASKING) return source;
     const ai = this.langService.translate(pictureSourceNameKey(source));
@@ -586,14 +669,19 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   /** One generated item's picture: drawn by `drawWith` when the plan wants a searched one, else as planned. */
   private async resolveAiItemPicture(
-    item: AiItemDraft, pages: Blob[], cardColor: string, drawWith: 'gemini' | 'openai' | null
+    item: AiItemDraft, pages: Blob[], cardColor: string, drawWith: 'gemini' | 'openai' | null, run?: AiRunOptions
   ): Promise<{ blob: Blob | null; choice: AiImageChoice | null; madeBy: PictureMadeBy } | null> {
-    if (drawWith && item.imageKind === 'search') {
+    // Once drawing can't work (no credit, not in the plan...), the rest is searched straight away
+    // instead of every item failing in turn.
+    if (drawWith && item.imageKind === 'search' && !this.aiDrawStopped && !run?.signal?.aborted) {
       const choice = { ...this.aiMedia.choiceForText(plainText(item.text), cardColor), query: item.imageQuery, style: item.imageStyle };
       try {
-        const blob = await this.aiMedia.generateImage(choice, drawWith);
+        const blob = await this.aiMedia.generateImage(choice, drawWith, run);
         if (blob) return { blob, choice, madeBy: drawWith };
-      } catch {
+      } catch (error) {
+        const kind = error instanceof AiTopicError ? error.kind : 'FAILED';
+        if (kind === 'CANCELLED') return null;
+        if (['NO_CREDIT', 'NOT_IN_PLAN', 'KEY_REJECTED', 'DAILY_LIMIT'].includes(kind)) this.aiDrawStopped ??= kind;
         // Searched for free below instead; the teacher is told once at the end.
       }
       this.aiDrawFailures++;
@@ -610,6 +698,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
 
   undoAiFill() {
     if (!this.aiUndoSnapshot) return;
+    this.mediaAbort?.abort();
+    this.mediaRun = null;
     this.aiRunId++;
     this.items.clear();
     this.aiUndoSnapshot.controls.forEach(control => this.items.push(control));
@@ -617,6 +707,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     this.aiUndoSnapshot = null;
     this.aiResult = null;
     this.aiProgress = null;
+    this.swapResult = null;
   }
 
   dismissAiResult() {
@@ -628,8 +719,10 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     return this.fillingItems.has(item);
   }
 
+  /** Picture and Voice both "None" leave the item ✨ nothing to make. */
   canFillItemWithAi(item: AbstractControl): boolean {
-    return !!this.itemWords(item) && !this.fillingItems.has(item);
+    return !!this.itemWords(item) && !this.fillingItems.has(item)
+      && !(this.choices.pictureNoneChosen && this.choices.voiceNoneChosen);
   }
 
   /** The item text as students hear it: game marks (#, *, [ ]) removed, the rest as typed. */
@@ -657,8 +750,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       await Promise.all([
         // On the web with no voice linked, Automatic has nothing to use: the picture still comes,
         // and the audio panel already says how to get voices. A voice chosen by name still says why.
-        voice === 'auto' && !this.audioVoice.canSynthesize ? null : this.makeItemVoice(item, voice),
-        source === 'search' ? this.searchItemPicture(item) : this.drawItemPicture(item, source)
+        this.choices.voiceNoneChosen || (voice === 'auto' && !this.audioVoice.canSynthesize) ? null : this.makeItemVoice(item, voice),
+        this.choices.pictureNoneChosen ? null
+          : source === 'search' ? this.searchItemPicture(item) : this.drawItemPicture(item, source)
       ]);
     } finally {
       this.zone.run(() => this.fillingItems.delete(item));
@@ -776,8 +870,15 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       this.aiImageChoices.set(item, choice);
     }
     const token = this.startPictureRequest(item, provider);
+    const onStatus = (status: AiRunStatus) => {
+      if (!this.isLatestPictureRequest(item, token)) return;
+      const name = providerShortLabel(provider);
+      this.pictureWait.set(item, status.kind === 'fallback'
+        ? this.langService.translate('aiRunFallback', { provider: name })
+        : this.langService.translate(status.reason === 'minuteLimit' ? 'aiRunWaitLimit' : 'aiRunWaitBusy', { provider: name, seconds: status.seconds }));
+    };
     try {
-      const blob = await this.aiMedia.generateImage(choice, provider);
+      const blob = await this.aiMedia.generateImage(choice, provider, { onStatus });
       if (!blob) throw new Error('No picture');
       this.zone.run(() => {
         this.choices.markWorked('picture');
@@ -785,11 +886,20 @@ isAudioPanelOpen(item: AbstractControl): boolean {
       });
     } catch (error) {
       this.zone.run(() => this.choices.markFailed('picture', 'aiTopicGenerateImageFailed'));
+      // What happened, in plain words ("ChatGPT has no credit left"), then the AI's own words.
+      const kind = error instanceof AiTopicError ? error.kind : 'FAILED';
+      const why = this.langService.translate(problemTitleKey(kind), { provider: providerShortLabel(provider) });
       const detail = error instanceof AiTopicError && error.message ? ` ${error.message}` : '';
-      showAppNotification(this.langService.translate('aiTopicGenerateImageFailed') + detail, 'error');
+      showAppNotification(why + detail, 'error');
     } finally {
+      this.pictureWait.delete(item);
       this.finishPictureRequest(item, token);
     }
+  }
+
+  /** Why this item's drawing is waiting, or ''. */
+  pictureWaitText(item: AbstractControl): string {
+    return this.isPictureBusy(item) ? this.pictureWait.get(item) ?? '' : '';
   }
 
   /** Shows a picture on the item and remembers it, so ◀ can bring it back after trying others. */
@@ -874,6 +984,151 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     const made = this.voiceMadeBy.get(item);
     // The untouched clip stays as audioSource while pitch/speed changes make new `audio`.
     return made && made.audio === item.get('audioSource')?.value ? voiceSourceNameKey(made.provider) : '';
+  }
+
+  // ---- 📘 How to write it ----
+
+  signsGuideOpen = false;
+  signsGuideTab: SignsGuideTab = 'reading';
+
+  /** Opens on the game the items already look like (a Talk Show part, Reading tasks, gaps...). */
+  toggleSignsGuide() {
+    if (this.signsGuideOpen) {
+      this.signsGuideOpen = false;
+      return;
+    }
+    const texts = this.items.controls.map(control => String(control.get('text')?.value ?? ''));
+    if (this.usesSpeakingParts || this.topicExam) this.signsGuideTab = 'speaking';
+    else if (this.usesReadingTasks || texts.some(isHeading)) this.signsGuideTab = 'reading';
+    else if (texts.some(text => startsParagraph(text) || /(^|\s)_/.test(text))) this.signsGuideTab = 'writing';
+    this.signsGuideOpen = true;
+  }
+
+  /**
+   * "Start from this example" / "+ Add this part": the example's lines become items. A whole
+   * example goes below what the teacher already has, after asking; a part is just added at the end.
+   */
+  async useSignsExample(request: SignsExampleRequest) {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    const lines = exampleItems(request.lines);
+    const hasContent = this.items.controls.some(control => this.itemHasContent(control));
+    if (request.whole && hasContent
+      && !await this.confirmationService.confirm(this.langService.translate('signsUseExampleConfirm'))) return;
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      if (!this.itemHasContent(this.items.at(i))) this.items.removeAt(i);
+    }
+    const first = this.items.length;
+    lines.forEach(text => this.items.push(this.createItemFormGroup(null, text)));
+    if (request.whole) {
+      const guide = SIGNS_GUIDES.find(g => g.id === request.tab);
+      if (guide && !String(this.topicForm.value.name ?? '').trim()) this.topicForm.patchValue({ name: guide.exampleName });
+      if (request.tab === 'reading' && !this.topicLevel) this.setTopicLevel('A2');
+      if (request.tab === 'speaking' && !this.topicExam) this.setTopicExam('ielts');
+      this.signsGuideOpen = false;
+    }
+    showAppNotification(this.langService.translate(request.whole ? 'signsExampleAdded' : 'signsPartAdded', { n: lines.length }), 'success');
+    // The new items in view, so the teacher sees where they went.
+    window.setTimeout(() => document.querySelector(`[data-item-index="${first}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+  }
+
+  // ---- ⇄ Swap text and cards ----
+
+  /**
+   * Items whose two sides can swap: plain text (no game marks) and a word card. A photo can't
+   * become text, so items with one stay as they are.
+   */
+  private swappableItems(): AbstractControl[] {
+    return this.items.controls.filter(item => {
+      const text = String(item.get('text')?.value ?? '').replace(/\s+/g, ' ').trim();
+      const card = String(item.get('imageText')?.value ?? '').trim();
+      return !!text && !!card && !!item.get('image')?.value && plainText(text) === text;
+    });
+  }
+
+  get canSwapSides(): boolean {
+    return !this.swapping && !this.aiProgress && this.swappableItems().length > 0;
+  }
+
+  /**
+   * One Definitions (or Translation, Gap-fill...) topic, played both ways: the text goes on the
+   * card and the card's words become the text, for every item that has a word card. Free, no AI;
+   * clicking again swaps back. The voice reads the text, so a voice that said the old text would
+   * now say the answer: it is set aside (and comes back on swapping back), and the line under the
+   * heading offers to make the new ones.
+   */
+  async swapSides() {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    const swappable = this.swappableItems();
+    if (!swappable.length || this.swapping) return;
+    this.swapping = true;
+    const needVoice: AbstractControl[] = [];
+    try {
+      await Promise.all(swappable.map(async item => {
+        const text = String(item.get('text')!.value).replace(/\s+/g, ' ').trim();
+        const card = String(item.get('imageText')!.value).trim();
+        const color = this.cardColorFor(item) || undefined;
+        const blob = await this.aiMedia.wordCard(text, color);
+        this.zone.run(() => {
+          const voices = this.voicesByText.get(item) ?? new Map<string, ItemVoice>();
+          this.voicesByText.set(item, voices);
+          const hadVoice = !!item.get('audio')?.value;
+          if (hadVoice) voices.set(text, this.itemVoice(item));
+          item.patchValue({ text: card });
+          this.aiImageChoices.set(item, this.aiMedia.choiceForText(text, color));
+          this.showPicture(item, blob, 'wordCard', text);
+          const earlier = voices.get(card);
+          if (earlier) {
+            item.patchValue(earlier);
+          } else if (hadVoice) {
+            item.patchValue({ audio: null, audioSource: null, audioPitch: null, audioSpeed: null, audioText: '' });
+            needVoice.push(item);
+          }
+        });
+      }));
+      // Said to the teacher: items with a photo stayed. (Headings and other marked items stay
+      // silently: they are the topic's structure, not word pairs.)
+      const photos = this.items.controls.filter(item => !swappable.includes(item)
+        && !!item.get('text')?.value && !!item.get('image')?.value && !item.get('imageText')?.value).length;
+      const back = !!this.swapResult && !this.swapResult.back;
+      this.swapResult = { swapped: swappable.length, kept: photos, needVoice, back };
+    } finally {
+      this.swapping = false;
+    }
+  }
+
+  /** The new voices after a swap, one after another, with the Voice choice. */
+  async makeSwapVoices() {
+    const result = this.swapResult;
+    if (!result || this.makingSwapVoices) return;
+    this.makingSwapVoices = true;
+    try {
+      for (const item of [...result.needVoice]) {
+        if (!this.items.controls.includes(item) || item.get('audio')?.value) continue;
+        await this.makeItemVoice(item, this.choices.voiceSource);
+        // The first failure is already explained; the rest would only repeat it.
+        if (!item.get('audio')?.value) break;
+        result.needVoice = result.needVoice.filter(other => other !== item);
+      }
+    } finally {
+      this.zone.run(() => (this.makingSwapVoices = false));
+    }
+  }
+
+  /** Whether "Make the voices" can work: a voice is chosen (not None) and can speak here. */
+  get canMakeSwapVoices(): boolean {
+    const voice = this.choices.voiceSource;
+    return !this.choices.voiceNoneChosen && (voice !== 'auto' || this.audioVoice.canSynthesize);
+  }
+
+  private itemVoice(item: AbstractControl): ItemVoice {
+    const value = item.value;
+    return { audio: value.audio, audioSource: value.audioSource, audioPitch: value.audioPitch, audioSpeed: value.audioSpeed, audioText: value.audioText };
   }
 
   private itemHasContent(item: AbstractControl): boolean {

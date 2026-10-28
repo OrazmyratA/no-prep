@@ -1,0 +1,385 @@
+/* 📘 How to write it: steps on the left, a working example on the right (stacked on phones). */
+:host {
+  display: block;
+  margin-bottom: 14px;
+  /* One colour per kind of sign, the same in the steps, the example and the part cards. */
+  --sg-mark: #6d28d9;
+  --sg-mark-bg: #ede9fe;
+  --sg-key: #92400e;
+  --sg-key-bg: #fef3c7;
+  --sg-brace: #0f766e;
+  --sg-brace-bg: #ccfbf1;
+  --sg-gap: #be123c;
+  --sg-gap-bg: #ffe4e6;
+}
+
+.sg {
+  border-radius: 20px;
+  background: linear-gradient(160deg, #ffffff 0%, #f5f7ff 55%, #f0f9ff 100%);
+  border: 1px solid #dbe3ff;
+  box-shadow: 0 10px 30px rgba(79, 70, 229, 0.10);
+  overflow: hidden;
+  animation: sg-in 0.25s ease-out;
+}
+
+@keyframes sg-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- Head ---- */
+.sg-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 10px;
+}
+
+.sg-book {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #e0e7ff, #dbeafe);
+  font-size: 1.4rem;
+}
+
+.sg-head-text { min-width: 0; flex: 1; }
+
+.sg-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #312e81;
+}
+
+.sg-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.sg-close {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: #64748b;
+  transition: background-color 0.15s ease;
+}
+
+.sg-close:hover { background: #eef2ff; color: #312e81; }
+
+/* ---- Tabs ---- */
+.sg-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 18px 14px;
+}
+
+.sg-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.8);
+  text-align: left;
+  color: #475569;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.sg-tab:hover { border-color: #a5b4fc; }
+
+.sg-tab:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+
+.sg-tab-on {
+  background: #fff;
+  border-color: #818cf8;
+  color: #312e81;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.16);
+}
+
+.sg-tab-icon { font-size: 1.5rem; line-height: 1; }
+
+.sg-tab-text { display: flex; flex-direction: column; min-width: 0; }
+.sg-tab-text b { font-size: 0.92rem; }
+.sg-tab-text small { font-size: 0.74rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sg-tab-on .sg-tab-text small { color: #6366f1; }
+
+/* ---- Body: steps + example ---- */
+.sg-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 4px 18px 18px;
+}
+
+@media (max-width: 900px) {
+  .sg-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+.sg-steps { display: flex; flex-direction: column; }
+
+.sg-step {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+
+/* The line joining the step numbers. */
+.sg-step:not(.sg-step-last)::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 34px;
+  bottom: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(#c7d2fe, #e0e7ff);
+}
+
+.sg-step-num {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.35);
+}
+
+.sg-step-main { min-width: 0; flex: 1; padding-top: 4px; }
+
+.sg-step-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.sg-step-hint {
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.sg-sign {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #eef2ff;
+}
+
+.sg-chip {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  padding: 4px 8px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--sg-mark-bg);
+  color: var(--sg-mark);
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.sg-chip-small { min-width: 0; font-size: 0.72rem; padding: 2px 7px; }
+
+.sg-sign-main { min-width: 0; flex: 1; }
+
+.sg-meaning {
+  font-size: 0.86rem;
+  color: #334155;
+}
+
+/* An example line, as it is typed into an item. */
+.sg-line {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Sign colours ---- */
+.sg-p { border-radius: 5px; }
+.sg-p-mark { padding: 1px 5px; background: var(--sg-mark-bg); color: var(--sg-mark); font-weight: 800; font-family: ui-monospace, Consolas, monospace; }
+.sg-p-key { padding: 1px 3px; background: var(--sg-key-bg); color: var(--sg-key); font-weight: 700; }
+.sg-p-brace { padding: 1px 3px; background: var(--sg-brace-bg); color: var(--sg-brace); font-weight: 600; }
+.sg-p-gap { padding: 1px 4px; background: var(--sg-gap-bg); color: var(--sg-gap); font-weight: 800; }
+.sg-p-note { color: #94a3b8; font-style: italic; }
+
+/* ---- Example topic ---- */
+.sg-example {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: start;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e0e7ff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+}
+
+@media (min-width: 901px) {
+  .sg-example { position: sticky; top: 12px; }
+}
+
+.sg-example-head { display: flex; flex-direction: column; gap: 2px; }
+.sg-example-title { font-weight: 800; color: #14532d; font-size: 0.92rem; }
+.sg-example-head small { color: #64748b; font-size: 0.78rem; }
+
+.sg-example-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 340px;
+  overflow-y: auto;
+  counter-reset: sg-item;
+}
+
+.sg-example-line {
+  display: flex;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+}
+
+.sg-example-text { min-width: 0; }
+
+.sg-example-line::before {
+  counter-increment: sg-item;
+  content: counter(sg-item);
+  flex-shrink: 0;
+  width: 18px;
+  color: #a5b4fc;
+  font-weight: 700;
+  text-align: right;
+}
+
+.sg-use {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #16a34a, #0d9488);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  box-shadow: 0 6px 16px rgba(13, 148, 136, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sg-use:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(13, 148, 136, 0.38); }
+
+.sg-use-note { font-size: 0.76rem; color: #64748b; text-align: center; }
+
+/* ---- Talk Show parts ---- */
+.sg-parts {
+  padding: 16px 18px 18px;
+  border-top: 1px solid #e0e7ff;
+  background: rgba(238, 242, 255, 0.45);
+}
+
+.sg-parts-title { font-weight: 800; color: #1e1b4b; font-size: 0.95rem; }
+.sg-parts-hint { font-size: 0.84rem; color: #64748b; margin-top: 2px; }
+
+.sg-part-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sg-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sg-part:hover { border-color: #a5b4fc; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.1); }
+
+.sg-part-head { display: flex; align-items: center; gap: 8px; }
+.sg-part-name { font-size: 0.9rem; color: #1e1b4b; flex: 1; min-width: 0; }
+.sg-part-pic { font-size: 0.95rem; }
+.sg-part-what { font-size: 0.82rem; color: #475569; }
+
+.sg-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  font-size: 0.76rem;
+  line-height: 1.55;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+
+.sg-add {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #a5b4fc;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 700;
+  font-size: 0.8rem;
+  transition: background-color 0.15s ease;
+}
+
+.sg-add:hover { background: #e0e7ff; }
+
+.sg-pic-note { font-size: 0.76rem; color: #92400e; }
+
+/* ---- Foot ---- */
+.sg-foot {
+  padding: 10px 18px 14px;
+  font-size: 0.8rem;
+  color: #64748b;
+  border-top: 1px solid #eef2ff;
+}
+
+@media (max-width: 640px) {
+  .sg-head, .sg-tabs, .sg-body, .sg-parts, .sg-foot { padding-left: 12px; padding-right: 12px; }
+  .sg-tab { flex-direction: column; text-align: center; gap: 4px; padding: 8px 6px; }
+  .sg-tab-text small { display: none; }
+  .sg-sign { flex-direction: column; gap: 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sg, .sg-use { animation: none; transition: none; }
+}

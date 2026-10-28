@@ -3,7 +3,7 @@ import {
   GuideAudioTrack,
   GuideTimelinePin
 } from '../../../core/book.model';
-import { getOrderedGuidePins } from '../../../core/guide-timeline';
+import { getGuideTrackTrimRange, getOrderedGuidePins, isGuideTrackTrimmed, MIN_GUIDE_TRIM_GAP } from '../../../core/guide-timeline';
 
 export class BookCreatorGuidePreviewController {
   constructor(private readonly creator: any) {}
@@ -16,12 +16,12 @@ export class BookCreatorGuidePreviewController {
 
     if (this.creator.activePreviewAudio && this.creator.previewGuideTrackId === track.id) {
       if (this.creator.activePreviewAudio.paused) {
-        const duration = this.creator.getGuideTrackDuration(track);
-        if (duration > 0 && this.creator.activePreviewAudio.currentTime >= duration - 0.05) {
-          this.creator.activePreviewAudio.currentTime = 0;
-          this.creator.previewGuideCurrentTime = 0;
-          this.creator.guideTrackSeekTimes[track.id] = 0;
-          this.applyCreatorGuideState(element, track, 0);
+        const range = getGuideTrackTrimRange(track, this.creator.getGuideTrackDuration(track));
+        if (this.creator.activePreviewAudio.currentTime >= range.end - 0.05) {
+          this.creator.activePreviewAudio.currentTime = range.start;
+          this.creator.previewGuideCurrentTime = range.start;
+          this.creator.guideTrackSeekTimes[track.id] = range.start;
+          this.applyCreatorGuideState(element, track, range.start);
         }
         await this.creator.activePreviewAudio.play().catch(() => {});
       } else {
@@ -30,9 +30,12 @@ export class BookCreatorGuidePreviewController {
       return;
     }
 
-    const duration = this.creator.getGuideTrackDuration(track);
-    const startTime = duration > 0 && this.creator.previewGuideCurrentTime >= duration - 0.05
-      ? 0
+    // Playing always lands inside the trimmed range - past the end (or never started), restart
+    // at the beginning of the range; otherwise resume from wherever the scrubber was left,
+    // same as before trimming existed.
+    const range = getGuideTrackTrimRange(track, this.creator.getGuideTrackDuration(track));
+    const startTime = this.creator.previewGuideCurrentTime >= range.end - 0.05 || this.creator.previewGuideCurrentTime < range.start
+      ? range.start
       : this.creator.previewGuideCurrentTime;
     this.startGuideTrackPreview(element, track, startTime);
   }
@@ -172,11 +175,16 @@ export class BookCreatorGuidePreviewController {
     if (!saved) return;
     this.creator.captureHistory();
     pin.imageSrc = saved.relativePath;
+    this.creator.rememberAssetBlob(saved.relativePath, blob);
     this.creator.previewGuideImageUrl = saved.assetUrl || this.creator.getCachedAssetUrl(saved.relativePath);
   }
 
-  getGuidePinImageUrl(pin: GuideTimelinePin | null): string {
-    return pin?.imageSrc ? this.creator.getCachedAssetUrl(pin.imageSrc) : '';
+  /**
+   * The pin's picture for the uploader, so it shows it inside with ✂️ crop and ✕ remove, the same
+   * as a topic item's picture. null while it is still being read from the book (then shown).
+   */
+  getGuidePinImageBlob(pin: GuideTimelinePin | null): Blob | null {
+    return pin?.imageSrc ? this.creator.getAssetBlob(pin.imageSrc) : null;
   }
 
   prepareGuideTrackSeek(event: Event, element: BookElement, track: GuideAudioTrack): void {
@@ -236,6 +244,60 @@ export class BookCreatorGuidePreviewController {
     this.updateTimelinePinFromPointer(event.clientX);
   }
 
+  startGuideTrimDrag(event: PointerEvent, element: BookElement, track: GuideAudioTrack, edge: 'start' | 'end'): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const timeline = (event.currentTarget as HTMLElement).closest<HTMLElement>('.guide-track-timeline');
+    const rect = timeline?.getBoundingClientRect();
+    if (!rect?.width) return;
+    this.selectGuideTrack(element, track);
+    this.creator.activePreviewAudio?.pause();
+    this.creator.beginHistoryCapture();
+    this.creator.guideTrimDragState = {
+      elementId: element.id,
+      trackId: track.id,
+      edge,
+      left: rect.left,
+      width: rect.width,
+      duration: this.creator.getGuideTrackDuration(track)
+    };
+    this.updateGuideTrimFromPointer(event.clientX);
+  }
+
+  updateGuideTrimFromPointer(clientX: number): void {
+    const drag = this.creator.guideTrimDragState;
+    const element = this.creator.selectedElement;
+    if (!drag || !element || element.id !== drag.elementId) return;
+    const track = this.creator.getGuideDotTracks(element).find((item: GuideAudioTrack) => item.id === drag.trackId);
+    if (!track) return;
+    const ratio = this.creator.clamp((clientX - drag.left) / drag.width, 0, 1);
+    const time = ratio * drag.duration;
+    const range = getGuideTrackTrimRange(track, drag.duration);
+
+    if (drag.edge === 'start') {
+      const start = this.creator.clamp(time, 0, Math.max(0, range.end - MIN_GUIDE_TRIM_GAP));
+      track.trimStart = start > 0.05 ? start : undefined;
+    } else {
+      const minEnd = Math.min(drag.duration, range.start + MIN_GUIDE_TRIM_GAP);
+      const end = this.creator.clamp(time, minEnd, drag.duration);
+      track.trimEnd = end < drag.duration - 0.05 ? end : undefined;
+    }
+
+    // Keep the scrubber/owl on the flag being dragged, same as dragging a timeline pin does.
+    this.creator.previewGuideCurrentTime = time;
+    if (this.creator.activePreviewAudio && this.creator.previewGuideTrackId === track.id) {
+      this.creator.activePreviewAudio.currentTime = this.creator.clamp(time, 0, drag.duration);
+    }
+    this.applyCreatorGuideState(element, track, time);
+  }
+
+  resetGuideTrackTrim(element: BookElement, track: GuideAudioTrack): void {
+    if (!isGuideTrackTrimmed(track)) return;
+    this.creator.captureHistory();
+    delete track.trimStart;
+    delete track.trimEnd;
+  }
+
   startGuidePagePinDrag(event: PointerEvent, element: BookElement, pin: GuideTimelinePin): void {
     event.preventDefault();
     event.stopPropagation();
@@ -273,7 +335,9 @@ export class BookCreatorGuidePreviewController {
     this.creator.previewOwlImage = 'assets/gifs/owl-teaching.gif';
     this.creator.previewGuidePaused = false;
     this.creator.previewGuideDuration = track.duration || 0;
-    this.creator.previewGuideCurrentTime = Math.max(0, startTime);
+    const startRange = getGuideTrackTrimRange(track, this.creator.getGuideTrackDuration(track));
+    const clampedStart = this.creator.clamp(Math.max(0, startTime), startRange.start, startRange.end);
+    this.creator.previewGuideCurrentTime = clampedStart;
     this.applyCreatorGuideState(element, track, this.creator.previewGuideCurrentTime);
 
     audio.onloadedmetadata = () => {
@@ -283,15 +347,21 @@ export class BookCreatorGuidePreviewController {
         track.duration = duration;
         this.creator.previewGuideDuration = duration;
       }
-      if (startTime > 0) {
-        audio.currentTime = duration > 0 ? this.creator.clamp(startTime, 0, duration) : startTime;
-      }
+      const range = getGuideTrackTrimRange(track, duration || startRange.end);
+      audio.currentTime = this.creator.clamp(clampedStart, range.start, range.end);
     };
     audio.ontimeupdate = () => {
       if (token !== this.creator.previewToken) return;
+      const duration = this.getUsableAudioDuration(audio);
+      const range = getGuideTrackTrimRange(track, duration || this.creator.previewGuideDuration);
+      // Playing is a non-destructive preview of the trimmed range - stop exactly where the
+      // reader will, instead of running on into audio the trim is meant to skip.
+      if (range.end > 0 && duration > 0 && range.end < duration && audio.currentTime >= range.end - 0.03) {
+        audio.currentTime = range.end;
+        audio.pause();
+      }
       this.creator.previewGuideCurrentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
       this.creator.guideTrackSeekTimes[track.id] = this.creator.previewGuideCurrentTime;
-      const duration = this.getUsableAudioDuration(audio);
       if (duration > 0) {
         track.duration = duration;
         this.creator.previewGuideDuration = duration;
@@ -451,9 +521,16 @@ export class BookCreatorGuidePreviewController {
       this.updateGuideTrackSeekFromPointer(point.x);
     } else if (this.creator.timelinePinDragState) {
       this.updateTimelinePinFromPointer(point.x);
+    } else if (this.creator.guideTrimDragState) {
+      this.updateGuideTrimFromPointer(point.x);
     } else if (this.creator.pagePinDragState) {
       this.updatePagePinFromPointer(point.x, point.y);
     }
+  }
+
+  isPinOutsideGuideTrim(track: GuideAudioTrack, pin: GuideTimelinePin): boolean {
+    const range = getGuideTrackTrimRange(track, this.creator.getGuideTrackDuration(track));
+    return pin.time < range.start - 0.01 || pin.time > range.end + 0.01;
   }
 
   getOrderedGuidePinById(element: BookElement, pinId: string): GuideTimelinePin | null {

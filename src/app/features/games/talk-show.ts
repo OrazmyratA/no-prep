@@ -14,7 +14,7 @@ import { PlatformFileService } from '../../core/platform-file';
 import { ConfirmationService } from '../../shared/confirmation';
 import { AiTopicError, AiTopicProviderId, AiTopicService } from '../../core/ai-topic/ai-topic.service';
 import { SpeakingFeedback, SpeakingFeedbackCandidate } from '../../core/ai-topic/speaking-feedback';
-import { LANGUAGE_NAMES } from '../topics/ai-topic-dialog/ai-topic-dialog';
+import { LANGUAGE_NAMES } from '../topics/ai-topic-panel/ai-topic-panel';
 import { showAppNotification } from '../../core/notification';
 import { dateStamp, htmlLang, printHtml } from '../../core/print-html';
 import { LanguageService } from '../../core/language';
@@ -176,6 +176,7 @@ export class TalkShowComponent implements OnInit, OnDestroy {
 
   keyboardShortcuts: GameKeyboardShortcut[] = [
     { key: 'Enter / →', action: 'Next' },
+    { key: 'Shift + →', action: 'Next part (skip the rest of this one)' },
     { key: 'Space', action: 'Start / pause the timer' },
     { key: 'R', action: 'Repeat the question' },
     { key: 'F', action: 'Follow-up question' },
@@ -576,12 +577,8 @@ export class TalkShowComponent implements OnInit, OnDestroy {
       if (part && this.turnIndex < part.turns.length - 1) {
         this.turnIndex++;
         this.beginTurn();
-      } else if (this.partIndex < this.playParts.length - 1) {
-        this.partIndex++;
-        this.beginPartCard();
       } else {
-        this.view = 'closing';
-        this.say(this.closingLine);
+        this.toNextPart();
       }
     } else if (this.view === 'closing') {
       this.speechToken++;
@@ -591,6 +588,33 @@ export class TalkShowComponent implements OnInit, OnDestroy {
       this.showResults();
     }
     this.cdr.detectChanges();
+  }
+
+  /** The questions of this part not asked yet (a long interview can stop when it has been enough). */
+  get turnsLeftInPart(): number {
+    return this.view === 'turn' && this.part ? Math.max(0, this.part.turns.length - 1 - this.turnIndex) : 0;
+  }
+
+  get onLastPart(): boolean {
+    return this.partIndex >= this.playParts.length - 1;
+  }
+
+  /** "Next part ⏭": the rest of this part is left out, as a real examiner stops when it is enough. */
+  skipPart() {
+    if (this.view !== 'turn') return;
+    this.stopTurn();
+    this.toNextPart();
+    this.cdr.detectChanges();
+  }
+
+  private toNextPart() {
+    if (this.partIndex < this.playParts.length - 1) {
+      this.partIndex++;
+      this.beginPartCard();
+    } else {
+      this.view = 'closing';
+      this.say(this.closingLine);
+    }
   }
 
   storyBack() {
@@ -1465,7 +1489,10 @@ export class TalkShowComponent implements OnInit, OnDestroy {
       }
       return;
     }
-    if (key === 'enter' || key === 'arrowright') {
+    if (key === 'arrowright' && event.shiftKey && this.view === 'turn') {
+      event.preventDefault();
+      this.skipPart();
+    } else if (key === 'enter' || key === 'arrowright') {
       event.preventDefault();
       this.next();
     } else if (key === 'arrowleft' && this.part?.type === 'STORY') {

@@ -69,9 +69,44 @@ export class BookCreatorMediaController {
     const dataUrl = await this.creator.blobToDataUrl(blob);
     const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, 'image');
     if (!saved) return;
+    this.rememberAssetBlob(saved.relativePath, blob);
     element.data['src'] = saved.relativePath;
     element.data['label'] = saved.fileName;
     this.creator.refreshElementAssetChange();
+  }
+
+  /** The image element's picture for its uploader (shown inside, with ✂️ and ✕). */
+  getBookImageBlob(element: BookElement): Blob | null {
+    const src = String(element.data?.['src'] || '');
+    return src && !this.isExternalUrl(src) ? this.getAssetBlob(src) : null;
+  }
+
+  // Book pictures as blobs, so an uploader can show one and crop it the way the topic form does.
+  private assetBlobs = new Map<string, Blob>();
+  private assetBlobLoads = new Set<string>();
+
+  /** A book picture for an uploader; null while it is still being read (it then shows up). */
+  getAssetBlob(relativePath: string): Blob | null {
+    if (!this.creator.book || !relativePath) return null;
+    const key = `${this.creator.book.id}:${relativePath}`;
+    const cached = this.assetBlobs.get(key);
+    if (cached) return cached;
+    if (!this.assetBlobLoads.has(key)) {
+      this.assetBlobLoads.add(key);
+      void this.fetchBlob(this.getCachedAssetUrl(relativePath)).then(blob => {
+        if (blob) this.assetBlobs.set(key, blob);
+        else this.assetBlobLoads.delete(key);
+      });
+    }
+    return null;
+  }
+
+  /**
+   * A picture an uploader just gave us, under the path it was saved to: handed back to that
+   * uploader unchanged, it is not emitted again.
+   */
+  rememberAssetBlob(relativePath: string, blob: Blob): void {
+    if (this.creator.book) this.assetBlobs.set(`${this.creator.book.id}:${relativePath}`, blob);
   }
 
   getAnswerKeyImages(element: BookElement): string[] {
@@ -85,6 +120,7 @@ export class BookCreatorMediaController {
     const dataUrl = await this.creator.blobToDataUrl(blob);
     const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, 'answer-key');
     if (!saved) return;
+    this.rememberAssetBlob(saved.relativePath, blob);
 
     // Normalize legacy single-src books onto the images array the first time a
     // second image is added, so old and new answer keys share one storage shape.
@@ -169,7 +205,64 @@ export class BookCreatorMediaController {
   }
 
   selectAnswerKeyImage(element: BookElement, index: number): void {
+    this.addingAnswerKeyImage.delete(element.id);
     this.selectedAnswerKeyImageIndex.set(element.id, index);
+  }
+
+  // ---- The answer key's uploader, like a topic item's: the selected picture inside it ----
+
+  // Answer keys whose "＋" tile is chosen: their uploader is empty and adds a picture.
+  private addingAnswerKeyImage = new Set<string>();
+
+  /** The uploader adds a new picture (the "＋" tile, or no picture yet) rather than editing one. */
+  isAddingAnswerKeyImage(element: BookElement): boolean {
+    return !getAnswerKeyImagePaths(element).length || this.addingAnswerKeyImage.has(element.id);
+  }
+
+  startAddingAnswerKeyImage(element: BookElement): void {
+    this.addingAnswerKeyImage.add(element.id);
+  }
+
+  /** The selected picture for the uploader to show (✂️ crop, ✕ remove, or replace), or null when adding. */
+  getAnswerKeyUploaderImage(element: BookElement): Blob | null {
+    if (this.isAddingAnswerKeyImage(element)) return null;
+    return this.getAssetBlob(getAnswerKeyImagePaths(element)[this.getSelectedAnswerKeyImageIndex(element)] ?? '');
+  }
+
+  /**
+   * What the uploader gave: a new picture when adding (then selected, so it can be cropped or given
+   * audio straight away), else the selected picture replaced (its audio stays) or removed (✕).
+   */
+  async onAnswerKeyUploaderImage(blob: Blob | null, element: BookElement): Promise<void> {
+    if (element.type !== 'answerKey') return;
+    if (this.isAddingAnswerKeyImage(element)) {
+      if (!blob) return;
+      await this.addAnswerKeyImage(blob, element);
+      this.selectAnswerKeyImage(element, getAnswerKeyImagePaths(element).length - 1);
+      return;
+    }
+    const index = this.getSelectedAnswerKeyImageIndex(element);
+    if (!blob) {
+      this.removeAnswerKeyImage(element, index);
+      return;
+    }
+    await this.replaceAnswerKeyImage(element, index, blob);
+  }
+
+  private async replaceAnswerKeyImage(element: BookElement, index: number, blob: Blob): Promise<void> {
+    if (!this.creator.book) return;
+    const dataUrl = await this.creator.blobToDataUrl(blob);
+    const saved = await this.creator.bookLibrary.saveAssetData(this.creator.book.id, 'images', dataUrl, 'answer-key');
+    if (!saved) return;
+    this.rememberAssetBlob(saved.relativePath, blob);
+    const images = getAnswerKeyImagePaths(element);
+    if (index < 0 || index >= images.length) return;
+    this.creator.captureHistory();
+    images[index] = saved.relativePath;
+    element.data['images'] = images;
+    element.data['imageAudios'] = this.readImageAudios(element, images.length);
+    delete element.data['src'];
+    this.creator.refreshElementAssetChange();
   }
 
   getAnswerKeyImageAudio(element: BookElement, imageIndex: number): string {

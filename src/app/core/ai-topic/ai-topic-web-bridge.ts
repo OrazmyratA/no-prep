@@ -13,6 +13,7 @@
 // doesn't drag that SDK into every bundle/test that transitively imports AiTopicService (nearly
 // the whole app). Same reasoning as audio-voice.ts's lazy @soundtouchjs/audio-worklet import.
 import type AnthropicSdk from '@anthropic-ai/sdk';
+import { AiErrorKind, AiRunOptions, AiRunStatus, AiUsage, toErrorKind } from './ai-run';
 
 type AiTopicWebProviderId = 'openai' | 'gemini' | 'anthropic' | 'groq';
 
@@ -40,6 +41,66 @@ const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
 const RETRY_DELAYS_MS = [2000, 6000];
 const MAX_RETRY_WAIT_MS = 60000;
 const KEYS_STORAGE_KEY = 'aiTopicWebKeys';
+
+/** One request's Cancel, live status and usage (see ai-run.ts; same words as the desktop). */
+interface Run {
+  signal: AbortSignal | null;
+  onStatus: (status: AiRunStatus) => void;
+  usage: AiUsage;
+}
+
+function newRun(options?: AiRunOptions): Run {
+  return { signal: options?.signal ?? null, onStatus: options?.onStatus ?? (() => {}), usage: {} };
+}
+
+function aiError(message: string, kind: AiErrorKind, extra: Record<string, unknown> = {}): Error {
+  return Object.assign(new Error(message), { kind }, extra);
+}
+
+function cancelled(): Error {
+  return aiError('Cancelled.', 'CANCELLED');
+}
+
+/** A retry wait that Cancel ends at once. */
+function pause(ms: number, signal: AbortSignal | null): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(cancelled());
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(cancelled());
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function addTokens(run: Run, count: unknown): void {
+  const tokens = Number(count);
+  if (Number.isFinite(tokens) && tokens > 0) run.usage.tokens = (run.usage.tokens || 0) + tokens;
+}
+
+/** Groq says on every answer how many requests are left today (console.groq.com/docs/rate-limits). */
+function readLimitHeaders(response: Response, run: Run): void {
+  const remaining = response.headers?.get?.('x-ratelimit-remaining-requests');
+  if (remaining === null || remaining === undefined || !Number.isFinite(Number(remaining))) return;
+  run.usage.remainingToday = Number(remaining);
+  const limit = Number(response.headers.get('x-ratelimit-limit-requests'));
+  if (Number.isFinite(limit)) run.usage.limitToday = limit;
+}
+
+/** What kind of failure an AI's error answer is (see ai-run.ts). */
+function errorKind(status: number, errorText: string): AiErrorKind {
+  if (isNotInFreePlan(errorText)) return 'NOT_IN_PLAN';
+  if (isNoCredit(errorText) || status === 402) return 'NO_CREDIT';
+  if (status === 401 || status === 403) return 'KEY_REJECTED';
+  if (status === 413 || (status === 429 && isTooLarge(errorText))) return 'TOO_LARGE';
+  if (status === 429) return isDailyLimit(errorText) ? 'DAILY_LIMIT' : 'BUSY';
+  if (OVERLOADED_STATUSES.has(status)) return 'BUSY';
+  return 'FAILED';
+}
 
 interface AiImage {
   mimeType: string;
@@ -142,14 +203,19 @@ async function postJson(
   url: string,
   headers: Record<string, string>,
   body: unknown,
-  { timeoutMs = REQUEST_TIMEOUT_MS, failWhenOverloaded = false } = {}
+  { timeoutMs = REQUEST_TIMEOUT_MS, failWhenOverloaded = false } = {},
+  run: Run = newRun()
 ): Promise<any> {
   let response: Response;
   for (let attempt = 0; ; attempt++) {
-    // AbortSignal.timeout() would be simpler, but its browser support isn't guaranteed on the
-    // older iOS Safari versions this web path specifically needs to reach.
+    if (run.signal?.aborted) throw cancelled();
+    // AbortSignal.timeout() / any() would be simpler, but their browser support isn't guaranteed
+    // on the older iOS Safari versions this web path specifically needs to reach.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
+    const onCancel = () => controller.abort();
+    run.signal?.addEventListener('abort', onCancel, { once: true });
     try {
       response = await fetch(url, {
         method: 'POST',
@@ -158,24 +224,31 @@ async function postJson(
         signal: controller.signal
       });
     } catch (error: any) {
-      if (error?.name === 'AbortError') {
-        throw Object.assign(new Error('The AI took too long to answer. Please try again.'), { overloaded: failWhenOverloaded });
+      if (run.signal?.aborted) throw cancelled();
+      if (timedOut || error?.name === 'AbortError') {
+        throw aiError('The AI took too long to answer. Please try again.', 'TIMEOUT', { overloaded: failWhenOverloaded });
       }
-      throw new Error('Could not reach the AI service. Check your internet connection.');
+      throw aiError('Could not reach the AI service. Check your internet connection.', 'OFFLINE');
     } finally {
       clearTimeout(timer);
+      run.signal?.removeEventListener('abort', onCancel);
     }
-    if (response.ok) return response.json();
+    if (response.ok) {
+      readLimitHeaders(response, run);
+      return response.json();
+    }
     const errorText = await response.text().catch(() => '');
     // Also a free plan's daily limit: Google counts it per model, so the older Flash still has its own.
     if (failWhenOverloaded && (OVERLOADED_STATUSES.has(response.status) || (response.status === 429 && isDailyLimit(errorText) && !isNotInFreePlan(errorText)))) {
-      throw Object.assign(new Error(httpErrorMessage(response.status, errorText)), { overloaded: true });
+      throw aiError(httpErrorMessage(response.status, errorText), errorKind(response.status, errorText), { overloaded: true });
     }
     const delay = retryDelay(response, errorText, attempt);
     if (delay === null) {
-      throw new Error(httpErrorMessage(response.status, errorText));
+      throw aiError(httpErrorMessage(response.status, errorText), errorKind(response.status, errorText));
     }
-    await new Promise(resolve => setTimeout(resolve, delay));
+    // Say why the teacher is waiting, and for how long.
+    run.onStatus({ kind: 'wait', reason: response.status === 429 ? 'minuteLimit' : 'busy', seconds: Math.ceil(delay / 1000) });
+    await pause(delay, run.signal);
   }
 }
 
@@ -262,7 +335,7 @@ function httpErrorMessage(status: number, errorText = ''): string {
 
 // ---- per-provider draft generation ----
 
-async function generateWithOpenAi(req: NormalizedRequest): Promise<string> {
+async function generateWithOpenAi(req: NormalizedRequest, run: Run): Promise<string> {
   const content = [
     { type: 'input_text', text: req.userText },
     ...req.images.map(image => ({
@@ -281,7 +354,8 @@ async function generateWithOpenAi(req: NormalizedRequest): Promise<string> {
     text: {
       format: { type: 'json_schema', name: 'topic_draft', schema: req.schema, strict: true }
     }
-  });
+  }, {}, run);
+  addTokens(run, data?.usage?.total_tokens);
   if (typeof data?.output_text === 'string' && data.output_text.trim()) {
     return data.output_text;
   }
@@ -289,7 +363,7 @@ async function generateWithOpenAi(req: NormalizedRequest): Promise<string> {
     .flatMap((entry: any) => (Array.isArray(entry?.content) ? entry.content : []));
   const refusal = parts.find((part: any) => part?.type === 'refusal');
   if (refusal) {
-    throw new Error('The AI declined this request. Try rewording the prompt.');
+    throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
   }
   return parts.filter((part: any) => part?.type === 'output_text').map((part: any) => part.text || '').join('');
 }
@@ -323,32 +397,55 @@ function buildGeminiBody(req: NormalizedRequest) {
   };
 }
 
-function readGeminiText(data: any): string {
+function readGeminiText(data: any, run: Run): string {
+  addTokens(run, data?.usageMetadata?.totalTokenCount);
   const candidate = data?.candidates?.[0];
   if (!candidate) {
-    throw new Error('The AI declined this request. Try rewording the prompt.');
+    throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
   }
   if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
-    throw new Error('The AI declined this request. Try rewording the prompt.');
+    throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
   }
   return (candidate.content?.parts || []).map((part: any) => part?.text || '').join('');
 }
 
-async function generateWithGemini(req: NormalizedRequest): Promise<string> {
+async function generateWithGemini(req: NormalizedRequest, run: Run): Promise<string> {
   const url = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
   const headers = { 'x-goog-api-key': req.apiKey };
   const body = buildGeminiBody(req);
   let data: any;
   try {
-    data = await postJson(url(req.model), headers, body, { timeoutMs: GEMINI_PRIMARY_TIMEOUT_MS, failWhenOverloaded: true });
+    data = await postJson(url(req.model), headers, body, { timeoutMs: GEMINI_PRIMARY_TIMEOUT_MS, failWhenOverloaded: true }, run);
   } catch (error: any) {
     if (!error?.overloaded) throw error;
-    data = await postJson(url(GEMINI_FALLBACK_MODEL), headers, body);
+    run.onStatus({ kind: 'fallback' });
+    data = await postJson(url(GEMINI_FALLBACK_MODEL), headers, body, {}, run);
   }
-  return readGeminiText(data);
+  return readGeminiText(data, run);
 }
 
-async function generateWithAnthropic(req: NormalizedRequest): Promise<string> {
+/** Anthropic's SDK errors as our kinds. */
+function anthropicError(Anthropic: typeof AnthropicSdk, error: unknown, run: Run): unknown {
+  if (error instanceof Anthropic.APIUserAbortError || run.signal?.aborted) return cancelled();
+  if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+    return aiError(httpErrorMessage(401), 'KEY_REJECTED');
+  }
+  if (error instanceof Anthropic.RateLimitError) {
+    return aiError(httpErrorMessage(429, error.message), errorKind(429, error.message));
+  }
+  if (error instanceof Anthropic.APIConnectionTimeoutError) {
+    return aiError('The AI took too long to answer. Please try again.', 'TIMEOUT');
+  }
+  if (error instanceof Anthropic.APIConnectionError) {
+    return aiError('Could not reach the AI service. Check your internet connection.', 'OFFLINE');
+  }
+  if (error instanceof Anthropic.APIError) {
+    return aiError(httpErrorMessage(error.status || 0, error.message), errorKind(error.status || 0, error.message));
+  }
+  return error;
+}
+
+async function generateWithAnthropic(req: NormalizedRequest, run: Run): Promise<string> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk') as { default: typeof AnthropicSdk };
   const client = new Anthropic({
     apiKey: req.apiKey,
@@ -379,24 +476,13 @@ async function generateWithAnthropic(req: NormalizedRequest): Promise<string> {
           { type: 'text', text: req.userText }
         ]
       }]
-    } as any);
+    } as any, { signal: run.signal ?? undefined });
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
-      throw new Error(httpErrorMessage(401));
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      throw new Error(httpErrorMessage(429, error.message));
-    }
-    if (error instanceof Anthropic.APIConnectionError) {
-      throw new Error('Could not reach the AI service. Check your internet connection.');
-    }
-    if (error instanceof Anthropic.APIError) {
-      throw new Error(httpErrorMessage(error.status || 0, error.message));
-    }
-    throw error;
+    throw anthropicError(Anthropic, error, run);
   }
+  addTokens(run, ((response as any).usage?.input_tokens || 0) + ((response as any).usage?.output_tokens || 0));
   if ((response as any).stop_reason === 'refusal') {
-    throw new Error('The AI declined this request. Try rewording the prompt.');
+    throw aiError('The AI declined this request. Try rewording the prompt.', 'DECLINED');
   }
   if ((response as any).stop_reason === 'max_tokens') {
     throw new Error('The topic was too long for one request. Ask for fewer items.');
@@ -404,7 +490,7 @@ async function generateWithAnthropic(req: NormalizedRequest): Promise<string> {
   return (response as any).content.filter((block: any) => block.type === 'text').map((block: any) => block.text).join('');
 }
 
-async function generateWithGroq(req: NormalizedRequest): Promise<string> {
+async function generateWithGroq(req: NormalizedRequest, run: Run): Promise<string> {
   const content = [
     { type: 'text', text: req.userText },
     ...req.images.map(image => ({
@@ -424,24 +510,67 @@ async function generateWithGroq(req: NormalizedRequest): Promise<string> {
     ],
     response_format: { type: 'json_object' },
     max_completion_tokens: 8000
-  });
+  }, {}, run);
+  addTokens(run, data?.usage?.total_tokens);
   const text = String(data?.choices?.[0]?.message?.content || '');
   return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
 }
 
-async function generateDraft(input: any): Promise<{ text: string }> {
+async function generateDraft(input: any, options?: AiRunOptions): Promise<{ text: string; usage: AiUsage }> {
   const req = normalizeInput(input);
+  const run = newRun(options);
   let text: string;
   switch (req.provider) {
-    case 'openai': text = await generateWithOpenAi(req); break;
-    case 'gemini': text = await generateWithGemini(req); break;
-    case 'anthropic': text = await generateWithAnthropic(req); break;
-    case 'groq': text = await generateWithGroq(req); break;
+    case 'openai': text = await generateWithOpenAi(req, run); break;
+    case 'gemini': text = await generateWithGemini(req, run); break;
+    case 'anthropic': text = await generateWithAnthropic(req, run); break;
+    case 'groq': text = await generateWithGroq(req, run); break;
   }
   if (!String(text || '').trim()) {
-    throw new Error('The AI returned an empty answer. Please try again.');
+    throw aiError('The AI returned an empty answer. Please try again.', 'FAILED');
   }
-  return { text };
+  return { text, usage: run.usage };
+}
+
+/** "Is this key working?": one tiny request, as on the desktop (electron/main/ai-topic-service.js). */
+async function checkKey(input: any, options?: AiRunOptions): Promise<{ usage: AiUsage }> {
+  const req = normalizeInput({ provider: input?.provider, systemPrompt: 'Answer with one word.', userText: 'Say OK.' });
+  const run = newRun(options);
+  const ask = { timeoutMs: 30000 };
+  switch (req.provider) {
+    case 'openai': {
+      const data = await postJson('https://api.openai.com/v1/responses', { Authorization: `Bearer ${req.apiKey}` },
+        { model: req.model, input: 'Say OK.', max_output_tokens: 16 }, ask, run);
+      addTokens(run, data?.usage?.total_tokens);
+      break;
+    }
+    case 'gemini': {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
+      const data = await postJson(url, { 'x-goog-api-key': req.apiKey },
+        { contents: [{ role: 'user', parts: [{ text: 'Say OK.' }] }], generationConfig: { maxOutputTokens: 4 } }, ask, run);
+      addTokens(run, data?.usageMetadata?.totalTokenCount);
+      break;
+    }
+    case 'anthropic': {
+      const { default: Anthropic } = await import('@anthropic-ai/sdk') as { default: typeof AnthropicSdk };
+      const client = new Anthropic({ apiKey: req.apiKey, timeout: 30000, maxRetries: 0, dangerouslyAllowBrowser: true });
+      try {
+        const response = await client.messages.create({ model: req.model, max_tokens: 4, messages: [{ role: 'user', content: 'Say OK.' }] } as any,
+          { signal: run.signal ?? undefined });
+        addTokens(run, ((response as any).usage?.input_tokens || 0) + ((response as any).usage?.output_tokens || 0));
+      } catch (error) {
+        throw anthropicError(Anthropic, error, run);
+      }
+      break;
+    }
+    case 'groq': {
+      const data = await postJson('https://api.groq.com/openai/v1/chat/completions', { Authorization: `Bearer ${req.apiKey}` },
+        { model: req.model, messages: [{ role: 'user', content: 'Say OK.' }], max_completion_tokens: 4 }, ask, run);
+      addTokens(run, data?.usage?.total_tokens);
+      break;
+    }
+  }
+  return { usage: run.usage };
 }
 
 // ---- image generation ("Generate a picture") ----
@@ -463,7 +592,7 @@ function normalizeImageInput(input: any): { provider: AiTopicWebProviderId; apiK
   return { provider, apiKey, model: imageInfo.model, prompt };
 }
 
-async function generateImageWithOpenAi(req: { apiKey: string; model: string; prompt: string }) {
+async function generateImageWithOpenAi(req: { apiKey: string; model: string; prompt: string }, run: Run) {
   const data = await postJson('https://api.openai.com/v1/images/generations', {
     Authorization: `Bearer ${req.apiKey}`
   }, {
@@ -473,7 +602,8 @@ async function generateImageWithOpenAi(req: { apiKey: string; model: string; pro
     // A flashcard picture: medium is clear enough and costs far less than high.
     quality: 'medium',
     n: 1
-  });
+  }, {}, run);
+  addTokens(run, data?.usage?.total_tokens);
   const entry = data?.data?.[0];
   if (!entry?.b64_json) {
     throw new Error('The AI did not return a picture. Please try again.');
@@ -481,15 +611,16 @@ async function generateImageWithOpenAi(req: { apiKey: string; model: string; pro
   return { imageBase64: entry.b64_json, mimeType: 'image/png' };
 }
 
-async function generateImageWithGemini(req: { apiKey: string; model: string; prompt: string }) {
+async function generateImageWithGemini(req: { apiKey: string; model: string; prompt: string }, run: Run) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(req.model)}:generateContent`;
   const data = await postJson(url, { 'x-goog-api-key': req.apiKey }, {
     contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
     generationConfig: { responseModalities: ['IMAGE'] }
-  });
+  }, {}, run);
+  addTokens(run, data?.usageMetadata?.totalTokenCount);
   const candidate = data?.candidates?.[0];
   if (!candidate || candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
-    throw new Error('The AI declined this request. Try a different picture description.');
+    throw aiError('The AI declined this request. Try a different picture description.', 'DECLINED');
   }
   const part = (candidate.content?.parts || []).find((p: any) => p?.inlineData?.data);
   if (!part) {
@@ -498,9 +629,11 @@ async function generateImageWithGemini(req: { apiKey: string; model: string; pro
   return { imageBase64: part.inlineData.data, mimeType: part.inlineData.mimeType || 'image/png' };
 }
 
-async function generateImage(input: any): Promise<{ imageBase64: string; mimeType: string }> {
+async function generateImage(input: any, options?: AiRunOptions): Promise<{ imageBase64: string; mimeType: string; usage: AiUsage }> {
   const req = normalizeImageInput(input);
-  return req.provider === 'openai' ? generateImageWithOpenAi(req) : generateImageWithGemini(req);
+  const run = newRun(options);
+  const image = req.provider === 'openai' ? await generateImageWithOpenAi(req, run) : await generateImageWithGemini(req, run);
+  return { ...image, usage: run.usage };
 }
 
 // ---- key management IPC equivalents (electron/main/ai-topic-ipc.js's validation rules) ----
@@ -557,19 +690,28 @@ export const aiTopicWebBridge = {
     }
   },
 
-  async aiTopicGenerateDraft(input: any): Promise<IpcResponse<{ text: string }>> {
+  // The error's kind (no credit, today's limit, ...) is the code, as on the desktop.
+  async aiTopicGenerateDraft(input: any, options?: AiRunOptions): Promise<IpcResponse<{ text: string; usage: AiUsage }>> {
     try {
-      return operationResult(await generateDraft(input));
+      return operationResult(await generateDraft(input, options));
     } catch (error: any) {
-      return operationError('AI_TOPIC_FAILED', error?.message || 'The AI could not create the topic.');
+      return operationError(toErrorKind(error?.kind), error?.message || 'The AI could not create the topic.');
     }
   },
 
-  async aiTopicGenerateImage(input: any): Promise<IpcResponse<{ imageBase64: string; mimeType: string }>> {
+  async aiTopicGenerateImage(input: any, options?: AiRunOptions): Promise<IpcResponse<{ imageBase64: string; mimeType: string; usage: AiUsage }>> {
     try {
-      return operationResult(await generateImage(input));
+      return operationResult(await generateImage(input, options));
     } catch (error: any) {
-      return operationError('AI_TOPIC_IMAGE_FAILED', error?.message || 'The AI could not create the picture.');
+      return operationError(toErrorKind(error?.kind), error?.message || 'The AI could not create the picture.');
+    }
+  },
+
+  async aiTopicCheckKey(input: any, options?: AiRunOptions): Promise<IpcResponse<{ usage: AiUsage }>> {
+    try {
+      return operationResult(await checkKey(input, options));
+    } catch (error: any) {
+      return operationError(toErrorKind(error?.kind), error?.message || 'The AI could not be reached.');
     }
   }
 };

@@ -136,6 +136,21 @@ describe('TalkShowComponent', () => {
     expect(component.view).toBe('results');
   });
 
+  it('"Next part" leaves the rest of a long part out', async () => {
+    await create(TEST);
+    component.setVoice(false);
+    await component.start();
+    component.next();
+    expect(component.part?.type).toBe('ASK');
+    expect(component.turnsLeftInPart).toBe(1);
+    expect(component.onLastPart).toBe(false);
+
+    component.skipPart();
+    expect(component.view).toBe('part');
+    expect(component.part?.type).toBe('ODD');
+    expect(component.turnsLeftInPart).toBe(0);
+  });
+
   it('reads the examiner lines aloud and goes on air when the question has been asked', async () => {
     await create(TEST);
     await component.start();

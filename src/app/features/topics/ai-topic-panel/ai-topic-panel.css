@@ -1,54 +1,11 @@
-.ai-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  z-index: 10000;
-}
-
-/* Season packs restyle the frame (shell, header, footer); the section cards stay light paper. */
-.ai-dialog {
-  background: var(--np-dialog, #f8fafc);
-  border-radius: 18px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3), 0 0 0 1px var(--np-dialog-border, transparent);
-  scrollbar-color: var(--np-dialog-scrollbar, auto);
-  width: min(680px, 100%);
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  padding: 18px 20px;
+/* Create with AI, inside the topic form under the name: the form gives it its frame. */
+.ai-panel {
   color: #1f2937;
 }
 
-.ai-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  padding: 0 2px;
-}
-
-.ai-header h2 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  background: var(--np-dialog-title, linear-gradient(90deg, #4f46e5, #9333ea));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.ai-close {
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  color: var(--np-dialog-muted, #9ca3af);
-}
-
-.ai-close:hover:not(:disabled) {
-  background: var(--np-dialog-chip, #e5e7eb);
-  color: var(--np-dialog-ink, #4b5563);
+.ai-panel-bar {
+  display: block;
+  margin-bottom: 12px;
 }
 
 /* Every section is its own clean card — a plain white surface against the dialog's light grey
@@ -107,51 +64,6 @@
   min-height: 96px;
 }
 
-.ai-providers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ai-provider {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  background: #fff;
-}
-
-.ai-provider small {
-  color: #9ca3af;
-}
-
-.ai-provider .ai-linked {
-  color: #059669;
-  font-weight: 700;
-}
-
-.ai-provider-active {
-  border-color: #6366f1;
-  background: #eef2ff;
-  color: #3730a3;
-  font-weight: 600;
-}
-
-.ai-key-setup {
-  margin-top: 10px;
-  padding: 12px;
-  border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-}
-
-.ai-key-title {
-  font-weight: 600;
-}
-
 .ai-key-row {
   display: flex;
   flex-wrap: wrap;
@@ -162,19 +74,6 @@
 .ai-key-row .ai-input {
   flex: 1 1 220px;
   width: auto;
-}
-
-.ai-media-choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.ai-key-actions {
-  display: flex;
-  gap: 14px;
-  margin-top: 6px;
 }
 
 .ai-primary,
@@ -198,8 +97,7 @@
 
 .ai-primary:disabled,
 .ai-secondary:disabled,
-.ai-link:disabled,
-.ai-icon-link:disabled {
+.ai-link:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -212,18 +110,6 @@
 
 .ai-danger {
   color: #dc2626;
-}
-
-.ai-icon-link {
-  font-size: 1rem;
-  line-height: 1;
-  padding: 4px 6px;
-  border-radius: 6px;
-  background: transparent;
-}
-
-.ai-icon-link:hover:not(:disabled) {
-  background: #f3f4f6;
 }
 
 .ai-pages {
@@ -448,14 +334,33 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  border-top: 1px solid var(--np-dialog-line, #e5e7eb);
+  border-top: 1px solid #e5e7eb;
   padding-top: 14px;
 }
 
-.ai-footer .ai-secondary {
-  border-color: var(--np-dialog-line, #d1d5db);
-  background: var(--np-dialog-chip, #fff);
-  color: var(--np-dialog-chip-ink, #374151);
+/* The chosen Text AI has no key yet: next to Generate, the way to link it. */
+.ai-link-first {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px dashed #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ai-link-first:hover {
+  background: #e0e7ff;
+}
+
+/* The live card, the problem card and the warning, right above Generate. */
+.ai-run-card {
+  margin-bottom: 12px;
+}
+
+/* "Written by: Gemini ▾" at the start of the footer, Generate at its end. */
+.ai-written-by {
+  margin-right: auto;
 }
 
 .ai-working {
@@ -463,7 +368,7 @@
   align-items: center;
   gap: 8px;
   margin-right: auto;
-  color: var(--np-dialog-heading, #4f46e5);
+  color: #4f46e5;
   font-size: 0.9rem;
 }
 
@@ -664,6 +569,16 @@
   margin-left: 0;
 }
 
+.ai-speaking-too-long {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
 .ai-speaking-unit {
   min-width: 4.5rem;
   color: #64748b;
@@ -755,16 +670,32 @@
   border: 1px solid #e0e7ff;
 }
 
+.ai-variant-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
 .ai-variant {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
   border: 1px solid transparent;
   font-size: 0.85rem;
   color: #475569;
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-variant:hover { background: rgba(255, 255, 255, 0.6); }
+
+.ai-variant-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ai-variant input { accent-color: #4f46e5; }
@@ -773,5 +704,68 @@
   background: #fff;
   border-color: #a5b4fc;
   color: #3730a3;
-  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.12);
+}
+
+.ai-variant-on .ai-variant-head { font-weight: 600; }
+
+/* The example item: what is on the text, what is on the card, and which one is the answer. */
+.ai-variant-example {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+  opacity: 0.75;
+}
+
+.ai-variant-on .ai-variant-example { opacity: 1; }
+
+.ai-ex-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ai-ex-tag {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.ai-ex-tag b { color: #15803d; font-weight: 700; }
+
+.ai-ex-text,
+.ai-ex-card {
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.ai-ex-text {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.ai-ex-card {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  color: #1e3a8a;
+  text-align: center;
+}
+
+.ai-ex-answer {
+  outline: 2px solid #86efac;
+  outline-offset: 1px;
+}
+
+.ai-ex-arrow {
+  align-self: center;
+  margin-top: 12px;
+  color: #a5b4fc;
 }

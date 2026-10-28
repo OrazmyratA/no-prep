@@ -1,0 +1,96 @@
+<section class="sg" role="region" [attr.aria-label]="'signsTitle' | translate">
+  <header class="sg-head">
+    <span class="sg-book" aria-hidden="true">📘</span>
+    <div class="sg-head-text">
+      <h3 class="sg-title">{{ 'signsTitle' | translate }}</h3>
+      <p class="sg-subtitle">{{ 'signsSubtitle' | translate }}</p>
+    </div>
+    <button type="button" class="sg-close" (click)="closed.emit()" [attr.aria-label]="'close' | translate">✕</button>
+  </header>
+
+  <!-- The three games -->
+  <div class="sg-tabs" role="tablist">
+    <button *ngFor="let g of guides" type="button" role="tab" class="sg-tab" [class.sg-tab-on]="tab === g.id"
+            [attr.aria-selected]="tab === g.id" [attr.tabindex]="tab === g.id ? 0 : -1"
+            (click)="tab = g.id" (keydown)="onTabKey($event)">
+      <span class="sg-tab-icon" aria-hidden="true">{{ g.icon }}</span>
+      <span class="sg-tab-text">
+        <b>{{ g.titleKey | translate }}</b>
+        <small>{{ g.gameKey | translate }}</small>
+      </span>
+    </button>
+  </div>
+
+  <div class="sg-body" role="tabpanel">
+    <!-- Steps: what to do, and the signs each step uses -->
+    <ol class="sg-steps">
+      <li *ngFor="let step of guide.steps; let i = index; let last = last" class="sg-step" [class.sg-step-last]="last">
+        <span class="sg-step-num" aria-hidden="true">{{ i + 1 }}</span>
+        <div class="sg-step-main">
+          <h4 class="sg-step-title">{{ step.titleKey | translate }}</h4>
+          <p class="sg-step-hint">{{ step.hintKey | translate }}</p>
+          <div *ngFor="let row of step.signs" class="sg-sign">
+            <code class="sg-chip">{{ row.sign }}</code>
+            <div class="sg-sign-main">
+              <p class="sg-meaning">{{ row.meaningKey | translate }}</p>
+              <div class="sg-line">
+                <ng-container *ngTemplateOutlet="line; context: { $implicit: row.example }"></ng-container>
+              </div>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ol>
+
+    <!-- A whole working topic to start from -->
+    <aside class="sg-example">
+      <div class="sg-example-head">
+        <span class="sg-example-title">✅ {{ 'signsExample' | translate }}</span>
+        <small>{{ 'signsExampleHint' | translate }}</small>
+      </div>
+      <ol class="sg-example-lines">
+        <li *ngFor="let text of guide.example; trackBy: trackLine" class="sg-example-line">
+          <span class="sg-example-text"><ng-container *ngTemplateOutlet="line; context: { $implicit: text }"></ng-container></span>
+        </li>
+      </ol>
+      <button type="button" class="sg-use" (click)="useWhole()">
+        <span aria-hidden="true">📋</span> {{ 'signsUseExample' | translate }}
+      </button>
+      <p class="sg-use-note">{{ 'signsUseExampleNote' | translate }}</p>
+    </aside>
+  </div>
+
+  <!-- Talk Show: every part type, ready to add -->
+  <div *ngIf="tab === 'speaking'" class="sg-parts">
+    <h4 class="sg-parts-title">{{ 'signsPartsTitle' | translate }}</h4>
+    <p class="sg-parts-hint">{{ 'signsPartsHint' | translate }}</p>
+    <div class="sg-part-grid">
+      <article *ngFor="let part of parts" class="sg-part" [class.sg-part-pictures]="part.pictures">
+        <header class="sg-part-head">
+          <code class="sg-chip sg-chip-small">{{ part.type }}</code>
+          <b class="sg-part-name">{{ ('talkShowTask_' + part.type) | translate }}</b>
+          <span *ngIf="part.pictures" class="sg-part-pic" [title]="'signsPartNeedsPictures' | translate" aria-hidden="true">🖼️</span>
+        </header>
+        <p class="sg-part-what">{{ part.whatKey | translate }}</p>
+        <div class="sg-mini">
+          <div *ngFor="let text of part.example; trackBy: trackLine" class="sg-mini-line">
+            <ng-container *ngTemplateOutlet="line; context: { $implicit: text }"></ng-container>
+          </div>
+        </div>
+        <button *ngIf="!part.pictures" type="button" class="sg-add" (click)="addPart(part.example)">
+          + {{ 'signsAddPart' | translate }}
+        </button>
+        <p *ngIf="part.pictures" class="sg-pic-note">{{ 'signsPartNeedsPictures' | translate }}</p>
+      </article>
+    </div>
+  </div>
+
+  <footer class="sg-foot">
+    <span aria-hidden="true">💡</span> {{ 'signsFootTip' | translate }}
+  </footer>
+</section>
+
+<!-- One example line, each sign in its own colour -->
+<ng-template #line let-text>
+  <span *ngFor="let piece of pieces(text)" class="sg-p" [ngClass]="'sg-p-' + piece.kind">{{ piece.text }}</span>
+</ng-template>

@@ -7,6 +7,7 @@ import { AudioVoiceService, VOICE_LANGUAGES } from '../audio-voice';
 import { renderTextImage } from '../../shared/text-image';
 import { AiCropBox, AiItemDraft } from './ai-topic-draft';
 import { AiTopicProviderId, AiTopicService } from './ai-topic.service';
+import type { AiRunOptions } from './ai-run';
 
 // Same output as the image uploader's defaults, so AI images look and weigh like hand-picked ones.
 const ITEM_IMAGE_MAX_MB = 0.2;
@@ -94,14 +95,14 @@ export class AiMediaResolverService {
    * button) needs to know when this didn't work so it can tell the teacher, rather than the
    * button silently doing nothing.
    */
-  async generateImage(choice: AiImageChoice, provider: AiTopicProviderId): Promise<Blob | null> {
+  async generateImage(choice: AiImageChoice, provider: AiTopicProviderId, options?: AiRunOptions): Promise<Blob | null> {
     const subject = choice.cardText || choice.query;
     if (!subject) return null;
     const styleHint = choice.style === 'illustration'
       ? 'a simple, friendly illustration, plain background'
       : 'a clear, realistic photo, plain background';
     const prompt = `${styleHint}, showing: ${subject}. Suitable for a school flashcard, no text or watermark.`;
-    const raw = await this.aiTopic.generateImage(provider, prompt);
+    const raw = await this.aiTopic.generateImage(provider, prompt, options);
     const blob = await this.compressItemImage(raw, 'ai-generated.png');
     choice.generated = blob;
     choice.index = GENERATED_INDEX;
@@ -118,6 +119,11 @@ export class AiMediaResolverService {
       query: words, style: 'photo', cardText: words, cardBackground,
       pageCrop: null, hits: null, generated: null, index: WORD_CARD_INDEX
     };
+  }
+
+  /** A word card with these words, in the AI's card look (blue unless a colour is given). */
+  wordCard(words: string, cardBackground = WORD_CARD_BACKGROUND): Promise<Blob> {
+    return this.renderWordCard(words, cardBackground);
   }
 
   /**

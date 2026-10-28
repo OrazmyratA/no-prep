@@ -1,0 +1,48 @@
+<section class="acc" [attr.aria-label]="'aiChoiceAis' | translate">
+  <header class="acc-head">
+    <span class="acc-title">{{ 'aiChoiceAis' | translate }}</span>
+    <span class="acc-progress" [class.acc-progress-all]="allLinked" role="status">
+      <span class="acc-dots" aria-hidden="true">
+        <i *ngFor="let p of providers; trackBy: trackById" [class.acc-dot-on]="p.configured" [attr.data-ai]="p.id"></i>
+      </span>
+      <ng-container *ngIf="allLinked; else counting">🏆 {{ 'aiAccountsAll' | translate }}</ng-container>
+      <ng-template #counting>{{ 'aiAccountsCount' | translate: { linked: linkedCount, total: providers.length } }}</ng-template>
+    </span>
+  </header>
+
+  <div class="acc-list">
+    <!-- NoPrep AI, when the app offers it: included, nothing to link. -->
+    <span *ngIf="builtin" class="acc-ai acc-ai-linked acc-ai-static" data-ai="builtin" [title]="'aiChoiceTagBuiltin' | translate">
+      <span class="acc-logo"><app-ai-logo id="builtin"></app-ai-logo></span>
+      <span class="acc-name">{{ shortLabel('builtin') }}</span>
+      <span class="acc-badge" aria-hidden="true">✓</span>
+    </span>
+
+    <button *ngFor="let p of providers; trackBy: trackById" type="button" class="acc-ai"
+            [class.acc-ai-linked]="p.configured" [class.acc-ai-new]="justLinked === p.id" [class.acc-ai-trouble]="!!problem(p)"
+            [attr.data-ai]="p.id" [title]="hint(p)" [attr.aria-label]="hint(p)"
+            (click)="linking = p.id">
+      <span class="acc-logo"><app-ai-logo [id]="p.id"></app-ai-logo></span>
+      <span class="acc-name">{{ shortLabel(p.id) }}</span>
+      <span *ngIf="p.configured && !problem(p)" class="acc-badge" aria-hidden="true">✓</span>
+      <span *ngIf="problem(p) as health" class="acc-badge acc-badge-trouble" aria-hidden="true">{{ problemIcon(health) }}</span>
+      <ng-container *ngIf="!p.configured">
+        <span *ngIf="cost(p.id) as kind" class="acc-cost" [class.acc-cost-free]="kind === 'free'">
+          {{ (kind === 'free' ? 'aiAccountFree' : 'aiAccountPaid') | translate }}
+        </span>
+        <span class="acc-add">+ {{ 'aiChoiceLink' | translate }}</span>
+      </ng-container>
+    </button>
+  </div>
+
+  <!-- A linked AI that won't work right now, said plainly; a click opens its window (status, credit). -->
+  <div *ngIf="troubled.length" class="acc-troubles">
+    <button *ngFor="let t of troubled" type="button" class="acc-trouble" (click)="linking = t.provider.id">
+      <span aria-hidden="true">{{ problemIcon(t.health) }}</span>
+      <span>{{ problemText(t.provider, t.health) }}</span>
+      <span class="acc-trouble-more">{{ 'aiAccountWhatToDo' | translate }} ›</span>
+    </button>
+  </div>
+</section>
+
+<app-ai-link-dialog *ngIf="linking" [providerId]="linking" (closed)="linking = null"></app-ai-link-dialog>

@@ -52,7 +52,9 @@ import {
 } from '../../../core/book-tasks';
 import {
   getGuideTracks,
-  getOrderedGuidePins
+  getGuideTrackTrimRange,
+  getOrderedGuidePins,
+  isGuideTrackTrimmed
 } from '../../../core/guide-timeline';
 import {
   getOrderedTracingPoints,
@@ -287,6 +289,14 @@ Tomorrow I will help my mom.`;
     width: number;
     duration: number;
   } | null = null;
+  private guideTrimDragState: {
+    elementId: string;
+    trackId: string;
+    edge: 'start' | 'end';
+    left: number;
+    width: number;
+    duration: number;
+  } | null = null;
   private pagePinDragState: {
     elementId: string;
     pinId: string;
@@ -395,6 +405,7 @@ Tomorrow I will help my mom.`;
       || this.taskDrawState
       || this.guideTrackSeekDragState
       || this.timelinePinDragState
+      || this.guideTrimDragState
       || this.pagePinDragState
       || this.tracingPointDragState
       || (this.placingTracingTask && this.tracingPlacementElementId)
@@ -1039,6 +1050,34 @@ Tomorrow I will help my mom.`;
     await this.mediaController.onBookImageSelected(blob, element);
   }
 
+  getBookImageBlob(element: BookElement): Blob | null {
+    return this.mediaController.getBookImageBlob(element);
+  }
+
+  getAssetBlob(relativePath: string): Blob | null {
+    return this.mediaController.getAssetBlob(relativePath);
+  }
+
+  rememberAssetBlob(relativePath: string, blob: Blob): void {
+    this.mediaController.rememberAssetBlob(relativePath, blob);
+  }
+
+  isAddingAnswerKeyImage(element: BookElement): boolean {
+    return this.mediaController.isAddingAnswerKeyImage(element);
+  }
+
+  startAddingAnswerKeyImage(element: BookElement): void {
+    this.mediaController.startAddingAnswerKeyImage(element);
+  }
+
+  getAnswerKeyUploaderImage(element: BookElement): Blob | null {
+    return this.mediaController.getAnswerKeyUploaderImage(element);
+  }
+
+  async onAnswerKeyUploaderImage(blob: Blob | null, element: BookElement): Promise<void> {
+    await this.mediaController.onAnswerKeyUploaderImage(blob, element);
+  }
+
   getAnswerKeyImages(element: BookElement): string[] {
     return this.mediaController.getAnswerKeyImages(element);
   }
@@ -1197,8 +1236,8 @@ Tomorrow I will help my mom.`;
     await this.guidePreviewController.onGuidePinImageSelected(blob, element);
   }
 
-  getGuidePinImageUrl(pin: GuideTimelinePin | null): string {
-    return this.guidePreviewController.getGuidePinImageUrl(pin);
+  getGuidePinImageBlob(pin: GuideTimelinePin | null): Blob | null {
+    return this.guidePreviewController.getGuidePinImageBlob(pin);
   }
 
   addGameMarker(): void {
@@ -1630,7 +1669,7 @@ Tomorrow I will help my mom.`;
       this.scheduleCreatorInteractionRefresh();
       return;
     }
-    if (this.guideTrackSeekDragState || this.timelinePinDragState || this.pagePinDragState) {
+    if (this.guideTrackSeekDragState || this.timelinePinDragState || this.guideTrimDragState || this.pagePinDragState) {
       event.preventDefault();
       const pointerEvent = this.getLatestPointerEvent(event);
       this.pendingGuidePinPointer = { x: pointerEvent.clientX, y: pointerEvent.clientY };
@@ -1758,12 +1797,13 @@ Tomorrow I will help my mom.`;
         : null;
       if (track) this.sortGuidePins(track);
     }
-    if (this.dragState || this.timelinePinDragState || this.pagePinDragState || this.tracingPointDragState) {
+    if (this.dragState || this.timelinePinDragState || this.guideTrimDragState || this.pagePinDragState || this.tracingPointDragState) {
       this.commitHistoryCapture();
     }
     this.dragState = null;
     this.guideTrackSeekDragState = null;
     this.timelinePinDragState = null;
+    this.guideTrimDragState = null;
     this.pagePinDragState = null;
     this.pendingGuidePinPointer = null;
     this.tracingPointDragState = null;
@@ -1785,12 +1825,13 @@ Tomorrow I will help my mom.`;
     }
     this.flushGuidePinDragFrame();
     this.flushTracingPointDragFrame();
-    if (this.dragState || this.timelinePinDragState || this.pagePinDragState || this.tracingPointDragState) {
+    if (this.dragState || this.timelinePinDragState || this.guideTrimDragState || this.pagePinDragState || this.tracingPointDragState) {
       this.commitHistoryCapture();
     }
     this.dragState = null;
     this.guideTrackSeekDragState = null;
     this.timelinePinDragState = null;
+    this.guideTrimDragState = null;
     this.pagePinDragState = null;
     this.pendingGuidePinPointer = null;
     this.tracingPointDragState = null;
@@ -2397,6 +2438,32 @@ Tomorrow I will help my mom.`;
 
   startGuidePagePinDrag(event: PointerEvent, element: BookElement, pin: GuideTimelinePin): void {
     this.guidePreviewController.startGuidePagePinDrag(event, element, pin);
+  }
+
+  startGuideTrimDrag(event: PointerEvent, element: BookElement, track: GuideAudioTrack, edge: 'start' | 'end'): void {
+    this.guidePreviewController.startGuideTrimDrag(event, element, track, edge);
+  }
+
+  resetGuideTrackTrim(element: BookElement, track: GuideAudioTrack): void {
+    this.guidePreviewController.resetGuideTrackTrim(element, track);
+  }
+
+  isGuideTrackTrimmed(track: GuideAudioTrack): boolean {
+    return isGuideTrackTrimmed(track);
+  }
+
+  getGuideTrackTrimRange(track: GuideAudioTrack): { start: number; end: number } {
+    return getGuideTrackTrimRange(track, this.getGuideTrackDuration(track));
+  }
+
+  isPinOutsideGuideTrim(track: GuideAudioTrack, pin: GuideTimelinePin): boolean {
+    return this.guidePreviewController.isPinOutsideGuideTrim(track, pin);
+  }
+
+  isSelectedGuidePinOutsideTrim(element: BookElement): boolean {
+    const track = this.getSelectedGuideTrack(element);
+    const pin = this.getSelectedGuidePin(element);
+    return !!track && !!pin && this.isPinOutsideGuideTrim(track, pin);
   }
 
   getAssetFileName(relativePath: string): string {

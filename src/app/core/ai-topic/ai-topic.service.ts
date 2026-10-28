@@ -1,7 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
+import { Subject } from 'rxjs';
 import imageCompression from 'browser-image-compression';
 import { imageCompressionLibUrl } from '../image-compression';
 import { aiTopicWebBridge } from './ai-topic-web-bridge';
+import { AiErrorKind, AiRunOptions, AiRunStatus, AiUsage, toErrorKind } from './ai-run';
 import { AI_TOPIC_DRAFT_SCHEMA, AiTopicDraft, parseAiTopicDraft } from './ai-topic-draft';
 import { AiTopicRequest, buildAiTopicSystemPrompt, buildAiTopicUserText } from './ai-topic-prompt';
 import {
@@ -97,10 +99,35 @@ export function pageBudgetMb(pageCount: number): number {
   return Math.min(PAGE_MAX_MB, PAGES_TOTAL_MB / Math.max(1, pageCount));
 }
 
-export class AiTopicError extends Error {}
+/** `kind` says what went wrong (no credit, today's limit, ...): see ai-run.ts. */
+export class AiTopicError extends Error {
+  constructor(message = '', readonly kind: AiErrorKind = 'FAILED') {
+    super(message);
+  }
+}
+
+/** Which job an AI call did ('topic' = Generate; 'text' = its other text tasks), for AiStatusService. */
+export type AiJobKind = 'topic' | 'text' | 'picture' | 'check';
+
+/** Every AI call's outcome: what it did, how long it took, what it used, or why it failed. */
+export interface AiActivity {
+  provider: AiTopicProviderId;
+  job: AiJobKind;
+  ok: boolean;
+  kind?: AiErrorKind;
+  usage?: AiUsage;
+  ms: number;
+}
+
+let requestCounter = 0;
 
 @Injectable({ providedIn: 'root' })
 export class AiTopicService {
+  /** Every AI call's outcome (from the topic form, the book creator, the games). */
+  readonly activity$ = new Subject<AiActivity>();
+
+  constructor(private zone: NgZone) {}
+
   /**
    * Electron calls the AIs via IPC (keys live in the main process); the web build falls back to
    * calling each provider directly with a key the teacher pastes in and stores in this browser
@@ -177,9 +204,10 @@ export class AiTopicService {
     }
   }
 
-  async generateDraft(provider: AiTopicProviderId, request: AiTopicRequest, pages: Blob[]): Promise<AiTopicDraft> {
+  async generateDraft(provider: AiTopicProviderId, request: AiTopicRequest, pages: Blob[], options?: AiRunOptions): Promise<AiTopicDraft> {
     const images = await this.pagesToBase64(provider, pages);
-    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+    if (options?.signal?.aborted) throw new AiTopicError('', 'CANCELLED');
+    const result = await this.run<{ text: string }>('aiTopicGenerateDraft', 'topic', options, {
       provider,
       systemPrompt: buildAiTopicSystemPrompt(),
       userText: buildAiTopicUserText(request),
@@ -195,7 +223,7 @@ export class AiTopicService {
 
   /** Writing Workshop "Check": reuses the draft IPC, which takes any instructions and schema. */
   async checkWriting(provider: AiTopicProviderId, request: WritingCheckRequest, gapCounts: readonly number[]): Promise<WritingCheckResult> {
-    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+    const result = await this.run<{ text: string }>('aiTopicGenerateDraft', 'text', undefined, {
       provider,
       systemPrompt: buildWritingCheckSystemPrompt(),
       userText: buildWritingCheckUserText(request),
@@ -212,7 +240,7 @@ export class AiTopicService {
   /** Speaking mode's "Analyse": which exam and speaking parts the materials contain. */
   async analyseSpeaking(provider: AiTopicProviderId, request: SpeakingAnalysisRequest, pages: Blob[]): Promise<SpeakingAnalysis> {
     const images = await this.pagesToBase64(provider, pages);
-    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+    const result = await this.run<{ text: string }>('aiTopicGenerateDraft', 'text', undefined, {
       provider,
       systemPrompt: buildSpeakingAnalysisSystemPrompt(),
       userText: buildSpeakingAnalysisUserText(request),
@@ -228,7 +256,7 @@ export class AiTopicService {
 
   /** Talk Show "Suggest marks": one entry per candidate, in the request's order. */
   async suggestSpeakingMarks(provider: AiTopicProviderId, request: SpeakingFeedbackRequest): Promise<SpeakingFeedback[]> {
-    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+    const result = await this.run<{ text: string }>('aiTopicGenerateDraft', 'text', undefined, {
       provider,
       systemPrompt: buildSpeakingFeedbackSystemPrompt(),
       userText: buildSpeakingFeedbackUserText(request),
@@ -245,7 +273,7 @@ export class AiTopicService {
   /** AI lesson planner "Analyse" / "Re-plan": the plan for these book pages, nothing generated yet. */
   async analyseLesson(provider: AiTopicProviderId, request: LessonPlanRequest, pages: Blob[]): Promise<LessonPlan> {
     const images = await this.pagesToBase64(provider, pages);
-    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+    const result = await this.run<{ text: string }>('aiTopicGenerateDraft', 'text', undefined, {
       provider,
       systemPrompt: buildLessonPlanSystemPrompt(),
       userText: buildLessonPlanUserText(request),
@@ -262,7 +290,7 @@ export class AiTopicService {
   /** Book creator "✨ Prepare tasks": the exercises on these book pages and where they are. */
   async prepareTasks(provider: AiTopicProviderId, request: TaskPrepRequest, pages: Blob[]): Promise<TaskPrepResult> {
     const images = await this.pagesToBase64(provider, pages);
-    const result = await this.invoke<{ text: string }>('aiTopicGenerateDraft', {
+    const result = await this.run<{ text: string }>('aiTopicGenerateDraft', 'text', undefined, {
       provider,
       systemPrompt: buildTaskPrepSystemPrompt(),
       userText: buildTaskPrepUserText(request),
@@ -277,12 +305,35 @@ export class AiTopicService {
   }
 
   /** Explicit, teacher-triggered only — see the "Generate a picture" button, never automatic. */
-  async generateImage(provider: AiTopicProviderId, prompt: string): Promise<Blob> {
-    const result = await this.invoke<{ imageBase64: string; mimeType: string }>('aiTopicGenerateImage', {
+  async generateImage(provider: AiTopicProviderId, prompt: string, options?: AiRunOptions): Promise<Blob> {
+    const result = await this.run<{ imageBase64: string; mimeType: string }>('aiTopicGenerateImage', 'picture', options, {
       provider,
       prompt
     });
     return this.base64ToBlob(result.imageBase64, result.mimeType || 'image/png');
+  }
+
+  /**
+   * "Is this key working?": one tiny request (free on free plans, a fraction of a cent on paid
+   * ones). Run when a key is linked and from "Check now".
+   */
+  async checkKey(provider: AiTopicProviderId, options?: AiRunOptions): Promise<void> {
+    await this.run('aiTopicCheckKey', 'check', options, { provider });
+  }
+
+  /** One AI call: its outcome goes to activity$ (health, today's use, usual time). */
+  private async run<T>(method: string, job: AiJobKind, options: AiRunOptions | undefined, input: { provider: AiTopicProviderId } & Record<string, unknown>): Promise<T> {
+    const started = Date.now();
+    const report = (activity: Omit<AiActivity, 'provider' | 'job' | 'ms'>) =>
+      this.zone.run(() => this.activity$.next({ provider: input.provider, job, ms: Date.now() - started, ...activity }));
+    try {
+      const result = await this.invoke<T & { usage?: AiUsage }>(method, input, options);
+      report({ ok: true, usage: result?.usage });
+      return result;
+    } catch (error) {
+      report({ ok: false, kind: error instanceof AiTopicError ? error.kind : 'FAILED' });
+      throw error;
+    }
   }
 
   private base64ToBlob(base64: string, mimeType: string): Blob {
@@ -315,16 +366,44 @@ export class AiTopicService {
     return { mimeType: 'image/jpeg', base64: dataUrl.slice(dataUrl.indexOf(',') + 1) };
   }
 
-  private async invoke<T>(method: string, input?: unknown): Promise<T> {
-    const api = typeof window?.electronAPI?.[method] === 'function' ? window.electronAPI : aiTopicWebBridge;
+  /**
+   * Desktop: over IPC, with a request id so Cancel and the live status reach the right request.
+   * Web: the bridge runs in this page and takes the signal and status callback directly.
+   */
+  private async invoke<T>(method: string, input?: unknown, options?: AiRunOptions): Promise<T> {
+    const desktop = typeof window?.electronAPI?.[method] === 'function';
+    const api = desktop ? window.electronAPI : aiTopicWebBridge;
     if (typeof api?.[method] !== 'function') {
       throw new AiTopicError('');
     }
-    const response = await api[method](input);
+    if (options?.signal?.aborted) throw new AiTopicError('', 'CANCELLED');
+    // Status events come from IPC, outside Angular's zone: the listener repaints inside it.
+    const onStatus = options?.onStatus
+      ? (status: AiRunStatus) => this.zone.run(() => options.onStatus!(status))
+      : undefined;
+    let response: any;
+    if (desktop && options) {
+      const requestId = `ai-${Date.now()}-${++requestCounter}`;
+      const stopListening = onStatus && typeof api.onAiTopicStatus === 'function'
+        ? api.onAiTopicStatus((status: { requestId: string } & AiRunStatus) => {
+            if (status?.requestId === requestId) onStatus(status);
+          })
+        : null;
+      const cancel = () => void api.aiTopicCancel?.({ requestId });
+      options.signal?.addEventListener('abort', cancel, { once: true });
+      try {
+        response = await api[method]({ ...(input as object), requestId });
+      } finally {
+        options.signal?.removeEventListener('abort', cancel);
+        if (typeof stopListening === 'function') stopListening();
+      }
+    } else {
+      response = desktop ? await api[method](input) : await api[method](input, { signal: options?.signal, onStatus });
+    }
     if (!response?.ok) {
       // The main process sends a teacher-friendly English detail; the UI shows it under a
-      // translated heading.
-      throw new AiTopicError(String(response?.message || ''));
+      // translated heading, and its kind picks the help to offer.
+      throw new AiTopicError(String(response?.message || ''), toErrorKind(response?.error));
     }
     return response.result as T;
   }

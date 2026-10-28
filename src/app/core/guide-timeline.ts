@@ -54,11 +54,15 @@ export function normalizeGuideElement(element: BookElement): boolean {
         .sort((a, b) => a.time - b.time);
       const duration = Number(track.duration);
       const pitchSemitones = Number(track.pitchSemitones);
+      const trimStart = Number(track.trimStart);
+      const trimEnd = Number(track.trimEnd);
       return {
         id: String(track.id || `${element.id}-track-${trackIndex + 1}`),
         src: String(track.src || ''),
         ...(Number.isFinite(duration) && duration > 0 ? { duration } : {}),
         ...(Number.isFinite(pitchSemitones) && pitchSemitones !== 0 ? { pitchSemitones } : {}),
+        ...(Number.isFinite(trimStart) && trimStart > 0 ? { trimStart } : {}),
+        ...(Number.isFinite(trimEnd) && trimEnd > 0 ? { trimEnd } : {}),
         pins: normalizedPins
       } satisfies GuideAudioTrack;
     });
@@ -84,6 +88,26 @@ export function normalizeBookGuideTimelines(book: InteractiveBook | null | undef
     }
   }
   return changed;
+}
+
+/** Minimum gap kept between the start and end flags, so dragging one past the other can't
+ * collapse the playable range to nothing. */
+export const MIN_GUIDE_TRIM_GAP = 0.25;
+
+// Clamps the saved trimStart/trimEnd against the real (or best-known) duration, so a track with
+// an out-of-range or missing value still resolves to a sane, always-valid [start, end] window -
+// omitted trimStart/trimEnd just means "the whole clip".
+export function getGuideTrackTrimRange(track: GuideAudioTrack, duration: number): { start: number; end: number } {
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
+  const rawStart = Number(track.trimStart);
+  const start = Number.isFinite(rawStart) ? clamp(rawStart, 0, safeDuration) : 0;
+  const rawEnd = Number(track.trimEnd);
+  const end = Number.isFinite(rawEnd) && rawEnd > 0 ? clamp(rawEnd, start, safeDuration) : safeDuration;
+  return { start, end };
+}
+
+export function isGuideTrackTrimmed(track: GuideAudioTrack): boolean {
+  return (Number(track.trimStart) || 0) > 0 || (Number(track.trimEnd) || 0) > 0;
 }
 
 export function getOrderedGuidePins(element: BookElement | null | undefined): OrderedGuidePin[] {

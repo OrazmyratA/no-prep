@@ -2,6 +2,7 @@ import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { db, Topic, Item, LeaderboardScore, CefrLevel, SpeakingExam } from './db.model';
 import { Team } from '../shared/leaderboard-team.model';
+import { unwrapDoubleWav } from './audio-wav';
 
 @Injectable({ providedIn: 'root' })
 export class DbService {
@@ -19,6 +20,28 @@ export class DbService {
 
   constructor(private zone: NgZone) {
     this.refreshTopics();
+    void this.zone.runOutsideAngular(() => this.repairGeminiVoices());
+  }
+
+  /** Once: cleans the Gemini voices saved with noise at the end (see unwrapDoubleWav). */
+  private async repairGeminiVoices() {
+    const doneKey = 'geminiVoiceRepair';
+    try {
+      if (localStorage.getItem(doneKey)) return;
+    } catch { return; }
+    try {
+      const suspects: { id: number; audio: Blob }[] = [];
+      await db.items.each(item => {
+        if (item.id && item.audio?.type === 'audio/wav') suspects.push({ id: item.id, audio: item.audio });
+      });
+      for (const { id, audio } of suspects) {
+        const clean = await unwrapDoubleWav(audio);
+        if (clean) await db.items.update(id, { audio: clean });
+      }
+      localStorage.setItem(doneKey, '1');
+    } catch (error) {
+      console.warn('Gemini voice repair failed', error);
+    }
   }
 
   private async refreshTopics() {

@@ -9,6 +9,17 @@
     </div>
 
     <ng-container *ngIf="showKeyBox; else linkedView">
+      <!-- Not linked yet: what it unlocks first, then how. -->
+      <div *ngIf="!linked && abilities.length" class="ai-link-unlocks">
+        <p class="ai-link-unlocks-title">{{ 'aiLinkUnlocks' | translate }}</p>
+        <ul>
+          <li *ngFor="let ability of abilities">
+            <span aria-hidden="true">{{ ability.icon }}</span>
+            <strong>{{ ability.nameKey | translate }}</strong>
+            <small>{{ ability.tagKey | translate }}</small>
+          </li>
+        </ul>
+      </div>
       <p class="ai-link-hint">{{ 'aiTopicLinkSteps' | translate }}</p>
       <p *ngIf="providerId === 'gemini'" class="ai-link-hint ai-link-tip">{{ 'aiTopicGeminiTip' | translate }}</p>
       <p *ngIf="showWebKeyNotice" class="ai-link-hint ai-link-tip">{{ 'aiTopicWebKeyNotice' | translate }}</p>
@@ -19,13 +30,36 @@
                (keydown.enter)="$event.preventDefault(); save()"
                [placeholder]="'aiTopicApiKeyPlaceholder' | translate">
         <button type="button" class="ai-link-primary" (click)="save()" [disabled]="!keyInput.trim() || saving">
-          {{ 'aiTopicSaveKey' | translate }}
+          <span *ngIf="checking" class="ai-link-spinner" aria-hidden="true"></span>
+          {{ (checking ? 'aiStatusChecking' : 'aiTopicSaveKey') | translate }}
         </button>
       </div>
     </ng-container>
 
     <ng-template #linkedView>
-      <p class="ai-link-hint ai-link-ok">✓ {{ 'aiLinkLinked' | translate }}</p>
+      <!-- How this AI is doing: from its last answers and checks (no AI tells an app its credit). -->
+      <div class="ai-link-status" [class.ai-link-status-bad]="!!problem">
+        <p class="ai-link-status-title">
+          <ng-container *ngIf="problem; else working">{{ problemIcon }} {{ problemTitle }}</ng-container>
+          <ng-template #working>✓ {{ (health ? 'aiStatusWorking' : 'aiLinkLinked') | translate }}</ng-template>
+          <small *ngIf="checkedAgo"> · {{ 'aiStatusChecked' | translate: { when: checkedAgo } }}</small>
+        </p>
+        <p *ngIf="problem?.state === 'dailyLimit' && resetTime" class="ai-link-status-line">{{ 'aiStatusResetsAt' | translate: { time: resetTime } }}</p>
+        <p *ngIf="todayText" class="ai-link-status-line">📊 {{ todayText }}</p>
+        <p *ngIf="requestsLeft as left" class="ai-link-status-line">
+          🎟️ {{ (left.limit ? 'aiStatusRequestsLeftOf' : 'aiUseRequestsLeft') | translate: { n: left.remaining, limit: left.limit } }}
+        </p>
+        <div class="ai-link-row">
+          <button type="button" class="ai-link-secondary" (click)="check()" [disabled]="checking">
+            <span *ngIf="checking" class="ai-link-spinner ai-link-spinner-dark" aria-hidden="true"></span>
+            {{ (checking ? 'aiStatusChecking' : 'aiStatusCheckNow') | translate }}
+          </button>
+          <button *ngIf="billingUrl" type="button" class="ai-link-secondary" (click)="openBilling()">
+            {{ 'aiStatusSeeCredit' | translate }} ↗
+          </button>
+        </div>
+        <p class="ai-link-status-note">{{ 'aiStatusCreditNote' | translate }}</p>
+      </div>
       <div class="ai-link-row">
         <button type="button" class="ai-link-secondary" (click)="changing = true">✏️ {{ 'aiTopicChangeKey' | translate }}</button>
         <button type="button" class="ai-link-secondary ai-link-danger" (click)="remove()">🗑️ {{ 'aiTopicRemoveKey' | translate }}</button>

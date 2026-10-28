@@ -16,18 +16,32 @@
   <form [formGroup]="topicForm" (ngSubmit)="onSubmit()" class="max-w-5xl mx-auto">
     <!-- Topic name -->
 <div class="mb-8 bg-white rounded-xl shadow-sm p-5 border border-gray-100">
-  <div class="flex items-center justify-between gap-3 mb-2">
-    <label class="block text-sm font-semibold text-gray-700">{{ 'topicName' | translate }}</label>
-    <button type="button" class="ai-fill-btn" (click)="openAiDialog()"
-            [disabled]="!licenseService.fullAccess || !!aiProgress"
-            [attr.title]="'aiTopicTitle' | translate">
-      ✨ {{ 'aiTopicButton' | translate }}
-    </button>
+  <label for="topicNameInput" class="block text-sm font-semibold text-gray-700 mb-2">{{ 'topicName' | translate }}</label>
+  <div class="topic-name-field">
+    <input #topicNameInput id="topicNameInput" type="text" formControlName="name"
+           class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+           [class.topic-name-missing]="nameMissingShown && topicForm.get('name')?.invalid"
+           [placeholder]="'topicNamePlaceholder' | translate">
+    <!-- ✨ in the name field opens and folds "Create with AI" (docs/ai-choices-plan.md, Part B). -->
+    <button type="button" class="topic-name-ai" [class.topic-name-ai-open]="aiPanelOpen"
+            (click)="toggleAiPanel()" [disabled]="!licenseService.fullAccess"
+            [attr.aria-expanded]="aiPanelOpen" aria-controls="topicAiPanel"
+            [attr.title]="'aiTopicTitle' | translate" [attr.aria-label]="'aiTopicTitle' | translate">✨</button>
   </div>
-  <input #topicNameInput type="text" formControlName="name"
-         class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-         [class.topic-name-missing]="nameMissingShown && topicForm.get('name')?.invalid"
-         [placeholder]="'topicNamePlaceholder' | translate">
+  <!-- Kept alive while folded ([hidden]), so the prompt, pages and options stay. -->
+  <div id="topicAiPanel" class="topic-ai-area" [hidden]="!aiPanelOpen">
+    <div class="topic-ai-area-head">
+      <span class="topic-ai-area-title">✨ {{ 'aiTopicTitle' | translate }}</span>
+      <button type="button" class="topic-ai-area-fold" (click)="toggleAiPanel()"
+              [attr.aria-label]="'aiTopicFold' | translate" [attr.title]="'aiTopicFold' | translate">▴</button>
+    </div>
+    <app-ai-topic-panel *ngIf="aiPanelCreated"
+                        [existingItemTexts]="aiExistingItemTexts"
+                        [hasExistingItems]="hasFilledItems"
+                        [initialPages]="aiInitialPages"
+                        (generated)="onAiDraft($event)">
+    </app-ai-topic-panel>
+  </div>
   <!-- CEFR level: Reading Detective's reading speed and timer. Shown for reading/writing texts. -->
   <div *ngIf="usesWritingMarks || topicLevel" class="topic-level-row">
     <span class="topic-level-label">{{ 'topicFormLevel' | translate }}</span>
@@ -58,21 +72,59 @@
 
     <!-- Items section -->
     <div class="mb-8">
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center gap-3 mb-4">
         <label class="text-sm font-semibold text-ink-soft">{{ 'itemsLabel' | translate }}</label>
+        <div class="items-tools">
+          <!-- The signs of Reading Detective, Writing Workshop and Talk Show, with examples. -->
+          <button type="button" class="signs-guide-btn" [class.signs-guide-btn-on]="signsGuideOpen"
+                  (click)="toggleSignsGuide()" [attr.aria-expanded]="signsGuideOpen" [title]="'signsButtonHint' | translate">
+            <span aria-hidden="true">📘</span> {{ 'signsButton' | translate }}
+          </button>
+          <!-- One topic, both ways: the text goes on the card, the card's words become the text. -->
+          <button *ngIf="canSwapSides || swapping" type="button" class="swap-sides-btn" (click)="swapSides()"
+                  [disabled]="swapping" [title]="'topicSwapSidesHint' | translate">
+            <span class="swap-sides-icon" [class.swap-sides-spin]="swapping" aria-hidden="true">⇄</span>
+            {{ 'topicSwapSides' | translate }}
+          </button>
+        </div>
       </div>
 
-      <!-- Who does each job for ✨ and Generate: Text, Picture, Voice (docs/ai-choices-plan.md). -->
-      <app-ai-job-bar class="topic-ai-bar"></app-ai-job-bar>
+      <app-topic-signs-guide *ngIf="signsGuideOpen" [tab]="signsGuideTab"
+                             (closed)="signsGuideOpen = false" (useExample)="useSignsExample($event)"></app-topic-signs-guide>
+
+      <div *ngIf="swapResult" class="swap-result" role="status">
+        <div class="swap-result-main">
+          <p class="swap-result-title">
+            <span aria-hidden="true">⇄</span> {{ (swapResult.back ? 'topicSwapBack' : 'topicSwapDone') | translate: { n: swapResult.swapped } }}
+          </p>
+          <p *ngIf="swapResult.kept" class="swap-result-note">{{ 'topicSwapKept' | translate: { n: swapResult.kept } }}</p>
+          <div *ngIf="swapResult.needVoice.length" class="swap-result-voices">
+            <span>🔊 {{ 'topicSwapNeedVoice' | translate: { n: swapResult.needVoice.length } }}</span>
+            <button *ngIf="canMakeSwapVoices" type="button" class="swap-result-make" (click)="makeSwapVoices()"
+                    [disabled]="makingSwapVoices">
+              <span *ngIf="makingSwapVoices" class="swap-result-spinner" aria-hidden="true"></span>
+              {{ (makingSwapVoices ? 'topicSwapMakingVoices' : 'topicSwapMakeVoices') | translate }}
+            </button>
+          </div>
+        </div>
+        <button type="button" class="ai-fill-dismiss" (click)="swapResult = null" [attr.aria-label]="'cancel' | translate">✕</button>
+      </div>
+
+      <!-- Who fills each column, right above it: the item text, its picture, its voice
+           (docs/ai-choices-plan.md). Same grid as the items below, so each sits over its column. -->
+      <div class="item-ai-headers ml-12 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <app-ai-choice job="text" variant="header"></app-ai-choice>
+        <app-ai-choice job="picture" variant="header" [allowNone]="true"></app-ai-choice>
+        <app-ai-choice job="voice" variant="header" [allowNone]="true"></app-ai-choice>
+      </div>
 
       <!-- Result of the last AI fill -->
       <div *ngIf="aiResult" class="ai-fill-banner" role="status">
         <div class="ai-fill-banner-main">
           <p class="font-semibold">✨ {{ 'aiTopicDoneBanner' | translate: { count: aiResult.count } }}</p>
-          <p *ngIf="aiProgress" class="ai-fill-progress">
-            <span class="ai-fill-spinner"></span>
-            {{ 'aiTopicPreparingMedia' | translate: { done: aiProgress.done, total: aiProgress.total } }}
-          </p>
+          <!-- Pictures and voices on their way: counts, the clock, why it waits, and Stop. -->
+          <app-ai-run *ngIf="mediaRun" class="ai-fill-run" [view]="mediaRun" cancelKey="aiRunStop"
+                      (cancelled)="stopMedia()"></app-ai-run>
           <ul *ngIf="aiResult.notes.length" class="ai-fill-notes">
             <li *ngFor="let note of aiResult.notes">{{ note }}</li>
           </ul>
@@ -88,13 +140,14 @@
         </div>
       </div>
 
-      <p *ngIf="usesWritingMarks && !usesSpeakingParts" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}</p>
+      <p *ngIf="usesWritingMarks && !usesSpeakingParts" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}
+        <button *ngIf="!signsGuideOpen" type="button" class="signs-hint-link" (click)="toggleSignsGuide()">📘 {{ 'signsAllSigns' | translate }}</button></p>
       <p *ngIf="usesReadingTasks" class="writing-marks-hint">🕵️ {{ 'topicFormReadingTasksHint' | translate }}</p>
 
       <div formArrayName="items">
         <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-4 pt-4">
           <div *ngFor="let item of items.controls; let i = index; let last = last"
-               [formGroupName]="i" cdkDrag
+               [formGroupName]="i" cdkDrag [attr.data-item-index]="i"
                class="group relative bg-white rounded-2xl shadow-md border border-gray-100 transition-all hover:shadow-lg">
 
             <!-- Insert before this item -->
@@ -209,6 +262,8 @@
                       {{ (ai === 'gemini' ? 'aiChoicePictureGemini' : 'aiChoicePictureOpenai') | translate }}
                     </button>
                   </div>
+                  <!-- Why this drawing is taking a while ("Gemini is very busy, waiting 6 s"). -->
+                  <span *ngIf="pictureWaitText(item) as wait" class="item-ai-wait" role="status">⏳ {{ wait }}</span>
                 </div>
               </div>
 
@@ -266,13 +321,8 @@
       </button>
     </div>
   </form>
-  <app-ai-topic-dialog *ngIf="aiDialogOpen"
-                       [existingItemTexts]="aiExistingItemTexts"
-                       [hasExistingItems]="hasFilledItems"
-                       [initialPages]="aiInitialPages"
-                       (generated)="onAiDraft($event)"
-                       (closed)="closeAiDialog()">
-  </app-ai-topic-dialog>
+  <!-- The moment an AI is linked (from "Your AIs", a column's dropdown or "Link it first"). -->
+  <app-ai-unlocked></app-ai-unlocked>
   <app-point-area-editor *ngIf="areaEditor as editor"
                          [scene]="editor.scene" [instruction]="editor.instruction" [area]="editor.area"
                          (saved)="onAreaSaved($event)" (closed)="areaEditor = null">

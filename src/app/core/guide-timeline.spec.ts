@@ -1,7 +1,9 @@
-import { BookElement, InteractiveBook } from './book.model';
+import { BookElement, GuideAudioTrack, InteractiveBook } from './book.model';
 import {
+  getGuideTrackTrimRange,
   getGuideTracks,
   getOrderedGuidePins,
+  isGuideTrackTrimmed,
   normalizeBookGuideTimelines,
   normalizeGuideElement
 } from './guide-timeline';
@@ -65,6 +67,56 @@ describe('guide timeline helpers', () => {
     expect(normalizeBookGuideTimelines(book)).toBe(true);
     expect(getGuideTracks(mainGuide).length).toBe(1);
     expect(getGuideTracks(workbookGuide).length).toBe(1);
+  });
+
+  it('keeps a saved trimStart/trimEnd and drops a trimEnd of exactly 0', () => {
+    const element = guideElement({
+      guideTracks: [{ id: 't1', src: 'assets/audio/one.mp3', trimStart: 2, trimEnd: 8, pins: [] }]
+    });
+    normalizeGuideElement(element);
+    expect(getGuideTracks(element)[0].trimStart).toBe(2);
+    expect(getGuideTracks(element)[0].trimEnd).toBe(8);
+
+    const untouched = guideElement({
+      guideTracks: [{ id: 't2', src: 'assets/audio/two.mp3', trimStart: 0, trimEnd: 0, pins: [] }]
+    });
+    normalizeGuideElement(untouched);
+    expect(getGuideTracks(untouched)[0].trimStart).toBeUndefined();
+    expect(getGuideTracks(untouched)[0].trimEnd).toBeUndefined();
+  });
+});
+
+describe('getGuideTrackTrimRange', () => {
+  function track(overrides: Partial<GuideAudioTrack> = {}): GuideAudioTrack {
+    return { id: 't', src: 'a.mp3', pins: [], ...overrides };
+  }
+
+  it('is the whole clip when nothing is trimmed', () => {
+    expect(getGuideTrackTrimRange(track(), 30)).toEqual({ start: 0, end: 30 });
+  });
+
+  it('uses the saved start/end', () => {
+    expect(getGuideTrackTrimRange(track({ trimStart: 5, trimEnd: 20 }), 30)).toEqual({ start: 5, end: 20 });
+  });
+
+  it('clamps a trimEnd that is now past the real duration (e.g. after a re-upload)', () => {
+    expect(getGuideTrackTrimRange(track({ trimStart: 5, trimEnd: 999 }), 30)).toEqual({ start: 5, end: 30 });
+  });
+
+  it('never lets a corrupt trimStart produce start > end - both land on duration instead', () => {
+    expect(getGuideTrackTrimRange(track({ trimStart: 999, trimEnd: 20 }), 30)).toEqual({ start: 30, end: 30 });
+  });
+
+  it('falls back to 0 duration safely when the real duration is not known yet', () => {
+    expect(getGuideTrackTrimRange(track({ trimStart: 5, trimEnd: 20 }), 0)).toEqual({ start: 0, end: 0 });
+  });
+});
+
+describe('isGuideTrackTrimmed', () => {
+  it('is false for an untrimmed track and true once either edge is set', () => {
+    expect(isGuideTrackTrimmed({ id: 't', src: 'a.mp3', pins: [] })).toBe(false);
+    expect(isGuideTrackTrimmed({ id: 't', src: 'a.mp3', pins: [], trimStart: 1 })).toBe(true);
+    expect(isGuideTrackTrimmed({ id: 't', src: 'a.mp3', pins: [], trimEnd: 10 })).toBe(true);
   });
 });
 

@@ -91,3 +91,59 @@ test('drawing uses the current models, at medium quality for ChatGPT', async () 
   assert.equal(bodies[0].quality, 'medium');
   assert.match(urls[1], /gemini-nano-banana-2\.1:generateContent/);
 });
+
+test('says why it waits, and Cancel ends the wait at once', async () => {
+  const statuses = [];
+  const controller = new AbortController();
+  let calls = 0;
+  const ai = createAiTopicService({
+    getApiKey: () => 'o',
+    // The wait never ends by itself: only Cancel can end it.
+    wait: () => new Promise(() => {}),
+    fetchImpl: async () => { calls++; return response(429, { error: { message: 'Rate limit reached. Please try again in 12.5s.' } }); }
+  });
+  const run = ai.generateDraft({ ...draft, provider: 'openai' }, {
+    signal: controller.signal,
+    onStatus: (status) => { statuses.push(status); controller.abort(); }
+  });
+  await assert.rejects(run, (error) => error.kind === 'CANCELLED');
+  assert.deepEqual(statuses, [{ kind: 'wait', reason: 'minuteLimit', seconds: 13 }]);
+  assert.equal(calls, 1, 'nothing is sent after Cancel');
+});
+
+test('tells the Gemini fallback, and every failure says its kind', async () => {
+  const statuses = [];
+  const { ai } = service((url) => /3\.8-flash/.test(url) ? response(503, 'busy') : answer('{"ok":true}'));
+  await ai.generateDraft(draft, { onStatus: (status) => statuses.push(status) });
+  assert.deepEqual(statuses, [{ kind: 'fallback' }]);
+
+  const kind = async (status, body) => {
+    const { ai: failing } = service(() => response(status, body));
+    return failing.generateDraft({ ...draft, provider: 'openai' }).catch((error) => error.kind);
+  };
+  assert.equal(await kind(429, { error: { code: 'insufficient_quota', message: 'You exceeded your current quota' } }), 'NO_CREDIT');
+  assert.equal(await kind(401, 'bad key'), 'KEY_REJECTED');
+  assert.equal(await kind(429, { error: { message: 'Requests per day limit reached' } }), 'DAILY_LIMIT');
+  assert.equal(await kind(413, 'too big'), 'TOO_LARGE');
+  assert.equal(await kind(400, 'nonsense'), 'FAILED');
+});
+
+test('counts the tokens used and reads Groq\'s requests left today', async () => {
+  const groq = {
+    ...response(200, { choices: [{ message: { content: '{"ok":true}' } }], usage: { total_tokens: 1234 } }),
+    headers: { get: (name) => ({ 'x-ratelimit-remaining-requests': '14370', 'x-ratelimit-limit-requests': '14400' })[name] ?? null }
+  };
+  const { ai } = service(() => groq, { groq: 'q' });
+  const result = await ai.generateDraft({ ...draft, provider: 'groq' });
+  assert.deepEqual(result.usage, { tokens: 1234, remainingToday: 14370, limitToday: 14400 });
+});
+
+test('checking a key sends one tiny request and says what is wrong', async () => {
+  const bodies = [];
+  const { ai } = service((_url, init) => { bodies.push(JSON.parse(init.body)); return response(200, { usage: { total_tokens: 9 } }); });
+  assert.deepEqual(await ai.checkKey({ provider: 'openai' }), { usage: { tokens: 9 } });
+  assert.equal(bodies[0].max_output_tokens, 16);
+
+  const { ai: empty } = service(() => response(429, { error: { code: 'insufficient_quota', message: 'no credits remaining' } }));
+  await assert.rejects(empty.checkKey({ provider: 'openai' }), (error) => error.kind === 'NO_CREDIT');
+});

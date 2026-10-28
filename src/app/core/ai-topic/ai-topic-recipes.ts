@@ -17,6 +17,7 @@ export type AiRecipeGroup = 'vocabulary' | 'sentences' | 'texts' | 'speaking';
  * - findWord: the clue is on the card (picture), the text is the word to produce - spelling games
  *   (Anagram, Spelling Check, Word Search, Tracing) and Test ABC / Flashcard Hunt;
  * - findCard: the text is the clue, the answer is on the card - matching games.
+ * On the findCard side the voice never says the answer: students would hear what they must find.
  */
 export type AiRecipeVariantId = 'findWord' | 'findCard';
 
@@ -31,6 +32,11 @@ export interface AiTopicRecipe {
   /** Only for chips with two swappable sides; `defaultVariant` applies until the teacher picks one. */
   variants?: Record<AiRecipeVariantId, string>;
   defaultVariant?: AiRecipeVariantId;
+  /**
+   * A tiny example under the side choice: the word students produce and its clue (on the card for
+   * findWord, the text for findCard). `clueKey` = a clue in the teacher's language (translation).
+   */
+  example?: { word: string; clue: string; clueKey?: string };
 }
 
 export const AI_RECIPE_GROUPS: { id: AiRecipeGroup; labelKey: string }[] = [
@@ -123,9 +129,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
     instructions: [
       'Definitions topic: one item per word.',
       TARGET_WORDS,
-      'text = the word. imageKind = "wordCard", imageQuery = a simple learner-dictionary definition at the given level (max 12 words) that never contains the word itself or a word of its family.',
-      'audioText = the word.'
-    ].join('\n')
+      'Definition: a simple learner-dictionary definition at the given level (max 12 words) that never contains the word itself or a word of its family.'
+    ].join('\n'),
+    variants: {
+      findWord: 'Students read the definition and produce the word: text = the word. imageKind = "wordCard", imageQuery = the definition. audioText = the word.',
+      findCard: 'Students read the definition and find the word: text = the definition. imageKind = "wordCard", imageQuery = the word. audioText = the definition (never the word).'
+    },
+    defaultVariant: 'findWord',
+    example: { word: 'elephant', clue: 'a very big grey animal with a long nose' }
   },
   {
     id: 'translation',
@@ -137,9 +148,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
       'Translation topic: one item per word.',
       TARGET_WORDS,
       'Translation language: the language the teacher names in the request; otherwise the teacher\'s language given in the request. If that is the same language as the words, use a "search" picture instead of a translation and add a note asking the teacher to name the students\' language.',
-      'text = the word in the language being learnt. imageKind = "wordCard", imageQuery = its translation (the usual meaning in this unit; one or two translations, separated by ", ").',
-      'audioText = the word (in the language being learnt).'
-    ].join('\n')
+      'Translation: the usual meaning in this unit; one or two translations, separated by ", ".'
+    ].join('\n'),
+    variants: {
+      findWord: 'Students read the translation and produce the word: text = the word in the language being learnt. imageKind = "wordCard", imageQuery = its translation. audioText = the word.',
+      findCard: 'Students read the translation and find the word: text = the translation. imageKind = "wordCard", imageQuery = the word in the language being learnt. audioText = "" (the voice speaks the language being learnt, and here the word is the answer).'
+    },
+    defaultVariant: 'findWord',
+    example: { word: 'apple', clue: '', clueKey: 'aiVariantExampleTranslation' }
   },
   {
     id: 'synonyms',
@@ -150,9 +166,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
     instructions: [
       'Synonyms topic: one item per word that has a common synonym at the given level.',
       TARGET_WORDS,
-      'text = the word. imageKind = "wordCard", imageQuery = one synonym with the same meaning in this unit (same word type; skip words without a good synonym).',
-      'audioText = the word.'
-    ].join('\n')
+      'Synonym: one with the same meaning in this unit (same word type; skip words without a good synonym).'
+    ].join('\n'),
+    variants: {
+      findWord: 'Students read the synonym and produce the word: text = the word. imageKind = "wordCard", imageQuery = the synonym. audioText = the word.',
+      findCard: 'Students read the synonym and find the word: text = the synonym. imageKind = "wordCard", imageQuery = the word. audioText = the synonym.'
+    },
+    defaultVariant: 'findWord',
+    example: { word: 'large', clue: 'big' }
   },
   {
     id: 'verbForms',
@@ -162,9 +183,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
     promptKey: 'aiTopicChipVerbFormsPrompt',
     instructions: [
       'Verb forms topic: one item per verb - irregular verbs first, from the pages when given, otherwise common ones at the given level.',
-      'By default the past simple: text = the past simple ("went"), imageKind = "wordCard", imageQuery = the base form ("go"). If the teacher asks for another form (past participle, -ing, third person), text = that form instead.',
-      'audioText = the form in text.'
-    ].join('\n')
+      'The form to learn: the past simple ("went") by default, or the form the teacher asks for (past participle, -ing, third person).'
+    ].join('\n'),
+    variants: {
+      findWord: 'Students read the base form and produce the form to learn: text = the form to learn ("went"). imageKind = "wordCard", imageQuery = the base form ("go"). audioText = the form in text.',
+      findCard: 'Students read the base form and find the form to learn: text = the base form ("go"). imageKind = "wordCard", imageQuery = the form to learn ("went"). audioText = the base form.'
+    },
+    defaultVariant: 'findWord',
+    example: { word: 'went', clue: 'go' }
   },
   {
     id: 'collocations',
@@ -174,9 +200,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
     promptKey: 'aiTopicChipCollocationsPrompt',
     instructions: [
       'Collocations topic: common word partners (make a mistake, do homework, heavy rain, interested in), from the pages when given, otherwise useful ones at the given level.',
-      'text = the word students must supply (often the verb, adjective or preposition). imageKind = "wordCard", imageQuery = the rest of the collocation with "___" where that word goes ("___ your homework"). The partner must be the one natural choice.',
-      'audioText = the whole collocation.'
-    ].join('\n')
+      'The partner word students supply is often the verb, adjective or preposition; the rest of the collocation has "___" where it goes ("___ your homework"). The partner must be the one natural choice.'
+    ].join('\n'),
+    variants: {
+      findWord: 'Students read the rest and produce the partner word: text = the partner word. imageKind = "wordCard", imageQuery = the rest with "___". audioText = the whole collocation.',
+      findCard: 'Students read the rest and find the partner word: text = the rest with "___". imageKind = "wordCard", imageQuery = the partner word. audioText = the rest, with "..." where the partner word goes (never the partner word).'
+    },
+    defaultVariant: 'findWord',
+    example: { word: 'do', clue: '___ your homework' }
   },
   {
     id: 'listenSpell',
@@ -202,13 +233,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
       'Gap-fill topic: one item per target word (from the pages when given).',
       'For each word write one short, natural sentence (6-12 words) with the word replaced by "____". Exactly one gap per sentence.',
       'The sentence must make the missing word the ONLY sensible answer (give a clear clue: a collocation, an opposite, a definition-like context). Never blank an article, a name or a word that many others could replace.',
-      'Use the unit\'s words and grammar. audioText = the full sentence with the word.'
+      'Use the unit\'s words and grammar.'
     ].join('\n'),
     variants: {
-      findWord: 'Students read the sentence and produce the word: text = the missing word exactly as it fits the gap. imageKind = "wordCard", imageQuery = the sentence with "____".',
-      findCard: 'Students read the sentence and find the word: text = the sentence with "____". imageKind = "wordCard", imageQuery = the missing word exactly as it fits the gap.'
+      findWord: 'Students read the sentence and produce the word: text = the missing word exactly as it fits the gap. imageKind = "wordCard", imageQuery = the sentence with "____". audioText = the full sentence with the word.',
+      findCard: 'Students read the sentence and find the word: text = the sentence with "____". imageKind = "wordCard", imageQuery = the missing word exactly as it fits the gap. audioText = the sentence with "..." in the gap (never the missing word).'
     },
-    defaultVariant: 'findWord'
+    defaultVariant: 'findWord',
+    example: { word: 'teeth', clue: 'I brush my ____ every morning.' }
   },
   {
     id: 'qa',
@@ -225,7 +257,8 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
       findWord: 'Students read the question and produce the answer: text = the answer. imageKind = "wordCard", imageQuery = the question.',
       findCard: 'Students read the question and find the answer: text = the question. The answer is the image: a "search" picture when it can be pictured clearly, otherwise "wordCard" with the answer.'
     },
-    defaultVariant: 'findCard'
+    defaultVariant: 'findCard',
+    example: { word: 'in water', clue: 'Where do fish live?' }
   },
   {
     id: 'sentences',

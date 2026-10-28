@@ -5,6 +5,21 @@ import { parseJsonLoosely } from './ai-topic-draft';
 import { SPEAKING_EXAM_IDS, SpeakingExam } from '../db.model';
 import { SPEAKING_TASK_TYPES, SpeakingTaskType, isSpeakingTaskType } from '../speaking-exams';
 
+/**
+ * Most questions (pictures, sets...) one speaking part can have. Long interviews are fine: in Talk
+ * Show the teacher stops a part with "Next part ⏭" once it has been enough.
+ */
+export const SPEAKING_PART_MAX = 30;
+
+/**
+ * The items a speaking test makes: each part's questions, plus its heading and power-words items,
+ * plus the scene or picture items some parts start with.
+ */
+export function speakingItemCount(parts: { type: SpeakingTaskType; count: number }[]): number {
+  const leadItems: Partial<Record<SpeakingTaskType, number>> = { POINT: 1, PICTURE: 1, DIFF: 2, INFO: 1, DECIDE: 1 };
+  return parts.reduce((total, part) => total + part.count + 2 + (leadItems[part.type] ?? 0), 0);
+}
+
 export interface SpeakingAnalysisRequest {
   prompt: string;
   pageCount: number;
@@ -86,9 +101,9 @@ export function parseSpeakingAnalysis(raw: string | unknown): SpeakingAnalysis {
     const type = String((entry as Record<string, unknown>)?.['type'] ?? '').toUpperCase();
     if (!isSpeakingTaskType(type)) continue;
     const rawCount = Number((entry as Record<string, unknown>)['count']);
-    const count = Number.isFinite(rawCount) ? Math.max(1, Math.min(10, Math.round(rawCount))) : 1;
+    const count = Number.isFinite(rawCount) ? Math.max(1, Math.min(SPEAKING_PART_MAX, Math.round(rawCount))) : 1;
     const same = parts.find(part => part.type === type);
-    if (same) same.count = Math.min(10, same.count + count);
+    if (same) same.count = Math.min(SPEAKING_PART_MAX, same.count + count);
     else parts.push({ type, count });
   }
   const notes = (Array.isArray(obj['notes']) ? obj['notes'] : [])

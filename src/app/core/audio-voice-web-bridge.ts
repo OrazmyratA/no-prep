@@ -6,7 +6,7 @@
 // already-linked OpenAI/Gemini keys (see ai-topic-web-bridge.ts) supports real text-to-speech.
 // The desktop's electron/main/cloud-tts-service.js makes the same requests.
 import { getWebApiKey } from './ai-topic/ai-topic-web-bridge';
-import { encodeWavBlob } from './audio-wav';
+import { encodeWavBlob, wavPcm } from './audio-wav';
 import { SpeechError, SpeechErrorCode, SpeechProvider } from './speech-error';
 import type { VoiceSource } from './ai-topic/ai-choices';
 
@@ -127,11 +127,12 @@ async function synthesizeWithGemini(text: string, apiKey: string): Promise<{ blo
   const data = await response.json();
   const part = (data?.candidates?.[0]?.content?.parts || []).find((p: any) => p?.inlineData?.data);
   if (!part) throw new SpeechError('UNAVAILABLE');
-  // Gemini's TTS returns raw 16-bit PCM (mono, 24kHz), not a ready-to-play file — convert it to
-  // the same Float32 samples format audio-wav.ts's shared encodeWavBlob() already expects (it's
-  // also used by the pitch/speed renderer), rather than writing a second WAV header.
-  const pcm = base64ToBytes(part.inlineData.data);
-  return { blob: encodeWavBlob(pcm16ToFloat32(pcm), 24000), mimeType: 'audio/wav' };
+  // Older Gemini voices return raw 16-bit PCM (mono, 24kHz); 3.8 Flash TTS a whole WAV file with a
+  // C2PA chunk after the sound, which would play as loud noise. Only the sound is kept, re-encoded
+  // with audio-wav.ts's shared encodeWavBlob() (also used by the pitch/speed renderer).
+  const bytes = base64ToBytes(part.inlineData.data);
+  const sound = wavPcm(bytes) ?? { pcm: bytes, sampleRate: 24000 };
+  return { blob: encodeWavBlob(pcm16ToFloat32(sound.pcm), sound.sampleRate), mimeType: 'audio/wav' };
 }
 
 function base64ToBytes(base64: string): Uint8Array {

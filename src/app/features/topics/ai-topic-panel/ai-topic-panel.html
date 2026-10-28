@@ -1,42 +1,9 @@
-<div appBodyPortal class="ai-overlay" (click)="close()">
-  <div class="ai-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'aiTopicTitle' | translate"
-       (click)="$event.stopPropagation()">
-    <div class="ai-header">
-      <h2>✨ {{ 'aiTopicTitle' | translate }}</h2>
-      <button type="button" class="ai-close" (click)="close()" [disabled]="generating"
-              [attr.aria-label]="'cancel' | translate">✕</button>
-    </div>
+<div class="ai-panel" role="region" [attr.aria-label]="'aiTopicTitle' | translate">
 
-      <!-- Which AI: the provider pills carry their own names, so no section label needed. -->
-      <div class="ai-section">
-        <div class="ai-providers" role="group" [attr.aria-label]="'aiTopicAiSource' | translate">
-          <button type="button" *ngFor="let p of providers"
-                  class="ai-provider" [class.ai-provider-active]="p.id === providerId"
-                  [disabled]="generating" (click)="selectProvider(p.id)" [title]="p.label">
-            <app-ai-logo [id]="p.id"></app-ai-logo>
-            <span class="ai-provider-name">{{ providerShortLabel(p.id) }}</span>
-            <small *ngIf="!p.configured">{{ 'aiTopicNotLinked' | translate }}</small>
-            <small *ngIf="p.configured" class="ai-linked">✓</small>
-          </button>
-        </div>
-
-        <p *ngIf="isBuiltin" class="ai-hint ai-tip">{{ 'aiTopicBuiltinHint' | translate }}</p>
-
-        <div *ngIf="needsKey && provider" class="ai-key-setup">
-          <button type="button" class="ai-primary" (click)="linking = providerId">
-            {{ 'aiTopicLinkTitle' | translate: { provider: provider.label } }}
-          </button>
-        </div>
-        <div *ngIf="provider?.configured && !isBuiltin" class="ai-key-actions">
-          <button type="button" class="ai-icon-link" (click)="linking = providerId" [disabled]="generating"
-                  [attr.aria-label]="'aiTopicChangeKey' | translate" [title]="'aiTopicChangeKey' | translate">✏️ 🔑</button>
-        </div>
-        <!-- Who makes the pictures and the voices of what this AI writes (shared with the topic form). -->
-        <div class="ai-media-choices">
-          <app-ai-choice job="picture"></app-ai-choice>
-          <app-ai-choice job="voice"></app-ai-choice>
-        </div>
-      </div>
+      <!-- Which AIs are linked, and what linking more unlocks. Who does each job is chosen over the
+           item columns below; Generate shows its writer next to the button. -->
+      <app-ai-accounts class="ai-panel-bar"></app-ai-accounts>
+      <p *ngIf="isBuiltin" class="ai-hint ai-tip">{{ 'aiTopicBuiltinHint' | translate }}</p>
 
       <!-- Prompt -->
       <div class="ai-section">
@@ -54,16 +21,38 @@
           </div>
         </div>
 
-        <!-- Two-sided chips (gap-fill, Q&A): which side students get -->
+        <!-- Two-sided chips (definitions, gap-fill, Q&A...): which side students get, with a tiny
+             example item for each, so the choice is seen rather than explained. -->
         <div *ngIf="activeChip?.variants && activeChip as chip" class="ai-variants" role="radiogroup"
              [attr.aria-label]="'aiVariantLabel' | translate">
           <span class="ai-chip-group-label">{{ 'aiVariantLabel' | translate }}</span>
-          <label *ngFor="let variant of recipeVariants" class="ai-variant" [class.ai-variant-on]="chipVariant(chip) === variant">
-            <input type="radio" name="aiRecipeVariant" [checked]="chipVariant(chip) === variant" [disabled]="generating"
-                   (change)="setChipVariant(chip, variant)">
-            <span>{{ ('aiVariant_' + variant) | translate }}</span>
-          </label>
+          <div class="ai-variant-options">
+            <label *ngFor="let variant of recipeVariants" class="ai-variant" [class.ai-variant-on]="chipVariant(chip) === variant">
+              <span class="ai-variant-head">
+                <input type="radio" name="aiRecipeVariant" [checked]="chipVariant(chip) === variant" [disabled]="generating"
+                       (change)="setChipVariant(chip, variant)">
+                <span>{{ ('aiVariant_' + variant) | translate }}</span>
+              </span>
+              <span *ngIf="chip.example as example" class="ai-variant-example" aria-hidden="true">
+                <ng-container *ngTemplateOutlet="exampleSides; context: {
+                  word: example.word,
+                  clue: example.clueKey ? (example.clueKey | translate) : example.clue,
+                  findCard: variant === 'findCard' }"></ng-container>
+              </span>
+            </label>
+          </div>
         </div>
+        <ng-template #exampleSides let-word="word" let-clue="clue" let-findCard="findCard">
+          <span class="ai-ex-side">
+            <span class="ai-ex-tag">{{ 'aiVariantText' | translate }}<ng-container *ngIf="!findCard"> · <b>{{ 'aiVariantAnswer' | translate }}</b></ng-container></span>
+            <span class="ai-ex-text" [class.ai-ex-answer]="!findCard">{{ findCard ? clue : word }}</span>
+          </span>
+          <span class="ai-ex-arrow">⇄</span>
+          <span class="ai-ex-side">
+            <span class="ai-ex-tag">{{ 'aiVariantCard' | translate }}<ng-container *ngIf="findCard"> · <b>{{ 'aiVariantAnswer' | translate }}</b></ng-container></span>
+            <span class="ai-ex-card" [class.ai-ex-answer]="findCard">{{ findCard ? word : clue }}</span>
+          </span>
+        </ng-template>
         <textarea #promptInput id="aiTopicPrompt" class="ai-input ai-prompt" rows="4" [disabled]="generating"
                   [value]="prompt" (input)="prompt = $any($event.target).value"
                   [placeholder]="'aiTopicPromptPlaceholder' | translate"></textarea>
@@ -108,7 +97,7 @@
             <label *ngFor="let row of speakingRows" class="ai-task ai-speaking-row">
               <input type="checkbox" [checked]="row.on" [disabled]="generating || analysing" (change)="toggleSpeakingRow(row)">
               <span>{{ ('talkShowTask_' + row.type) | translate }}</span>
-              <input *ngIf="row.on" type="number" min="1" max="10" class="ai-input ai-task-count"
+              <input *ngIf="row.on" type="number" min="1" [max]="speakingPartMax" class="ai-input ai-task-count"
                      [disabled]="generating || analysing" [value]="row.count"
                      [title]="('aiSpeakingUnit_' + row.type) | translate"
                      (input)="setSpeakingCount(row, $any($event.target).value)">
@@ -118,6 +107,9 @@
               </span>
             </label>
           </div>
+          <p *ngIf="speakingTooLong" class="ai-speaking-too-long" role="alert">
+            ⚠️ {{ 'aiSpeakingTooLong' | translate: { n: speakingItems, max: maxItems } }}
+          </p>
           <label *ngIf="speakingAnalysed" class="ai-task ai-speaking-fill">
             <input type="checkbox" [checked]="speakingFill" [disabled]="generating || analysing" (change)="setSpeakingFill(!speakingFill)">
             <span>{{ 'aiSpeakingFill' | translate }}</span>
@@ -213,23 +205,9 @@
                    [attr.aria-label]="'aiTopicItemCount' | translate"
                    [placeholder]="'aiTopicAuto' | translate">
           </label>
-          <label [attr.title]="'aiTopicImages' | translate">
-            <span aria-hidden="true">🖼️</span>
-            <select class="ai-input" [disabled]="generating" (change)="imagesMode = $any($event.target).value"
-                    [attr.aria-label]="'aiTopicImages' | translate">
-              <option *ngFor="let m of mediaModes" [value]="m" [selected]="m === imagesMode">{{ ('aiTopicMode_' + m) | translate }}</option>
-            </select>
-          </label>
-          <label [attr.title]="'aiTopicAudio' | translate">
-            <span aria-hidden="true">🔊</span>
-            <select class="ai-input" [disabled]="generating" (change)="audioMode = $any($event.target).value"
-                    [attr.aria-label]="'aiTopicAudio' | translate">
-              <option *ngFor="let m of mediaModes" [value]="m" [selected]="m === audioMode">{{ ('aiTopicMode_' + m) | translate }}</option>
-            </select>
-          </label>
           <label [attr.title]="'aiTopicVoice' | translate">
             <span aria-hidden="true">🗣️</span>
-            <select class="ai-input" [disabled]="generating || audioMode === 'off'" (change)="voiceLanguage = $any($event.target).value"
+            <select class="ai-input" [disabled]="generating || choices.voiceNoneChosen" (change)="voiceLanguage = $any($event.target).value"
                     [attr.aria-label]="'aiTopicVoice' | translate">
               <option value="auto" [selected]="voiceLanguage === 'auto'">{{ 'aiTopicAuto' | translate }}</option>
               <option *ngFor="let lang of voiceLanguages" [value]="lang.code" [selected]="lang.code === voiceLanguage">{{ lang.label }}</option>
@@ -256,14 +234,32 @@
         <span *ngIf="errorDetail">{{ errorDetail }}</span>
       </div>
 
+      <!-- What Generate is doing now, with Cancel. -->
+      <app-ai-run *ngIf="runView" class="ai-run-card" [view]="runView" [alternative]="alternative"
+                  (cancelled)="cancelRun()"></app-ai-run>
+
+      <!-- Why it stopped, with the way out. -->
+      <app-ai-problem *ngIf="problem as p" class="ai-run-card" [provider]="p.provider" [kind]="p.kind" [detail]="p.detail"
+                      [resetsAt]="resetsAt(p.provider)" [alternative]="alternative"
+                      (useInstead)="useInstead($event, true)" (retry)="generate()" (fixKey)="linking = p.provider"
+                      (dismissed)="problem = null"></app-ai-problem>
+
+      <!-- Known beforehand: the chosen AI won't work right now. -->
+      <app-ai-problem *ngIf="!problem && !generating && knownProblem as known" class="ai-run-card" mode="warning"
+                      [provider]="providerId" [kind]="known.kind" [resetsAt]="known.resetsAt" [alternative]="alternative"
+                      (useInstead)="useInstead($event, false)" (fixKey)="linking = providerId"></app-ai-problem>
+
       <div class="ai-footer">
-        <span *ngIf="generating" class="ai-working"><span class="ai-spinner"></span>{{ 'aiTopicGenerating' | translate }}</span>
-        <button type="button" class="ai-secondary" (click)="close()" [disabled]="generating">{{ 'cancel' | translate }}</button>
+        <!-- The same Text choice as over the item text column. -->
+        <app-ai-choice job="text" labelKey="aiChoiceWrittenBy" class="ai-written-by"></app-ai-choice>
+        <!-- The chosen Text AI has no key yet: say so next to Generate, with the way to link it. -->
+        <button *ngIf="needsKey && provider" type="button" class="ai-link-first" (click)="linking = providerId">
+          🔑 {{ 'aiTopicLinkFirst' | translate: { provider: provider.label } }}
+        </button>
         <button type="button" class="ai-primary" (click)="generate()" [disabled]="!canGenerate"
                 title="Ctrl+Enter">✨ {{ 'aiTopicGenerate' | translate }}</button>
       </div>
 
-  </div>
 </div>
 
-<app-ai-link-dialog *ngIf="linking" [providerId]="linking" (closed)="onLinkClosed($event)"></app-ai-link-dialog>
+<app-ai-link-dialog *ngIf="linking" [providerId]="linking" (closed)="onLinkClosed()"></app-ai-link-dialog>

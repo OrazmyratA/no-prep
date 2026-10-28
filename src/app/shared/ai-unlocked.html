@@ -1,0 +1,20 @@
+<div *ngIf="shown" class="unl" role="status" aria-live="polite" [attr.data-ai]="shown"
+     (mouseenter)="pauseTimer()" (mouseleave)="startTimer()">
+  <div class="unl-icon"><app-ai-logo [id]="shown"></app-ai-logo></div>
+  <div class="unl-body">
+    <p class="unl-kicker">🎉 {{ 'aiUnlockedKicker' | translate }}</p>
+    <h3 class="unl-title">{{ 'aiUnlockedTitle' | translate: { provider: label } }}</h3>
+    <p class="unl-lead">{{ 'aiUnlockedLead' | translate }}</p>
+    <ul class="unl-list">
+      <li *ngFor="let ability of abilities">
+        <span class="unl-ability-icon" aria-hidden="true">{{ ability.icon }}</span>
+        <span class="unl-ability-text">
+          <strong>{{ ability.nameKey | translate }}</strong>
+          <small>{{ ability.tagKey | translate }}</small>
+        </span>
+      </li>
+    </ul>
+    <p *ngIf="problemNote" class="unl-note">⚠ {{ problemNote | translate: { provider: label } }} {{ 'aiUnlockedAddCredit' | translate }}</p>
+  </div>
+  <button type="button" class="unl-close" (click)="close()" [attr.aria-label]="'close' | translate">✕</button>
+</div>

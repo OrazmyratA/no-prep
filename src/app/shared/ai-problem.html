@@ -1,0 +1,30 @@
+<section class="prob" [class.prob-warning]="mode === 'warning'" [attr.data-kind]="kind"
+         [attr.role]="mode === 'error' ? 'alert' : 'status'">
+  <span class="prob-icon" aria-hidden="true">{{ text.icon }}</span>
+  <div class="prob-body">
+    <p class="prob-title">{{ text.titleKey | translate: { provider: name } }}</p>
+    <p class="prob-help">{{ text.helpKey | translate: { provider: name, time: resetTime } }}</p>
+
+    <div class="prob-actions">
+      <button *ngIf="alternative" type="button" class="prob-btn prob-btn-main" (click)="useInstead.emit(alternative)">
+        <app-ai-logo [id]="alternative"></app-ai-logo>
+        {{ (mode === 'error' ? 'aiProblemUseInsteadRun' : 'aiProblemUseInstead') | translate: { provider: alternativeName } }}
+      </button>
+      <button *ngIf="canRetry" type="button" class="prob-btn" [class.prob-btn-main]="!alternative" (click)="retry.emit()">
+        ↻ {{ 'aiProblemTryAgain' | translate }}
+      </button>
+      <button *ngIf="kind === 'KEY_REJECTED'" type="button" class="prob-btn" (click)="fixKey.emit()">
+        🔑 {{ 'aiProblemFixKey' | translate }}
+      </button>
+      <button *ngIf="billingUrl" type="button" class="prob-btn" (click)="openBilling()">
+        {{ billingKey | translate: { provider: name } }} ↗
+      </button>
+      <button *ngIf="detail" type="button" class="prob-more" (click)="showDetail = !showDetail" [attr.aria-expanded]="showDetail">
+        {{ (showDetail ? 'aiProblemHideDetail' : 'aiProblemShowDetail') | translate: { provider: name } }}
+      </button>
+    </div>
+    <p *ngIf="showDetail && detail" class="prob-detail">{{ detail }}</p>
+  </div>
+  <button *ngIf="mode === 'error'" type="button" class="prob-close" (click)="dismissed.emit()"
+          [attr.aria-label]="'close' | translate">✕</button>
+</section>

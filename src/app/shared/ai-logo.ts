@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 /** An AI's logo (or the free picture search / Windows voice / Automatic sign), 18px, inherits colour. */
-export type AiLogoId = 'builtin' | 'gemini' | 'openai' | 'anthropic' | 'groq' | 'windows' | 'search' | 'auto' | 'edge';
+export type AiLogoId = 'builtin' | 'gemini' | 'openai' | 'anthropic' | 'groq' | 'windows' | 'search' | 'auto' | 'edge' | 'none';
 
 @Component({
   selector: 'app-ai-logo',
@@ -16,6 +16,7 @@ export type AiLogoId = 'builtin' | 'gemini' | 'openai' | 'anthropic' | 'groq' | 
       <svg *ngSwitchCase="'windows'" viewBox="0 0 24 24"><path d="M0 3.4 9.8 2v9.5H0Zm11 -1.6L24 0v11.4H11ZM0 12.6h9.8V22L0 20.6Zm11 0h13V24l-13-1.8Z"/></svg>
       <span *ngSwitchCase="'search'" class="ai-logo-emoji">🔍</span>
       <span *ngSwitchCase="'edge'" class="ai-logo-emoji">🔊</span>
+      <span *ngSwitchCase="'none'" class="ai-logo-emoji">🚫</span>
       <span *ngSwitchDefault class="ai-logo-emoji">✨</span>
     </span>
   `,
