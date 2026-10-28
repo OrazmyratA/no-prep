@@ -74,13 +74,23 @@
     <div class="mb-8">
       <div class="flex justify-between items-center gap-3 mb-4">
         <label class="text-sm font-semibold text-ink-soft">{{ 'itemsLabel' | translate }}</label>
-        <!-- One topic, both ways: the text goes on the card, the card's words become the text. -->
-        <button *ngIf="canSwapSides || swapping" type="button" class="swap-sides-btn" (click)="swapSides()"
-                [disabled]="swapping" [title]="'topicSwapSidesHint' | translate">
-          <span class="swap-sides-icon" [class.swap-sides-spin]="swapping" aria-hidden="true">⇄</span>
-          {{ 'topicSwapSides' | translate }}
-        </button>
+        <div class="items-tools">
+          <!-- The signs of Reading Detective, Writing Workshop and Talk Show, with examples. -->
+          <button type="button" class="signs-guide-btn" [class.signs-guide-btn-on]="signsGuideOpen"
+                  (click)="toggleSignsGuide()" [attr.aria-expanded]="signsGuideOpen" [title]="'signsButtonHint' | translate">
+            <span aria-hidden="true">📘</span> {{ 'signsButton' | translate }}
+          </button>
+          <!-- One topic, both ways: the text goes on the card, the card's words become the text. -->
+          <button *ngIf="canSwapSides || swapping" type="button" class="swap-sides-btn" (click)="swapSides()"
+                  [disabled]="swapping" [title]="'topicSwapSidesHint' | translate">
+            <span class="swap-sides-icon" [class.swap-sides-spin]="swapping" aria-hidden="true">⇄</span>
+            {{ 'topicSwapSides' | translate }}
+          </button>
+        </div>
       </div>
+
+      <app-topic-signs-guide *ngIf="signsGuideOpen" [tab]="signsGuideTab"
+                             (closed)="signsGuideOpen = false" (useExample)="useSignsExample($event)"></app-topic-signs-guide>
 
       <div *ngIf="swapResult" class="swap-result" role="status">
         <div class="swap-result-main">
@@ -130,13 +140,14 @@
         </div>
       </div>
 
-      <p *ngIf="usesWritingMarks && !usesSpeakingParts" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}</p>
+      <p *ngIf="usesWritingMarks && !usesSpeakingParts" class="writing-marks-hint">📓 {{ 'topicFormWritingHint' | translate }}
+        <button *ngIf="!signsGuideOpen" type="button" class="signs-hint-link" (click)="toggleSignsGuide()">📘 {{ 'signsAllSigns' | translate }}</button></p>
       <p *ngIf="usesReadingTasks" class="writing-marks-hint">🕵️ {{ 'topicFormReadingTasksHint' | translate }}</p>
 
       <div formArrayName="items">
         <div cdkDropList (cdkDropListDropped)="drop($event)" class="space-y-4 pt-4">
           <div *ngFor="let item of items.controls; let i = index; let last = last"
-               [formGroupName]="i" cdkDrag
+               [formGroupName]="i" cdkDrag [attr.data-item-index]="i"
                class="group relative bg-white rounded-2xl shadow-md border border-gray-100 transition-all hover:shadow-lg">
 
             <!-- Insert before this item -->

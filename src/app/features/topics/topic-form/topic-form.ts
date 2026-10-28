@@ -29,6 +29,8 @@ import { isHeading, isRemovedSentence, isTaskItem, paragraphColor, paragraphInde
 import { parseTaskItem } from '../../games/reading-tasks';
 import { showAppNotification } from '../../../core/notification';
 import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
+import { SIGNS_GUIDES, SignsGuideTab, exampleItems } from '../topic-signs-guide/topic-signs';
+import { SignsExampleRequest } from '../topic-signs-guide/topic-signs-guide';
 
 // Items whose pictures/audio are fetched at the same time after an AI fill.
 const AI_MEDIA_CONCURRENCY = 3;
@@ -982,6 +984,54 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     const made = this.voiceMadeBy.get(item);
     // The untouched clip stays as audioSource while pitch/speed changes make new `audio`.
     return made && made.audio === item.get('audioSource')?.value ? voiceSourceNameKey(made.provider) : '';
+  }
+
+  // ---- 📘 How to write it ----
+
+  signsGuideOpen = false;
+  signsGuideTab: SignsGuideTab = 'reading';
+
+  /** Opens on the game the items already look like (a Talk Show part, Reading tasks, gaps...). */
+  toggleSignsGuide() {
+    if (this.signsGuideOpen) {
+      this.signsGuideOpen = false;
+      return;
+    }
+    const texts = this.items.controls.map(control => String(control.get('text')?.value ?? ''));
+    if (this.usesSpeakingParts || this.topicExam) this.signsGuideTab = 'speaking';
+    else if (this.usesReadingTasks || texts.some(isHeading)) this.signsGuideTab = 'reading';
+    else if (texts.some(text => startsParagraph(text) || /(^|\s)_/.test(text))) this.signsGuideTab = 'writing';
+    this.signsGuideOpen = true;
+  }
+
+  /**
+   * "Start from this example" / "+ Add this part": the example's lines become items. A whole
+   * example goes below what the teacher already has, after asking; a part is just added at the end.
+   */
+  async useSignsExample(request: SignsExampleRequest) {
+    if (!this.licenseService.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    const lines = exampleItems(request.lines);
+    const hasContent = this.items.controls.some(control => this.itemHasContent(control));
+    if (request.whole && hasContent
+      && !await this.confirmationService.confirm(this.langService.translate('signsUseExampleConfirm'))) return;
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      if (!this.itemHasContent(this.items.at(i))) this.items.removeAt(i);
+    }
+    const first = this.items.length;
+    lines.forEach(text => this.items.push(this.createItemFormGroup(null, text)));
+    if (request.whole) {
+      const guide = SIGNS_GUIDES.find(g => g.id === request.tab);
+      if (guide && !String(this.topicForm.value.name ?? '').trim()) this.topicForm.patchValue({ name: guide.exampleName });
+      if (request.tab === 'reading' && !this.topicLevel) this.setTopicLevel('A2');
+      if (request.tab === 'speaking' && !this.topicExam) this.setTopicExam('ielts');
+      this.signsGuideOpen = false;
+    }
+    showAppNotification(this.langService.translate(request.whole ? 'signsExampleAdded' : 'signsPartAdded', { n: lines.length }), 'success');
+    // The new items in view, so the teacher sees where they went.
+    window.setTimeout(() => document.querySelector(`[data-item-index="${first}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
   }
 
   // ---- ⇄ Swap text and cards ----

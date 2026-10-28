@@ -125,6 +125,51 @@ describe('TopicForm', () => {
     expect(component.aiPanelCreated).toBe(true);
   });
 
+  describe('📘 how to write it', () => {
+    it('opens on the game the items look like', () => {
+      component.items.clear();
+      addItem('# CUE Describe a place');
+      component.toggleSignsGuide();
+      expect(component.signsGuideOpen).toBe(true);
+      expect(component.signsGuideTab).toBe('speaking');
+      component.toggleSignsGuide();
+      expect(component.signsGuideOpen).toBe(false);
+
+      component.items.clear();
+      addItem('We swam and _ fish.');
+      component.toggleSignsGuide();
+      expect(component.signsGuideTab).toBe('writing');
+    });
+
+    it('starts an empty topic from the example, with its name and level', async () => {
+      component.items.clear();
+      addItem('');
+      await component.useSignsExample({ tab: 'reading', lines: ['# Fish', 'We [swam].'], whole: true });
+      expect(component.items.controls.map(item => item.value.text)).toEqual(['# Fish', 'We [swam].']);
+      expect(component.topicForm.value.name).toBe('A summer at grandma\'s');
+      expect(component.topicLevel).toBe('A2');
+      expect(component.signsGuideOpen).toBe(false);
+    });
+
+    it('adds a speaking part at the end, keeping the items there', async () => {
+      component.items.clear();
+      addItem('# ASK Food');
+      addItem('Do you like fruit?');
+      await component.useSignsExample({ tab: 'speaking', lines: ['# DISCUSS Health', 'Why is sleep important?'], whole: false });
+      expect(component.items.controls.map(item => item.value.text))
+        .toEqual(['# ASK Food', 'Do you like fruit?', '# DISCUSS Health', 'Why is sleep important?']);
+    });
+
+    it('asks before adding a whole example to a topic that has items', async () => {
+      const confirmation = (component as any).confirmationService;
+      confirmation.confirm = async () => false;
+      component.items.clear();
+      addItem('apple');
+      await component.useSignsExample({ tab: 'writing', lines: ['One.', '* Two.'], whole: true });
+      expect(component.items.controls.map(item => item.value.text)).toEqual(['apple']);
+    });
+  });
+
   describe('⇄ swap text and cards', () => {
     const voice = new Blob(['voice of elephant']);
 

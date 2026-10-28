@@ -9,10 +9,11 @@ import { SharedModule } from '../../shared/shared.module';
 import { ActivitySelectComponent } from './activity-select/activity-select';
 import { AiTopicPanelComponent } from './ai-topic-panel/ai-topic-panel';
 import { PointAreaEditorComponent } from './point-area-editor/point-area-editor';
+import { TopicSignsGuideComponent } from './topic-signs-guide/topic-signs-guide';
 import { TranslatePipe } from "../../shared/translate-pipe";
 
 @NgModule({
-  declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent, AiTopicPanelComponent, PointAreaEditorComponent],
+  declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent, AiTopicPanelComponent, PointAreaEditorComponent, TopicSignsGuideComponent],
   imports: [
     CommonModule,
     FormsModule,
