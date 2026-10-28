@@ -613,14 +613,15 @@
       </div>
     </div>
     <div class="image-settings-panel" *ngIf="element.type === 'image'">
-      <app-image-uploader [autoPasteTarget]="true" (imageSelected)="creator.onBookImageSelected($event, element)" (imageCropped)="creator.onBookImageSelected($event, element)"></app-image-uploader>
+      <!-- The same uploader as a topic item's picture: the current picture inside, with ✂️ and ✕. -->
+      <app-image-uploader [contextKey]="element.id" [initialImage]="creator.getBookImageBlob(element)" [autoPasteTarget]="true" (imageSelected)="creator.onBookImageSelected($event, element)" (imageCropped)="creator.onBookImageSelected($event, element)"></app-image-uploader>
     </div>
     <div class="image-settings-panel answer-key-settings" *ngIf="element.type === 'answerKey'">
       <div class="answer-key-gallery" *ngIf="creator.getAnswerKeyImages(element).length">
         <div
           class="answer-key-thumb"
           *ngFor="let imagePath of creator.getAnswerKeyImages(element); let i = index; trackBy: creator.trackByIndex"
-          [class.answer-key-thumb-selected]="creator.getSelectedAnswerKeyImageIndex(element) === i"
+          [class.answer-key-thumb-selected]="!creator.isAddingAnswerKeyImage(element) && creator.getSelectedAnswerKeyImageIndex(element) === i"
           draggable="true"
           (dragstart)="creator.onAnswerKeyImageDragStart(i, $event)"
           (dragover)="creator.onAnswerKeyImageDragOver($event)"
@@ -634,10 +635,27 @@
             title="Has audio">🔊</span>
           <button type="button" class="answer-key-thumb-remove" (click)="$event.stopPropagation(); creator.removeAnswerKeyImage(element, i)" title="Remove image" aria-label="Remove image">&times;</button>
         </div>
+        <!-- ＋ : the uploader below adds a picture instead of editing the selected one. -->
+        <button type="button" class="answer-key-thumb answer-key-add"
+                [class.answer-key-thumb-selected]="creator.isAddingAnswerKeyImage(element)"
+                (click)="creator.startAddingAnswerKeyImage(element)"
+                [title]="'answerKeyAddPicture' | translate" [attr.aria-label]="'answerKeyAddPicture' | translate">＋</button>
       </div>
-      <app-image-uploader [contextKey]="element.id + ':' + creator.getAnswerKeyImages(element).length" [autoPasteTarget]="true" (imageSelected)="creator.addAnswerKeyImage($event, element)" (imageCropped)="creator.addAnswerKeyImage($event, element)"></app-image-uploader>
+      <p class="answer-key-uploader-label" *ngIf="creator.getAnswerKeyImages(element).length as imageCount">
+        {{ creator.isAddingAnswerKeyImage(element)
+            ? ('answerKeyAddPicture' | translate)
+            : ('answerKeyPictureOf' | translate: { n: creator.getSelectedAnswerKeyImageIndex(element) + 1, total: imageCount }) }}
+      </p>
+      <!-- Like a topic item: the selected picture is inside the uploader (✂️ crop, ✕ remove, or
+           replace it, its audio stays); with ＋ chosen it adds a new one. -->
+      <app-image-uploader
+        [contextKey]="element.id + ':' + (creator.isAddingAnswerKeyImage(element) ? 'new' : creator.getSelectedAnswerKeyImageIndex(element))"
+        [initialImage]="creator.getAnswerKeyUploaderImage(element)"
+        [autoPasteTarget]="true"
+        (imageSelected)="creator.onAnswerKeyUploaderImage($event, element)"
+        (imageCropped)="creator.onAnswerKeyUploaderImage($event, element)"></app-image-uploader>
 
-      <div class="answer-key-audio-section" *ngIf="creator.getAnswerKeyImages(element).length as imageCount">
+      <div class="answer-key-audio-section" *ngIf="!creator.isAddingAnswerKeyImage(element) && creator.getAnswerKeyImages(element).length as imageCount">
         <div class="answer-key-audio-label">
           Audio for image {{ creator.getSelectedAnswerKeyImageIndex(element) + 1 }} of {{ imageCount }}
         </div>
@@ -806,6 +824,12 @@
             (click)="$event.stopPropagation()"
             (dragstart)="$event.preventDefault()">
             <div class="guide-track-scrubber">
+              <div
+                class="guide-trim-range"
+                [style.left.%]="creator.getGuideTrackTrimRange(track).start / creator.getGuideTrackDuration(track) * 100"
+                [style.right.%]="100 - (creator.getGuideTrackTrimRange(track).end / creator.getGuideTrackDuration(track) * 100)"
+                aria-hidden="true">
+              </div>
               <input
                 type="range"
                 min="0"
@@ -824,16 +848,44 @@
                 type="button"
                 draggable="false"
                 class="guide-timeline-pin selected"
+                [class.outside-trim]="creator.isPinOutsideGuideTrim(track, pin)"
                 [style.left.%]="pin.time / creator.getGuideTrackDuration(track) * 100"
                 (click)="creator.selectGuidePin(element, track, pin, $event)"
                 (pointerdown)="creator.startGuideTimelinePinDrag($event, element, track, pin)"
                 [title]="creator.formatGuideTime(pin.time)"
                 aria-label="Timed teacher position">
               </button>
+              <button
+                type="button"
+                draggable="false"
+                class="guide-trim-flag guide-trim-flag-start"
+                [style.left.%]="creator.getGuideTrackTrimRange(track).start / creator.getGuideTrackDuration(track) * 100"
+                (pointerdown)="creator.startGuideTrimDrag($event, element, track, 'start')"
+                [title]="'Trim start: ' + creator.formatGuideTime(creator.getGuideTrackTrimRange(track).start)"
+                aria-label="Playback start flag">
+              </button>
+              <button
+                type="button"
+                draggable="false"
+                class="guide-trim-flag guide-trim-flag-end"
+                [style.left.%]="creator.getGuideTrackTrimRange(track).end / creator.getGuideTrackDuration(track) * 100"
+                (pointerdown)="creator.startGuideTrimDrag($event, element, track, 'end')"
+                [title]="'Trim end: ' + creator.formatGuideTime(creator.getGuideTrackTrimRange(track).end)"
+                aria-label="Playback end flag">
+              </button>
             </div>
-            <span class="guide-track-timer" aria-hidden="true">
-              {{ creator.formatGuideTime(creator.getGuideTrackCurrentTime(track)) }} / {{ creator.formatGuideTime(creator.getGuideTrackDuration(track)) }}
-            </span>
+            <div class="guide-track-footer">
+              <span class="guide-track-timer" aria-hidden="true">
+                {{ creator.formatGuideTime(creator.getGuideTrackCurrentTime(track)) }} / {{ creator.formatGuideTime(creator.getGuideTrackDuration(track)) }}
+              </span>
+              <button
+                type="button"
+                class="tiny-btn guide-trim-reset"
+                *ngIf="creator.isGuideTrackTrimmed(track)"
+                (click)="$event.stopPropagation(); creator.resetGuideTrackTrim(element, track)"
+                title="Play the whole recording again"
+                aria-label="Reset trim to the full recording">↺ Full length</button>
+            </div>
           </div>
           <div class="guide-pitch-row" *ngIf="track.id === creator.selectedGuideTrackId" (click)="$event.stopPropagation()">
             <span class="guide-pitch-label">♂</span>
@@ -864,6 +916,9 @@
             <img src="assets/images/book/delete.png" alt="">
           </button>
         </div>
+        <p class="guide-pin-trim-warning" *ngIf="creator.isSelectedGuidePinOutsideTrim(element)" role="status">
+          This position is outside the trimmed range, so it won't play. Drag it back inside, or move the trim flags.
+        </p>
         <label>
           {{ 'textOptional' | translate }}
           <textarea
@@ -873,11 +928,11 @@
             (ngModelChange)="creator.markBookDirty()"
             (blur)="creator.commitHistoryCapture()"></textarea>
         </label>
-        <div class="guide-pin-image" *ngIf="creator.getGuidePinImageUrl(selectedPin) as pinImageUrl">
-          <img [src]="pinImageUrl" alt="">
-        </div>
+        <!-- The same uploader as a topic item's picture: the pin's picture inside, with ✂️ and ✕. -->
         <app-image-uploader
           [contextKey]="selectedPin.id"
+          [initialImage]="creator.getGuidePinImageBlob(selectedPin)"
+          [autoPasteTarget]="true"
           (imageSelected)="creator.onGuidePinImageSelected($event, element)"
           (imageCropped)="creator.onGuidePinImageSelected($event, element)">
         </app-image-uploader>

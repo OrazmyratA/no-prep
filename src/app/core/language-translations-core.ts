@@ -3184,6 +3184,33 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Mỗi mục có một nhãn nhỏ cho biết nó là gì (tiêu đề, bài tập, phần), nên bạn có thể kiểm tra ký hiệu ngay khi gõ.',
 },
 
+// Book creator: the answer key's picture uploader.
+'answerKeyAddPicture': {
+  en: 'Add a picture',
+  tk: 'Surat goş',
+  ru: 'Добавить картинку',
+  cn: '添加图片',
+  cde: 'Bild hinzufügen',
+  es: 'Añadir una imagen',
+  fr: 'Ajouter une image',
+  kr: '그림 추가',
+  sa: 'أضف صورة',
+  vi: 'Thêm ảnh',
+},
+
+'answerKeyPictureOf': {
+  en: 'Picture {n} of {total}',
+  tk: '{total} suratdan {n}-njy',
+  ru: 'Картинка {n} из {total}',
+  cn: '第 {n} 张，共 {total} 张',
+  cde: 'Bild {n} von {total}',
+  es: 'Imagen {n} de {total}',
+  fr: 'Image {n} sur {total}',
+  kr: '그림 {n} / {total}',
+  sa: 'الصورة {n} من {total}',
+  vi: 'Ảnh {n} / {total}',
+},
+
 'updateBadgeLabel': {
   en: 'Update available',
   tk: 'Täzelenme bar',
