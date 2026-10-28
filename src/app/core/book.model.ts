@@ -29,6 +29,10 @@ export interface GuideAudioTrack {
   src: string;
   duration?: number;
   pitchSemitones?: number;
+  /** Non-destructive play range (e.g. one recording covers two pages) - the file on disk is
+   * never cut, only where playback starts/stops. Omitted = the whole clip. */
+  trimStart?: number;
+  trimEnd?: number;
   pins: GuideTimelinePin[];
 }
 

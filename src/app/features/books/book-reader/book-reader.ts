@@ -177,6 +177,9 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   guideAudioPaused = false;
   guideAudioCurrentTime = 0;
   guideAudioDuration = 0;
+  // Where the progress bar's range starts - the trimmed clip's start flag, or 0 for an
+  // untrimmed track (guideAudioDuration doubles as its end, since both track real audio time).
+  guideAudioRangeStart = 0;
   guideAudioVolume = 1;
   guideOverlayImageUrl = '';
   guideOverlayVisible = false;
