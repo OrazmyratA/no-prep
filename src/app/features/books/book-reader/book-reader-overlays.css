@@ -294,15 +294,121 @@
   flex: 0 0 auto;
 }
 
+/* Like a Flip Tiles card: the picture fills it, its text sits underneath. */
+.answer-key-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  overflow: hidden;
+}
+
 .expanded-answer-key {
   position: relative;
   display: grid;
   place-items: center;
   width: 100%;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
   border-radius: 0.5rem;
   background: #ffffff;
+}
+
+.answer-key-text {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.6rem 1rem 0.75rem;
+  color: #111827;
+  font-size: clamp(1.1rem, 2.6vw, 2rem);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  /* As typed: teachers line answers up with spaces or put each on its own line. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 30%;
+  overflow-y: auto;
+}
+
+/* 🔍 in place of a hidden text, so the picture never moves. */
+.answer-key-reveal {
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0.5rem 0 0.7rem;
+  padding: 0.3rem 1.4rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--np-game-btn, #6366f1);
+  color: #ffffff;
+  font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.answer-key-reveal:hover {
+  transform: scale(1.05);
+  background: var(--np-game-btn-hover, #4f46e5);
+}
+
+/* 🔊 on the card, top-left (the close button is top-right). */
+.answer-key-speaker {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--np-game-btn-alt, #3b82f6);
+  font-size: 1.7rem;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.answer-key-speaker:hover {
+  transform: scale(1.08);
+}
+
+.answer-key-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* 👁 / 🙈, the same button as Flip Tiles' header. */
+.answer-key-text-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: none;
+  border-radius: 9999px;
+  background: var(--np-game-btn, #6366f1);
+  font-size: 1.35rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.answer-key-text-toggle:hover {
+  transform: scale(1.06);
+}
+
+.answer-key-text-toggle.active {
+  background: #f59e0b;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answer-key-reveal, .answer-key-speaker, .answer-key-text-toggle { transition: none; }
 }
 
 .reader-popover.answer-key-popover .expanded-answer-key {
@@ -359,11 +465,6 @@
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 800;
-}
-
-.answer-key-audio-player {
-  width: min(320px, 90%);
-  height: 2.4rem;
 }
 
 @media (max-width: 640px) {

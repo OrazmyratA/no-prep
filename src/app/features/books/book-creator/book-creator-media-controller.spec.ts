@@ -62,6 +62,32 @@ describe('BookCreatorMediaController: the answer key uploader, like a topic item
     expect(element.data['imageAudios']).toEqual([null]);
   });
 
+  it('keeps each text with its picture when pictures are added, moved and removed', async () => {
+    creator.markBookDirty = () => {};
+    controller.setAnswerKeyImageText(element, 0, 'one');
+    controller.setAnswerKeyImageText(element, 1, 'two');
+    controller.startAddingAnswerKeyImage(element);
+    await controller.onAnswerKeyUploaderImage(blob('third'), element);
+    expect(element.data['imageTexts']).toEqual(['one', 'two', '']);
+
+    // Drag the first picture to the end.
+    controller.onAnswerKeyImageDragStart(0, { dataTransfer: null } as unknown as DragEvent);
+    controller.onAnswerKeyImageDrop(element, 2, { preventDefault: () => {}, dataTransfer: null } as unknown as DragEvent);
+    expect(element.data['imageTexts']).toEqual(['two', '', 'one']);
+
+    controller.removeAnswerKeyImage(element, 1);
+    expect(element.data['imageTexts']).toEqual(['two', 'one']);
+    expect(controller.getAnswerKeyImageText(element, 1)).toBe('one');
+  });
+
+  it('a replaced picture keeps its text', async () => {
+    creator.markBookDirty = () => {};
+    controller.setAnswerKeyImageText(element, 0, 'answer A');
+    controller.selectAnswerKeyImage(element, 0);
+    await controller.onAnswerKeyUploaderImage(blob('cropped'), element);
+    expect(controller.getAnswerKeyImageText(element, 0)).toBe('answer A');
+  });
+
   it('an answer key with no picture yet just adds', () => {
     const empty = { id: 'key-2', type: 'answerKey', data: { images: [] } } as unknown as BookElement;
     expect(controller.isAddingAnswerKeyImage(empty)).toBe(true);

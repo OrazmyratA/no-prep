@@ -655,6 +655,18 @@
         (imageSelected)="creator.onAnswerKeyUploaderImage($event, element)"
         (imageCropped)="creator.onAnswerKeyUploaderImage($event, element)"></app-image-uploader>
 
+      <!-- The text under the picture: in the reader it can be hidden and revealed (🔍), like Flip Tiles. -->
+      <label class="answer-key-text-field" *ngIf="!creator.isAddingAnswerKeyImage(element) && creator.getAnswerKeyImages(element).length">
+        <span>{{ 'answerKeyText' | translate }}</span>
+        <textarea
+          rows="2"
+          [ngModel]="creator.getAnswerKeyImageText(element, creator.getSelectedAnswerKeyImageIndex(element))"
+          (focus)="creator.beginHistoryCapture()"
+          (ngModelChange)="creator.setAnswerKeyImageText(element, creator.getSelectedAnswerKeyImageIndex(element), $event)"
+          (blur)="creator.commitHistoryCapture()"
+          [placeholder]="'answerKeyTextPlaceholder' | translate"></textarea>
+      </label>
+
       <div class="answer-key-audio-section" *ngIf="!creator.isAddingAnswerKeyImage(element) && creator.getAnswerKeyImages(element).length as imageCount">
         <div class="answer-key-audio-label">
           Audio for image {{ creator.getSelectedAnswerKeyImageIndex(element) + 1 }} of {{ imageCount }}
