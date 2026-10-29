@@ -121,6 +121,8 @@
   max-width: calc(100vw - 16px);
   max-height: min(420px, calc(100vh - 24px));
   overflow-y: auto;
+  /* Scrolling past the last AI must not scroll the panel behind (that would close the menu). */
+  overscroll-behavior: contain;
   padding: 6px;
   border-radius: 14px;
   border: 1px solid #e5e7eb;

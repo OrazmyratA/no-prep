@@ -22,7 +22,8 @@
 </button>
 
 <div *ngIf="open" class="ai-choice-menu" role="listbox" [attr.aria-label]="jobLabelKey | translate"
-     [style.top.px]="menuTop" [style.left.px]="menuLeft">
+     [style.top.px]="menuTop" [style.bottom.px]="menuBottom" [style.max-height.px]="menuMaxHeight"
+     [style.left.px]="menuLeft">
   <p *ngIf="failureKey" class="ai-choice-failure">⚠ {{ failureKey | translate }}</p>
   <p *ngIf="!failureKey && currentUnavailable" class="ai-choice-failure">⚠ {{ 'aiChoiceNotLinkedNow' | translate }}</p>
   <p *ngIf="!failureKey && !currentUnavailable && currentProblem" class="ai-choice-failure">{{ currentProblem }}</p>
