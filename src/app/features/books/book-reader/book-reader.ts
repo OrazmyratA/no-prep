@@ -1180,8 +1180,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ---- The answer key, shown like a Flip Tiles card: picture, 🔊, and its text below ----
 
-  /** 👁 / 🙈: every text hidden until 🔍 shows it (kept while the book is open, like Flip Tiles). */
-  answerKeyHideTexts = false;
+  /** Each text starts hidden: 🔍 shows it, a click on the text hides it again. */
   private answerKeyRevealed = new Set<number>();
   private answerKeyAudio: HTMLAudioElement | null = null;
 
@@ -1189,24 +1188,18 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return getAnswerKeyImageText(this.expandedElement, this.expandedAnswerKeyIndex).trim();
   }
 
-  /** Some picture has a text, so the 👁 / 🙈 button is worth showing. */
-  get answerKeyHasTexts(): boolean {
-    return this.getExpandedAnswerKeyImages().some((_, index) => !!getAnswerKeyImageText(this.expandedElement, index).trim());
-  }
-
   get answerKeyTextHidden(): boolean {
-    return this.answerKeyHideTexts && !this.answerKeyRevealed.has(this.expandedAnswerKeyIndex);
-  }
-
-  toggleAnswerKeyTexts(event?: Event): void {
-    event?.stopPropagation();
-    this.answerKeyHideTexts = !this.answerKeyHideTexts;
-    this.answerKeyRevealed.clear();
+    return !this.answerKeyRevealed.has(this.expandedAnswerKeyIndex);
   }
 
   revealAnswerKeyText(event?: Event): void {
     event?.stopPropagation();
     this.answerKeyRevealed.add(this.expandedAnswerKeyIndex);
+  }
+
+  hideAnswerKeyText(event?: Event): void {
+    event?.stopPropagation();
+    this.answerKeyRevealed.delete(this.expandedAnswerKeyIndex);
   }
 
   /** 🔊 on the card: plays this picture's audio from the start. */

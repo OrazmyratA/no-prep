@@ -107,7 +107,8 @@
               </ng-template>
             </div>
             <ng-container *ngIf="getExpandedAnswerKeyText() as answerText">
-              <p *ngIf="!answerKeyTextHidden" class="answer-key-text">{{ answerText }}</p>
+              <button *ngIf="!answerKeyTextHidden" type="button" class="answer-key-text"
+                      [attr.title]="'flipTilesHideTexts' | translate" (click)="hideAnswerKeyText($event)">{{ answerText }}</button>
               <button *ngIf="answerKeyTextHidden" type="button" class="answer-key-reveal"
                       [attr.title]="'flipTilesShow' | translate" [attr.aria-label]="'flipTilesShow' | translate"
                       (click)="revealAnswerKeyText($event)">🔍</button>
@@ -121,14 +122,8 @@
           (click)="showNextAnswerKeyImage($event)"
           aria-label="Next image">&#8250;</button>
       </div>
-      <div class="answer-key-bar" *ngIf="getExpandedAnswerKeyImages().length > 1 || answerKeyHasTexts">
-        <div class="answer-key-counter" *ngIf="getExpandedAnswerKeyImages().length > 1">{{ expandedAnswerKeyIndex + 1 }} / {{ getExpandedAnswerKeyImages().length }}</div>
-        <!-- 👁 / 🙈 like Flip Tiles: hide every text, so students answer before they see it. -->
-        <button *ngIf="answerKeyHasTexts" type="button" class="answer-key-text-toggle" [class.active]="answerKeyHideTexts"
-                [attr.title]="(answerKeyHideTexts ? 'flipTilesShowTexts' : 'flipTilesHideTexts') | translate"
-                [attr.aria-pressed]="answerKeyHideTexts" (click)="toggleAnswerKeyTexts($event)">
-          {{ answerKeyHideTexts ? '🙈' : '👁' }}
-        </button>
+      <div class="answer-key-bar" *ngIf="getExpandedAnswerKeyImages().length > 1">
+        <div class="answer-key-counter">{{ expandedAnswerKeyIndex + 1 }} / {{ getExpandedAnswerKeyImages().length }}</div>
       </div>
     </div>
     <div class="reader-popover" [class.video-fullscreen]="videoFullscreen" *ngIf="expandedElement.type !== 'answerKey'" (click)="$event.stopPropagation()">

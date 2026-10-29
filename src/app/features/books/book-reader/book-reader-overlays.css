@@ -332,6 +332,11 @@
   overflow-wrap: anywhere;
   max-height: 30%;
   overflow-y: auto;
+  /* A button (a click hides it again), drawn as plain text. */
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 /* 🔍 in place of a hidden text, so the picture never moves. */
@@ -384,31 +389,8 @@
   gap: 0.6rem;
 }
 
-/* 👁 / 🙈, the same button as Flip Tiles' header. */
-.answer-key-text-toggle {
-  display: grid;
-  place-items: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  border: none;
-  border-radius: 9999px;
-  background: var(--np-game-btn, #6366f1);
-  font-size: 1.35rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.answer-key-text-toggle:hover {
-  transform: scale(1.06);
-}
-
-.answer-key-text-toggle.active {
-  background: #f59e0b;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .answer-key-reveal, .answer-key-speaker, .answer-key-text-toggle { transition: none; }
+  .answer-key-reveal, .answer-key-speaker { transition: none; }
 }
 
 .reader-popover.answer-key-popover .expanded-answer-key {
