@@ -1,4 +1,4 @@
-name: Release — Android AAB
+name: Release — Android AAB + APK
 
 on:
   push:
@@ -13,7 +13,7 @@ on:
 
 jobs:
   build-android:
-    name: Build signed Android AAB
+    name: Build signed Android AAB and APK
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -50,15 +50,24 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           PROPS
 
-      - name: Build release AAB
+      - name: Build release AAB and APK
         # gradle.properties names the developer's Windows JDK; here the runner's JDK 21 is used.
+        # The AAB is for the Play Console; the APK is what the Download page and the in-app
+        # updater hand to phones (they look for a .apk asset and fall back to the release page).
         run: |
           sed -i '/^org\.gradle\.java\.home=/d' android/gradle.properties
-          cd android && chmod +x gradlew && ./gradlew bundleRelease
+          cd android && chmod +x gradlew && ./gradlew bundleRelease assembleRelease
 
-      - name: Upload AAB to GitHub Release
+      - name: Name the APK after the version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: cp android/app/build/outputs/apk/release/app-release.apk "android/No-Prep-${TAG#v}.apk"
+
+      - name: Upload AAB and APK to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
-          files: android/app/build/outputs/bundle/release/app-release.aab
+          files: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/No-Prep-*.apk
           generate_release_notes: true
