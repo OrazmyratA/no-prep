@@ -72,6 +72,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiTopicGenerateImage: (input) => ipcRenderer.invoke('ai-topic:generate-image', input ?? {}),
   aiTopicCheckKey: (input) => ipcRenderer.invoke('ai-topic:check-key', input ?? {}),
   aiTopicCancel: (input) => ipcRenderer.invoke('ai-topic:cancel', input ?? {}),
+  exportTopicsFolder: (input) => ipcRenderer.invoke('topics:export-folder', input ?? {}),
   driveBackupGetStatus: () => ipcRenderer.invoke('drive-backup:get-status'),
   driveBackupLink: () => ipcRenderer.invoke('drive-backup:link'),
   driveBackupCancelLink: () => ipcRenderer.invoke('drive-backup:cancel-link'),

@@ -42,6 +42,72 @@ export class PlatformFileService {
     this.downloadBrowserJson(json, safeFilename);
   }
 
+  /**
+   * Several JSON files in one folder (Export all: one file per topic). Desktop: Downloads/<folder>,
+   * shown in Explorer. Android: Download/<folder>. Web: a folder the teacher picks (Chrome, Edge),
+   * or each file downloaded on its own where browsers can't write folders.
+   * Returns where it went, for the message ('' when the browser decided).
+   */
+  async saveJsonFolder(folderName: string, files: { name: string; data: unknown }[]): Promise<string> {
+    const folder = this.sanitizeFilename(folderName);
+    const items = files.map((file) => ({ name: this.sanitizeFilename(file.name), content: JSON.stringify(file.data, null, 2) }));
+
+    const desktop = (window as any)?.electronAPI;
+    if (typeof desktop?.exportTopicsFolder === 'function') {
+      const result = await desktop.exportTopicsFolder({ folderName: folder, files: items });
+      if (!result?.ok) throw new Error(result?.message || 'Could not save the topics.');
+      return result.result?.folder || folder;
+    }
+
+    if (this.platform.isAndroid()) {
+      const used = new Set<string>();
+      for (const item of items) {
+        const name = this.uniqueName(item.name, used);
+        await this.saveAndroidText(item.content, name, 'application/json', `Download/${folder}`);
+      }
+      return `Download/${folder}`;
+    }
+
+    const picker = (window as any).showDirectoryPicker;
+    if (typeof picker === 'function') {
+      let parent: any;
+      try {
+        parent = await picker({ mode: 'readwrite', startIn: 'downloads' });
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') throw error; // the teacher closed the picker
+        parent = null;
+      }
+      if (parent) {
+        const dir = await parent.getDirectoryHandle(folder, { create: true });
+        const used = new Set<string>();
+        for (const item of items) {
+          const handle = await dir.getFileHandle(this.uniqueName(item.name, used), { create: true });
+          const writable = await handle.createWritable();
+          await writable.write(new Blob([item.content], { type: 'application/json' }));
+          await writable.close();
+        }
+        return `${parent.name}/${folder}`;
+      }
+    }
+
+    // Browsers without folder access: one download per file (the browser may ask once to allow it).
+    const used = new Set<string>();
+    for (const item of items) {
+      this.downloadBrowserJson(item.content, this.uniqueName(item.name, used));
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return '';
+  }
+
+  /** "Animals.json", then "Animals (2).json" for a second topic with the same name. */
+  private uniqueName(name: string, used: Set<string>): string {
+    const stem = name.replace(/\.json$/i, '');
+    let candidate = `${stem}.json`;
+    for (let n = 2; used.has(candidate.toLowerCase()); n++) candidate = `${stem} (${n}).json`;
+    used.add(candidate.toLowerCase());
+    return candidate;
+  }
+
   async saveTextToDownloads(
     content: string,
     filename: string,

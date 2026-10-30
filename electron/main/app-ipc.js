@@ -160,7 +160,40 @@ function registerAppIpc({
     });
     return response.response === 0 ? 'save' : response.response === 1 ? 'discard' : 'cancel';
   });
+
+  // Export all: a folder in Downloads with one file per topic ("Animals.json"), shown in Explorer.
+  ipcMain.handle('topics:export-folder', async (_event, input) => {
+    const files = Array.isArray(input?.files) ? input.files : [];
+    if (!files.length || files.length > MAX_EXPORT_FILES) return operationError('INVALID', 'Nothing to export.');
+    try {
+      const base = sanitizeName(input?.folderName, 'No-Prep topics');
+      let folder = path.join(app.getPath('downloads'), base);
+      // Never mix with an earlier export of the same day: "No-Prep topics 2026-10-30 (2)".
+      for (let n = 2; await fsp.stat(folder).then(() => true, () => false); n++) {
+        folder = path.join(app.getPath('downloads'), `${base} (${n})`);
+      }
+      await fsp.mkdir(folder, { recursive: true });
+      const used = new Set();
+      for (const file of files) {
+        const content = typeof file?.content === 'string' ? file.content : '';
+        if (content.length > MAX_EXPORT_FILE_CHARS) continue;
+        const stem = sanitizeName(String(file?.name || '').replace(/\.json$/i, ''), 'Topic').slice(0, 100);
+        let name = `${stem}.json`;
+        for (let n = 2; used.has(name.toLowerCase()); n++) name = `${stem} (${n}).json`;
+        used.add(name.toLowerCase());
+        await fsp.writeFile(path.join(folder, name), content, 'utf8');
+      }
+      shell.showItemInFolder(folder);
+      return operationResult({ folder, count: used.size });
+    } catch (error) {
+      console.error('topics:export-folder error:', error);
+      return operationError('EXPORT_FAILED', 'Could not save the topics.');
+    }
+  });
 }
+
+const MAX_EXPORT_FILES = 2000;
+const MAX_EXPORT_FILE_CHARS = 250 * 1024 * 1024;
 
 module.exports = {
   registerAppIpc

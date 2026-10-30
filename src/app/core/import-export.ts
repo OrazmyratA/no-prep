@@ -51,6 +51,11 @@ export interface ImportChoice {
 
 const nameKey = (name: string) => name.trim().toLowerCase();
 
+/** "Unit 3: Food / Drinks?" → "Unit 3 Food Drinks": a file name any system accepts (as in the Drive backup). */
+function topicFileStem(name: string): string {
+  return name.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100) || 'Topic';
+}
+
 /** A topic's name and cards in order (text, card words, has picture, has sound): equal = the same topic. */
 function topicPrint(name: string, items: { text?: string; imageText?: string; image: boolean; audio: boolean }[]): string {
   const cards = items.map((item) => [(item.text || '').trim(), (item.imageText || '').trim(), item.image ? 'i' : '', item.audio ? 'a' : ''].join('\u0002'));
@@ -90,9 +95,33 @@ export class ImportExportService {
   }
 
   /** True once the file is saved (false when saving failed; the teacher was told). */
+  /**
+   * Export all: a folder "No-Prep topics <date>" with one file per topic ("Animals.json"), the same
+   * as the Google Drive backup. Import takes several of them at once and lists what's new.
+   */
   async exportAllTopics(): Promise<boolean> {
-    const filename = `all-topics-${new Date().toISOString().slice(0,10)}.json`;
-    return this.downloadJson(await this.buildAllTopicsExport(), filename);
+    const folderName = `No-Prep topics ${new Date().toISOString().slice(0, 10)}`;
+    const topics = await db.topics.toArray();
+    if (!topics.length) {
+      showAppNotification('There are no topics to export yet.', 'info');
+      return false;
+    }
+    showAppNotification(`Saving ${topics.length} topic(s)...`, 'info');
+    try {
+      const files: { name: string; data: ExportData }[] = [];
+      for (const topic of topics) {
+        const data = await this.buildTopicExport(topic.id!);
+        if (data) files.push({ name: `${topicFileStem(topic.name)}.json`, data });
+      }
+      const where = await this.platformFile.saveJsonFolder(folderName, files);
+      showAppNotification(where ? `Saved ${files.length} topic(s) to ${where}.` : `Saved ${files.length} topic(s).`, 'success');
+      return true;
+    } catch (error) {
+      if ((error as Error)?.name === 'AbortError') return false; // the teacher closed the folder picker
+      console.debug('Topic export failed:', error);
+      showAppNotification('Could not save the topics. Please try again.', 'error');
+      return false;
+    }
   }
 
   /** One topic as a file of its own (what the Google Drive backup keeps per topic; Import reads it). */
@@ -107,20 +136,6 @@ export class ImportExportService {
     };
   }
 
-  /** The Export all file's content (Import reads it). */
-  async buildAllTopicsExport(): Promise<ExportData> {
-    const topics = await db.topics.toArray();
-    const exportTopics: ExportTopic[] = [];
-    for (const topic of topics) {
-      const items = await db.items.where('topicId').equals(topic.id!).sortBy('order');
-      exportTopics.push(await this.topicToExport(topic, items));
-    }
-    return {
-      version: this.currentVersion,
-      exportDate: new Date().toISOString(),
-      topics: exportTopics
-    };
-  }
 
   private async topicToExport(topic: Topic, items: Item[]): Promise<ExportTopic> {
 const exportItems = await Promise.all(items.map(async item => ({

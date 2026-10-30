@@ -30,8 +30,8 @@ const EMPTY: DriveBackupStatus = {
 const REMIND_AFTER_KEY = 'driveBackupRemindAfter';
 const NEVER_REMIND_KEY = 'driveBackupNeverRemind';
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** Several saves in a row send one upload, a moment after the last one. */
-export const BACKUP_DELAY_MS = 5000;
+/** Saves within a second send one upload; then it goes up at once (colleagues see it quickly). */
+export const BACKUP_DELAY_MS = 1000;
 
 /** The desktop app's answer (electron/main/operation-result.js). */
 interface DriveReply {
