@@ -18,10 +18,12 @@ export interface DriveBackupStatus {
   /** '' | 'failed' | 'relink' — how the last backup ended. */
   lastError: string;
   uploading: boolean;
+  /** The backup folder is "anyone with the link can view", for colleagues. */
+  shared: boolean;
 }
 
 const EMPTY: DriveBackupStatus = {
-  available: false, linked: false, needsRelink: false, email: '', folderUrl: '', lastBackupAt: null, lastError: '', uploading: false
+  available: false, linked: false, needsRelink: false, email: '', folderUrl: '', lastBackupAt: null, lastError: '', uploading: false, shared: false
 };
 
 const REMIND_AFTER_KEY = 'driveBackupRemindAfter';
@@ -43,6 +45,7 @@ interface DriveBridge {
   driveBackupLink(): Promise<DriveReply>;
   driveBackupUpload(input: { json: string }): Promise<DriveReply>;
   driveBackupUnlink(): Promise<DriveReply>;
+  driveBackupSetSharing(input: { on: boolean }): Promise<DriveReply>;
 }
 
 /**
@@ -105,6 +108,34 @@ export class DriveBackupService {
   async unlink(): Promise<void> {
     const result = await this.bridge?.driveBackupUnlink().catch(() => null);
     if (result?.ok) this.apply(result.result);
+  }
+
+  /**
+   * Share the backup folder with colleagues (anyone with the link can view), and copy the link
+   * to paste into a message; or stop sharing. The caller asks the teacher first.
+   */
+  async setSharing(on: boolean): Promise<boolean> {
+    const result = await this.bridge?.driveBackupSetSharing({ on }).catch(() => null);
+    if (!result?.ok) {
+      showAppNotification(this.lang.translate('driveBackupShareFailed'), 'error');
+      return false;
+    }
+    this.apply(result.result);
+    if (on) await this.copyShareLink();
+    else showAppNotification(this.lang.translate('driveBackupShareStopped'), 'success');
+    return true;
+  }
+
+  async copyShareLink(): Promise<void> {
+    const url = this.status.folderUrl;
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      showAppNotification(this.lang.translate('driveBackupLinkCopied'), 'success');
+    } catch {
+      // No clipboard (rare): show the link so it can be copied by hand.
+      showAppNotification(url, 'info');
+    }
   }
 
   /** After a topic is saved: back it up, or (not linked) remind gently. */

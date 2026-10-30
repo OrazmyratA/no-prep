@@ -236,6 +236,19 @@ onClickOutside(event: MouseEvent) {
     }
   }
 
+  /** Share the backup folder with colleagues: anyone with the link sees all topics, so ask first. */
+  async shareDriveBackup(): Promise<void> {
+    if (await this.confirmationService.confirm(this.langService.translate('driveBackupShareConfirm'))) {
+      await this.driveBackup.setSharing(true);
+    }
+  }
+
+  async stopSharingDriveBackup(): Promise<void> {
+    if (await this.confirmationService.confirm(this.langService.translate('driveBackupStopShareConfirm'))) {
+      await this.driveBackup.setSharing(false);
+    }
+  }
+
   openDriveBackupFolder(): void {
     const url = this.driveBackupStatus.folderUrl;
     if (url) void this.openDriveLink({ id: 'drive-backup', name: '', url, isDefault: true });

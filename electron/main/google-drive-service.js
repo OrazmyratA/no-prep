@@ -100,7 +100,8 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
       email: state.email || '',
       folderUrl: state.folderUrl || '',
       lastBackupAt: state.lastBackupAt || null,
-      lastError: state.lastError || ''
+      lastError: state.lastError || '',
+      shared: !!state.shared
     };
   }
 
@@ -238,10 +239,41 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     return !file.trashed;
   }
 
-  /** The "No-Prep backup" folder (made again if the teacher deleted it). */
+  /** The newest file the app made that matches `q` (drive.file shows only the app's own files). */
+  async function findOwn(q) {
+    const params = new URLSearchParams({ q: `${q} and trashed = false`, orderBy: 'modifiedTime desc', pageSize: '1', fields: 'files(id,webViewLink)' });
+    const response = await drive(`${FILES_URL}?${params}`);
+    if (!response.ok) return null;
+    const body = await response.json().catch(() => ({}));
+    return body.files?.[0] || null;
+  }
+
+  /** Is "anyone with the link" on this file? (So a folder found again keeps its shared state.) */
+  async function isSharedByLink(id) {
+    const response = await drive(`${FILES_URL}/${encodeURIComponent(id)}/permissions?fields=permissions(id,type)`);
+    if (!response.ok) return false;
+    const body = await response.json().catch(() => ({}));
+    return (body.permissions || []).some((p) => p.type === 'anyone');
+  }
+
+  /**
+   * The "No-Prep backup" folder. Linking again (another computer, a reinstall) finds the folder the
+   * app made before, so a link shared with colleagues keeps getting new topics; it is made again
+   * only if the teacher deleted it.
+   */
   async function ensureFolder() {
     const state = await readState();
     if (await exists(state.folderId)) return state;
+    const found = await findOwn(`name = '${FOLDER_NAME}' and mimeType = '${FOLDER_MIME}'`);
+    if (found) {
+      const file = await findOwn(`name = '${FILE_NAME}' and '${found.id}' in parents`);
+      state.folderId = found.id;
+      state.folderUrl = found.webViewLink || `https://drive.google.com/drive/folders/${found.id}`;
+      state.fileId = file?.id || '';
+      state.shared = await isSharedByLink(found.id);
+      await writeState(state);
+      return state;
+    }
     const response = await drive(`${FILES_URL}?fields=id,webViewLink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -252,6 +284,7 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     state.folderId = folder.id;
     state.folderUrl = folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`;
     state.fileId = '';
+    state.shared = false; // a new folder is private until shared again
     await writeState(state);
     return state;
   }
@@ -299,6 +332,33 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     }).then(getStatus);
   }
 
+  /**
+   * Share the backup folder with colleagues: "anyone with the link can view" on the folder and on
+   * the topics file (drive.file lets the app do this for files it made), or take that away again.
+   */
+  async function setSharing(on) {
+    const state = await ensureFolder();
+    const ids = [state.folderId, ...((await exists(state.fileId)) ? [state.fileId] : [])];
+    for (const id of ids) {
+      const url = `${FILES_URL}/${encodeURIComponent(id)}/permissions`;
+      const response = on
+        ? await drive(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'reader', type: 'anyone', allowFileDiscovery: false })
+        })
+        : await drive(`${url}/anyoneWithLink`, { method: 'DELETE' });
+      // Taking away a link that is already gone is fine.
+      if (!response.ok && !(!on && response.status === 404)) {
+        throw new DriveError('GOOGLE_FAILED', `Google refused the sharing change (${response.status}).`);
+      }
+    }
+    const fresh = await readState();
+    fresh.shared = !!on;
+    await writeState(fresh);
+    return getStatus();
+  }
+
   async function unlink() {
     cancelLink();
     const state = await readState();
@@ -312,7 +372,7 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     return getStatus();
   }
 
-  return { getStatus, link, cancelLink, backup, unlink };
+  return { getStatus, link, cancelLink, backup, setSharing, unlink };
 }
 
 module.exports = { createGoogleDriveService, DriveError, emailFromIdToken };

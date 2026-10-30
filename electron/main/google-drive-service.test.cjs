@@ -44,6 +44,15 @@ function fakeGoogle() {
       files.set(id, { ...(files.get(id) || { name: u.searchParams.get('name'), parent: u.searchParams.get('parent') }), content: init.body.toString('utf8') });
       return json({ id });
     }
+    if (u.pathname === '/drive/v3/files' && method === 'GET') {
+      // The app's search: by name (and folder type or parent), never trashed; newest first.
+      const q = u.searchParams.get('q');
+      const name = /name = '([^']+)'/.exec(q)[1];
+      const parent = /'([^']+)' in parents/.exec(q)?.[1];
+      const match = [...files.entries()].filter(([, f]) => f.name === name && !f.trashed && (!parent || f.parent === parent));
+      const last = match[match.length - 1];
+      return json({ files: last ? [{ id: last[0], webViewLink: `https://drive.google.com/drive/folders/${last[0]}` }] : [] });
+    }
     if (u.pathname === '/drive/v3/files' && method === 'POST') {
       const meta = JSON.parse(init.body);
       const id = `folder${next++}`;
@@ -51,7 +60,23 @@ function fakeGoogle() {
       return json({ id, webViewLink: `https://drive.google.com/drive/folders/${id}` });
     }
     if (u.pathname.startsWith('/drive/v3/files/')) {
-      const file = files.get(decodeURIComponent(u.pathname.split('/')[4]));
+      const parts = u.pathname.split('/');
+      const file = files.get(decodeURIComponent(parts[4]));
+      if (parts[5] === 'permissions') {
+        if (!file) return json({}, 404);
+        if (method === 'GET') return json({ permissions: file.anyone ? [{ id: 'anyoneWithLink', type: 'anyone' }] : [] });
+        if (method === 'POST') {
+          const p = JSON.parse(init.body);
+          assert.deepEqual(p, { role: 'reader', type: 'anyone', allowFileDiscovery: false });
+          file.anyone = true;
+          return json({ id: 'anyoneWithLink' });
+        }
+        if (method === 'DELETE' && parts[6] === 'anyoneWithLink') {
+          if (!file.anyone) return json({}, 404);
+          file.anyone = false;
+          return new Response(null, { status: 204 });
+        }
+      }
       return file ? json({ id: 'x', trashed: !!file.trashed }) : json({}, 404);
     }
     throw new Error(`unexpected ${method} ${url}`);
@@ -85,12 +110,20 @@ function setup({ client = { clientId: 'cid', clientSecret: 'secret' }, allow = t
     openExternal: browser({ allow }), loadClient: () => client, fetchImpl: google.fetchImpl
   });
   const stored = () => JSON.parse(fs.readFileSync(path.join(dir, 'google-drive.json'), 'utf8'));
-  return { service: restart(), restart, google, stored, dir };
+  // The same teacher's Google Drive, linked from another computer (nothing stored there yet).
+  const otherComputer = () => {
+    const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'np-drive-'));
+    return createGoogleDriveService({
+      fsp: fs.promises, path, getUserDataPath: () => otherDir, safeStorage,
+      openExternal: browser({ allow }), loadClient: () => client, fetchImpl: google.fetchImpl
+    });
+  };
+  return { service: restart(), restart, otherComputer, google, stored, dir };
 }
 
 test('without the OAuth client file the feature says "not available"', async () => {
   const { service } = setup({ client: null });
-  assert.deepEqual(await service.getStatus(), { available: false, linked: false, needsRelink: false, email: '', folderUrl: '', lastBackupAt: null, lastError: '' });
+  assert.deepEqual(await service.getStatus(), { available: false, linked: false, needsRelink: false, email: '', folderUrl: '', lastBackupAt: null, lastError: '', shared: false });
   await assert.rejects(service.link(), { kind: 'NOT_AVAILABLE' });
 });
 
@@ -149,6 +182,47 @@ test('access removed in the Google account: the backup asks to link again', asyn
   const status = await restarted.getStatus();
   assert.equal(status.needsRelink, true);
   assert.equal(status.lastError, 'relink');
+});
+
+test('share with colleagues: the folder and the topics file become viewable by link, and back', async () => {
+  const { service, google } = setup();
+  await service.link();
+  await service.backup('{"v":1}');
+  const status = await service.setSharing(true);
+  assert.equal(status.shared, true);
+  assert.deepEqual([...google.files.values()].map((f) => [f.name, !!f.anyone]).sort(), [['No-Prep backup', true], ['No-Prep topics.json', true]]);
+  const off = await service.setSharing(false);
+  assert.equal(off.shared, false);
+  assert.ok([...google.files.values()].every((f) => !f.anyone));
+  // Stopping again (already stopped) is fine.
+  assert.equal((await service.setSharing(false)).shared, false);
+});
+
+test('linking again from another computer finds the same folder and file, still shared', async () => {
+  const { service, otherComputer, google } = setup();
+  await service.link();
+  await service.backup('{"from":"school"}');
+  await service.setSharing(true);
+  const firstUrl = (await service.getStatus()).folderUrl;
+
+  const home = otherComputer();
+  const status = await home.link();
+  assert.equal(status.folderUrl, firstUrl);
+  assert.equal(status.shared, true);
+  await home.backup('{"from":"home"}');
+  const named = (name) => [...google.files.values()].filter((f) => f.name === name);
+  assert.equal(named('No-Prep backup').length, 1);
+  assert.equal(named('No-Prep topics.json').length, 1);
+  assert.equal(named('No-Prep topics.json')[0].content, '{"from":"home"}');
+});
+
+test('a folder made again after deletion is private, even if the old one was shared', async () => {
+  const { service, google } = setup();
+  await service.link();
+  await service.setSharing(true);
+  for (const file of google.files.values()) file.trashed = true;
+  await service.backup('{"v":1}');
+  assert.equal((await service.getStatus()).shared, false);
 });
 
 test('unlink revokes and forgets everything', async () => {

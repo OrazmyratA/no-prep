@@ -39,6 +39,15 @@ function registerGoogleDriveIpc({ ipcMain, operationResult, operationError, goog
     }
   });
 
+  ipcMain.handle('drive-backup:set-sharing', async (_event, input) => {
+    try {
+      return operationResult(await googleDriveService.setSharing(input?.on === true));
+    } catch (error) {
+      console.error('drive-backup:set-sharing error:', error?.message || error);
+      return failed(error, 'Could not change sharing.');
+    }
+  });
+
   ipcMain.handle('drive-backup:unlink', async () => {
     try {
       return operationResult(await googleDriveService.unlink());

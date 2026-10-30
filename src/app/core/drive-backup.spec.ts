@@ -90,6 +90,27 @@ describe('DriveBackupService', () => {
     expect(toast()?.textContent).toContain('driveBackupRelinkToast');
   });
 
+  it('sharing copies the folder link; stopping says the folder is private again', async () => {
+    const backup = make(linked);
+    await backup.load();
+    let copied = '';
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { copied = text; } } });
+    bridge.driveBackupSetSharing = async ({ on }: { on: boolean }) => ({ ok: true, result: { shared: on } });
+    expect(await backup.setSharing(true)).toBe(true);
+    expect(backup.status.shared).toBe(true);
+    expect(copied).toBe('https://drive/f');
+    expect(await backup.setSharing(false)).toBe(true);
+    expect(backup.status.shared).toBe(false);
+  });
+
+  it('a refused sharing change says so and changes nothing', async () => {
+    const backup = make(linked);
+    await backup.load();
+    bridge.driveBackupSetSharing = async () => ({ ok: false, error: 'GOOGLE_FAILED' });
+    expect(await backup.setSharing(true)).toBe(false);
+    expect(backup.status.shared).toBeFalsy();
+  });
+
   it('linking backs up straight away, so the folder is not empty', async () => {
     const backup = make({ ...linked, linked: false });
     await backup.load();

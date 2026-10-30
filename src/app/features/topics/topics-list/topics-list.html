@@ -259,6 +259,18 @@
             </ng-container>
             <button *ngIf="driveBackupStatus.linked" type="button" class="drive-backup-unlink" (click)="unlinkDriveBackup()">{{ 'driveBackupUnlink' | translate }}</button>
           </div>
+          <!-- Share the folder with colleagues: they add the link in their own Quick Links. -->
+          <div *ngIf="driveBackup.safe" class="drive-backup-share" [class.on]="driveBackupStatus.shared">
+            <ng-container *ngIf="!driveBackupStatus.shared; else sharedRow">
+              <span>{{ 'driveBackupShareHint' | translate }}</span>
+              <button type="button" class="drive-backup-share-btn" (click)="shareDriveBackup()">🔗 {{ 'driveBackupShare' | translate }}</button>
+            </ng-container>
+            <ng-template #sharedRow>
+              <span>🔗 {{ 'driveBackupSharedNote' | translate }}</span>
+              <button type="button" class="drive-backup-share-btn" (click)="driveBackup.copyShareLink()">📋 {{ 'driveBackupCopyLink' | translate }}</button>
+              <button type="button" class="drive-backup-unlink" (click)="stopSharingDriveBackup()">{{ 'driveBackupStopShare' | translate }}</button>
+            </ng-template>
+          </div>
         </div>
 
         <ul class="drive-links-list" *ngIf="driveLinks.length">
