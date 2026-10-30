@@ -357,6 +357,15 @@ function isTrustedMediaPermissionRequest(webContents, permission, details) {
   return isTrustedAppPermissionUrl(details?.requestingUrl || details?.securityOrigin || details?.embeddingOrigin);
 }
 
+// Copying text (e.g. "Copy link" for a shared Drive folder) from the app's own page. Writing only:
+// reading the clipboard stays refused.
+function isTrustedClipboardWrite(webContents, permission, details) {
+  if (permission !== 'clipboard-sanitized-write' || webContents !== mainWindow?.webContents) {
+    return false;
+  }
+  return isTrustedAppPermissionUrl(details?.requestingUrl || details?.securityOrigin || details?.embeddingOrigin);
+}
+
 function notifyRendererLayoutChanged() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   resetRendererZoom();
@@ -413,13 +422,11 @@ function createWindow() {
     }
   });
   mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
-    callback(isTrustedMediaPermissionRequest(webContents, permission, details));
+    callback(isTrustedMediaPermissionRequest(webContents, permission, details) || isTrustedClipboardWrite(webContents, permission, details));
   });
   mainWindow.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
-    return isTrustedMediaPermissionRequest(webContents, permission, {
-      ...(details || {}),
-      requestingUrl: details?.requestingUrl || requestingOrigin
-    });
+    const withUrl = { ...(details || {}), requestingUrl: details?.requestingUrl || requestingOrigin };
+    return isTrustedMediaPermissionRequest(webContents, permission, withUrl) || isTrustedClipboardWrite(webContents, permission, withUrl);
   });
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders(
     {
