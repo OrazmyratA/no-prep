@@ -85,7 +85,7 @@ import { BookReaderProgressController } from './book-reader-progress-controller'
 import { cloneTextAnnotation } from './book-reader-annotation-utils';
 import { BookReaderPageFrameComponent } from './book-reader-page-frame';
 import { PdfPageCanvasComponent, PdfPrefetchRequest } from '../pdf-page-canvas/pdf-page-canvas';
-import { SubtitleSession, VideoSubtitlesService } from '../../../core/subtitles/video-subtitles';
+import { SubtitleSession, VideoSubtitlesService, bookVideoSubtitles } from '../../../core/subtitles/video-subtitles';
 import { SubtitleLine, lineIndexAt } from '../../../core/subtitles/subtitle-lines';
 
 @Component({
@@ -1192,21 +1192,28 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   subtitleLine: SubtitleLine | null = null;
   private subtitleSubscriptions: Subscription[] = [];
 
-  /** The video's metadata is in: get its saved lines, and carry on making them if the model is here. */
+  /**
+   * The video's metadata is in. Lines the teacher made in the book creator are used as they are;
+   * otherwise get lines saved on this computer, and carry on making them if the model is here.
+   */
   async onExpandedVideoReady(): Promise<void> {
     const element = this.expandedElement;
     const src = String(element?.data?.['src'] || '');
     if (!element || !this.book || !src) return;
-    const key = `${this.book.id}:${src}`;
-    if (this.subtitleSession?.key === key) return;
+    const fromBook = bookVideoSubtitles(element.data);
+    const session = this.videoSubtitles.open(`${this.book.id}:${src}`, this.getElementMediaUrl(element), fromBook.language);
+    if (this.subtitleSession?.key === session.key) return;
     // Another video was open before (closed some other way): start fresh for this one.
     this.closeSubtitles();
-    const session = this.videoSubtitles.open(key, this.getElementMediaUrl(element));
     this.subtitleSession = session;
     this.subtitleSubscriptions.push(
       session.lines$.subscribe(() => this.updateSubtitleLine()),
       session.state$.subscribe(() => this.cdr.markForCheck())
     );
+    if (fromBook.lines.length) {
+      session.useLines(fromBook.lines);
+      return;
+    }
     await session.restore();
     // Only start on its own when the model is already on this computer (no surprise download).
     if (this.subtitleSession === session && (await this.videoSubtitles.modelDownloaded())) {

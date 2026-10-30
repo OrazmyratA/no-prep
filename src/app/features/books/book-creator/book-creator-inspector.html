@@ -729,6 +729,7 @@
           (blur)="creator.commitHistoryCapture()"
           placeholder="https://.../video.mp4">
       </label>
+      <app-book-creator-video-subtitles [creator]="creator" [element]="element"></app-book-creator-video-subtitles>
     </div>
     <div class="guide-audio-panel" *ngIf="element.type === 'guideDot'">
       <div class="guide-track-controls" *ngIf="creator.getSelectedGuideTrack(element) as selectedTrack">

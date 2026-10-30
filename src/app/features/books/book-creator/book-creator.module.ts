@@ -11,6 +11,7 @@ import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface
 import { BookCreatorInspectorComponent } from './book-creator-inspector';
 import { BookCreatorPageStripComponent } from './book-creator-page-strip';
 import { BookCreatorToolbarComponent } from './book-creator-toolbar';
+import { BookCreatorVideoSubtitlesComponent } from './book-creator-video-subtitles';
 import { LessonPlanPanelComponent } from './lesson-plan-panel/lesson-plan-panel';
 import { TaskPrepPanelComponent } from './task-prep-panel/task-prep-panel';
 
@@ -22,6 +23,7 @@ import { TaskPrepPanelComponent } from './task-prep-panel/task-prep-panel';
     BookCreatorInspectorComponent,
     BookCreatorPageStripComponent,
     BookCreatorToolbarComponent,
+    BookCreatorVideoSubtitlesComponent,
     LessonPlanPanelComponent,
     TaskPrepPanelComponent
   ],

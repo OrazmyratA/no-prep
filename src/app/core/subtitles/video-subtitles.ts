@@ -9,8 +9,38 @@ export type SubtitlePhase = 'idle' | 'downloading' | 'listening' | 'done' | 'err
 
 export interface SubtitleState {
   phase: SubtitlePhase;
-  /** 0–1 while the speech model downloads (first time only). */
+  /** 0–1: the model download (first time only), then how much of the video has lines. */
   progress: number;
+}
+
+/** What a book keeps on a video element: lines made (and maybe fixed) by the teacher. */
+export interface BookVideoSubtitles {
+  language: string;
+  lines: SubtitleLine[];
+}
+
+/** Whisper's code for each language the app speaks (plus Turkish). */
+export const SUBTITLE_LANGUAGES: { code: string; name: string }[] = [
+  { code: 'en', name: 'English' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'tk', name: 'Türkmençe' },
+  { code: 'tr', name: 'Türkçe' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'fr', name: 'Français' },
+  { code: 'es', name: 'Español' },
+  { code: 'zh', name: '中文' },
+  { code: 'ko', name: '한국어' },
+  { code: 'ar', name: 'العربية' },
+  { code: 'vi', name: 'Tiếng Việt' }
+];
+
+/** The subtitles a video element keeps in the book, if any. */
+export function bookVideoSubtitles(data: Record<string, unknown> | undefined): BookVideoSubtitles {
+  const raw = data?.['subtitles'] as Partial<BookVideoSubtitles> | undefined;
+  const lines = Array.isArray(raw?.lines)
+    ? raw!.lines.filter((l) => l && Number.isFinite(l.start) && Number.isFinite(l.end) && typeof l.text === 'string')
+    : [];
+  return { language: typeof raw?.language === 'string' && raw.language ? raw.language : 'en', lines };
 }
 
 interface StoredSubtitles {
@@ -79,6 +109,20 @@ export class SubtitleSession {
     return true;
   }
 
+  /** Lines the teacher made (and maybe fixed) in the book creator: shown as they are, nothing to make. */
+  useLines(lines: SubtitleLine[]): void {
+    this.lines$.next([...lines].sort((a, b) => a.start - b.start));
+    this.setState('done');
+  }
+
+  /** Forget everything made so far (Make again), on this computer too. */
+  async reset(): Promise<void> {
+    this.coverage = new Coverage();
+    this.lines$.next([]);
+    this.setState('idle');
+    await this.service.db.videos.delete(this.key).catch(() => undefined);
+  }
+
   setPlayhead(time: number): void {
     this.playhead = Math.max(0, time);
   }
@@ -92,7 +136,7 @@ export class SubtitleSession {
         this.setState('downloading', 0);
         await this.service.loadModel((progress) => this.setState('downloading', progress));
       }
-      this.setState('listening');
+      this.setState('listening', this.coveredShare());
       this.sound ??= await readSound(this.url);
       this.duration = this.sound.length / 16000;
       await this.work();
@@ -123,9 +167,17 @@ export class SubtitleSession {
       const isLast = pieceStart + length >= this.duration - 0.25;
       const { lines, next } = takePiece(segments, pieceStart, length, isLast);
       this.coverage.add(pieceStart, isLast ? this.duration : next);
-      this.lines$.next(mergeLines(this.lines, lines));
+      this.service.zone.run(() => this.lines$.next(mergeLines(this.lines, lines)));
+      this.setState('listening', this.coveredShare());
       await this.save();
     }
+  }
+
+  /** How much of the video has lines already (0–1), for "Listening… 60%". */
+  private coveredShare(): number {
+    if (!this.duration) return 0;
+    const covered = this.coverage.ranges.reduce((sum, [s, e]) => sum + (e - s), 0);
+    return Math.min(1, covered / this.duration);
   }
 
   private async save(): Promise<void> {
@@ -167,8 +219,9 @@ export class VideoSubtitlesService {
 
   constructor(public zone: NgZone) {}
 
+  /** `key` names the video (book + file); lines made in another language are kept apart. */
   open(key: string, url: string, language = 'en'): SubtitleSession {
-    return new SubtitleSession(this, key, url, language);
+    return new SubtitleSession(this, `${key}:${language}`, url, language);
   }
 
   private get wasmBase(): string {
@@ -191,7 +244,8 @@ export class VideoSubtitlesService {
         this.checking.splice(0).forEach((done) => done(reply.downloaded));
         break;
       case 'model-progress':
-        if (reply.total > 0) this.onModelProgress?.(reply.loaded / reply.total);
+        // Small files come first; count only once the big model files are on their way.
+        if (reply.total > 20_000_000) this.onModelProgress?.(reply.loaded / reply.total);
         break;
       case 'loaded':
         this.downloaded = true;

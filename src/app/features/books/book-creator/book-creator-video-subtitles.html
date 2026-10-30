@@ -1,0 +1,33 @@
+<section class="video-subs">
+  <div class="video-subs-head">
+    <strong>💬 {{ 'subtitlesTitle' | translate }}</strong>
+    <select class="video-subs-language" [ngModel]="language" (ngModelChange)="setLanguage($event)"
+            [disabled]="making" [attr.aria-label]="'subtitlesLanguage' | translate" [title]="'subtitlesLanguage' | translate">
+      <option *ngFor="let option of languages" [value]="option.code">{{ option.name }}</option>
+    </select>
+  </div>
+
+  <p *ngIf="!canMake" class="video-subs-hint">{{ 'subtitlesOnlyFiles' | translate }}</p>
+
+  <ng-container *ngIf="canMake">
+    <p *ngIf="!lines.length && !making" class="video-subs-hint">{{ 'subtitlesMakeHint' | translate }}</p>
+    <button type="button" class="video-subs-make" [disabled]="making" (click)="make()">
+      ✨ {{ (lines.length ? 'subtitlesMakeAgain' : 'subtitlesMake') | translate }}
+    </button>
+    <p class="video-subs-status" *ngIf="making || phase === 'error'" [ngSwitch]="phase">
+      <ng-container *ngSwitchCase="'downloading'">⬇️ {{ 'subtitlesDownloading' | translate }} {{ percent }}%</ng-container>
+      <ng-container *ngSwitchCase="'listening'">⏳ {{ 'subtitlesListening' | translate }} {{ percent }}%</ng-container>
+      <ng-container *ngSwitchCase="'error'">⚠️ {{ 'subtitlesFailed' | translate }}</ng-container>
+    </p>
+  </ng-container>
+
+  <ol class="video-subs-lines" *ngIf="lines.length">
+    <li *ngFor="let line of lines; let i = index; trackBy: trackLine">
+      <span class="video-subs-time">{{ time(line.start) }}</span>
+      <input type="text" [ngModel]="line.text" (focus)="creator.beginHistoryCapture()" (ngModelChange)="editText(i, $event)"
+             (blur)="creator.commitHistoryCapture()" [attr.aria-label]="('subtitlesLine' | translate) + ' ' + time(line.start)">
+      <button type="button" class="video-subs-remove" (click)="removeLine(i)" [disabled]="making"
+              [title]="'subtitlesRemoveLine' | translate" [attr.aria-label]="'subtitlesRemoveLine' | translate">✕</button>
+    </li>
+  </ol>
+</section>
