@@ -18,6 +18,7 @@ import { BookOperationProgress, BookRegistryItem, BookStorageLocation } from '..
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { DriveLink, DriveLinksService, isValidDriveLinkUrl } from '../../../core/drive-links';
 import { WebTopicSafetyService } from '../../../core/web-topic-safety';
+import { DriveBackupService, DriveBackupStatus } from '../../../core/drive-backup';
 
 type LibraryCategory = 'topics' | 'books';
 type PendingBookStorageAction = 'create' | 'import' | null;
@@ -128,7 +129,8 @@ onClickOutside(event: MouseEvent) {
     public bookLibrary: BookLibraryService,
     public leaderboardState: LeaderboardStateService,
     private driveLinksService: DriveLinksService,
-    private topicSafety: WebTopicSafetyService
+    private topicSafety: WebTopicSafetyService,
+    public driveBackup: DriveBackupService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
     this.bookProgress$ = this.bookLibrary.progress$;
@@ -203,6 +205,40 @@ onClickOutside(event: MouseEvent) {
       if (topics.length) void this.topicSafety.keepStorage();
       this.buildMoreTopicCards();
     });
+    this.driveBackupSubscription = this.driveBackup.status$.subscribe((status) => {
+      this.driveBackupStatus = status;
+      this.scheduleViewRefresh();
+    });
+    void this.driveBackup.load();
+  }
+
+  // ---- Google Drive backup: a signal on Quick Links and a row inside it ----
+
+  // Set in ngOnInit (the status stream answers at once), before the first render.
+  driveBackupStatus!: DriveBackupStatus;
+  driveBackupLinking = false;
+  private driveBackupSubscription?: Subscription;
+
+  async linkDriveBackup(): Promise<void> {
+    if (this.driveBackupLinking) return;
+    this.driveBackupLinking = true;
+    try {
+      await this.driveBackup.link();
+    } finally {
+      this.driveBackupLinking = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async unlinkDriveBackup(): Promise<void> {
+    if (await this.confirmationService.confirm(this.langService.translate('driveBackupUnlinkConfirm'))) {
+      await this.driveBackup.unlink();
+    }
+  }
+
+  openDriveBackupFolder(): void {
+    const url = this.driveBackupStatus.folderUrl;
+    if (url) void this.openDriveLink({ id: 'drive-backup', name: '', url, isDefault: true });
   }
 
   // ---- Web only: topics live in this browser, so remind the teacher to keep a copy ----
@@ -257,6 +293,7 @@ onClickOutside(event: MouseEvent) {
     this.topicCoverSubscription?.unsubscribe();
     this.booksSubscription?.unsubscribe();
     this.topicCountSubscription?.unsubscribe();
+    this.driveBackupSubscription?.unsubscribe();
     this.cancelMoreTopicCards?.();
   }
 

@@ -72,19 +72,23 @@ export class ImportExportService {
 
   /** True once the file is saved (false when saving failed; the teacher was told). */
   async exportAllTopics(): Promise<boolean> {
+    const filename = `all-topics-${new Date().toISOString().slice(0,10)}.json`;
+    return this.downloadJson(await this.buildAllTopicsExport(), filename);
+  }
+
+  /** The Export all file's content (also what the Google Drive backup uploads; Import reads it). */
+  async buildAllTopicsExport(): Promise<ExportData> {
     const topics = await db.topics.toArray();
     const exportTopics: ExportTopic[] = [];
     for (const topic of topics) {
       const items = await db.items.where('topicId').equals(topic.id!).sortBy('order');
       exportTopics.push(await this.topicToExport(topic, items));
     }
-    const exportData: ExportData = {
+    return {
       version: this.currentVersion,
       exportDate: new Date().toISOString(),
       topics: exportTopics
     };
-    const filename = `all-topics-${new Date().toISOString().slice(0,10)}.json`;
-    return this.downloadJson(exportData, filename);
   }
 
   private async topicToExport(topic: Topic, items: Item[]): Promise<ExportTopic> {

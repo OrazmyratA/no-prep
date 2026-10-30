@@ -25,6 +25,21 @@ jobs:
       - name: Encrypt premium features
         run: node scripts/encrypt-features.js
 
+      # Google Drive backup's desktop OAuth client (docs/google-drive-backup-setup.md). Without the
+      # secrets the file is not written and the app shows no backup option.
+      - name: Google Drive backup client
+        shell: bash
+        env:
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ secrets.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
+        run: |
+          if [ -n "$GOOGLE_DESKTOP_CLIENT_ID" ] && [ -n "$GOOGLE_DESKTOP_CLIENT_SECRET" ]; then
+            node -e "require('fs').writeFileSync('electron/main/google-oauth.local.json', JSON.stringify({ clientId: process.env.GOOGLE_DESKTOP_CLIENT_ID, clientSecret: process.env.GOOGLE_DESKTOP_CLIENT_SECRET }))"
+            echo "Google Drive backup: on"
+          else
+            echo "Google Drive backup: off (no secrets)"
+          fi
+
       - name: Angular production build
         run: npm run build:prod
 

@@ -77,6 +77,8 @@ const { registerAppIpc } = require('./main/app-ipc');
 const { registerAiIpc } = require('./main/ai-ipc');
 const { createAiTopicService, AI_TOPIC_PROVIDERS } = require('./main/ai-topic-service');
 const { registerAiTopicIpc } = require('./main/ai-topic-ipc');
+const { createGoogleDriveService } = require('./main/google-drive-service');
+const { registerGoogleDriveIpc } = require('./main/google-drive-ipc');
 const { registerBookDataIpc } = require('./main/book-data-ipc');
 const { registerBookManagementIpc } = require('./main/book-management-ipc');
 const { registerBookStorageIpc } = require('./main/book-storage-ipc');
@@ -536,6 +538,32 @@ registerAiTopicIpc({
   saveApiKey: saveAiTopicApiKey,
   clearApiKey: clearAiTopicApiKey,
   providers: AI_TOPIC_PROVIDERS
+});
+// Google Drive backup of the topics; its OAuth client is a git-ignored file (see the docs).
+registerGoogleDriveIpc({
+  ipcMain,
+  operationResult,
+  operationError,
+  googleDriveService: createGoogleDriveService({
+    fsp,
+    path,
+    getUserDataPath: () => app.getPath('userData'),
+    safeStorage,
+    openExternal: (url) => shell.openExternal(url),
+    loadClient: () => {
+      try {
+        return JSON.parse(fs.readFileSync(path.join(__dirname, 'main', 'google-oauth.local.json'), 'utf8'));
+      } catch {
+        return null;
+      }
+    }
+  }),
+  focusWindow: () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
 });
 registerBookDataIpc({
   ipcMain,

@@ -28,6 +28,7 @@ import { GAMES } from '../games.config';
 import { isHeading, isRemovedSentence, isTaskItem, paragraphColor, paragraphIndexes, plainText, startsParagraph } from '../../games/writing-text';
 import { parseTaskItem } from '../../games/reading-tasks';
 import { showAppNotification } from '../../../core/notification';
+import { DriveBackupService } from '../../../core/drive-backup';
 import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
 import { SIGNS_GUIDES, SignsGuideTab, exampleItems } from '../topic-signs-guide/topic-signs';
 import { SignsExampleRequest } from '../topic-signs-guide/topic-signs-guide';
@@ -144,6 +145,7 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     private bookLibrary: BookLibraryService,
     private leaderboardState: LeaderboardStateService,
     private langService: LanguageService,
+    private driveBackup: DriveBackupService,
     private confirmationService: ConfirmationService,
     private aiMedia: AiMediaResolverService,
     private ai: AiTopicService,
@@ -1200,6 +1202,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         await this.dbService.addItems(newId, items);
         savedTopicId = newId;
       }
+      // Linked Google Drive: a copy of all topics goes up a moment later; otherwise a gentle nudge.
+      void this.driveBackup.topicSaved();
 
       if (this.leaderboardState.isSelecting) {
         await this.leaderboardState.completeTopicSelection(savedTopicId);

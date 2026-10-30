@@ -72,6 +72,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiTopicGenerateImage: (input) => ipcRenderer.invoke('ai-topic:generate-image', input ?? {}),
   aiTopicCheckKey: (input) => ipcRenderer.invoke('ai-topic:check-key', input ?? {}),
   aiTopicCancel: (input) => ipcRenderer.invoke('ai-topic:cancel', input ?? {}),
+  driveBackupGetStatus: () => ipcRenderer.invoke('drive-backup:get-status'),
+  driveBackupLink: () => ipcRenderer.invoke('drive-backup:link'),
+  driveBackupCancelLink: () => ipcRenderer.invoke('drive-backup:cancel-link'),
+  driveBackupUpload: (input) => ipcRenderer.invoke('drive-backup:upload', input ?? {}),
+  driveBackupUnlink: () => ipcRenderer.invoke('drive-backup:unlink'),
   // What a running AI request is waiting for ({ requestId, kind, ... }); returns the unsubscribe.
   onAiTopicStatus: (callback) => {
     const listener = (_event, status) => callback(status);

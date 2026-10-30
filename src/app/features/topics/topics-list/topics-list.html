@@ -89,6 +89,9 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m4.656 1.5a4 4 0 010-5.656l3-3a4 4 0 015.656 5.656l-1.5 1.5"></path>
       </svg>
       {{ 'quickLinksButton' | translate }}
+      <!-- Drive backup: amber dot until linked (stays even after "Don't remind me"), then a green ✓. -->
+      <span *ngIf="driveBackupStatus.available" class="drive-backup-badge" [class.safe]="driveBackup.safe"
+            [attr.title]="(driveBackup.safe ? 'driveBackupOnTitle' : 'driveBackupOffTitle') | translate">{{ driveBackup.safe ? '✓' : '' }}</span>
     </button>
 
     <!-- Create Book -->
@@ -229,6 +232,32 @@
           <div>
             <h2>{{ 'quickLinksButton' | translate }}</h2>
             <p>{{ 'quickLinksHint' | translate }}</p>
+          </div>
+        </div>
+
+        <!-- Google Drive backup: every topic Save puts a copy of all topics in the teacher's Drive. -->
+        <div *ngIf="driveBackupStatus.available" class="drive-backup-row" [class.safe]="driveBackup.safe" [class.attention]="!driveBackup.safe">
+          <span class="drive-backup-row-icon" aria-hidden="true">{{ driveBackup.safe ? '✅' : '☁️' }}</span>
+          <div class="drive-backup-row-text">
+            <strong>{{ (driveBackup.safe ? 'driveBackupOnTitle' : driveBackupStatus.linked ? 'driveBackupRelinkTitle' : 'driveBackupOffTitle') | translate }}</strong>
+            <small *ngIf="!driveBackupStatus.linked">{{ 'driveBackupOffHint' | translate }}</small>
+            <small *ngIf="driveBackupStatus.linked && !driveBackup.safe">{{ 'driveBackupRelinkHint' | translate }}</small>
+            <small *ngIf="driveBackup.safe">
+              {{ driveBackupStatus.email }}
+              <ng-container *ngIf="driveBackupStatus.uploading"> · {{ 'driveBackupUploading' | translate }}</ng-container>
+              <ng-container *ngIf="!driveBackupStatus.uploading && driveBackupStatus.lastError === 'failed'"> · <span class="drive-backup-failed">{{ 'driveBackupFailed' | translate }}</span></ng-container>
+              <ng-container *ngIf="!driveBackupStatus.uploading && !driveBackupStatus.lastError && driveBackupStatus.lastBackupAt"> · {{ 'driveBackupLastSaved' | translate }} {{ driveBackupStatus.lastBackupAt | date:'short' }}</ng-container>
+            </small>
+          </div>
+          <div class="drive-backup-row-actions">
+            <button *ngIf="!driveBackup.safe" type="button" class="drive-backup-link" [disabled]="driveBackupLinking" (click)="linkDriveBackup()">
+              {{ (driveBackupLinking ? 'driveBackupLinking' : 'driveBackupLink') | translate }}
+            </button>
+            <ng-container *ngIf="driveBackup.safe">
+              <button type="button" class="drive-backup-open" (click)="openDriveBackupFolder()">📂 {{ 'driveBackupOpenFolder' | translate }}</button>
+              <button type="button" class="drive-backup-now" [disabled]="driveBackupStatus.uploading" (click)="driveBackup.backupNow()">{{ 'driveBackupNow' | translate }}</button>
+            </ng-container>
+            <button *ngIf="driveBackupStatus.linked" type="button" class="drive-backup-unlink" (click)="unlinkDriveBackup()">{{ 'driveBackupUnlink' | translate }}</button>
           </div>
         </div>
 

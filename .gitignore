@@ -58,3 +58,6 @@ electron/ai-config.json
 # System files
 .DS_Store
 Thumbs.db
+
+# Google Drive backup: desktop OAuth client (see docs/google-drive-backup-setup.md)
+electron/main/google-oauth.local.json
