@@ -1,4 +1,5 @@
 import { ImportExportService } from './import-export';
+import { db } from './db.model';
 import { vi } from 'vitest';
 
 describe('ImportExport', () => {
@@ -116,5 +117,44 @@ describe('ImportExport', () => {
     };
 
     expect((service as any).validateImportData(data)).toBe(false);
+  });
+
+  describe('choosing topics from a file', () => {
+    const topic = (name: string, texts: string[]) => ({
+      name, createdAt: '2026-10-30T00:00:00Z', updatedAt: '2026-10-30T00:00:00Z',
+      items: texts.map((text, order) => ({ text, order }))
+    });
+    const file = {
+      version: '1.0',
+      exportDate: '2026-10-30T00:00:00Z',
+      topics: [topic('Colours', ['red', 'blue']), topic('family', ['mum', 'dad', 'baby']), topic('Weather', ['sunny'])]
+    };
+
+    beforeEach(async () => {
+      await db.items.clear();
+      await db.topics.clear();
+      service = new ImportExportService({ refresh: async () => undefined } as any, { saveJson: async () => undefined } as any);
+      // The library: the same Colours, and a Family with different cards.
+      for (const [name, texts] of [['Colours', ['red', 'blue']], ['Family', ['mum', 'dad']]] as const) {
+        const topicId = await db.topics.add({ name, createdAt: new Date(), updatedAt: new Date() });
+        await db.items.bulkAdd(texts.map((text, order) => ({ topicId, text, order, createdAt: new Date() })));
+      }
+    });
+
+    it('marks topics you have, other versions of yours, and new ones', async () => {
+      const choices = await service.describeImport(file as any);
+      expect(choices.map((c) => [c.name, c.cards, c.state])).toEqual([
+        ['Colours', 2, 'have'],
+        ['family', 3, 'sameName'],
+        ['Weather', 1, 'new']
+      ]);
+    });
+
+    it('imports only the chosen topics', async () => {
+      expect(await service.importTopics(file as any, [2])).toBe(1);
+      const names = (await db.topics.toArray()).map((t) => t.name).sort();
+      expect(names).toEqual(['Colours', 'Family', 'Weather']);
+      expect((await service.describeImport(file as any))[2].state).toBe('have');
+    });
   });
 });

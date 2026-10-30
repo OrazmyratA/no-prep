@@ -6,7 +6,7 @@ import { FormControl } from '@angular/forms';
 import { Browser } from '@capacitor/browser';
 import { DbService } from '../../../core/db';
 import { Item, Topic } from '../../../core/db.model';
-import { ImportExportService } from '../../../core/import-export';
+import { ExportData, ImportChoice, ImportExportService } from '../../../core/import-export';
 import { LicenseService } from '../../../core/license';
 import { showAppNotification } from '../../../core/notification';
 import { ConfirmationService } from '../../../shared/confirmation';
@@ -769,11 +769,61 @@ async combineSelectedTopics() {
     fileInput.accept = '.json';
     fileInput.onchange = async (event: any) => {
       const file = event.target.files[0];
-      if (file) {
-        await this.importExport.importFromFile(file);
+      if (!file) return;
+      const data = await this.importExport.readImportFile(file);
+      if (!data) return;
+      // One topic: in at once, as before. Several (Export all, a colleague's Drive backup): choose.
+      if (data.topics.length === 1) {
+        await this.importExport.importTopics(data, [0]);
+        return;
       }
+      const choices = await this.importExport.describeImport(data);
+      this.ngZone.run(() => {
+        this.importPicker = {
+          fileName: file.name,
+          data,
+          choices,
+          picked: new Set(choices.filter((c) => c.state === 'new').map((c) => c.index))
+        };
+        this.cdr.detectChanges();
+      });
     };
     fileInput.click();
+  }
+
+  // ---- Import: choose which topics of a file to bring in (new ones ticked, ones you have marked) ----
+
+  importPicker: { fileName: string; data: ExportData; choices: ImportChoice[]; picked: Set<number> } | null = null;
+  importing = false;
+
+  toggleImportChoice(index: number): void {
+    if (!this.importPicker) return;
+    const picked = new Set(this.importPicker.picked);
+    if (picked.has(index)) picked.delete(index);
+    else picked.add(index);
+    this.importPicker = { ...this.importPicker, picked };
+  }
+
+  pickAllImport(all: boolean): void {
+    if (!this.importPicker) return;
+    this.importPicker = { ...this.importPicker, picked: new Set(all ? this.importPicker.choices.map((c) => c.index) : []) };
+  }
+
+  async confirmImport(): Promise<void> {
+    const picker = this.importPicker;
+    if (!picker || !picker.picked.size || this.importing) return;
+    this.importing = true;
+    try {
+      const done = await this.importExport.importTopics(picker.data, picker.choices.map((c) => c.index).filter((i) => picker.picked.has(i)));
+      if (done >= 0) this.importPicker = null;
+    } finally {
+      this.importing = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  cancelImport(): void {
+    this.importPicker = null;
   }
 
   clearSearch() {

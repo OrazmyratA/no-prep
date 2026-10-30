@@ -1112,3 +1112,131 @@
 .drive-backup-share-btn:hover {
   background: #15803d;
 }
+
+/* Import: choose which topics of a file to bring in. */
+.import-picker {
+  display: flex;
+  flex-direction: column;
+  max-height: min(42rem, calc(100vh - 2rem));
+}
+
+.import-picker-head h2 {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin: 0;
+  padding-inline-end: 2.5rem;
+}
+
+.import-picker-head p {
+  margin: 0.2rem 0 0;
+  color: rgb(var(--np-ink-muted, 107 114 128));
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.import-picker-tools {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+}
+
+.import-picker-tools button {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.import-picker-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.import-picker-list label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.import-picker-list li.dim label {
+  opacity: 0.65;
+}
+
+.import-picker-list input {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.import-picker-name {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.import-picker-cards {
+  color: rgb(var(--np-ink-muted, 107 114 128));
+  font-size: 0.82rem;
+}
+
+.import-picker-state {
+  padding: 0.1rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.import-picker-state.have {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.import-picker-state.other {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.import-picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.import-picker-actions button {
+  padding: 0.55rem 1.2rem;
+  border: 0;
+  border-radius: 9999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.import-picker-cancel {
+  background: transparent;
+  color: inherit;
+}
+
+.import-picker-go {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.import-picker-go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

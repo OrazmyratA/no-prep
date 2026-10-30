@@ -38,6 +38,25 @@ interface BookTopicSnapshot {
   items: ExportTopic['items'];
 }
 
+/** How a topic in a file compares with the library (shown in the import list). */
+export type ImportTopicState = 'new' | 'have' | 'sameName';
+
+export interface ImportChoice {
+  /** Its place in the file. */
+  index: number;
+  name: string;
+  cards: number;
+  state: ImportTopicState;
+}
+
+const nameKey = (name: string) => name.trim().toLowerCase();
+
+/** A topic's name and cards in order (text, card words, has picture, has sound): equal = the same topic. */
+function topicPrint(name: string, items: { text?: string; imageText?: string; image: boolean; audio: boolean }[]): string {
+  const cards = items.map((item) => [(item.text || '').trim(), (item.imageText || '').trim(), item.image ? 'i' : '', item.audio ? 'a' : ''].join('\u0002'));
+  return [nameKey(name), ...cards].join('\u0001');
+}
+
 const MAX_IMPORT_JSON_BYTES = 250 * 1024 * 1024;
 const MAX_IMPORT_TOPICS = 500;
 const MAX_IMPORT_ITEMS_PER_TOPIC = 2000;
@@ -134,10 +153,16 @@ const exportItems = await Promise.all(items.map(async item => ({
 
   // ---------- IMPORT ----------
   async importFromFile(file: File): Promise<void> {
-    if (!file) return;
+    const data = await this.readImportFile(file);
+    if (data) await this.importTopics(data, data.topics.map((_, index) => index));
+  }
+
+  /** A topic file, checked; null (and the teacher told why) when it can't be imported. */
+  async readImportFile(file: File): Promise<ExportData | null> {
+    if (!file) return null;
     if (file.size > MAX_IMPORT_JSON_BYTES) {
       showAppNotification('Topic import file is too large', 'error');
-      return;
+      return null;
     }
     const content = await file.text();
     let parsed: unknown;
@@ -145,16 +170,46 @@ const exportItems = await Promise.all(items.map(async item => ({
       parsed = JSON.parse(content);
     } catch (e) {
       showAppNotification('Invalid JSON file', 'error');
-      return;
+      return null;
     }
     const data = this.normalizeImportData(parsed);
     if (!this.validateImportData(data)) {
       showAppNotification('File format not recognized', 'error');
-      return;
+      return null;
     }
+    return data;
+  }
+
+  /**
+   * Each topic in the file against the library: new, already there (same name and the same
+   * cards), or the same name with different cards (e.g. a colleague's newer version).
+   */
+  async describeImport(data: ExportData): Promise<ImportChoice[]> {
+    const names = new Set<string>();
+    const prints = new Set<string>();
+    for (const topic of await db.topics.toArray()) {
+      const items = await db.items.where('topicId').equals(topic.id!).sortBy('order');
+      names.add(nameKey(topic.name));
+      prints.add(topicPrint(topic.name, items.map((item) => ({
+        text: item.text, imageText: item.imageText, image: !!item.image, audio: !!item.audio
+      }))));
+    }
+    return data.topics.map((topic, index) => {
+      const sorted = [...topic.items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const print = topicPrint(topic.name, sorted.map((item) => ({
+        text: item.text, imageText: item.imageText, image: !!item.image, audio: !!item.audio
+      })));
+      const state: ImportTopicState = prints.has(print) ? 'have' : names.has(nameKey(topic.name)) ? 'sameName' : 'new';
+      return { index, name: topic.name, cards: topic.items.length, state };
+    });
+  }
+
+  /** Imports the chosen topics (by their place in the file); the count, or -1 when it failed. */
+  async importTopics(data: ExportData, indexes: number[]): Promise<number> {
+    const chosen = indexes.map((index) => data.topics[index]).filter(Boolean);
     let importedCount = 0;
     try {
-      for (const expTopic of data.topics) {
+      for (const expTopic of chosen) {
         // Create new topic with fresh timestamps (use current time)
         const level = normalizeCefrLevel(expTopic.level);
         const exam = normalizeSpeakingExam(expTopic.exam);
@@ -191,10 +246,11 @@ const exportItems = await Promise.all(items.map(async item => ({
     } catch (error) {
       console.debug('Topic import media conversion failed:', error);
       showAppNotification('Topic import media is not valid', 'error');
-      return;
+      return -1;
     }
-        await this.db.refresh();   // <-- add this line
+    await this.db.refresh();
     showAppNotification(`Successfully imported ${importedCount} topic(s).`, 'success');
+    return importedCount;
   }
 
   private validateImportData(data: any): data is ExportData {

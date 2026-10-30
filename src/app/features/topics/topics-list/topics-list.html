@@ -324,6 +324,38 @@
       </section>
     </div>
 
+    <!-- Import: a file with several topics (Export all, a colleague's Drive backup) — choose which. -->
+    <div *ngIf="importPicker as picker" class="book-storage-backdrop" (click)="cancelImport()">
+      <section class="book-storage-dialog import-picker" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" [attr.aria-label]="'importPickerTitle' | translate">
+        <button type="button" class="book-storage-close" (click)="cancelImport()" aria-label="Close">x</button>
+        <div class="import-picker-head">
+          <h2>{{ 'importPickerTitle' | translate }}</h2>
+          <p>{{ picker.fileName }}</p>
+        </div>
+        <div class="import-picker-tools">
+          <button type="button" (click)="pickAllImport(true)">{{ 'importPickerAll' | translate }}</button>
+          <button type="button" (click)="pickAllImport(false)">{{ 'importPickerNone' | translate }}</button>
+        </div>
+        <ul class="import-picker-list">
+          <li *ngFor="let choice of picker.choices" [class.dim]="choice.state === 'have'">
+            <label>
+              <input type="checkbox" [checked]="picker.picked.has(choice.index)" (change)="toggleImportChoice(choice.index)">
+              <span class="import-picker-name">{{ choice.name }}</span>
+              <span class="import-picker-cards">{{ 'importPickerCards' | translate: { n: choice.cards } }}</span>
+              <span *ngIf="choice.state === 'have'" class="import-picker-state have">✓ {{ 'importPickerHave' | translate }}</span>
+              <span *ngIf="choice.state === 'sameName'" class="import-picker-state other">{{ 'importPickerSameName' | translate }}</span>
+            </label>
+          </li>
+        </ul>
+        <div class="import-picker-actions">
+          <button type="button" class="import-picker-cancel" (click)="cancelImport()">{{ 'cancel' | translate }}</button>
+          <button type="button" class="import-picker-go" [disabled]="!picker.picked.size || importing" (click)="confirmImport()">
+            {{ 'importPickerGo' | translate: { n: picker.picked.size } }}
+          </button>
+        </div>
+      </section>
+    </div>
+
     <!-- Books Section -->
     <ng-container *ngIf="isBooksCategory">
     <section class="library-section">
