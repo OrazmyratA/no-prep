@@ -28,10 +28,11 @@ jobs:
       - name: Angular production build
         run: npm run build:prod
 
+      # No publishing here: when the Android job made the release first, electron-builder put
+      # latest.yml into a second draft release that the upload step below then deleted, and
+      # installed apps never saw v1.19.1. All files go up in one step instead.
       - name: Package with electron-builder
-        run: npx electron-builder --win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish never
 
       # package.json build.files leaves renderer/Android packages out; make sure the main process
       # still finds everything it loads (see docs/production-release-checklist.md).
@@ -39,8 +40,13 @@ jobs:
         shell: bash
         run: ELECTRON_RUN_AS_NODE=1 release/win-unpacked/No-Prep.exe scripts/check-packaged-app.cjs release/win-unpacked/resources
 
-      - name: Upload installer to GitHub Release
+      # latest.yml is what installed apps read to find an update; the blockmap lets them download
+      # only the changed parts.
+      - name: Upload installer and update files to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.exe
+          files: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
           generate_release_notes: true
