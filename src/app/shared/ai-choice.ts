@@ -1,4 +1,4 @@
-import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnInit, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import {
   AiChoiceOption, AiChoicesService, AiJob, PICTURE_OPTIONS, PictureSource, TEXT_OPTIONS, VoiceSource,
   pictureSourceNameKey, voiceOptions, voiceSourceNameKey
@@ -20,6 +20,11 @@ interface ChoiceRow {
 }
 
 const MENU_WIDTH = 300;
+const MENU_MAX_HEIGHT = 420;
+// Below this much room under the button, the menu opens upward when there is more room above.
+const MENU_COMFORT_HEIGHT = 320;
+// Kept free between the menu and the window's edge.
+const MENU_GAP = 12;
 const NONE = 'none';
 
 /**
@@ -33,7 +38,7 @@ const NONE = 'none';
   templateUrl: './ai-choice.html',
   styleUrls: ['./ai-choice.css']
 })
-export class AiChoiceComponent implements OnInit {
+export class AiChoiceComponent implements OnInit, OnDestroy {
   @Input() job: AiJob = 'voice';
   /** Icon only before the name, no "Voice:" label (inside a small panel). */
   @Input() compact = false;
@@ -51,7 +56,10 @@ export class AiChoiceComponent implements OnInit {
   @Output() changed = new EventEmitter<string>();
 
   open = false;
-  menuTop = 0;
+  /** Where the fixed menu sits: below the button (top) or above it (bottom), and how tall it may be. */
+  menuTop: number | null = 0;
+  menuBottom: number | null = null;
+  menuMaxHeight = MENU_MAX_HEIGHT;
   menuLeft = 0;
   linking: AiTopicProviderId | null = null;
 
@@ -154,16 +162,34 @@ export class AiChoiceComponent implements OnInit {
 
   toggle(event: MouseEvent): void {
     if (this.open) {
-      this.open = false;
+      this.closeMenu();
       return;
     }
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    // Fixed, so a small panel's overflow can't clip the menu; kept on screen.
-    this.menuTop = Math.round(rect.bottom + 4);
+    // Fixed, so a small panel's overflow can't clip the menu; kept on screen. It opens where there
+    // is more room (upward from a button low on the screen, like the guide dot's voice) and is
+    // never taller than that room, so the last AI can always be scrolled to inside the menu.
+    const below = window.innerHeight - rect.bottom - MENU_GAP;
+    const above = rect.top - MENU_GAP;
+    const up = below < MENU_COMFORT_HEIGHT && above > below;
+    this.menuTop = up ? null : Math.round(rect.bottom + 4);
+    this.menuBottom = up ? Math.round(window.innerHeight - rect.top + 4) : null;
+    this.menuMaxHeight = Math.round(Math.min(MENU_MAX_HEIGHT, up ? above : below));
     this.menuLeft = Math.round(Math.max(8, Math.min(rect.left, window.innerWidth - MENU_WIDTH - 8)));
     this.open = true;
+    document.addEventListener('scroll', this.onAnyScroll, true);
     void this.choices.loadProviders();
   }
+
+  /**
+   * The page or a panel behind the menu scrolled: its button moved away, so the menu closes.
+   * Scrolling the menu itself (to reach the last AI) keeps it open.
+   */
+  private readonly onAnyScroll = (event: Event): void => {
+    const target = event.target as Node | null;
+    if (target instanceof Node && this.host.nativeElement.querySelector('.ai-choice-menu')?.contains(target)) return;
+    this.closeMenu();
+  };
 
   pick(row: ChoiceRow): void {
     if (!row.available) return;
@@ -177,12 +203,12 @@ export class AiChoiceComponent implements OnInit {
       if (!none) this.choices.setVoiceSource(row.id as VoiceSource);
       if (this.allowNone) this.choices.setVoiceNone(none);
     }
-    this.open = false;
+    this.closeMenu();
     this.changed.emit(row.id);
   }
 
   link(row: ChoiceRow): void {
-    this.open = false;
+    this.closeMenu();
     this.linking = row.needsKey;
   }
 
@@ -195,17 +221,21 @@ export class AiChoiceComponent implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (this.open && !this.host.nativeElement.contains(event.target as Node)) this.open = false;
+    if (this.open && !this.host.nativeElement.contains(event.target as Node)) this.closeMenu();
   }
 
   @HostListener('window:resize')
-  @HostListener('window:scroll')
   closeMenu(): void {
     this.open = false;
+    document.removeEventListener('scroll', this.onAnyScroll, true);
+  }
+
+  ngOnDestroy(): void {
+    document.removeEventListener('scroll', this.onAnyScroll, true);
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    this.open = false;
+    this.closeMenu();
   }
 }

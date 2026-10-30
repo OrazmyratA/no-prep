@@ -41,6 +41,43 @@ describe('AiChoiceComponent', () => {
     expect(openai.querySelector('.ai-choice-link')).not.toBeNull();
   });
 
+  /** Opens the menu from a button whose box is `rect`, in a window `height` tall. */
+  function openFrom(component: AiChoiceComponent, rect: { top: number; bottom: number; left: number }, height: number) {
+    Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+    const button = { getBoundingClientRect: () => rect } as unknown as HTMLElement;
+    component.toggle({ currentTarget: button } as unknown as MouseEvent);
+  }
+
+  it('opens upward from a button low on the screen, never taller than the room there', async () => {
+    const component = (await open('voice')).componentInstance;
+    openFrom(component, { top: 420, bottom: 450, left: 20 }, 730);
+    expect(component.menuTop).toBeNull();
+    expect(component.menuBottom).toBe(730 - 420 + 4);
+    expect(component.menuMaxHeight).toBe(420 - 12);
+    component.closeMenu();
+
+    // Plenty of room below: opens downward, as before.
+    openFrom(component, { top: 100, bottom: 130, left: 20 }, 730);
+    expect(component.menuTop).toBe(134);
+    expect(component.menuBottom).toBeNull();
+    expect(component.menuMaxHeight).toBe(420);
+  });
+
+  it('stays open while its own list scrolls, closes when the page behind scrolls', async () => {
+    const fixture = await open('voice');
+    const component = fixture.componentInstance;
+    openFrom(component, { top: 100, bottom: 130, left: 20 }, 730);
+    fixture.detectChanges();
+    const menu = fixture.nativeElement.querySelector('.ai-choice-menu') as HTMLElement;
+    document.body.appendChild(fixture.nativeElement);
+
+    menu.dispatchEvent(new Event('scroll'));
+    expect(component.open).toBe(true);
+    document.body.dispatchEvent(new Event('scroll'));
+    expect(component.open).toBe(false);
+    fixture.nativeElement.remove();
+  });
+
   it('lists only the AIs the app offers for Text', async () => {
     const fixture = await open('text');
     expect(fixture.componentInstance.rows.map(r => r.id)).toEqual(['gemini', 'openai', 'groq']);

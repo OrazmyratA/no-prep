@@ -3211,6 +3211,32 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Ảnh {n} / {total}',
 },
 
+'answerKeyText': {
+  en: 'Text under the picture',
+  tk: 'Suratyň aşagyndaky tekst',
+  ru: 'Текст под картинкой',
+  cn: '图片下方的文字',
+  cde: 'Text unter dem Bild',
+  es: 'Texto bajo la imagen',
+  fr: 'Texte sous l’image',
+  kr: '그림 아래 글',
+  sa: 'النص تحت الصورة',
+  vi: 'Chữ dưới ảnh',
+},
+
+'answerKeyTextPlaceholder': {
+  en: 'e.g. 1 b, 2 c, 3 a (students can hide it until they answer)',
+  tk: 'meselem 1 b, 2 c, 3 a (okuwçylar jogap berýänçä gizläp bilerler)',
+  ru: 'напр. 1 b, 2 c, 3 a (можно скрыть, пока ученики не ответят)',
+  cn: '例如 1 b, 2 c, 3 a（学生作答前可以隐藏）',
+  cde: 'z. B. 1 b, 2 c, 3 a (lässt sich ausblenden, bis die Schüler antworten)',
+  es: 'p. ej. 1 b, 2 c, 3 a (se puede ocultar hasta que respondan)',
+  fr: 'ex. 1 b, 2 c, 3 a (masquable jusqu’à ce que les élèves répondent)',
+  kr: '예: 1 b, 2 c, 3 a (학생이 답할 때까지 숨길 수 있어요)',
+  sa: 'مثل 1 b، 2 c، 3 a (يمكن إخفاؤه حتى يجيب الطلاب)',
+  vi: 'vd. 1 b, 2 c, 3 a (có thể ẩn cho đến khi học sinh trả lời)',
+},
+
 'updateBadgeLabel': {
   en: 'Update available',
   tk: 'Täzelenme bar',

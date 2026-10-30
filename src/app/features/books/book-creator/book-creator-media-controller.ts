@@ -3,7 +3,8 @@ import {
   BookPage,
   BookWorkbook,
   getAnswerKeyImageAudioPath,
-  getAnswerKeyImagePaths
+  getAnswerKeyImagePaths,
+  getAnswerKeyImageText
 } from '../../../core/book.model';
 
 export interface AnswerKeyVoiceState {
@@ -127,9 +128,12 @@ export class BookCreatorMediaController {
     const images = getAnswerKeyImagePaths(element);
     const audios = this.readImageAudios(element, images.length);
     audios.push(null); // the new image starts with no audio attached
+    const texts = this.readImageTexts(element, images.length);
+    texts.push('');
 
     element.data['images'] = [...images, saved.relativePath];
     element.data['imageAudios'] = audios;
+    element.data['imageTexts'] = texts;
     delete element.data['src'];
     element.data['label'] = 'Answer key';
     // Deliberately leave the selected image alone — jumping the audio panel to the
@@ -145,10 +149,13 @@ export class BookCreatorMediaController {
     this.creator.captureHistory();
 
     const audios = this.readImageAudios(element, images.length);
+    const texts = this.readImageTexts(element, images.length);
     images.splice(index, 1);
     audios.splice(index, 1);
+    texts.splice(index, 1);
     element.data['images'] = images;
     element.data['imageAudios'] = audios;
+    element.data['imageTexts'] = texts;
     delete element.data['src'];
     this.creator.refreshElementAssetChange();
   }
@@ -193,7 +200,34 @@ export class BookCreatorMediaController {
     audios.splice(targetIndex, 0, audio);
     element.data['imageAudios'] = audios;
 
+    const texts = this.readImageTexts(element, images.length);
+    const [text] = texts.splice(sourceIndex, 1);
+    texts.splice(targetIndex, 0, text);
+    element.data['imageTexts'] = texts;
+
     this.creator.refreshElementAssetChange();
+  }
+
+  getAnswerKeyImageText(element: BookElement, imageIndex: number): string {
+    return getAnswerKeyImageText(element, imageIndex);
+  }
+
+  /** The text under one answer key picture (typed in the inspector; history like any text field). */
+  setAnswerKeyImageText(element: BookElement, imageIndex: number, text: string): void {
+    if (element.type !== 'answerKey') return;
+    const images = getAnswerKeyImagePaths(element);
+    if (imageIndex < 0 || imageIndex >= images.length) return;
+    const texts = this.readImageTexts(element, images.length);
+    texts[imageIndex] = text;
+    element.data['imageTexts'] = texts;
+    this.creator.markBookDirty();
+  }
+
+  private readImageTexts(element: BookElement, expectedLength: number): string[] {
+    const raw = element.data['imageTexts'];
+    const texts = (Array.isArray(raw) ? raw : []).map(text => (typeof text === 'string' ? text : ''));
+    while (texts.length < expectedLength) texts.push('');
+    return texts.slice(0, Math.max(expectedLength, 0));
   }
 
   /** Which image's audio the inspector is currently showing/editing, clamped to the current image list. */

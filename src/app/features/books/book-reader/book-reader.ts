@@ -36,6 +36,7 @@ import {
   InteractiveBook,
   ProgressMapLesson,
   ProgressMapUnit,
+  getAnswerKeyImageText,
   getLessonPageRefs,
   getProgressNavigationMode,
   stripDraftElements
@@ -358,6 +359,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     document.removeEventListener('keydown', this.answerKeyArrowHandler, true);
+    this.stopAnswerKeyAudio();
     document.removeEventListener('pointermove', this.pointerMoveListener);
     if (this.pdfPrefetchTimer !== null) window.clearTimeout(this.pdfPrefetchTimer);
     this.routeSubscription?.unsubscribe();
@@ -1146,6 +1148,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!(await this.confirmStopSpeakingForInterruption())) return;
       this.stopGuideAudioAndReturnHome();
       this.expandedAnswerKeyIndex = 0;
+      this.answerKeyRevealed.clear();
       this.expandedElement = element;
       return;
     }
@@ -1171,7 +1174,47 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   closeExpandedElement(): void {
+    this.stopAnswerKeyAudio();
     this.videoController.closeExpandedElement();
+  }
+
+  // ---- The answer key, shown like a Flip Tiles card: picture, 🔊, and its text below ----
+
+  /** Each text starts hidden: 🔍 shows it, a click on the text hides it again. */
+  private answerKeyRevealed = new Set<number>();
+  private answerKeyAudio: HTMLAudioElement | null = null;
+
+  getExpandedAnswerKeyText(): string {
+    return getAnswerKeyImageText(this.expandedElement, this.expandedAnswerKeyIndex).trim();
+  }
+
+  get answerKeyTextHidden(): boolean {
+    return !this.answerKeyRevealed.has(this.expandedAnswerKeyIndex);
+  }
+
+  revealAnswerKeyText(event?: Event): void {
+    event?.stopPropagation();
+    this.answerKeyRevealed.add(this.expandedAnswerKeyIndex);
+  }
+
+  hideAnswerKeyText(event?: Event): void {
+    event?.stopPropagation();
+    this.answerKeyRevealed.delete(this.expandedAnswerKeyIndex);
+  }
+
+  /** 🔊 on the card: plays this picture's audio from the start. */
+  playAnswerKeyAudio(event?: Event): void {
+    event?.stopPropagation();
+    const url = this.getExpandedAnswerKeyAudioUrl();
+    if (!url) return;
+    this.answerKeyAudio ??= new Audio();
+    if (this.answerKeyAudio.src !== url) this.answerKeyAudio.src = url;
+    this.answerKeyAudio.currentTime = 0;
+    void this.answerKeyAudio.play().catch(() => {});
+  }
+
+  private stopAnswerKeyAudio(): void {
+    this.answerKeyAudio?.pause();
   }
 
   getExpandedAnswerKeyImages(): string[] {
@@ -1188,6 +1231,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     event?.stopPropagation();
     const total = this.getExpandedAnswerKeyImages().length;
     if (total < 2) return;
+    this.stopAnswerKeyAudio();
     this.expandedAnswerKeyIndex = (this.expandedAnswerKeyIndex - 1 + total) % total;
   }
 
@@ -1195,6 +1239,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     event?.stopPropagation();
     const total = this.getExpandedAnswerKeyImages().length;
     if (total < 2) return;
+    this.stopAnswerKeyAudio();
     this.expandedAnswerKeyIndex = (this.expandedAnswerKeyIndex + 1) % total;
   }
 

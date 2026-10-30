@@ -94,13 +94,25 @@
           aria-label="Previous image">&#8249;</button>
         <div class="reader-popover answer-key-popover">
           <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>
-          <div class="expanded-answer-key">
-            <ng-container *ngIf="getExpandedAnswerKeyImages().length; else answerKeyUnavailable">
-              <img [src]="getExpandedAnswerKeyImageUrl()" alt="Answer key">
+          <!-- Like a Flip Tiles card: 🔊 on the card, the picture, its text below (hidden → 🔍). -->
+          <div class="answer-key-card">
+            <button *ngIf="getExpandedAnswerKeyAudioUrl()" type="button" class="answer-key-speaker"
+                    (click)="playAnswerKeyAudio($event)" [attr.aria-label]="'playLabel' | translate">🔊</button>
+            <div class="expanded-answer-key">
+              <ng-container *ngIf="getExpandedAnswerKeyImages().length; else answerKeyUnavailable">
+                <img [src]="getExpandedAnswerKeyImageUrl()" alt="Answer key">
+              </ng-container>
+              <ng-template #answerKeyUnavailable>
+                <div class="answer-key-unavailable">Answer image unavailable.</div>
+              </ng-template>
+            </div>
+            <ng-container *ngIf="getExpandedAnswerKeyText() as answerText">
+              <button *ngIf="!answerKeyTextHidden" type="button" class="answer-key-text"
+                      [attr.title]="'flipTilesHideTexts' | translate" (click)="hideAnswerKeyText($event)">{{ answerText }}</button>
+              <button *ngIf="answerKeyTextHidden" type="button" class="answer-key-reveal"
+                      [attr.title]="'flipTilesShow' | translate" [attr.aria-label]="'flipTilesShow' | translate"
+                      (click)="revealAnswerKeyText($event)">🔍</button>
             </ng-container>
-            <ng-template #answerKeyUnavailable>
-              <div class="answer-key-unavailable">Answer image unavailable.</div>
-            </ng-template>
           </div>
         </div>
         <button
@@ -110,13 +122,9 @@
           (click)="showNextAnswerKeyImage($event)"
           aria-label="Next image">&#8250;</button>
       </div>
-      <div class="answer-key-counter" *ngIf="getExpandedAnswerKeyImages().length > 1">{{ expandedAnswerKeyIndex + 1 }} / {{ getExpandedAnswerKeyImages().length }}</div>
-      <audio
-        class="answer-key-audio-player"
-        *ngIf="getExpandedAnswerKeyAudioUrl()"
-        [src]="getExpandedAnswerKeyAudioUrl()"
-        controls
-        (click)="$event.stopPropagation()"></audio>
+      <div class="answer-key-bar" *ngIf="getExpandedAnswerKeyImages().length > 1">
+        <div class="answer-key-counter">{{ expandedAnswerKeyIndex + 1 }} / {{ getExpandedAnswerKeyImages().length }}</div>
+      </div>
     </div>
     <div class="reader-popover" [class.video-fullscreen]="videoFullscreen" *ngIf="expandedElement.type !== 'answerKey'" (click)="$event.stopPropagation()">
       <button type="button" class="popover-close" (click)="closeExpandedElement()" [attr.aria-label]="'close' | translate">X</button>

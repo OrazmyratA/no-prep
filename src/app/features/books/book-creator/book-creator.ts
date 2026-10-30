@@ -1082,6 +1082,14 @@ Tomorrow I will help my mom.`;
     return this.mediaController.getAnswerKeyImages(element);
   }
 
+  getAnswerKeyImageText(element: BookElement, imageIndex: number): string {
+    return this.mediaController.getAnswerKeyImageText(element, imageIndex);
+  }
+
+  setAnswerKeyImageText(element: BookElement, imageIndex: number, text: string): void {
+    this.mediaController.setAnswerKeyImageText(element, imageIndex, text);
+  }
+
   async addAnswerKeyImage(blob: Blob | null, element: BookElement): Promise<void> {
     await this.mediaController.addAnswerKeyImage(blob, element);
   }

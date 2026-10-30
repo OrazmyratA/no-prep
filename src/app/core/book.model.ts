@@ -96,6 +96,15 @@ export function getAnswerKeyImageAudioPath(element: BookElement | null | undefin
   return imageIndex === 0 ? getAnswerKeyAudioPath(element) : '';
 }
 
+/**
+ * The text under an answer key picture (data['imageTexts'], in the same order as
+ * getAnswerKeyImagePaths()), shown like a Flip Tiles card: it can be hidden and revealed.
+ */
+export function getAnswerKeyImageText(element: BookElement | null | undefined, imageIndex: number): string {
+  const texts = element?.data?.['imageTexts'];
+  return Array.isArray(texts) && typeof texts[imageIndex] === 'string' ? texts[imageIndex] : '';
+}
+
 export interface TracingPoint {
   id: string;
   x: number;
