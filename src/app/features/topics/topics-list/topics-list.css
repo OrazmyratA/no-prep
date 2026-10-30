@@ -862,3 +862,80 @@
   }
 }
 
+
+/* Web only: "your topics are saved only in this browser" + Save a copy. */
+.topic-safety-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid #fcd34d;
+  border-radius: 1rem;
+  background: #fffbeb;
+  color: #78350f;
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.12);
+}
+
+.topic-safety-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.topic-safety-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.topic-safety-text small {
+  color: #92400e;
+  opacity: 0.85;
+}
+
+.topic-safety-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.topic-safety-actions button {
+  padding: 0.5rem 1.1rem;
+  border: 0;
+  border-radius: 9999px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.topic-safety-save {
+  background: #d97706;
+  color: #fff;
+}
+
+.topic-safety-save:hover {
+  background: #b45309;
+}
+
+.topic-safety-later {
+  background: transparent;
+  color: #92400e;
+}
+
+.topic-safety-later:hover {
+  background: rgba(217, 119, 6, 0.12);
+}
+
+@media (max-width: 640px) {
+  .topic-safety-notice {
+    flex-wrap: wrap;
+  }
+
+  .topic-safety-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

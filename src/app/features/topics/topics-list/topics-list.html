@@ -4,6 +4,22 @@
       <span>{{ pickerBannerHintKey | translate }}</span>
       <button type="button" (click)="leaderboardState.cancelTopicSelection()">{{ 'leaderboardPickerBannerCancel' | translate }}</button>
     </div>
+    <!-- Web only: the topics live in this browser, so a copy now and then keeps them safe. -->
+    <div *ngIf="showTopicSafetyNotice && isTopicsCategory" class="topic-safety-notice" role="status">
+      <span class="topic-safety-icon" aria-hidden="true">💾</span>
+      <div class="topic-safety-text">
+        <strong>{{ 'topicSafetyTitle' | translate }}</strong>
+        <span>{{ 'topicSafetyBody' | translate }}</span>
+        <small>
+          <ng-container *ngIf="topicSafetyDays === null; else lastCopy">{{ 'topicSafetyNoCopy' | translate }}</ng-container>
+          <ng-template #lastCopy>{{ 'topicSafetyLastCopy' | translate: { n: topicSafetyDays } }}</ng-template>
+        </small>
+      </div>
+      <div class="topic-safety-actions">
+        <button type="button" class="topic-safety-save" (click)="exportAllFromSafetyNotice()">{{ 'topicSafetySave' | translate }}</button>
+        <button type="button" class="topic-safety-later" (click)="snoozeTopicSafetyNotice()">{{ 'topicSafetyLater' | translate }}</button>
+      </div>
+    </div>
     <!-- Header -->
 <div class="topics-header flex flex-wrap lg:flex-nowrap justify-between items-center gap-3 mb-8">
   <!-- Left side: title + category switch + search -->

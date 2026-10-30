@@ -17,6 +17,7 @@ import { BookLibraryService } from '../../../core/book-library';
 import { BookOperationProgress, BookRegistryItem, BookStorageLocation } from '../../../core/book.model';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
 import { DriveLink, DriveLinksService, isValidDriveLinkUrl } from '../../../core/drive-links';
+import { WebTopicSafetyService } from '../../../core/web-topic-safety';
 
 type LibraryCategory = 'topics' | 'books';
 type PendingBookStorageAction = 'create' | 'import' | null;
@@ -126,7 +127,8 @@ onClickOutside(event: MouseEvent) {
     public platform: PlatformService,
     public bookLibrary: BookLibraryService,
     public leaderboardState: LeaderboardStateService,
-    private driveLinksService: DriveLinksService
+    private driveLinksService: DriveLinksService,
+    private topicSafety: WebTopicSafetyService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
     this.bookProgress$ = this.bookLibrary.progress$;
@@ -197,8 +199,31 @@ onClickOutside(event: MouseEvent) {
     });
     this.topicCountSubscription = topics$.subscribe((topics) => {
       this.topicCount = topics.length;
+      this.showTopicSafetyNotice = this.topicSafety.shouldRemind(topics.length);
+      if (topics.length) void this.topicSafety.keepStorage();
       this.buildMoreTopicCards();
     });
+  }
+
+  // ---- Web only: topics live in this browser, so remind the teacher to keep a copy ----
+
+  showTopicSafetyNotice = false;
+
+  get topicSafetyDays(): number | null {
+    return this.topicSafety.daysSinceExport();
+  }
+
+  async exportAllFromSafetyNotice(): Promise<void> {
+    if (!this.fullAccess) {
+      this.licenseService.requestReopen();
+      return;
+    }
+    await this.exportAllTopics();
+  }
+
+  snoozeTopicSafetyNotice(): void {
+    this.topicSafety.snooze();
+    this.showTopicSafetyNotice = false;
   }
 
   get topicsLoaded(): boolean {
@@ -361,8 +386,10 @@ async deleteTopic(id: number) {
     this.importExport.exportTopic(id);
   }
 
-  exportAllTopics() {
-    this.importExport.exportAllTopics();
+  async exportAllTopics(): Promise<void> {
+    await this.importExport.exportAllTopics();
+    this.topicSafety.noteExported();
+    this.showTopicSafetyNotice = false;
   }
 
   toggleDriveLinksPanel(): void {
@@ -589,7 +616,7 @@ async deleteTopic(id: number) {
   }
 
   get canCombineLibrary() {
-    if (!this.licenseService.fullAccess) {
+    if (!this.fullAccess) {
       return false;
     }
     return this.isBooksCategory ? this.selectedBookIds.size >= 2 : this.selectedTopicIds.size >= 2;
