@@ -70,7 +70,8 @@ export class ImportExportService {
     await this.downloadJson(exportData, `${topic.name.replace(/\s+/g, '_')}.json`);
   }
 
-  async exportAllTopics(): Promise<void> {
+  /** True once the file is saved (false when saving failed; the teacher was told). */
+  async exportAllTopics(): Promise<boolean> {
     const topics = await db.topics.toArray();
     const exportTopics: ExportTopic[] = [];
     for (const topic of topics) {
@@ -83,7 +84,7 @@ export class ImportExportService {
       topics: exportTopics
     };
     const filename = `all-topics-${new Date().toISOString().slice(0,10)}.json`;
-    await this.downloadJson(exportData, filename);
+    return this.downloadJson(exportData, filename);
   }
 
   private async topicToExport(topic: Topic, items: Item[]): Promise<ExportTopic> {
@@ -113,15 +114,17 @@ const exportItems = await Promise.all(items.map(async item => ({
     });
   }
 
-  private async downloadJson(data: any, filename: string): Promise<void> {
+  private async downloadJson(data: any, filename: string): Promise<boolean> {
     showAppNotification(`Saving ${filename}...`, 'info');
 
     try {
       await this.platformFile.saveJson(data, filename);
       showAppNotification(`Saved ${filename} to the Downloads folder.`, 'success');
+      return true;
     } catch (error) {
       console.debug('Topic export failed:', error);
       showAppNotification(`Could not save ${filename}. Please try again.`, 'error');
+      return false;
     }
   }
 

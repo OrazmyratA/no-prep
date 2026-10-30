@@ -387,7 +387,7 @@ async deleteTopic(id: number) {
   }
 
   async exportAllTopics(): Promise<void> {
-    await this.importExport.exportAllTopics();
+    if (!(await this.importExport.exportAllTopics())) return;
     this.topicSafety.noteExported();
     this.showTopicSafetyNotice = false;
   }
