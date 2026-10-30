@@ -181,6 +181,23 @@ test('each topic is its own file in the folder; a backup sends only the topics t
   assert.ok((await service.getStatus()).lastBackupAt);
 });
 
+test('saved again without a change: nothing is uploaded; a real change is', async () => {
+  const { service, google } = setup();
+  await service.link();
+  const file = (exportDate, updatedAt, cards) => JSON.stringify({ version: '1.0', exportDate, topics: [{ name: 'Animals', createdAt: 'c', updatedAt, items: cards }] });
+  const uploads = () => google.calls.filter((c) => c.startsWith('PUT ')).length;
+  await service.uploadTopic({ id: '1', name: 'Animals', updatedAt: 'mon', json: file('mon', 'mon', [{ text: 'cat', order: 0 }]) });
+  assert.equal(uploads(), 1);
+  // Tuesday: opened and saved without editing (new times, same cards).
+  await service.uploadTopic({ id: '1', name: 'Animals', updatedAt: 'tue', json: file('tue', 'tue', [{ text: 'cat', order: 0 }]) });
+  assert.equal(uploads(), 1);
+  assert.deepEqual((await service.plan([{ id: '1', updatedAt: 'tue' }])).upload, []);
+  // Wednesday: a card added.
+  await service.uploadTopic({ id: '1', name: 'Animals', updatedAt: 'wed', json: file('wed', 'wed', [{ text: 'cat', order: 0 }, { text: 'dog', order: 1 }]) });
+  assert.equal(uploads(), 2);
+  assert.equal(google.live().filter((f) => f.name === 'Animals.json').length, 1);
+});
+
 test('a renamed topic renames its file; a deleted topic\'s file goes to the bin', async () => {
   const { service, google } = setup();
   await service.link();

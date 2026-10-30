@@ -365,13 +365,34 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     const state = await ensureFolder();
     const fileId = await topicFileId(state, id);
     const fileName = topicFileName(name);
+    const fingerprint = contentFingerprint(json);
+    const before = state.topics?.[id];
+    // Saved again without a change: the file in Drive is already this; only note the new time.
+    if (fileId && before?.fileId === fileId && before.fingerprint === fingerprint && before.name === fileName) {
+      const fresh = await readState();
+      fresh.topics = { ...(fresh.topics || {}), [id]: { ...before, updatedAt } };
+      await writeState(fresh);
+      return;
+    }
     const metadata = fileId
       ? { name: fileName }
       : { name: fileName, parents: [state.folderId], mimeType: 'application/json', appProperties: { noprep: await topicMark(id) } };
     const savedId = await sendFile(fileId, metadata, json);
     const fresh = await readState();
-    fresh.topics = { ...(fresh.topics || {}), [id]: { fileId: savedId, updatedAt } };
+    fresh.topics = { ...(fresh.topics || {}), [id]: { fileId: savedId, updatedAt, fingerprint, name: fileName } };
     await writeState(fresh);
+  }
+
+  /** What a topic file says, leaving out when it was written (exportDate changes on every save). */
+  function contentFingerprint(json) {
+    let content = json;
+    try {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed?.topics)) {
+        content = JSON.stringify(parsed.topics.map(({ createdAt, updatedAt, ...topic }) => topic));
+      }
+    } catch { /* not JSON: use it as it is */ }
+    return crypto.createHash('sha256').update(content).digest('base64');
   }
 
   /** A topic deleted from the library: its file goes to Drive's bin (kept 30 days there). */
