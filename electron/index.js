@@ -554,7 +554,10 @@ registerGoogleDriveIpc({
     openExternal: (url) => shell.openExternal(url),
     loadClient: () => {
       try {
-        return JSON.parse(fs.readFileSync(path.join(__dirname, 'main', 'google-oauth.local.json'), 'utf8'));
+        const parsed = JSON.parse(fs.readFileSync(path.join(__dirname, 'main', 'google-oauth.local.json'), 'utf8'));
+        // Either { clientId, clientSecret } or the file as Google downloads it ({ installed: { client_id, ... } }).
+        const google = parsed?.installed;
+        return google ? { clientId: google.client_id, clientSecret: google.client_secret } : parsed;
       } catch {
         return null;
       }
