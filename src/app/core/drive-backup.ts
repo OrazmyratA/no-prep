@@ -1,6 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
+import { db } from './db.model';
 import { ImportExportService } from './import-export';
 import { LanguageService } from './language';
 import { showAppNotification, showAppNotificationWithActions } from './notification';
@@ -40,24 +41,41 @@ interface DriveReply {
   error?: string;
 }
 
+interface DrivePlan {
+  ok: boolean;
+  result?: { upload: string[]; remove: string[] };
+  error?: string;
+}
+
+interface DriveStep {
+  ok: boolean;
+  error?: string;
+}
+
 interface DriveBridge {
   driveBackupGetStatus(): Promise<DriveReply>;
   driveBackupLink(): Promise<DriveReply>;
-  driveBackupUpload(input: { json: string }): Promise<DriveReply>;
+  driveBackupPlan(input: { topics: { id: number; updatedAt: string }[] }): Promise<DrivePlan>;
+  driveBackupUploadTopic(input: { id: number; name: string; updatedAt: string; json: string }): Promise<DriveStep>;
+  driveBackupRemoveTopic(input: { id: string }): Promise<DriveStep>;
+  driveBackupFinish(): Promise<DriveReply>;
   driveBackupUnlink(): Promise<DriveReply>;
   driveBackupSetSharing(input: { on: boolean }): Promise<DriveReply>;
 }
 
 /**
- * Google Drive backup of all topics: once linked, every topic Save uploads the Export all file to
- * a "No-Prep backup" folder in the teacher's Drive. To get topics back the teacher opens that
- * folder from Quick Links, downloads the file and uses Import. Desktop app for now.
+ * Google Drive backup of the topics: once linked, a "No-Prep backup" folder in the teacher's Drive
+ * holds one file per topic ("Animals.json"), and every topic Save uploads the topics that changed.
+ * To get topics back (or share them), the folder opens from Quick Links; its files import as usual.
+ * Desktop app for now.
  */
 @Injectable({ providedIn: 'root' })
 export class DriveBackupService {
   private readonly statusSubject = new BehaviorSubject<DriveBackupStatus>(EMPTY);
   readonly status$ = this.statusSubject.asObservable();
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** How long after a Save the backup starts (tests make it short). */
+  backupDelayMs = BACKUP_DELAY_MS;
   private loaded = false;
 
   constructor(private importExport: ImportExportService, private lang: LanguageService, private zone: NgZone) {}
@@ -150,34 +168,88 @@ export class DriveBackupService {
     this.remindToLink();
   }
 
+  /** Topics deleted or imported: bring the folder up to date too (quietly; no reminder). */
+  libraryChanged(): void {
+    if (this.status.available && this.safe) this.scheduleBackup();
+  }
+
   private scheduleBackup(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
       void this.backupNow();
-    }, BACKUP_DELAY_MS);
+    }, this.backupDelayMs);
   }
 
+  /**
+   * Brings the folder up to date: the desktop app says which topics changed since their last
+   * upload (and which were deleted); each changed topic goes up as its own file. A backup asked
+   * for while one runs follows right after it.
+   */
   async backupNow(): Promise<boolean> {
     const bridge = this.bridge;
     if (!bridge || !this.status.linked) return false;
-    this.patch({ uploading: true });
-    try {
-      const json = JSON.stringify(await this.importExport.buildAllTopicsExport());
-      const result = await bridge.driveBackupUpload({ json });
-      if (result.ok) {
-        this.apply({ ...result.result, uploading: false });
-        return true;
-      }
-      // Keep the teacher's work flowing; the Quick Links row says what went wrong.
-      await this.refresh();
-      this.patch({ uploading: false, lastError: result.error === 'RELINK' ? 'relink' : 'failed' });
-      if (result.error === 'RELINK') this.remindToLink(true);
-      return false;
-    } catch {
-      this.patch({ uploading: false, lastError: 'failed' });
-      return false;
+    if (this.running) {
+      this.again = true;
+      return this.running;
     }
+    this.running = this.runBackup(bridge).finally(() => {
+      this.running = null;
+      if (this.again) {
+        this.again = false;
+        void this.backupNow();
+      }
+    });
+    return this.running;
+  }
+
+  private running: Promise<boolean> | null = null;
+  private again = false;
+
+  private async runBackup(bridge: DriveBridge): Promise<boolean> {
+    this.patch({ uploading: true });
+    let error = '';
+    try {
+      const topics = await db.topics.toArray();
+      const metas = topics.filter((t) => t.id).map((t) => ({ id: t.id!, updatedAt: new Date(t.updatedAt).toISOString() }));
+      const plan = await bridge.driveBackupPlan({ topics: metas });
+      if (!plan.ok || !plan.result) {
+        error = plan.error || 'FAILED';
+      } else {
+        for (const id of plan.result.upload) {
+          const topic = topics.find((t) => String(t.id) === String(id));
+          const data = topic ? await this.importExport.buildTopicExport(topic.id!) : null;
+          if (!topic || !data) continue;
+          const step = await bridge.driveBackupUploadTopic({
+            id: topic.id!,
+            name: topic.name,
+            updatedAt: new Date(topic.updatedAt).toISOString(),
+            json: JSON.stringify(data)
+          });
+          if (!step.ok) { error = step.error || 'FAILED'; break; }
+        }
+        for (const id of error ? [] : plan.result.remove) {
+          const step = await bridge.driveBackupRemoveTopic({ id });
+          if (!step.ok) { error = step.error || 'FAILED'; break; }
+        }
+        if (!error) {
+          const done = await bridge.driveBackupFinish();
+          if (done.ok) {
+            this.apply({ ...done.result, uploading: false });
+            return true;
+          }
+          error = done.error || 'FAILED';
+        }
+      }
+    } catch {
+      error = 'FAILED';
+    }
+    // Keep the teacher's work flowing; the Quick Links row says what went wrong, and the topics
+    // not sent yet go up with the next backup (they still count as changed).
+    await this.refresh();
+    this.patch({ uploading: false, lastError: error === 'RELINK' ? 'relink' : 'failed' });
+    if (error === 'RELINK') this.remindToLink(true);
+    return false;
   }
 
   /** "Saved on this computer only — Link Google Drive", unless snoozed or switched off. */

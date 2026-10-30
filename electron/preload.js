@@ -75,7 +75,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   driveBackupGetStatus: () => ipcRenderer.invoke('drive-backup:get-status'),
   driveBackupLink: () => ipcRenderer.invoke('drive-backup:link'),
   driveBackupCancelLink: () => ipcRenderer.invoke('drive-backup:cancel-link'),
-  driveBackupUpload: (input) => ipcRenderer.invoke('drive-backup:upload', input ?? {}),
+  driveBackupPlan: (input) => ipcRenderer.invoke('drive-backup:plan', input ?? {}),
+  driveBackupUploadTopic: (input) => ipcRenderer.invoke('drive-backup:upload-topic', input ?? {}),
+  driveBackupRemoveTopic: (input) => ipcRenderer.invoke('drive-backup:remove-topic', input ?? {}),
+  driveBackupFinish: () => ipcRenderer.invoke('drive-backup:finish'),
   driveBackupUnlink: () => ipcRenderer.invoke('drive-backup:unlink'),
   driveBackupSetSharing: (input) => ipcRenderer.invoke('drive-backup:set-sharing', input ?? {}),
   // What a running AI request is waiting for ({ requestId, kind, ... }); returns the unsubscribe.

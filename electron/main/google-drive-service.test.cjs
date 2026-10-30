@@ -9,9 +9,10 @@ const { createGoogleDriveService, emailFromIdToken } = require('./google-drive-s
 
 const idToken = (email) => `x.${Buffer.from(JSON.stringify({ email })).toString('base64url')}.y`;
 
-/** A pretend Google: tokens, the Drive files API and the resumable upload. */
+/** A pretend Google: tokens, the Drive files API (search, trash, sharing) and resumable uploads. */
 function fakeGoogle() {
   const files = new Map();
+  const sessions = new Map();
   const calls = [];
   let next = 1;
   let refreshWorks = true;
@@ -35,21 +36,27 @@ function fakeGoogle() {
     if (u.href.startsWith('https://oauth2.googleapis.com/revoke')) return json({});
     if (u.pathname.startsWith('/upload/drive/v3/files')) {
       if (u.searchParams.get('uploadType') !== 'resumable') return json({}, 400);
-      const id = u.pathname.split('/')[5];
-      const meta = JSON.parse(init.body);
-      return json({}, 200, { location: `https://upload.example/session?${id ? `id=${id}` : `name=${encodeURIComponent(meta.name)}&parent=${meta.parents[0]}`}` });
+      const session = `s${next++}`;
+      sessions.set(session, { id: u.pathname.split('/')[5], meta: JSON.parse(init.body) });
+      return json({}, 200, { location: `https://upload.example/${session}` });
     }
     if (u.host === 'upload.example') {
-      const id = u.searchParams.get('id') || `file${next++}`;
-      files.set(id, { ...(files.get(id) || { name: u.searchParams.get('name'), parent: u.searchParams.get('parent') }), content: init.body.toString('utf8') });
+      const { id: existing, meta } = sessions.get(u.pathname.slice(1));
+      const id = existing || `file${next++}`;
+      const before = files.get(id) || { parent: meta.parents?.[0], appProperties: meta.appProperties || {} };
+      files.set(id, { ...before, name: meta.name ?? before.name, content: init.body.toString('utf8') });
       return json({ id });
     }
     if (u.pathname === '/drive/v3/files' && method === 'GET') {
-      // The app's search: by name (and folder type or parent), never trashed; newest first.
+      // The app's searches: by name (+ folder type) or by its mark, maybe in a parent; not trashed.
       const q = u.searchParams.get('q');
-      const name = /name = '([^']+)'/.exec(q)[1];
+      const name = /name = '([^']+)'/.exec(q)?.[1];
+      const mark = /value='([^']+)'/.exec(q)?.[1];
       const parent = /'([^']+)' in parents/.exec(q)?.[1];
-      const match = [...files.entries()].filter(([, f]) => f.name === name && !f.trashed && (!parent || f.parent === parent));
+      const match = [...files.entries()].filter(([, f]) => !f.trashed
+        && (!name || f.name === name)
+        && (!mark || f.appProperties?.noprep === mark)
+        && (!parent || f.parent === parent));
       const last = match[match.length - 1];
       return json({ files: last ? [{ id: last[0], webViewLink: `https://drive.google.com/drive/folders/${last[0]}` }] : [] });
     }
@@ -66,8 +73,7 @@ function fakeGoogle() {
         if (!file) return json({}, 404);
         if (method === 'GET') return json({ permissions: file.anyone ? [{ id: 'anyoneWithLink', type: 'anyone' }] : [] });
         if (method === 'POST') {
-          const p = JSON.parse(init.body);
-          assert.deepEqual(p, { role: 'reader', type: 'anyone', allowFileDiscovery: false });
+          assert.deepEqual(JSON.parse(init.body), { role: 'reader', type: 'anyone', allowFileDiscovery: false });
           file.anyone = true;
           return json({ id: 'anyoneWithLink' });
         }
@@ -77,11 +83,17 @@ function fakeGoogle() {
           return new Response(null, { status: 204 });
         }
       }
+      if (method === 'PATCH') {
+        if (!file) return json({}, 404);
+        Object.assign(file, JSON.parse(init.body));
+        return json({ id: parts[4] });
+      }
       return file ? json({ id: 'x', trashed: !!file.trashed }) : json({}, 404);
     }
     throw new Error(`unexpected ${method} ${url}`);
   }
-  return { fetchImpl, files, calls, breakRefresh: () => { refreshWorks = false; } };
+  const live = () => [...files.values()].filter((f) => !f.trashed);
+  return { fetchImpl, files, live, calls, breakRefresh: () => { refreshWorks = false; } };
 }
 
 /** The teacher's browser: opening Google's page "allows" and comes back with a code. */
@@ -105,21 +117,30 @@ function setup({ client = { clientId: 'cid', clientSecret: 'secret' }, allow = t
     encryptString: (s) => Buffer.from(`enc:${s}`),
     decryptString: (b) => b.toString().replace(/^enc:/, '')
   };
-  const restart = () => createGoogleDriveService({
-    fsp: fs.promises, path, getUserDataPath: () => dir, safeStorage,
+  const serviceIn = (folder) => createGoogleDriveService({
+    fsp: fs.promises, path, getUserDataPath: () => folder, safeStorage,
     openExternal: browser({ allow }), loadClient: () => client, fetchImpl: google.fetchImpl
   });
+  const restart = () => serviceIn(dir);
   const stored = () => JSON.parse(fs.readFileSync(path.join(dir, 'google-drive.json'), 'utf8'));
   // The same teacher's Google Drive, linked from another computer (nothing stored there yet).
-  const otherComputer = () => {
-    const otherDir = fs.mkdtempSync(path.join(os.tmpdir(), 'np-drive-'));
-    return createGoogleDriveService({
-      fsp: fs.promises, path, getUserDataPath: () => otherDir, safeStorage,
-      openExternal: browser({ allow }), loadClient: () => client, fetchImpl: google.fetchImpl
-    });
-  };
+  const otherComputer = () => serviceIn(fs.mkdtempSync(path.join(os.tmpdir(), 'np-drive-')));
   return { service: restart(), restart, otherComputer, google, stored, dir };
 }
+
+/** What the window does on a backup: plan, upload the changed topics, remove deleted ones, finish. */
+async function backupLibrary(service, library) {
+  const plan = await service.plan(library.map(({ id, updatedAt }) => ({ id: String(id), updatedAt })));
+  for (const id of plan.upload) {
+    const topic = library.find((t) => String(t.id) === String(id));
+    await service.uploadTopic({ ...topic, id: String(topic.id), json: JSON.stringify({ topics: [{ name: topic.name, v: topic.updatedAt }] }) });
+  }
+  for (const id of plan.remove) await service.removeTopic(id);
+  await service.finishBackup();
+  return plan;
+}
+
+const topic = (id, name, updatedAt = 't1') => ({ id: String(id), name, updatedAt });
 
 test('without the OAuth client file the feature says "not available"', async () => {
   const { service } = setup({ client: null });
@@ -144,32 +165,96 @@ test('link refused in the browser: nothing is stored', async () => {
   assert.equal((await service.getStatus()).linked, false);
 });
 
-test('backup makes one file in the folder, then updates the same file', async () => {
+test('each topic is its own file in the folder; a backup sends only the topics that changed', async () => {
   const { service, google } = setup();
   await service.link();
-  await service.backup('{"topics":[1]}');
-  await service.backup('{"topics":[1,2]}');
-  const topicsFiles = [...google.files.values()].filter((f) => f.name === 'No-Prep topics.json');
-  assert.equal(topicsFiles.length, 1);
-  assert.equal(topicsFiles[0].content, '{"topics":[1,2]}');
+  const first = await backupLibrary(service, [topic(1, 'Animals'), topic(2, 'Colours')]);
+  assert.deepEqual(first.upload, ['1', '2']);
+  const folder = [...google.files.entries()].find(([, f]) => f.name === 'No-Prep backup')[0];
+  assert.deepEqual(google.live().filter((f) => f.parent === folder).map((f) => f.name).sort(), ['Animals.json', 'Colours.json']);
+
+  // Animals saved again (new updatedAt), Colours untouched: only Animals goes up.
+  const second = await backupLibrary(service, [topic(1, 'Animals', 't2'), topic(2, 'Colours')]);
+  assert.deepEqual(second.upload, ['1']);
+  assert.equal(google.live().filter((f) => f.name === 'Animals.json').length, 1);
+  assert.match(google.live().find((f) => f.name === 'Animals.json').content, /t2/);
   assert.ok((await service.getStatus()).lastBackupAt);
 });
 
-test('saves during an upload go one after another, the last one wins', async () => {
+test('a renamed topic renames its file; a deleted topic\'s file goes to the bin', async () => {
   const { service, google } = setup();
   await service.link();
-  await Promise.all([service.backup('{"v":1}'), service.backup('{"v":2}'), service.backup('{"v":3}')]);
-  const file = [...google.files.values()].find((f) => f.name === 'No-Prep topics.json');
-  assert.equal(file.content, '{"v":3}');
+  await backupLibrary(service, [topic(1, 'Animals'), topic(2, 'Colours')]);
+  const plan = await backupLibrary(service, [topic(1, 'Farm animals', 't2')]);
+  assert.deepEqual(plan.remove, ['2']);
+  assert.deepEqual(google.live().map((f) => f.name).sort(), ['Farm animals.json', 'No-Prep backup']);
+  assert.ok([...google.files.values()].some((f) => f.name === 'Colours.json' && f.trashed));
 });
 
-test('a deleted backup folder is made again', async () => {
+test('file names are safe: no slashes or other characters Windows refuses', async () => {
   const { service, google } = setup();
   await service.link();
+  await backupLibrary(service, [topic(1, 'Unit 3: Food / Drinks?')]);
+  assert.ok(google.live().some((f) => f.name === 'Unit 3 Food Drinks.json'));
+});
+
+test('several saves at once go one after another; the topic keeps one file', async () => {
+  const { service, google } = setup();
+  await service.link();
+  const save = (v) => service.uploadTopic({ id: '1', name: 'Animals', updatedAt: v, json: `{"v":"${v}"}` });
+  await Promise.all([save('a'), save('b'), save('c')]);
+  const animals = google.live().filter((f) => f.name === 'Animals.json');
+  assert.equal(animals.length, 1);
+  assert.equal(animals[0].content, '{"v":"c"}');
+});
+
+test('Unlink and link again on the same computer: the files are found, not uploaded twice', async () => {
+  const { service, restart, google } = setup();
+  await service.link();
+  await backupLibrary(service, [topic(1, 'Animals'), topic(2, 'Colours')]);
+  await service.unlink();
+  const again = restart();
+  await again.link();
+  await backupLibrary(again, [topic(1, 'Animals'), topic(2, 'Colours')]);
+  assert.equal(google.live().filter((f) => f.name === 'Animals.json').length, 1);
+  assert.equal(google.live().filter((f) => f.name === 'Colours.json').length, 1);
+});
+
+test('another computer uses the same folder and never removes the first computer\'s files', async () => {
+  const { service, otherComputer, google } = setup();
+  await service.link();
+  await backupLibrary(service, [topic(1, 'Animals')]);
+  await service.setSharing(true);
+  const firstUrl = (await service.getStatus()).folderUrl;
+
+  const home = otherComputer();
+  const status = await home.link();
+  assert.equal(status.folderUrl, firstUrl);
+  assert.equal(status.shared, true);
+  await backupLibrary(home, [topic(1, 'Weather')]); // its own topic 1 is a different topic
+  assert.equal(google.live().filter((f) => f.name === 'No-Prep backup').length, 1);
+  assert.deepEqual(google.live().filter((f) => f.name.endsWith('.json')).map((f) => f.name).sort(), ['Animals.json', 'Weather.json']);
+});
+
+test('the all-in-one file of earlier test builds goes to the bin once', async () => {
+  const { service, google, dir } = setup();
+  await service.link();
+  google.files.set('old1', { name: 'No-Prep topics.json', parent: 'x', content: '{}' });
+  const statePath = path.join(dir, 'google-drive.json');
+  fs.writeFileSync(statePath, JSON.stringify({ ...JSON.parse(fs.readFileSync(statePath, 'utf8')), fileId: 'old1' }));
+  await backupLibrary(service, [topic(1, 'Animals')]);
+  assert.equal(google.files.get('old1').trashed, true);
+});
+
+test('a deleted backup folder is made again, private, and the topics go into it', async () => {
+  const { service, google } = setup();
+  await service.link();
+  await backupLibrary(service, [topic(1, 'Animals')]);
+  await service.setSharing(true);
   for (const file of google.files.values()) file.trashed = true;
-  await service.backup('{"v":1}');
-  const live = [...google.files.values()].filter((f) => !f.trashed);
-  assert.deepEqual(live.map((f) => f.name).sort(), ['No-Prep backup', 'No-Prep topics.json']);
+  await backupLibrary(service, [topic(1, 'Animals', 't2')]);
+  assert.deepEqual(google.live().map((f) => f.name).sort(), ['Animals.json', 'No-Prep backup']);
+  assert.equal((await service.getStatus()).shared, false);
 });
 
 test('access removed in the Google account: the backup asks to link again', async () => {
@@ -178,60 +263,33 @@ test('access removed in the Google account: the backup asks to link again', asyn
   google.breakRefresh();
   // After a restart there is no access token in memory, so the stored link is used and refused.
   const restarted = restart();
-  await assert.rejects(restarted.backup('{"v":1}'), { kind: 'RELINK' });
+  await assert.rejects(restarted.uploadTopic({ id: '1', name: 'Animals', updatedAt: 't', json: '{}' }), { kind: 'RELINK' });
   const status = await restarted.getStatus();
   assert.equal(status.needsRelink, true);
   assert.equal(status.lastError, 'relink');
 });
 
-test('share with colleagues: the folder and the topics file become viewable by link, and back', async () => {
+test('share with colleagues: the folder becomes viewable by link (its files follow), and back', async () => {
   const { service, google } = setup();
   await service.link();
-  await service.backup('{"v":1}');
-  const status = await service.setSharing(true);
-  assert.equal(status.shared, true);
-  assert.deepEqual([...google.files.values()].map((f) => [f.name, !!f.anyone]).sort(), [['No-Prep backup', true], ['No-Prep topics.json', true]]);
-  const off = await service.setSharing(false);
-  assert.equal(off.shared, false);
-  assert.ok([...google.files.values()].every((f) => !f.anyone));
+  await backupLibrary(service, [topic(1, 'Animals')]);
+  assert.equal((await service.setSharing(true)).shared, true);
+  assert.equal(google.live().find((f) => f.name === 'No-Prep backup').anyone, true);
+  assert.equal((await service.setSharing(false)).shared, false);
+  assert.ok(google.live().every((f) => !f.anyone));
   // Stopping again (already stopped) is fine.
   assert.equal((await service.setSharing(false)).shared, false);
 });
 
-test('linking again from another computer finds the same folder and file, still shared', async () => {
-  const { service, otherComputer, google } = setup();
-  await service.link();
-  await service.backup('{"from":"school"}');
-  await service.setSharing(true);
-  const firstUrl = (await service.getStatus()).folderUrl;
-
-  const home = otherComputer();
-  const status = await home.link();
-  assert.equal(status.folderUrl, firstUrl);
-  assert.equal(status.shared, true);
-  await home.backup('{"from":"home"}');
-  const named = (name) => [...google.files.values()].filter((f) => f.name === name);
-  assert.equal(named('No-Prep backup').length, 1);
-  assert.equal(named('No-Prep topics.json').length, 1);
-  assert.equal(named('No-Prep topics.json')[0].content, '{"from":"home"}');
-});
-
-test('a folder made again after deletion is private, even if the old one was shared', async () => {
-  const { service, google } = setup();
-  await service.link();
-  await service.setSharing(true);
-  for (const file of google.files.values()) file.trashed = true;
-  await service.backup('{"v":1}');
-  assert.equal((await service.getStatus()).shared, false);
-});
-
-test('unlink revokes and forgets everything', async () => {
+test('unlink revokes and forgets the link, but keeps this computer\'s mark', async () => {
   const { service, google, dir } = setup();
   await service.link();
+  await backupLibrary(service, [topic(1, 'Animals')]);
   const status = await service.unlink();
   assert.equal(status.linked, false);
   assert.ok(google.calls.some((c) => c === 'POST /revoke'));
   assert.equal(fs.existsSync(path.join(dir, 'google-drive.json')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'google-drive-install-id')), true);
 });
 
 test('emailFromIdToken reads the email, and tolerates junk', () => {

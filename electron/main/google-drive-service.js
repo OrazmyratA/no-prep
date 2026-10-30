@@ -1,6 +1,7 @@
 // Google Drive backup for the desktop app: the teacher links their Google account once (in their
-// own browser), then every topic Save uploads one "No-Prep topics.json" (the Export all file) into
-// a "No-Prep backup" folder the app creates. Scope drive.file: the app sees only its own files.
+// own browser); then each topic is one file ("Animals.json", importable on its own) in a
+// "No-Prep backup" folder the app creates, and a Save uploads only the topics that changed.
+// Scope drive.file: the app sees only its own files.
 //
 // The OAuth client (Desktop app type) comes from electron/main/google-oauth.local.json, which git
 // ignores; the Windows release build writes it from GitHub secrets. Without it the feature reports
@@ -16,7 +17,6 @@ const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file openid email';
 const FOLDER_NAME = 'No-Prep backup';
-const FILE_NAME = 'No-Prep topics.json';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const LINK_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -266,11 +266,10 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     if (await exists(state.folderId)) return state;
     const found = await findOwn(`name = '${FOLDER_NAME}' and mimeType = '${FOLDER_MIME}'`);
     if (found) {
-      const file = await findOwn(`name = '${FILE_NAME}' and '${found.id}' in parents`);
       state.folderId = found.id;
       state.folderUrl = found.webViewLink || `https://drive.google.com/drive/folders/${found.id}`;
-      state.fileId = file?.id || '';
       state.shared = await isSharedByLink(found.id);
+      state.topics = {}; // file ids are looked up again (by this computer's mark) as topics upload
       await writeState(state);
       return state;
     }
@@ -283,29 +282,51 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     const folder = await response.json();
     state.folderId = folder.id;
     state.folderUrl = folder.webViewLink || `https://drive.google.com/drive/folders/${folder.id}`;
-    state.fileId = '';
+    state.topics = {};
     state.shared = false; // a new folder is private until shared again
     await writeState(state);
     return state;
   }
 
+  /**
+   * This computer's mark, put on every topic file it uploads (Drive appProperties), so linking
+   * again finds its own files instead of uploading copies. Kept apart from the link (Unlink keeps it).
+   */
+  async function installId() {
+    const file = path.join(getUserDataPath(), 'google-drive-install-id');
+    try {
+      const id = (await fsp.readFile(file, 'utf8')).trim();
+      if (id) return id;
+    } catch { /* first time */ }
+    const id = base64Url(crypto.randomBytes(9));
+    await fsp.mkdir(path.dirname(file), { recursive: true });
+    await fsp.writeFile(file, id, 'utf8');
+    return id;
+  }
+
+  const topicMark = async (topicId) => `${await installId()}:${topicId}`;
+
+  /** "Animals.json": a topic's file name, safe for any system a colleague downloads it to. */
+  function topicFileName(name) {
+    const safe = String(name || '').replace(/[\\/:*?"<>|\u0000-\u001f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+    return `${safe || 'Topic'}.json`;
+  }
+
   /** Resumable upload in one go (no 5 MB limit): start a session, then send the file. */
-  async function uploadJson(json) {
-    const state = await ensureFolder();
+  async function sendFile(fileId, metadata, json) {
     const body = Buffer.from(json, 'utf8');
-    const update = await exists(state.fileId);
     const start = await drive(
-      update
-        ? `${UPLOAD_URL}/${encodeURIComponent(state.fileId)}?uploadType=resumable`
+      fileId
+        ? `${UPLOAD_URL}/${encodeURIComponent(fileId)}?uploadType=resumable&fields=id`
         : `${UPLOAD_URL}?uploadType=resumable&fields=id`,
       {
-        method: update ? 'PATCH' : 'POST',
+        method: fileId ? 'PATCH' : 'POST',
         headers: {
           'Content-Type': 'application/json; charset=UTF-8',
           'X-Upload-Content-Type': 'application/json',
           'X-Upload-Content-Length': String(body.length)
         },
-        body: JSON.stringify(update ? {} : { name: FILE_NAME, parents: [state.folderId], mimeType: 'application/json' })
+        body: JSON.stringify(metadata)
       }
     );
     const session = start.headers.get('location');
@@ -313,33 +334,114 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     const put = await fetchImpl(session, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
     if (!put.ok) throw new DriveError('GOOGLE_FAILED', `The upload did not finish (${put.status}).`);
     const file = await put.json().catch(() => ({}));
+    return file.id || fileId;
+  }
+
+  /** The topic's file: known from before, or found by this computer's mark in the folder. */
+  async function topicFileId(state, topicId) {
+    const known = state.topics?.[topicId]?.fileId;
+    if (await exists(known)) return known;
+    const mark = await topicMark(topicId);
+    const found = await findOwn(`appProperties has { key='noprep' and value='${mark}' } and '${state.folderId}' in parents`);
+    return found?.id || '';
+  }
+
+  /**
+   * Which topics need uploading (new or changed since their last upload) and which files belong
+   * to topics no longer in the library. `topics`: [{ id, updatedAt }].
+   */
+  async function plan(topics) {
+    const state = await readState();
+    const known = state.topics || {};
+    const ids = new Set(topics.map((t) => String(t.id)));
+    return {
+      upload: topics.filter((t) => known[t.id]?.updatedAt !== t.updatedAt).map((t) => t.id),
+      remove: Object.keys(known).filter((id) => !ids.has(id))
+    };
+  }
+
+  /** Uploads one topic's file (made, updated, or renamed with the topic). */
+  async function uploadTopicFile({ id, name, updatedAt, json }) {
+    const state = await ensureFolder();
+    const fileId = await topicFileId(state, id);
+    const fileName = topicFileName(name);
+    const metadata = fileId
+      ? { name: fileName }
+      : { name: fileName, parents: [state.folderId], mimeType: 'application/json', appProperties: { noprep: await topicMark(id) } };
+    const savedId = await sendFile(fileId, metadata, json);
     const fresh = await readState();
-    if (file.id) fresh.fileId = file.id;
-    fresh.lastBackupAt = new Date().toISOString();
-    fresh.lastError = '';
+    fresh.topics = { ...(fresh.topics || {}), [id]: { fileId: savedId, updatedAt } };
     await writeState(fresh);
   }
 
-  /** One upload at a time; a Save during an upload waits for it, then sends its newer file. */
-  function backup(json) {
-    const run = uploadChain.then(() => uploadJson(json));
+  /** A topic deleted from the library: its file goes to Drive's bin (kept 30 days there). */
+  async function removeTopicFile(id) {
+    const state = await readState();
+    const fileId = state.topics?.[id]?.fileId;
+    if (fileId) {
+      const response = await drive(`${FILES_URL}/${encodeURIComponent(fileId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trashed: true })
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new DriveError('GOOGLE_FAILED', `Could not remove a deleted topic's file (${response.status}).`);
+      }
+    }
+    const fresh = await readState();
+    if (fresh.topics) delete fresh.topics[id];
+    await writeState(fresh);
+  }
+
+  /** Earlier test builds kept every topic in one "No-Prep topics.json": to the bin, once. */
+  async function retireAllInOneFile() {
+    const state = await readState();
+    if (!state.fileId) return;
+    await drive(`${FILES_URL}/${encodeURIComponent(state.fileId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: true })
+    }).catch(() => undefined);
+    const fresh = await readState();
+    delete fresh.fileId;
+    await writeState(fresh);
+  }
+
+  /** One change at a time, in order: a Save during an upload waits for it. */
+  function queue(work) {
+    const run = uploadChain.then(work);
     uploadChain = run.catch(() => {});
     return run.catch(async (error) => {
       const state = await readState();
       state.lastError = error.kind === 'RELINK' ? 'relink' : 'failed';
       await writeState(state).catch(() => {});
       throw error;
+    });
+  }
+
+  const uploadTopic = (topic) => queue(() => uploadTopicFile(topic));
+  const removeTopic = (id) => queue(() => removeTopicFile(String(id)));
+
+  /** Every planned change done: the backup is up to date as of now. */
+  function finishBackup() {
+    return queue(async () => {
+      if (!readRefreshToken(await readState())) throw new DriveError('NOT_LINKED', 'Google Drive is not linked.');
+      await retireAllInOneFile();
+      const state = await readState();
+      state.lastBackupAt = new Date().toISOString();
+      state.lastError = '';
+      await writeState(state);
     }).then(getStatus);
   }
 
   /**
-   * Share the backup folder with colleagues: "anyone with the link can view" on the folder and on
-   * the topics file (drive.file lets the app do this for files it made), or take that away again.
+   * Share the backup folder with colleagues: "anyone with the link can view" on the folder (drive.file
+   * lets the app do this for a folder it made; the topic files in it, now and later, follow the
+   * folder), or take that away again.
    */
   async function setSharing(on) {
     const state = await ensureFolder();
-    const ids = [state.folderId, ...((await exists(state.fileId)) ? [state.fileId] : [])];
-    for (const id of ids) {
+    for (const id of [state.folderId]) {
       const url = `${FILES_URL}/${encodeURIComponent(id)}/permissions`;
       const response = on
         ? await drive(url, {
@@ -372,7 +474,7 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
     return getStatus();
   }
 
-  return { getStatus, link, cancelLink, backup, setSharing, unlink };
+  return { getStatus, link, cancelLink, plan, uploadTopic, removeTopic, finishBackup, setSharing, unlink };
 }
 
 module.exports = { createGoogleDriveService, DriveError, emailFromIdToken };

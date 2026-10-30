@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { NgZone } from '@angular/core';
 
 import { BACKUP_DELAY_MS, DriveBackupService } from './drive-backup';
+import { db } from './db.model';
 import { ImportExportService } from './import-export';
 import { LanguageService } from './language';
 
@@ -10,18 +11,38 @@ describe('DriveBackupService', () => {
   let uploads: string[];
   let bridge: any;
 
-  function make(status: object, upload: (json: string) => object = () => ({ ok: true, result: { lastBackupAt: '2026-10-30T10:00:00Z' } })) {
+  beforeEach(async () => {
+    // The library: one topic, "Farm".
+    await db.items.clear();
+    await db.topics.clear();
+    await db.topics.add({ name: 'Farm', createdAt: new Date(), updatedAt: new Date('2026-10-30T09:00:00Z') });
+  });
+
+  /** A pretend desktop app: plans by updatedAt (like the real one), records each topic upload. */
+  function make(status: object, upload: (json: string) => object = () => ({ ok: true })) {
     localStorage.clear();
     document.getElementById('app-notification-container')?.remove();
     uploads = [];
+    const sent = new Map<string, string>();
     bridge = {
       driveBackupGetStatus: async () => ({ ok: true, result: status }),
       driveBackupLink: async () => ({ ok: true, result: { ...linked } }),
-      driveBackupUpload: async ({ json }: { json: string }) => { uploads.push(json); return upload(json); },
+      driveBackupPlan: async ({ topics }: { topics: { id: number; updatedAt: string }[] }) => ({
+        ok: true,
+        result: { upload: topics.filter((t) => sent.get(String(t.id)) !== t.updatedAt).map((t) => String(t.id)), remove: [] }
+      }),
+      driveBackupUploadTopic: async ({ id, updatedAt, json }: { id: number; updatedAt: string; json: string }) => {
+        uploads.push(json);
+        const step = upload(json) as { ok: boolean };
+        if (step.ok) sent.set(String(id), updatedAt);
+        return step;
+      },
+      driveBackupRemoveTopic: async () => ({ ok: true }),
+      driveBackupFinish: async () => ({ ok: true, result: { lastBackupAt: '2026-10-30T10:00:00Z' } }),
       driveBackupUnlink: async () => ({ ok: true, result: { linked: false } })
     };
     (window as any).electronAPI = bridge;
-    const importExport = { buildAllTopicsExport: async () => ({ version: '1', exportDate: 'now', topics: [{ name: 'Farm' }] }) } as unknown as ImportExportService;
+    const importExport = { buildTopicExport: async () => ({ version: '1', exportDate: 'now', topics: [{ name: 'Farm' }] }) } as unknown as ImportExportService;
     const lang = { translate: (key: string) => key } as unknown as LanguageService;
     const zone = { run: (fn: () => unknown) => fn() } as unknown as NgZone;
     return new DriveBackupService(importExport, lang, zone);
@@ -35,22 +56,21 @@ describe('DriveBackupService', () => {
   const toast = () => document.querySelector('.app-notification-with-actions');
   const flush = () => new Promise((r) => setTimeout(r, 0));
 
-  it('linked: a save uploads the Export all file once, a moment after the last of several saves', async () => {
-    vi.useFakeTimers();
-    try {
-      const backup = make(linked);
-      await backup.topicSaved();
-      await backup.topicSaved();
-      await backup.topicSaved();
-      expect(uploads.length).toBe(0);
-      await vi.advanceTimersByTimeAsync(BACKUP_DELAY_MS);
-      expect(uploads.length).toBe(1);
-      expect(JSON.parse(uploads[0]).topics[0].name).toBe('Farm');
-      expect(backup.status.lastBackupAt).toBe('2026-10-30T10:00:00Z');
-      expect(toast()).toBeNull();
-    } finally {
-      vi.useRealTimers();
-    }
+  it('linked: a save uploads the changed topic once, a moment after the last of several saves', async () => {
+    const backup = make(linked);
+    expect(backup.backupDelayMs).toBe(BACKUP_DELAY_MS);
+    backup.backupDelayMs = 30;
+    await backup.topicSaved();
+    await backup.topicSaved();
+    await backup.topicSaved();
+    expect(uploads.length).toBe(0);
+    await vi.waitFor(() => expect(backup.status.lastBackupAt).toBe('2026-10-30T10:00:00Z'));
+    expect(uploads.length).toBe(1);
+    expect(JSON.parse(uploads[0]).topics[0].name).toBe('Farm');
+    expect(toast()).toBeNull();
+    // Nothing changed since: the next backup sends nothing.
+    await backup.backupNow();
+    expect(uploads.length).toBe(1);
   });
 
   it('not linked: no upload, a gentle note with Link / Not now / Don\'t remind me', async () => {

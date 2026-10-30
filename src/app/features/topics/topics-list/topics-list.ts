@@ -402,6 +402,7 @@ async deleteTopic(id: number) {
   const confirmed = await this.confirmationService.confirm(message);
   if (confirmed) {
     await this.db.deleteTopic(id);
+    this.driveBackup.libraryChanged();
     this.cdr.detectChanges();
     setTimeout(() => {
       const searchInput = document.getElementById('topic-search') as HTMLInputElement;
@@ -758,6 +759,7 @@ async combineSelectedTopics() {
 
   if (mergedItems.length) {
     await this.db.addItems(newTopicId, mergedItems);
+    this.driveBackup.libraryChanged();
   }
 
   this.selectedTopicIds = new Set();
@@ -767,20 +769,27 @@ async combineSelectedTopics() {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.json';
+    // Several files at once: topic files downloaded from a colleague's shared Drive folder.
+    fileInput.multiple = true;
     fileInput.onchange = async (event: any) => {
-      const file = event.target.files[0];
-      if (!file) return;
-      const data = await this.importExport.readImportFile(file);
-      if (!data) return;
-      // One topic: in at once, as before. Several (Export all, a colleague's Drive backup): choose.
+      const files: File[] = Array.from(event.target.files || []);
+      if (!files.length) return;
+      const read: ExportData[] = [];
+      for (const file of files) {
+        const data = await this.importExport.readImportFile(file);
+        if (data) read.push(data);
+      }
+      if (!read.length) return;
+      const data: ExportData = { ...read[0], topics: read.flatMap((d) => d.topics) };
+      // One topic: in at once, as before. Several (Export all, a colleague's topics): choose.
       if (data.topics.length === 1) {
-        await this.importExport.importTopics(data, [0]);
+        if ((await this.importExport.importTopics(data, [0])) > 0) this.driveBackup.libraryChanged();
         return;
       }
       const choices = await this.importExport.describeImport(data);
       this.ngZone.run(() => {
         this.importPicker = {
-          fileName: file.name,
+          fileName: files.length === 1 ? files[0].name : files.map((f) => f.name).join(', '),
           data,
           choices,
           picked: new Set(choices.filter((c) => c.state === 'new').map((c) => c.index))
@@ -816,6 +825,7 @@ async combineSelectedTopics() {
     try {
       const done = await this.importExport.importTopics(picker.data, picker.choices.map((c) => c.index).filter((i) => picker.picked.has(i)));
       if (done >= 0) this.importPicker = null;
+      if (done > 0) this.driveBackup.libraryChanged();
     } finally {
       this.importing = false;
       this.cdr.detectChanges();
