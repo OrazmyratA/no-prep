@@ -57,6 +57,11 @@
                 "glob": "browser-image-compression.js",
                 "input": "node_modules/browser-image-compression/dist",
                 "output": "assets/vendor"
+              },
+              {
+                "glob": "ort-wasm-simd-threaded.jsep.{mjs,wasm}",
+                "input": "node_modules/@huggingface/transformers/dist",
+                "output": "assets/ort"
               }
             ],
             "styles": [

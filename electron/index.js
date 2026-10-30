@@ -443,7 +443,8 @@ function createWindow() {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           "default-src 'self' noprep-book:; " +
-          "script-src 'self' 'unsafe-inline'; " +
+          // wasm-unsafe-eval: video subtitles run the speech model as WebAssembly (no eval).
+          "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; " +
           // Picture compression runs in a blob worker that loads the app's own copy of the
           // library (assets/vendor, see image-compression.ts), so weak PCs don't freeze.
           "worker-src 'self' blob:; " +
@@ -453,7 +454,8 @@ function createWindow() {
           "frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
           // Pixabay: image search (API + downloads) for the image uploader and AI topics.
           // GitHub API: release notes for the notification bell's "What's new" (app-notifications.ts).
-          "connect-src 'self' noprep-book: blob: https://pixabay.com https://cdn.pixabay.com https://api.github.com; " +
+          // Hugging Face: the speech model for video subtitles (downloaded once, then kept).
+          "connect-src 'self' noprep-book: blob: https://pixabay.com https://cdn.pixabay.com https://api.github.com https://huggingface.co https://*.huggingface.co https://*.hf.co; " +
           "font-src 'self' data:; " +
           "object-src 'none';"
         ]

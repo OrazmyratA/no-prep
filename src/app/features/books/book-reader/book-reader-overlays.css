@@ -484,3 +484,87 @@
   box-shadow: 0 12px 24px rgba(41, 37, 36, 0.22);
   transform: translateY(-1px);
 }
+
+/* CC: subtitles made on this computer, shown under the video (not over the picture). */
+.video-seek-controls .video-cc-btn {
+  min-width: 3.4rem;
+  letter-spacing: 0.04em;
+}
+
+.video-seek-controls .video-cc-btn.active {
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+  border-color: #60a5fa;
+}
+
+.video-subtitle-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  min-height: 3.6rem;
+  margin-top: 0.7rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.9rem;
+  background: #111827;
+  color: #ffffff;
+}
+
+.video-subtitle-text {
+  flex: 0 1 auto;
+  border: 0;
+  background: none;
+  color: #ffffff;
+  font: inherit;
+  font-size: clamp(1.15rem, 2.4vw, 1.9rem);
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+}
+
+.video-subtitle-reveal {
+  border: 0;
+  border-radius: 9999px;
+  padding: 0.3rem 1.4rem;
+  background: var(--np-game-btn, #6366f1);
+  font-size: clamp(1.2rem, 2.2vw, 1.6rem);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.video-subtitle-reveal:hover {
+  transform: scale(1.05);
+}
+
+.video-subtitle-replay {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.video-subtitle-replay:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.video-subtitle-status {
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
+}
+
+.reader-popover.video-fullscreen .video-subtitle-bar {
+  margin-top: 0;
+  border-radius: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-subtitle-reveal { transition: none; }
+}

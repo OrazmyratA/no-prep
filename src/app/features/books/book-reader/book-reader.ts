@@ -85,6 +85,8 @@ import { BookReaderProgressController } from './book-reader-progress-controller'
 import { cloneTextAnnotation } from './book-reader-annotation-utils';
 import { BookReaderPageFrameComponent } from './book-reader-page-frame';
 import { PdfPageCanvasComponent, PdfPrefetchRequest } from '../pdf-page-canvas/pdf-page-canvas';
+import { SubtitleSession, VideoSubtitlesService } from '../../../core/subtitles/video-subtitles';
+import { SubtitleLine, lineIndexAt } from '../../../core/subtitles/subtitle-lines';
 
 @Component({
   selector: 'app-book-reader',
@@ -301,6 +303,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private bookLibrary: BookLibraryService,
+    private videoSubtitles: VideoSubtitlesService,
     private db: DbService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef,
@@ -360,6 +363,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     this.destroyed = true;
     document.removeEventListener('keydown', this.answerKeyArrowHandler, true);
     this.stopAnswerKeyAudio();
+    this.closeSubtitles();
     document.removeEventListener('pointermove', this.pointerMoveListener);
     if (this.pdfPrefetchTimer !== null) window.clearTimeout(this.pdfPrefetchTimer);
     this.routeSubscription?.unsubscribe();
@@ -1175,7 +1179,98 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
 
   closeExpandedElement(): void {
     this.stopAnswerKeyAudio();
+    this.closeSubtitles();
     this.videoController.closeExpandedElement();
+  }
+
+  // ---- Video subtitles (CC): made on this computer while the video plays, shown under it ----
+
+  subtitleSession: SubtitleSession | null = null;
+  subtitlesOn = false;
+  /** The words start hidden: 🔍 shows them (and keeps showing the next lines), a click hides. */
+  subtitleWordsShown = false;
+  subtitleLine: SubtitleLine | null = null;
+  private subtitleSubscriptions: Subscription[] = [];
+
+  /** The video's metadata is in: get its saved lines, and carry on making them if the model is here. */
+  async onExpandedVideoReady(): Promise<void> {
+    const element = this.expandedElement;
+    const src = String(element?.data?.['src'] || '');
+    if (!element || !this.book || !src) return;
+    const key = `${this.book.id}:${src}`;
+    if (this.subtitleSession?.key === key) return;
+    // Another video was open before (closed some other way): start fresh for this one.
+    this.closeSubtitles();
+    const session = this.videoSubtitles.open(key, this.getElementMediaUrl(element));
+    this.subtitleSession = session;
+    this.subtitleSubscriptions.push(
+      session.lines$.subscribe(() => this.updateSubtitleLine()),
+      session.state$.subscribe(() => this.cdr.markForCheck())
+    );
+    await session.restore();
+    // Only start on its own when the model is already on this computer (no surprise download).
+    if (this.subtitleSession === session && (await this.videoSubtitles.modelDownloaded())) {
+      void session.start();
+    }
+  }
+
+  onExpandedVideoTime(): void {
+    const video = this.expandedVideo?.nativeElement;
+    if (!video || !this.subtitleSession) return;
+    this.subtitleSession.setPlayhead(video.currentTime);
+    this.updateSubtitleLine();
+  }
+
+  toggleSubtitles(): void {
+    this.subtitlesOn = !this.subtitlesOn;
+    if (this.subtitlesOn) void this.subtitleSession?.start();
+  }
+
+  showSubtitleWords(event?: Event): void {
+    event?.stopPropagation();
+    this.subtitleWordsShown = true;
+  }
+
+  hideSubtitleWords(event?: Event): void {
+    event?.stopPropagation();
+    this.subtitleWordsShown = false;
+  }
+
+  /** ⏮ Hear this line again. */
+  replaySubtitleLine(event?: Event): void {
+    event?.stopPropagation();
+    const video = this.expandedVideo?.nativeElement;
+    if (!video || !this.subtitleLine) return;
+    video.currentTime = Math.max(0, this.subtitleLine.start - 0.15);
+    void video.play().catch(() => undefined);
+  }
+
+  get subtitlePhase(): string {
+    return this.subtitleSession?.state$.value.phase ?? 'idle';
+  }
+
+  get subtitleDownloadPercent(): number {
+    return Math.round((this.subtitleSession?.state$.value.progress ?? 0) * 100);
+  }
+
+  private updateSubtitleLine(): void {
+    const video = this.expandedVideo?.nativeElement;
+    const lines = this.subtitleSession?.lines ?? [];
+    const index = video ? lineIndexAt(lines, video.currentTime) : -1;
+    const line = index >= 0 ? lines[index] : null;
+    if (line !== this.subtitleLine) {
+      this.subtitleLine = line;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private closeSubtitles(): void {
+    this.subtitleSubscriptions.splice(0).forEach((s) => s.unsubscribe());
+    this.subtitleSession?.dispose();
+    this.subtitleSession = null;
+    this.subtitlesOn = false;
+    this.subtitleWordsShown = false;
+    this.subtitleLine = null;
   }
 
   // ---- The answer key, shown like a Flip Tiles card: picture, 🔊, and its text below ----

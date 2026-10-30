@@ -142,6 +142,9 @@
           controls
           controlsList="nodownload"
           autoplay
+          (loadedmetadata)="onExpandedVideoReady()"
+          (timeupdate)="onExpandedVideoTime()"
+          (seeked)="onExpandedVideoTime()"
           (fullscreenchange)="onExpandedNativeVideoFullscreenChange()"
           (webkitfullscreenchange)="onExpandedNativeVideoFullscreenChange()"
           (webkitbeginfullscreen)="onExpandedNativeVideoFullscreenChange()"
@@ -161,6 +164,29 @@
           <img src="assets/images/maximize.png" alt="">
         </button>
         <button type="button" (click)="skipExpandedVideo(1)">+1s</button>
+        <button type="button" class="video-cc-btn" [class.active]="subtitlesOn" (click)="toggleSubtitles()"
+                [attr.aria-pressed]="subtitlesOn" [attr.title]="'subtitlesButton' | translate">CC</button>
+      </div>
+      <!-- Subtitles under the video: made on this computer; the words wait behind 🔍. -->
+      <div class="video-subtitle-bar" *ngIf="subtitlesOn && expandedElement.type === 'video' && !isYouTubeVideo(expandedElement)">
+        <ng-container *ngIf="subtitleLine; else subtitleStatus">
+          <button type="button" class="video-subtitle-replay" (click)="replaySubtitleLine($event)"
+                  [attr.title]="'subtitlesReplay' | translate" [attr.aria-label]="'subtitlesReplay' | translate">⏮</button>
+          <button *ngIf="subtitleWordsShown; else subtitleHidden" type="button" class="video-subtitle-text"
+                  [attr.title]="'subtitlesHide' | translate" (click)="hideSubtitleWords($event)">{{ subtitleLine.text }}</button>
+          <ng-template #subtitleHidden>
+            <button type="button" class="video-subtitle-reveal" (click)="showSubtitleWords($event)"
+                    [attr.title]="'subtitlesShow' | translate" [attr.aria-label]="'subtitlesShow' | translate">🔍</button>
+          </ng-template>
+        </ng-container>
+        <ng-template #subtitleStatus>
+          <span class="video-subtitle-status" [ngSwitch]="subtitlePhase">
+            <ng-container *ngSwitchCase="'downloading'">⬇️ {{ 'subtitlesDownloading' | translate }} {{ subtitleDownloadPercent }}%</ng-container>
+            <ng-container *ngSwitchCase="'listening'">⏳ {{ 'subtitlesListening' | translate }}</ng-container>
+            <ng-container *ngSwitchCase="'error'">⚠️ {{ 'subtitlesFailed' | translate }}</ng-container>
+            <ng-container *ngSwitchDefault>…</ng-container>
+          </span>
+        </ng-template>
       </div>
       <div
         #expandedVideoFrame
