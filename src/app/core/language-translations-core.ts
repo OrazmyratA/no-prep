@@ -376,6 +376,19 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Không thể liên kết Google Drive. Vui lòng thử lại.',
 },
 
+'driveBackupNeedDriveBox': {
+  en: 'Google Drive was not allowed. Click Link Google Drive again and tick the box "See, edit, create and delete only the specific Google Drive files you use with this app".',
+  tk: 'Google Drive rugsat berilmedi. «Google Drive bagla» düwmesine ýene basyň we Google Drive faýllary baradaky belligi goýuň.',
+  ru: 'Доступ к Google Диску не разрешён. Нажмите «Подключить Google Drive» ещё раз и отметьте пункт про файлы Google Диска, которые вы используете в этом приложении.',
+  cn: '未允许访问 Google Drive。请再次点击“连接 Google Drive”，并勾选关于本应用所用 Google Drive 文件的选项。',
+  cde: 'Google Drive wurde nicht erlaubt. Klicken Sie erneut auf „Google Drive verbinden“ und setzen Sie das Häkchen bei den Google-Drive-Dateien, die Sie mit dieser App verwenden.',
+  es: 'No se permitió Google Drive. Pulsa otra vez «Vincular Google Drive» y marca la casilla de los archivos de Google Drive que usas con esta aplicación.',
+  fr: 'Google Drive n’a pas été autorisé. Cliquez de nouveau sur « Lier Google Drive » et cochez la case des fichiers Google Drive que vous utilisez avec cette application.',
+  kr: 'Google Drive가 허용되지 않았습니다. "Google Drive 연결"을 다시 누르고 이 앱에서 사용하는 Google Drive 파일 항목에 체크하세요.',
+  sa: 'لم يُسمح بالوصول إلى Google Drive. انقر «ربط Google Drive» مرة أخرى وحدّد خانة ملفات Google Drive التي تستخدمها مع هذا التطبيق.',
+  vi: 'Chưa cho phép Google Drive. Hãy nhấn "Liên kết Google Drive" lần nữa và đánh dấu ô về các tệp Google Drive bạn dùng với ứng dụng này.',
+},
+
 'driveBackupNotLinkedToast': {
   en: 'Saved on this computer only. Link Google Drive to keep a copy of your topics.',
   tk: 'Diňe şu kompýuterde saklandy. Temalaryňyzyň nusgasyny saklamak üçin Google Drive baglaň.',
