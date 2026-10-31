@@ -15,7 +15,8 @@ const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file openid email';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const SCOPES = `${DRIVE_SCOPE} openid email`;
 const FOLDER_NAME = 'No-Prep backup';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const LINK_TIMEOUT_MS = 5 * 60 * 1000;
@@ -181,16 +182,30 @@ function createGoogleDriveService({ fsp, path, getUserDataPath, safeStorage, ope
       redirect_uri: redirectUri
     });
     if (!tokens.refresh_token) throw new DriveError('GOOGLE_FAILED', 'Google did not allow offline access.');
+    // Google lets people untick the Drive box and allow only their email: then nothing is linked,
+    // and the teacher is told to tick it (the half-given access is handed back).
+    const granted = String(tokens.scope || '').split(/\s+/);
+    if (tokens.scope && !granted.includes(DRIVE_SCOPE)) {
+      await fetchImpl(`${REVOKE_URL}?token=${encodeURIComponent(tokens.refresh_token)}`, { method: 'POST' }).catch(() => {});
+      throw new DriveError('NO_DRIVE_ACCESS', 'Google Drive access was not allowed.');
+    }
 
+    // The folder first: only a link that works is kept (a failure here leaves nothing half-linked).
+    accessToken = tokens.access_token || '';
+    accessTokenExpiresAt = Date.now() + (Number(tokens.expires_in) || 0) * 1000 - 60_000;
+    try {
+      await ensureFolder();
+    } catch (error) {
+      accessToken = '';
+      await fetchImpl(`${REVOKE_URL}?token=${encodeURIComponent(tokens.refresh_token)}`, { method: 'POST' }).catch(() => {});
+      throw error;
+    }
     const state = await readState();
     storeRefreshToken(state, tokens.refresh_token);
     state.email = emailFromIdToken(tokens.id_token);
     state.needsRelink = false;
     state.lastError = '';
     await writeState(state);
-    accessToken = tokens.access_token || '';
-    accessTokenExpiresAt = Date.now() + (Number(tokens.expires_in) || 0) * 1000 - 60_000;
-    await ensureFolder();
     return getStatus();
   }
 

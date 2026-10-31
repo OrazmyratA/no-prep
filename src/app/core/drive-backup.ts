@@ -118,7 +118,9 @@ export class DriveBackupService {
       return true;
     }
     if (result?.error !== 'CANCELLED') {
-      showAppNotification(this.lang.translate('driveBackupLinkFailed'), 'error');
+      // The Drive box was left unticked on Google's screen: say exactly what to tick next time.
+      const key = result?.error === 'NO_DRIVE_ACCESS' ? 'driveBackupNeedDriveBox' : 'driveBackupLinkFailed';
+      showAppNotification(this.lang.translate(key), 'error');
     }
     return false;
   }

@@ -10,7 +10,7 @@ const { createGoogleDriveService, emailFromIdToken } = require('./google-drive-s
 const idToken = (email) => `x.${Buffer.from(JSON.stringify({ email })).toString('base64url')}.y`;
 
 /** A pretend Google: tokens, the Drive files API (search, trash, sharing) and resumable uploads. */
-function fakeGoogle() {
+function fakeGoogle({ grantedScope = 'https://www.googleapis.com/auth/drive.file openid https://www.googleapis.com/auth/userinfo.email', folderFails = false } = {}) {
   const files = new Map();
   const sessions = new Map();
   const calls = [];
@@ -28,7 +28,7 @@ function fakeGoogle() {
         assert.equal(form.get('code'), 'the-code');
         assert.ok(form.get('code_verifier'));
         assert.match(form.get('redirect_uri'), /^http:\/\/127\.0\.0\.1:\d+$/);
-        return json({ access_token: 'at1', expires_in: 3600, refresh_token: 'rt1', id_token: idToken('teacher@gmail.com') });
+        return json({ access_token: 'at1', expires_in: 3600, refresh_token: 'rt1', scope: grantedScope, id_token: idToken('teacher@gmail.com') });
       }
       if (!refreshWorks) return json({ error: 'invalid_grant' }, 400);
       return json({ access_token: 'at2', expires_in: 3600 });
@@ -61,6 +61,7 @@ function fakeGoogle() {
       return json({ files: last ? [{ id: last[0], webViewLink: `https://drive.google.com/drive/folders/${last[0]}` }] : [] });
     }
     if (u.pathname === '/drive/v3/files' && method === 'POST') {
+      if (folderFails) return json({ error: { code: 403 } }, 403);
       const meta = JSON.parse(init.body);
       const id = `folder${next++}`;
       files.set(id, { name: meta.name, mimeType: meta.mimeType });
@@ -109,9 +110,9 @@ function browser({ allow = true } = {}) {
   };
 }
 
-function setup({ client = { clientId: 'cid', clientSecret: 'secret' }, allow = true } = {}) {
+function setup({ client = { clientId: 'cid', clientSecret: 'secret' }, allow = true, google: googleOptions } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'np-drive-'));
-  const google = fakeGoogle();
+  const google = fakeGoogle(googleOptions);
   const safeStorage = {
     isEncryptionAvailable: () => true,
     encryptString: (s) => Buffer.from(`enc:${s}`),
@@ -157,6 +158,21 @@ test('link: the teacher allows in the browser; the folder is made and the token 
   assert.equal([...google.files.values()][0].name, 'No-Prep backup');
   assert.equal(stored().refreshTokenEncrypted, true);
   assert.notEqual(stored().refreshToken, 'rt1');
+});
+
+test('Drive box left unticked on Google\'s screen: nothing is linked, and it says why', async () => {
+  const { service, google, dir } = setup({ google: { grantedScope: 'openid https://www.googleapis.com/auth/userinfo.email' } });
+  await assert.rejects(service.link(), { kind: 'NO_DRIVE_ACCESS' });
+  assert.equal((await service.getStatus()).linked, false);
+  assert.ok(google.calls.includes('POST /revoke'));
+  assert.equal(fs.existsSync(path.join(dir, 'google-drive.json')), false);
+});
+
+test('the folder can\'t be made while linking: nothing half-linked is kept', async () => {
+  const { service, google } = setup({ google: { folderFails: true } });
+  await assert.rejects(service.link(), { kind: 'GOOGLE_FAILED' });
+  assert.equal((await service.getStatus()).linked, false);
+  assert.ok(google.calls.includes('POST /revoke'));
 });
 
 test('link refused in the browser: nothing is stored', async () => {
