@@ -1,4 +1,5 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnInit, ViewChild } from '@angular/core';
+import { clearBookReturn } from '../../../core/book-return';
 import { FormArray, FormBuilder, FormGroup, Validators, ValidatorFn, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -1223,6 +1224,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         return;
       }
 
+      clearBookReturn();
       this.router.navigate(['/topics', savedTopicId, 'activities']);
     } catch (error) {
       console.error('Topic save failed', error);

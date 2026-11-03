@@ -12,7 +12,7 @@
   </button>
 
   <div *ngIf="isOpen" class="menu-panel">
-    <button type="button" (click)="onAction('topics')" class="menu-action">{{ 'menuTopics' | translate }}</button>
+    <button type="button" (click)="onAction('topics')" class="menu-action">{{ (bookReturn ? 'menuBackToBook' : 'menuTopics') | translate }}</button>
     <button type="button" (click)="onAction('activity')" class="menu-action">{{ 'menuActivityPage' | translate }}</button>
     <button type="button" (click)="onAction('startover')" class="menu-action">{{ 'menuStartOver' | translate }}</button>
     <button type="button" (click)="onAction('resume')" class="menu-action">{{ 'menuResume' | translate }}</button>

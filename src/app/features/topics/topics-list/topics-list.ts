@@ -1,4 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { clearBookReturn } from '../../../core/book-return';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription, combineLatest } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
@@ -385,6 +386,7 @@ onClickOutside(event: MouseEvent) {
         this.leaderboardState.completeTopicSelection(topicId);
         return;
       }
+      clearBookReturn();
       this.router.navigate(['/topics', topicId, 'activities']);
       return;
     }
