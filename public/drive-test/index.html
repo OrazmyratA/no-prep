@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>NoPrep: Google Drive test</title>
+<style>
+  :root { --ink: #1f2937; --soft: #6b7280; --line: #e5e7eb; --brand: #4f46e5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f3f4f6; color: var(--ink); font: 16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 8px 0 4px; }
+  p { margin: 6px 0; }
+  .soft { color: var(--soft); font-size: 14px; }
+  section { background: #fff; border-radius: 12px; padding: 14px; margin: 12px 0; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  h2 { font-size: 17px; margin: 0 0 4px; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .pill { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 99px; background: var(--line); color: var(--soft); white-space: nowrap; }
+  .pill.pass { background: #d1fae5; color: #047857; }
+  .pill.fail { background: #fee2e2; color: #b91c1c; }
+  .pill.run { background: #dbeafe; color: #1d4ed8; }
+  button, .file { display: inline-block; margin: 6px 6px 0 0; padding: 10px 14px; min-height: 44px; border: 0; border-radius: 8px; background: var(--brand); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button.alt, .file.alt { background: #eef2ff; color: var(--brand); }
+  button:disabled { opacity: .45; cursor: default; }
+  .file input { display: none; }
+  input[type=email] { width: 100%; padding: 10px; margin-top: 6px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+  .log { margin-top: 8px; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: #374151; }
+  .bar { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin-top: 8px; display: none; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--brand); }
+  canvas, video { display: block; max-width: 100%; margin-top: 8px; background: #000; border-radius: 6px; }
+  canvas { background: #fff; border: 1px solid var(--line); }
+  #results { width: 100%; height: 140px; margin-top: 8px; font: 12px ui-monospace, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Google Drive test</h1>
+  <p class="soft">Checks whether books can work from Google Drive on this device. Use a test Google account. Everything goes in one folder, "No-Prep test (safe to delete)". Step 9 removes it.</p>
+
+  <section id="s1"><h2>1. Sign in <span class="pill">Not run</span></h2>
+    <p class="soft">Tick the Google Drive box if Google asks.</p>
+    <button id="signIn">Sign in with Google</button>
+    <button id="renew" class="alt" disabled>Renew sign-in</button>
+    <p id="clock" class="soft"></p><div class="log"></div></section>
+
+  <section id="s2"><h2>2. Save and read a small file <span class="pill">Not run</span></h2>
+    <button data-needs-sign-in id="runBasic" disabled>Run</button><div class="log"></div></section>
+
+  <section id="s3"><h2>3. See files from the desktop app <span class="pill">Not run</span></h2>
+    <p class="soft">Only meaningful if this account linked Drive backup in the desktop app.</p>
+    <button data-needs-sign-in id="runDesktop" disabled>Run</button><div class="log"></div></section>
+
+  <section id="s4"><h2>4. PDF page <span class="pill">Not run</span></h2>
+    <label class="file"><input data-needs-sign-in id="pdfFile" type="file" accept="application/pdf,.pdf" disabled>Choose a PDF</label>
+    <div class="bar"><i></i></div><div class="log"></div><canvas hidden></canvas></section>
+
+  <section id="s5"><h2>5. Video <span class="pill">Not run</span></h2>
+    <p class="soft">After choosing, tap Play on each video that appears, then drag it to the middle.</p>
+    <label class="file"><input data-needs-sign-in id="videoFile" type="file" accept="video/*" disabled>Choose a video</label>
+    <div class="bar"><i></i></div><div class="log"></div>
+    <div id="videoStream"></div><div id="videoBlob"></div></section>
+
+  <section id="s6"><h2>6. Your biggest book <span class="pill">Not run</span></h2>
+    <p class="soft">Choose an exported book folder, or a .noprepbook or .zip file (not .rar). It uploads one file at a time. Keep this page open. If the page reloads by itself, it will say where it stopped.</p>
+    <label class="file"><input data-needs-sign-in id="bookFolder" type="file" webkitdirectory multiple disabled>Choose a book folder</label>
+    <label class="file alt"><input data-needs-sign-in id="bookFile" type="file" disabled>Choose a book file</label>
+    <div class="bar"><i></i></div><div class="log"></div></section>
+
+  <section id="s7"><h2>7. Shared book, viewer side <span class="pill">Not run</span></h2>
+    <p class="soft"><b>Owner's account:</b> type the viewer's Google email and share the small test file from step 2, with downloads turned off for viewers.</p>
+    <input id="viewerEmail" type="email" placeholder="viewer@example.com" autocomplete="off">
+    <button data-needs-sign-in id="shareTest" class="alt" disabled>Share as view only</button>
+    <button data-needs-sign-in id="shareFolder" class="alt" disabled>Share a test folder and file</button>
+    <p class="soft"><b>Viewer's account:</b> open this page, sign in, and pick what was shared.</p>
+    <button data-needs-sign-in id="openPicker" disabled>Open shared file</button><div class="log"></div></section>
+
+  <section id="s8"><h2>8. This device's storage <span class="pill">Not run</span></h2>
+    <button id="runStorage">Run</button><div class="log"></div></section>
+
+  <section id="s9"><h2>9. Clean up <span class="pill">Not run</span></h2>
+    <p class="soft">Moves the test folder to the Drive bin and turns off the video helper.</p>
+    <button data-needs-sign-in id="cleanUp" class="alt" disabled>Delete test files</button><div class="log"></div></section>
+
+  <section><h2>Results</h2>
+    <p class="soft">Copy these and send them back. They contain no passwords, sign-in keys or email addresses.</p>
+    <button id="copyResults">Copy results</button><textarea id="results" readonly></textarea></section>
+</main>
+
+<script>
+'use strict';
+const CLIENT_ID = '949077022020-168rop0sjq7070h04a6hf70daiqreib8.apps.googleusercontent.com';
+const PROJECT_NUMBER = '949077022020';
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const API = 'https://www.googleapis.com/drive/v3';
+const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.2.108/legacy/build';
+const FOLDER_NAME = 'No-Prep test (safe to delete)';
+const CHUNK = 8 * 1024 * 1024; // Drive wants resumable chunks in multiples of 256 KB.
+const BOOK_STATE = 'noprepDriveTestBook';
+const SECTION_RESULTS = 'noprepDriveTestResults';
+
+const $ = (id) => document.getElementById(id);
+const results = new Map();
+let token = '';
+let tokenExpires = 0;
+let tokenClient = null;
+let onToken = null;
+let folderId = '';
+let smallFileId = '';
+let renewTried = false;
+
+/* ---------- reporting ---------- */
+function clean(text) {
+  return String(text)
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '<email>')
+    .replace(/ya29\.[\w.-]+/g, '<sign-in key>');
+}
+function log(section, text) {
+  const line = clean(text);
+  const box = $(section).querySelector('.log');
+  box.textContent += (box.textContent ? '\n' : '') + line;
+  const entry = results.get(section) || { status: 'not run', lines: [] };
+  entry.lines.push(line);
+  results.set(section, entry);
+  saveResults();
+}
+function status(section, value) {
+  const pill = $(section).querySelector('.pill');
+  pill.textContent = { pass: 'Passed', fail: 'Failed', run: 'Running', wait: 'Not finished' }[value];
+  pill.className = 'pill ' + value;
+  const entry = results.get(section) || { status: '', lines: [] };
+  entry.status = value;
+  results.set(section, entry);
+  saveResults();
+}
+function saveResults() {
+  const titles = [...document.querySelectorAll('section[id]')].map((s) => [s.id, s.querySelector('h2').firstChild.textContent.trim()]);
+  const out = ['NoPrep Drive test', `When: ${new Date().toISOString()}`, `Device: ${navigator.userAgent}`, `Address: ${location.origin}`, ''];
+  for (const [id, title] of titles) {
+    const entry = results.get(id);
+    if (!entry) continue;
+    out.push(`[${entry.status.toUpperCase()}] ${title}`, ...entry.lines.map((l) => '  ' + l), '');
+  }
+  $('results').value = out.join('\n');
+  try { localStorage.setItem(SECTION_RESULTS, JSON.stringify([...results])); } catch {}
+}
+function restoreResults() {
+  try {
+    for (const [id, entry] of JSON.parse(localStorage.getItem(SECTION_RESULTS) || '[]')) {
+      results.set(id, entry);
+      if (!entry.lines.length) continue;
+      $(id).querySelector('.log').textContent = entry.lines.join('\n');
+      const pill = $(id).querySelector('.pill');
+      if (entry.status === 'pass' || entry.status === 'fail') {
+        pill.textContent = entry.status === 'pass' ? 'Passed' : 'Failed';
+        pill.className = 'pill ' + entry.status;
+      }
+    }
+  } catch {}
+  saveResults();
+}
+function mb(bytes) { return (bytes / 1048576).toFixed(1) + ' MB'; }
+function secs(start) { return ((performance.now() - start) / 1000).toFixed(1) + ' s'; }
+function bar(section, part, whole) {
+  const box = $(section).querySelector('.bar');
+  box.style.display = whole ? 'block' : 'none';
+  box.firstElementChild.style.width = whole ? Math.min(100, part / whole * 100) + '%' : '0';
+}
+async function guarded(section, work) {
+  status(section, 'run');
+  try {
+    await work();
+  } catch (error) {
+    log(section, 'ERROR: ' + (error && error.message || error));
+    status(section, 'fail');
+  }
+}
+
+/* ---------- Drive ---------- */
+async function drive(url, options = {}) {
+  const headers = { Authorization: `Bearer ${token}`, ...(options.headers || {}) };
+  const response = await fetch(url, { ...options, headers });
+  if (!response.ok && response.status !== 206 && response.status !== 308) {
+    const body = await response.text().catch(() => '');
+    let reason = body.slice(0, 200);
+    try { const e = JSON.parse(body).error; reason = `${e.errors?.[0]?.reason || ''} ${e.message}`; } catch {}
+    const error = new Error(`Google said ${response.status}: ${reason}`);
+    error.status = response.status;
+    throw error;
+  }
+  return response;
+}
+async function getFolder() {
+  if (folderId) return folderId;
+  const q = encodeURIComponent(`name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const found = await (await drive(`${API}/files?q=${q}&fields=files(id)&spaces=drive`)).json();
+  if (found.files.length) return (folderId = found.files[0].id);
+  const created = await (await drive(`${API}/files?fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+  })).json();
+  return (folderId = created.id);
+}
+/** Same resumable upload the desktop backup uses, in chunks so a big file isn't held in one request. */
+async function upload(blob, name, onProgress, parent) {
+  const start = await drive(`${UPLOAD}?uploadType=resumable&fields=id`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Upload-Content-Type': blob.type || 'application/octet-stream',
+      'X-Upload-Content-Length': String(blob.size)
+    },
+    body: JSON.stringify({ name, parents: [parent || await getFolder()] })
+  });
+  const session = start.headers.get('Location');
+  if (!session) throw new Error('Google gave no upload address (blocked by the browser?)');
+  if (!blob.size) {
+    const done = await fetch(session, { method: 'PUT', body: '' });
+    return (await done.json()).id;
+  }
+  for (let from = 0; from < blob.size; from += CHUNK) {
+    const to = Math.min(from + CHUNK, blob.size);
+    const response = await fetch(session, {
+      method: 'PUT',
+      headers: { 'Content-Range': `bytes ${from}-${to - 1}/${blob.size}` },
+      body: blob.slice(from, to)
+    });
+    if (response.status !== 308 && !response.ok) throw new Error(`Upload stopped: Google said ${response.status}`);
+    if (onProgress) onProgress(to, blob.size);
+    if (response.ok) return (await response.json()).id;
+  }
+  throw new Error('Upload ended without a file');
+}
+
+/* ---------- 1. Sign-in ---------- */
+function setSignedIn(on) {
+  document.querySelectorAll('[data-needs-sign-in]').forEach((el) => { el.disabled = !on; });
+  $('renew').disabled = !on;
+}
+function handleToken(response) {
+  const waiting = onToken;
+  onToken = null;
+  if (response.error) {
+    if (waiting) waiting(new Error(response.error));
+    return;
+  }
+  token = response.access_token;
+  tokenExpires = Date.now() + Number(response.expires_in) * 1000;
+  renewTried = false;
+  sendTokenToHelper();
+  if (waiting) waiting(null, response);
+}
+function requestToken(prompt) {
+  return new Promise((resolve, reject) => {
+    onToken = (error, response) => error ? reject(error) : resolve(response);
+    tokenClient.requestAccessToken({ prompt });
+  });
+}
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const tag = document.createElement('script');
+    tag.src = src;
+    tag.onload = resolve;
+    tag.onerror = () => reject(new Error('Could not load ' + src));
+    document.head.appendChild(tag);
+  });
+}
+const googleReady = loadScript('https://accounts.google.com/gsi/client').then(() => {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: `${DRIVE_SCOPE} openid email`,
+    callback: handleToken,
+    error_callback: (e) => handleToken({ error: e.type || 'popup_failed' })
+  });
+});
+$('signIn').onclick = () => guarded('s1', async () => {
+  await googleReady;
+  const started = performance.now();
+  const response = await requestToken('');
+  if (!google.accounts.oauth2.hasGrantedAllScopes(response, DRIVE_SCOPE)) {
+    log('s1', 'Signed in, but the Google Drive box was not ticked.');
+    status('s1', 'fail');
+    return;
+  }
+  log('s1', `Signed in after ${secs(started)}. Sign-in lasts ${Math.round(response.expires_in / 60)} minutes.`);
+  setSignedIn(true);
+  status('s1', 'pass');
+});
+$('renew').onclick = () => renew('button tap');
+async function renew(how) {
+  const started = performance.now();
+  try {
+    await requestToken('');
+    log('s1', `Renew by ${how}: worked in ${secs(started)}.`);
+  } catch (error) {
+    log('s1', `Renew by ${how}: FAILED (${error.message}).`);
+  }
+}
+// The lesson question: does sign-in renew on its own, with nobody tapping anything?
+setInterval(() => {
+  if (!token) return;
+  const left = tokenExpires - Date.now();
+  $('clock').textContent = left > 0 ? `Sign-in ends in ${Math.ceil(left / 60000)} min. Keep this page open past that for the renewal check.` : 'Sign-in has ended.';
+  if (left < 5 * 60000 && !renewTried) {
+    renewTried = true;
+    renew('itself, with no tap');
+  }
+}, 15000);
+
+/* ---------- 2. Basic read and write ---------- */
+$('runBasic').onclick = () => guarded('s2', async () => {
+  const text = 'NoPrep test file. Safe to delete. '.repeat(100);
+  const started = performance.now();
+  smallFileId = await upload(new Blob([text], { type: 'text/plain' }), 'small-test.txt');
+  log('s2', `Saved in ${secs(started)}.`);
+  const back = await (await drive(`${API}/files/${smallFileId}?alt=media`)).text();
+  log('s2', `Read back: ${back === text ? 'matches' : 'DIFFERENT'}.`);
+  const part = await drive(`${API}/files/${smallFileId}?alt=media`, { headers: { Range: 'bytes=0-99' } });
+  const partText = await part.text();
+  log('s2', `Partial read: status ${part.status}, ${partText.length} characters (206 and 100 means pages can load one at a time).`);
+  const about = await (await drive(`${API}/about?fields=storageQuota`)).json();
+  const q = about.storageQuota;
+  log('s2', `Drive space: ${mb(+q.usage)} used${q.limit ? ' of ' + mb(+q.limit) : ''}.`);
+  status('s2', back === text && part.status === 206 ? 'pass' : 'fail');
+});
+
+/* ---------- 3. Files made by the desktop app ---------- */
+$('runDesktop').onclick = () => guarded('s3', async () => {
+  const q = encodeURIComponent(`name='No-Prep backup' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const folders = (await (await drive(`${API}/files?q=${q}&fields=files(id)`)).json()).files;
+  log('s3', `Backup folders visible: ${folders.length}.`);
+  if (!folders.length) {
+    log('s3', 'None visible. Either this account has no desktop backup, or the website cannot see it.');
+    status('s3', 'fail');
+    return;
+  }
+  const inside = encodeURIComponent(`'${folders[0].id}' in parents and trashed=false`);
+  const files = (await (await drive(`${API}/files?q=${inside}&fields=files(id,size)&pageSize=100`)).json()).files;
+  log('s3', `Files visible inside: ${files.length}.`);
+  if (files.length) {
+    const body = await (await drive(`${API}/files/${files[0].id}?alt=media`)).blob();
+    log('s3', `Opened one desktop file: ${mb(body.size)}.`);
+  }
+  status('s3', files.length ? 'pass' : 'fail');
+});
+
+/* ---------- 4. PDF ---------- */
+/**
+ * pdf.js can't see that Drive allows partial downloads, so it asks us for each piece it needs.
+ * Page information is scattered through a PDF: big pieces end up fetching nearly the whole file.
+ */
+function openPdfByParts(pdfjs, url, length) {
+  let fetched = 0;
+  let requests = 0;
+  const transport = new pdfjs.PDFDataRangeTransport(length, null);
+  transport.requestDataRange = async (begin, end) => {
+    requests++;
+    const response = await drive(url, { headers: { Range: `bytes=${begin}-${end - 1}` } });
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    fetched += bytes.length;
+    transport.onDataRange(begin, bytes);
+  };
+  const loading = pdfjs.getDocument({ range: transport, rangeChunkSize: 64 * 1024, disableAutoFetch: true, disableStream: true });
+  return { loading, fetched: () => fetched, requests: () => requests };
+}
+$('pdfFile').onchange = (event) => guarded('s4', async () => {
+  const file = event.target.files[0];
+  if (!file) return;
+  log('s4', `PDF size: ${mb(file.size)}.`);
+  let started = performance.now();
+  const id = await upload(file, 'test.pdf', (a, b) => bar('s4', a, b));
+  bar('s4');
+  log('s4', `Uploaded in ${secs(started)}.`);
+
+  const pdfjs = await import(`${PDFJS}/pdf.mjs`);
+  pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob(
+    [`import "${PDFJS}/pdf.worker.mjs";`], { type: 'text/javascript' }
+  ));
+  started = performance.now();
+  const parts = openPdfByParts(pdfjs, `${API}/files/${id}?alt=media`, file.size);
+  const pdf = await parts.loading.promise;
+  log('s4', `Opened ${pdf.numPages} pages in ${secs(started)}, using ${parts.requests()} requests.`);
+  for (const number of [1, pdf.numPages]) {
+    started = performance.now();
+    const page = await pdf.getPage(number);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = $('s4').querySelector('canvas');
+    canvas.hidden = false;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvas, canvasContext: canvas.getContext('2d'), viewport }).promise;
+    log('s4', `Page ${number} shown in ${secs(started)}.`);
+  }
+  log('s4', `Downloaded ${mb(parts.fetched())} of ${mb(file.size)} to show those pages, using ${parts.requests()} requests.`);
+  status('s4', parts.fetched() < file.size * 0.9 ? 'pass' : 'fail');
+});
+
+/* ---------- 5. Video ---------- */
+function sendTokenToHelper() {
+  const helper = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (helper) helper.postMessage({ type: 'token', token });
+}
+async function startHelper() {
+  if (!('serviceWorker' in navigator)) throw new Error('This browser has no service workers');
+  await navigator.serviceWorker.register('/drive-test/sw.js', { scope: '/drive-test/' });
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) {
+    await new Promise((resolve, reject) => {
+      navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+      setTimeout(() => reject(new Error('Helper did not start; reload the page and try again')), 8000);
+    });
+  }
+  sendTokenToHelper();
+}
+function watchVideo(holder, label, src, onResult) {
+  const video = document.createElement('video');
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = 'metadata';
+  const title = document.createElement('p');
+  title.innerHTML = `<b>${label}</b>`;
+  holder.append(title, video);
+  const started = performance.now();
+  const seen = new Set();
+  for (const name of ['loadedmetadata', 'canplay', 'playing', 'seeked']) {
+    video.addEventListener(name, () => {
+      if (seen.has(name)) return;
+      seen.add(name);
+      log('s5', `${label}: ${name} after ${secs(started)}.`);
+      if (name === 'playing' || name === 'seeked') onResult(label, seen);
+    });
+  }
+  video.addEventListener('error', () => {
+    log('s5', `${label}: ERROR code ${video.error && video.error.code}, ${video.error && video.error.message || ''}`);
+    onResult(label, seen, true);
+  });
+  video.src = src;
+}
+$('videoFile').onchange = (event) => guarded('s5', async () => {
+  const file = event.target.files[0];
+  if (!file) return;
+  log('s5', `Video size: ${mb(file.size)}, type ${file.type || 'unknown'}.`);
+  let started = performance.now();
+  const id = await upload(file, 'test-video', (a, b) => bar('s5', a, b));
+  bar('s5');
+  log('s5', `Uploaded in ${secs(started)}.`);
+
+  const report = () => {
+    const passed = [...results.get('s5').lines].some((l) => / playing after /.test(l));
+    if (passed) status('s5', 'pass');
+  };
+  try {
+    await startHelper();
+    watchVideo($('videoStream'), 'Streamed, keeps video private', `/drive-test/stream/${id}`, report);
+  } catch (error) {
+    log('s5', `Streamed: could not start (${error.message}).`);
+  }
+  started = performance.now();
+  const blob = await (await drive(`${API}/files/${id}?alt=media`)).blob();
+  log('s5', `Downloaded whole video in ${secs(started)}.`);
+  watchVideo($('videoBlob'), 'Downloaded first', URL.createObjectURL(new Blob([blob], { type: file.type || 'video/mp4' })), report);
+});
+
+/* ---------- 6. A real book: unpack and upload without holding it all in memory ---------- */
+async function readZipEntries(file) {
+  const tailSize = Math.min(file.size, 65557 + 20);
+  const tail = new DataView(await file.slice(file.size - tailSize).arrayBuffer());
+  let eocd = -1;
+  for (let i = tail.byteLength - 22; i >= 0; i--) {
+    if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('Not a zip or book file. A .rar file can\'t be read: choose the book folder instead');
+  let count = tail.getUint16(eocd + 10, true);
+  let dirSize = tail.getUint32(eocd + 12, true);
+  let dirStart = tail.getUint32(eocd + 16, true);
+  if (dirStart === 0xffffffff || count === 0xffff || dirSize === 0xffffffff) {
+    if (eocd < 20 || tail.getUint32(eocd - 20, true) !== 0x07064b50) throw new Error('Damaged large book file');
+    const at = Number(tail.getBigUint64(eocd - 12, true));
+    const z = new DataView(await file.slice(at, at + 56).arrayBuffer());
+    count = Number(z.getBigUint64(32, true));
+    dirSize = Number(z.getBigUint64(40, true));
+    dirStart = Number(z.getBigUint64(48, true));
+  }
+  const dir = new DataView(await file.slice(dirStart, dirStart + dirSize).arrayBuffer());
+  const names = new TextDecoder();
+  const entries = [];
+  for (let p = 0, n = 0; n < count; n++) {
+    if (dir.getUint32(p, true) !== 0x02014b50) throw new Error('Damaged book file');
+    const flags = dir.getUint16(p + 8, true);
+    const method = dir.getUint16(p + 10, true);
+    let packed = dir.getUint32(p + 20, true);
+    let size = dir.getUint32(p + 24, true);
+    const nameLength = dir.getUint16(p + 28, true);
+    const extraLength = dir.getUint16(p + 30, true);
+    const commentLength = dir.getUint16(p + 32, true);
+    let offset = dir.getUint32(p + 42, true);
+    const name = names.decode(new Uint8Array(dir.buffer, dir.byteOffset + p + 46, nameLength));
+    for (let e = p + 46 + nameLength, end = e + extraLength; e < end;) {
+      const tag = dir.getUint16(e, true);
+      const length = dir.getUint16(e + 2, true);
+      if (tag === 1) {
+        let v = e + 4;
+        if (size === 0xffffffff) { size = Number(dir.getBigUint64(v, true)); v += 8; }
+        if (packed === 0xffffffff) { packed = Number(dir.getBigUint64(v, true)); v += 8; }
+        if (offset === 0xffffffff) offset = Number(dir.getBigUint64(v, true));
+      }
+      e += 4 + length;
+    }
+    if (flags & 1) throw new Error('This book file is locked with a password');
+    if (!name.endsWith('/')) entries.push({ name, method, packed, size, offset });
+    p += 46 + nameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+async function entryBlob(file, entry) {
+  const header = new DataView(await file.slice(entry.offset, entry.offset + 30).arrayBuffer());
+  const start = entry.offset + 30 + header.getUint16(26, true) + header.getUint16(28, true);
+  const packed = file.slice(start, start + entry.packed);
+  if (entry.method === 0) return packed; // Stored: read straight from the file, no extra memory.
+  if (entry.method !== 8) throw new Error(`Unknown packing in ${entry.name}`);
+  if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot unpack files');
+  return new Response(packed.stream().pipeThrough(new DecompressionStream('deflate-raw'))).blob();
+}
+function checkBookCrash() {
+  try {
+    const state = JSON.parse(localStorage.getItem(BOOK_STATE) || 'null');
+    if (!state) return;
+    localStorage.removeItem(BOOK_STATE);
+    log('s6', `THE PAGE RELOADED BY ITSELF while on file ${state.index} of ${state.total} (${mb(state.entrySize)}), after ${mb(state.done)} of ${mb(state.totalSize)}. The device probably ran out of memory.`);
+    status('s6', 'fail');
+  } catch {}
+}
+$('bookFile').onchange = (event) => guarded('s6', async () => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const started = performance.now();
+  const start = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  const kind = [...start].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const dot = file.name.lastIndexOf('.');
+  log('s6', `Chosen file: ${dot >= 0 ? file.name.slice(dot) : 'no extension'}, ${mb(file.size)}, starts with ${kind} (a book file starts with 504b0304).`);
+  const entries = await readZipEntries(file);
+  const totalSize = entries.reduce((sum, e) => sum + e.size, 0);
+  const largest = entries.reduce((max, e) => Math.max(max, e.size), 0);
+  const stored = entries.filter((e) => e.method === 0).length;
+  log('s6', `Book file: ${mb(file.size)}. ${entries.length} files, ${mb(totalSize)} unpacked, largest ${mb(largest)}, ${stored} not compressed.`);
+  await uploadBook(entries.map((entry) => ({ name: entry.name, size: entry.size, read: () => entryBlob(file, entry) })), totalSize, started);
+});
+$('bookFolder').onchange = (event) => guarded('s6', async () => {
+  const files = [...event.target.files];
+  if (!files.length) return;
+  const started = performance.now();
+  const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+  const largest = files.reduce((max, f) => Math.max(max, f.size), 0);
+  log('s6', `Book folder: ${files.length} files, ${mb(totalSize)}, largest ${mb(largest)}.`);
+  await uploadBook(files.map((f) => ({ name: f.webkitRelativePath || f.name, size: f.size, read: async () => f })), totalSize, started);
+});
+async function uploadBook(items, totalSize, started) {
+  const parent = await getFolder();
+  const created = await (await drive(`${API}/files?fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'test-book', mimeType: 'application/vnd.google-apps.folder', parents: [parent] })
+  })).json();
+  let done = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    localStorage.setItem(BOOK_STATE, JSON.stringify({ index: i + 1, total: items.length, entrySize: item.size, done, totalSize }));
+    await upload(await item.read(), item.name.replace(/[\\/]/g, '_'), (a) => bar('s6', done + a, totalSize), created.id);
+    done += item.size;
+    bar('s6', done, totalSize);
+  }
+  localStorage.removeItem(BOOK_STATE);
+  bar('s6');
+  log('s6', `All ${items.length} files uploaded in ${secs(started)}.`);
+  status('s6', 'pass');
+}
+
+/* ---------- 7. Sharing ---------- */
+$('shareTest').onclick = () => guarded('s7', async () => {
+  const email = $('viewerEmail').value.trim();
+  if (!email) throw new Error('Type the viewer\'s Google email first');
+  if (!smallFileId) throw new Error('Run step 2 first on this account');
+  await drive(`${API}/files/${smallFileId}/permissions?sendNotificationEmail=false`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'user', role: 'reader', emailAddress: email })
+  });
+  await drive(`${API}/files/${smallFileId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ copyRequiresWriterPermission: true })
+  });
+  log('s7', 'Owner: shared as view only, downloads off for viewers.');
+  status('s7', 'pass');
+});
+// A book is a folder of many files, shared normally (downloads left on), so test that shape too.
+async function makeFolder(name, parent) {
+  const created = await (await drive(`${API}/files?fields=id`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parent] })
+  })).json();
+  return created.id;
+}
+$('shareFolder').onclick = () => guarded('s7', async () => {
+  const email = $('viewerEmail').value.trim();
+  if (!email) throw new Error('Type the viewer\'s Google email first');
+  const book = await makeFolder('shared-book-test', await getFolder());
+  const inner = await makeFolder('assets', book);
+  const ids = [
+    await upload(new Blob(['top level file'], { type: 'text/plain' }), 'book.json', null, book),
+    await upload(new Blob(['file in a sub-folder'], { type: 'text/plain' }), 'page.txt', null, inner)
+  ];
+  // The viewer can't list the folder, so does knowing each file's id get them in?
+  await drive(`${API}/files/${book}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description: JSON.stringify(ids) })
+  });
+  const single = await upload(new Blob(['one book file. '.repeat(100)], { type: 'text/plain' }), 'shared-one-file-test.txt');
+  for (const id of [book, single]) {
+    await drive(`${API}/files/${id}/permissions?sendNotificationEmail=false`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'user', role: 'reader', emailAddress: email })
+    });
+  }
+  log('s7', 'Owner: shared a test folder and one single file as view only, downloads left on.');
+  status('s7', 'pass');
+});
+async function readSharedFolder(folder) {
+  let read = 0;
+  let refused = 0;
+  const q = encodeURIComponent(`'${folder}' in parents and trashed=false`);
+  const { files } = await (await drive(`${API}/files?q=${q}&fields=files(id,mimeType)`)).json();
+  for (const file of files) {
+    if (file.mimeType === 'application/vnd.google-apps.folder') {
+      const inside = await readSharedFolder(file.id);
+      read += inside.read;
+      refused += inside.refused;
+      continue;
+    }
+    try {
+      await (await drive(`${API}/files/${file.id}?alt=media`)).blob();
+      read++;
+    } catch (error) {
+      refused++;
+      log('s7', `Viewer: a file inside was refused (${error.message}).`);
+    }
+  }
+  return { read, refused };
+}
+$('openPicker').onclick = () => guarded('s7', async () => {
+  await loadScript('https://apis.google.com/js/api.js');
+  await new Promise((resolve) => gapi.load('picker', resolve));
+  const picked = await new Promise((resolve) => {
+    const view = new google.picker.DocsView().setOwnedByMe(false).setIncludeFolders(true).setSelectFolderEnabled(true);
+    new google.picker.PickerBuilder()
+      .setAppId(PROJECT_NUMBER)
+      .setOAuthToken(token)
+      .addView(view)
+      .setCallback((data) => {
+        if (data.action === google.picker.Action.PICKED) resolve(data.docs[0]);
+        if (data.action === google.picker.Action.CANCEL) resolve(null);
+      })
+      .build()
+      .setVisible(true);
+  });
+  if (!picked) { log('s7', 'Picker opened, nothing chosen. Finish this on the viewer account.'); status('s7', 'wait'); return; }
+  log('s7', 'Viewer: picker worked and a file was chosen.');
+  if (picked.mimeType === 'application/vnd.google-apps.folder') {
+    const seen = await readSharedFolder(picked.id);
+    log('s7', `Viewer: folder chosen once. The app read ${seen.read} files by listing and was refused ${seen.refused}.`);
+    const { description } = await (await drive(`${API}/files/${picked.id}?fields=description`)).json();
+    let direct = 0;
+    let ids = [];
+    try { ids = JSON.parse(description || '[]'); } catch {}
+    for (const id of ids) {
+      try {
+        await (await drive(`${API}/files/${id}?alt=media`)).blob();
+        direct++;
+      } catch (error) {
+        log('s7', `Viewer: opening a file by its id was refused (${error.message}).`);
+      }
+    }
+    log('s7', `Viewer: read ${direct} of ${ids.length} files by their ids.`);
+    status('s7', seen.read === 2 || (ids.length && direct === ids.length) ? 'pass' : 'fail');
+    return;
+  }
+  const info = await (await drive(`${API}/files/${picked.id}?fields=ownedByMe,capabilities(canEdit,canDownload)`)).json();
+  log('s7', `Viewer: owned by me ${info.ownedByMe}, can edit ${info.capabilities.canEdit}, can download ${info.capabilities.canDownload}.`);
+  try {
+    const body = await (await drive(`${API}/files/${picked.id}?alt=media`)).blob();
+    log('s7', `Viewer: the app can read the file (${body.size} bytes). Downloads allowed: ${info.capabilities.canDownload}.`);
+    const part = await drive(`${API}/files/${picked.id}?alt=media`, { headers: { Range: 'bytes=0-99' } });
+    log('s7', `Viewer: partial read status ${part.status}, ${(await part.text()).length} characters.`);
+  } catch (error) {
+    log('s7', `Viewer: the app can NOT read the file (${error.message}).`);
+  }
+  // Only try the edit on a view-only file, so a test can never rename something real.
+  if (!info.ownedByMe && !info.capabilities.canEdit) {
+    try {
+      await drive(`${API}/files/${picked.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: 'edit attempt from the viewer test' })
+      });
+      log('s7', 'Viewer: edit attempt WENT THROUGH. This is a problem.');
+      status('s7', 'fail');
+      return;
+    } catch (error) {
+      log('s7', `Viewer: Google refused the edit, as it should (${error.status}).`);
+    }
+  }
+  status('s7', 'pass');
+});
+
+/* ---------- 8. Storage ---------- */
+$('runStorage').onclick = () => guarded('s8', async () => {
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  log('s8', `Added to Home Screen: ${standalone}.`);
+  if (navigator.storage && navigator.storage.estimate) {
+    const e = await navigator.storage.estimate();
+    log('s8', `Browser storage: ${mb(e.usage || 0)} used of ${mb(e.quota || 0)} allowed.`);
+  } else {
+    log('s8', 'Browser storage size: not available.');
+  }
+  if (navigator.storage && navigator.storage.persist) {
+    log('s8', `Browser agreed to keep data: ${await navigator.storage.persist()}.`);
+  } else {
+    log('s8', 'Asking the browser to keep data: not available.');
+  }
+  log('s8', `Unpacking support: ${typeof DecompressionStream !== 'undefined'}. Video helper support: ${'serviceWorker' in navigator}.`);
+  status('s8', 'pass');
+});
+
+/* ---------- 9. Clean up ---------- */
+$('cleanUp').onclick = () => guarded('s9', async () => {
+  const q = encodeURIComponent(`name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const folders = (await (await drive(`${API}/files?q=${q}&fields=files(id)`)).json()).files;
+  for (const folder of folders) {
+    await drive(`${API}/files/${folder.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trashed: true })
+    });
+  }
+  folderId = '';
+  smallFileId = '';
+  if (navigator.serviceWorker) {
+    for (const helper of await navigator.serviceWorker.getRegistrations()) {
+      if (new URL(helper.scope).pathname.startsWith('/drive-test/')) await helper.unregister();
+    }
+  }
+  log('s9', `Moved ${folders.length} test folder(s) to the Drive bin.`);
+  status('s9', 'pass');
+});
+
+$('copyResults').onclick = async () => {
+  const box = $('results');
+  box.select();
+  try {
+    await navigator.clipboard.writeText(box.value);
+  } catch {
+    document.execCommand('copy');
+  }
+  $('copyResults').textContent = 'Copied';
+  setTimeout(() => { $('copyResults').textContent = 'Copy results'; }, 1500);
+};
+
+restoreResults();
+checkBookCrash();
+googleReady.catch((error) => {
+  log('s1', 'ERROR: ' + error.message);
+  status('s1', 'fail');
+});
+</script>
+</body>
+</html>
