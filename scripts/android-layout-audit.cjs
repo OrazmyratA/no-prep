@@ -33,6 +33,7 @@ const games = [
   'team-sentence',
   'squid-game',
   'rock-paper-scissors',
+  'shuffle-cups',
 ];
 
 let seq = 0;

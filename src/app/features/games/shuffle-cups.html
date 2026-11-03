@@ -1,0 +1,95 @@
+<div class="sc-root">
+  <div class="sc-curtain" aria-hidden="true"></div>
+  <div class="sc-table" aria-hidden="true"></div>
+
+  <app-game-keyboard-help
+    class="sc-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <div *ngIf="phase === 'loading'" class="sc-loading">
+    <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
+  </div>
+
+  <ng-container *ngIf="phase !== 'loading' && !gameFinished">
+    <div class="sc-hud">
+      <span class="sc-pill">{{ roundIndex + 1 }} / {{ totalRounds }}</span>
+      <span class="sc-pill">⭐ {{ firstTryCount }}</span>
+    </div>
+
+    <div class="sc-status" aria-live="polite">
+      <p class="sc-status-text">{{ statusKey | translate }}</p>
+      <div *ngIf="revealType && target" class="sc-reveal">
+        <img *ngIf="revealType === 'image'" [src]="imageUrl(target)" alt="" draggable="false">
+        <span *ngIf="revealType === 'text'">{{ target.text }}</span>
+        <button *ngIf="revealType === 'audio'" type="button" class="sc-speaker" (click)="playRevealAudio()">🔊</button>
+      </div>
+    </div>
+
+    <!-- The clue: locked until the shuffle is over, so nobody knows the target while following it. -->
+    <div *ngIf="target" class="sc-card-stage" [class.locked]="cardLocked" [class.attention]="phase === 'clue'" [class.nudged]="cardNudged">
+      <div *ngFor="let layer of stackLayers" class="sc-card-layer"></div>
+      <div class="sc-card" [class.flipped]="cardFlipped" (click)="onCardClick()">
+        <span class="sc-card-face sc-card-front">
+          <span class="sc-card-pattern"></span>
+          <span *ngIf="clueIsAudio" class="sc-speaker">🔊</span>
+          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge sc-card-hint">{{ clueIsAudio ? 'Space' : 'F' }}</span>
+        </span>
+        <span *ngIf="!clueIsAudio" class="sc-card-face sc-card-back">
+          <img *ngIf="ait.clue === 'image'" [src]="imageUrl(target)" alt="" draggable="false">
+          <span *ngIf="ait.clue === 'text'" class="sc-card-text">{{ target.text }}</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="sc-stage" [style.--cups]="cups.length" [style.--swap-ms]="swapMs + 'ms'">
+      <div *ngFor="let cup of cups; trackBy: trackCup"
+           class="sc-slot"
+           [style.--pos]="cup.slot"
+           [class.front]="cup.arc === 'front'"
+           [class.back]="cup.arc === 'back'">
+        <div class="sc-arc" [class.arc-front]="cup.arc === 'front'" [class.arc-back]="cup.arc === 'back'" [class.shake]="cup.shaking">
+          <button type="button"
+                  class="sc-cup"
+                  [class.lifted]="cup.lifted"
+                  [class.ruled-out]="cup.ruledOut"
+                  [class.found]="isFound(cup)"
+                  [disabled]="cup.ruledOut"
+                  (click)="chooseCup(cup)">
+            <span class="sc-shadow"></span>
+            <span class="sc-item">
+              <img *ngIf="ait.cup === 'image'" [src]="imageUrl(cup.item)" alt="" draggable="false">
+              <span *ngIf="ait.cup === 'text'" class="sc-item-text" [class.long]="isLongText(cup.item.text)">{{ cup.item.text }}</span>
+            </span>
+            <img class="sc-cup-img" src="assets/images/cup1-red.webp" alt="" draggable="false">
+            <ng-container *ngIf="isFound(cup)">
+              <span class="sc-star s1">⭐</span>
+              <span class="sc-star s2">✨</span>
+              <span class="sc-star s3">⭐</span>
+            </ng-container>
+            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge sc-cup-hint">{{ cup.slot + 1 }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <button *ngIf="phase === 'show'" type="button" class="sc-action" (click)="startShuffle()">
+      🎩 {{ 'shuffleCupsShuffle' | translate }}
+    </button>
+    <button *ngIf="phase === 'found'" type="button" class="sc-action" (click)="nextRound()">
+      {{ 'shuffleCupsNext' | translate }} &#9654;&#xFE0E;
+    </button>
+  </ng-container>
+
+  <app-game-finish-overlay
+    *ngIf="gameFinished"
+    [title]="'shuffleCupsAllFound' | translate"
+    [message]="finishMessage"
+    (playAgain)="startGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

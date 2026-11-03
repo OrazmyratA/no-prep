@@ -867,6 +867,37 @@
       </div>
     </div>
 
+    <!-- Shuffle Cups Settings -->
+    <div *ngSwitchCase="'shuffle-cups'" class="space-y-6">
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
+        <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>
+        <p class="text-xs text-ink-muted mt-1">{{ 'settingsShuffleCupsAitHint' | translate }}</p>
+      </div>
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsShuffleCupsCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [2, 3, 4, 5, 6, 7]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="cups" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-line text-sm font-bold bg-surface text-ink peer-checked:bg-accent peer-checked:text-accent-ink peer-checked:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
+              {{ count }}
+            </span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsShuffleCupsSpeed' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let level of [1, 2, 3, 4]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="speed" [value]="level" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-line text-xs font-bold bg-surface text-ink peer-checked:bg-accent peer-checked:text-accent-ink peer-checked:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
+              {{ (level === 1 ? 'settingsShuffleCupsVerySlow' : 'settingsFlashcardHuntSpeed' + (level - 1)) | translate }}
+            </span>
+          </label>
+        </div>
+      </div>
+    </div>
+
     <!-- Castle Clash: Rock Paper Scissors Settings -->
     <div *ngSwitchCase="'rock-paper-scissors'" class="space-y-6">
 

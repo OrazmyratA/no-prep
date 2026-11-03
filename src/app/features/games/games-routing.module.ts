@@ -27,7 +27,8 @@ const routes: Routes = [
   { path: 'rock-paper-scissors', loadComponent: () => import('./rock-paper-scissors').then(m => m.RockPaperScissorsComponent) },
   { path: 'tracing', loadComponent: () => import('./tracing').then(m => m.TracingComponent) },
   { path: 'line-trace-match', loadComponent: () => import('./line-trace-match').then(m => m.LineTraceMatchComponent) },
-  { path: 'flashcard-hunt', loadComponent: () => import('./flashcard-hunt').then(m => m.FlashcardHuntComponent) }
+  { path: 'flashcard-hunt', loadComponent: () => import('./flashcard-hunt').then(m => m.FlashcardHuntComponent) },
+  { path: 'shuffle-cups', loadComponent: () => import('./shuffle-cups').then(m => m.ShuffleCupsComponent) }
 ];
 
 @NgModule({

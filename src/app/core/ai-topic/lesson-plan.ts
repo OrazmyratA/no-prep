@@ -130,6 +130,7 @@ export const LESSON_PLAN_GAMES: { id: string; about: string }[] = [
   { id: 'rock-paper-scissors', about: 'team duel with quiz questions - energetic team practice' },
   { id: 'ball-sort', about: 'sort cards by coloured balls with quiz gates - team practice' },
   { id: 'flashcard-hunt', about: 'shoot flashcards on the board, then answer them - energetic recall' },
+  { id: 'shuffle-cups', about: 'cards hide under cups, the class follows the shuffle and finds the one on the clue card - memory, whole class' },
   { id: 'unjumble', about: 'drag words into the right order to build sentences - grammar and word order' },
   { id: 'team-sentence', about: 'teams race to build correct sentences - grammar, competitive' },
   { id: 'reading-detective', about: 'reading lesson: key words, find the answers in the text, match paragraph headings' },
@@ -140,7 +141,7 @@ export const LESSON_PLAN_GAMES: { id: string; about: string }[] = [
 const PICTURE_WORD_GAMES = [
   'flip-tiles', 'match-pairs', 'watch-memorize', 'spotlight', 'spin-wheel', 'reveal-game', 'pop-balloon', 'test-abc',
   'anagram', 'tracing', 'word-search', 'line-trace-match', 'spelling-check', 'team-tug', 'cup-clash', 'odd-one-out',
-  'squid-game', 'rock-paper-scissors', 'ball-sort', 'flashcard-hunt'
+  'squid-game', 'rock-paper-scissors', 'ball-sort', 'flashcard-hunt', 'shuffle-cups'
 ];
 /** Word on one side, a text card (definition, translation, gapped sentence...) on the other. */
 const WORD_CARD_GAMES = [

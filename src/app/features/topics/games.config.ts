@@ -174,6 +174,13 @@ export const GAMES: GameConfig[] = [
     icon: '\u{1F3AF}',
     requiresSettings: true,
   },
+  {
+    id: 'shuffle-cups',
+    nameKey: 'gameShuffleCupsName',
+    descKey: 'gameShuffleCupsDesc',
+    icon: '\u{1F3A9}',
+    requiresSettings: true,
+  },
   // Reading Detective and Writing Workshop are structured literacy exercises rather than quick
   // arcade-style games, so they go last — a different kind of activity from everything above.
   {
