@@ -503,7 +503,10 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
         this.settingsForm = this.fb.group({ ait: [['image']] });
         break;
       case 'shuffle-cups':
-        this.settingsForm = this.fb.group({ ait: [[...AIT_DEFAULT_ORDER]], cups: [3], speed: [3] });
+        this.settingsForm = this.fb.group({ teamCount: [1], ait: [[...AIT_DEFAULT_ORDER]], cups: [3], speed: [3] });
+        break;
+      case 'word-trail':
+        this.settingsForm = this.fb.group({ teamCount: [1] });
         break;
       default:
         this.settingsForm = this.fb.group({});

@@ -867,8 +867,36 @@
       </div>
     </div>
 
+    <!-- Word Trail Settings -->
+    <div *ngSwitchCase="'word-trail'" class="space-y-6">
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsRevealTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2, 3]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-line text-sm font-bold bg-surface text-ink peer-checked:bg-accent peer-checked:text-accent-ink peer-checked:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
+              {{ count }}
+            </span>
+          </label>
+        </div>
+        <p class="text-xs text-ink-muted mt-1">{{ 'settingsWordTrailTeamHint' | translate }}</p>
+      </div>
+    </div>
+
     <!-- Shuffle Cups Settings -->
     <div *ngSwitchCase="'shuffle-cups'" class="space-y-6">
+      <div>
+        <label class="text-sm font-medium block mb-2">{{ 'settingsRevealTeamCount' | translate }}</label>
+        <div class="flex gap-2">
+          <label *ngFor="let count of [1, 2, 3]" class="flex-1 cursor-pointer">
+            <input type="radio" formControlName="teamCount" [value]="count" class="sr-only peer">
+            <span class="block text-center py-2 rounded-lg border border-line text-sm font-bold bg-surface text-ink peer-checked:bg-accent peer-checked:text-accent-ink peer-checked:border-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
+              {{ count }}
+            </span>
+          </label>
+        </div>
+        <p class="text-xs text-ink-muted mt-1">{{ 'settingsShuffleCupsTeamHint' | translate }}</p>
+      </div>
       <div>
         <label class="text-sm font-medium block mb-2">{{ 'settingsAitLabel' | translate }}</label>
         <app-ait-selector formControlName="ait" [max]="3"></app-ait-selector>

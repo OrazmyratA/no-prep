@@ -58,6 +58,105 @@
   font-weight: 800;
 }
 
+.sc-tables {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.sc-panel {
+  --card-w: clamp(150px, 19vw, 300px);
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+}
+
+.sc-tables.teams {
+  right: 6vw;
+}
+
+.sc-tables.teams .sc-panel {
+  --card-w: clamp(90px, calc(var(--panel-vw) * 0.36vw), 300px);
+}
+
+.sc-tables.teams .sc-panel + .sc-panel {
+  border-left: 3px solid rgba(255, 255, 255, 0.55);
+}
+
+.sc-tables.teams .sc-hud {
+  top: 0.6rem;
+  left: 0.5rem;
+  gap: 0.25rem;
+}
+
+/* The keyboard help button sits in the first team's corner. */
+.sc-tables.teams .sc-panel:first-child .sc-hud {
+  left: 3.6rem;
+}
+
+.sc-tables.teams .sc-pill {
+  padding: 0.2rem 0.5rem;
+  font-size: clamp(0.7rem, 2vh, 1.1rem);
+  white-space: nowrap;
+}
+
+.sc-tables.teams .sc-status {
+  top: 3.2rem;
+  left: 0.5rem;
+  width: calc(100% - var(--card-w) - 1.5rem);
+  align-items: flex-start;
+  transform: none;
+}
+
+.sc-tables.teams .sc-panel:first-child .sc-status {
+  top: 3.6rem;
+}
+
+.sc-tables.teams .sc-status-text {
+  padding: 0.25rem 0.7rem;
+  border-radius: 14px;
+  font-size: clamp(0.8rem, 2.4vh, 1.3rem);
+  text-align: left;
+}
+
+.sc-tables.teams .sc-reveal {
+  height: 9vh;
+  min-width: 0;
+  font-size: clamp(0.9rem, 2.8vh, 1.6rem);
+}
+
+.sc-tables.teams .sc-card-stage {
+  top: 3.2rem;
+  right: 0.5rem;
+}
+
+.sc-tables.teams .sc-action {
+  padding: 0.4rem 1.2rem;
+}
+
+.sc-finished {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1vh;
+  font-size: clamp(1rem, 3.4vh, 2rem);
+  font-weight: 900;
+  text-align: center;
+}
+
+.sc-finished p {
+  margin: 0;
+}
+
+.sc-finished-medal {
+  font-size: 12vh;
+  line-height: 1;
+}
+
 .sc-status {
   position: absolute;
   top: 1vh;
@@ -125,7 +224,6 @@
 
 /* Clue card, the same flip as Team Sentence but larger, to read from the back of a classroom. */
 .sc-card-stage {
-  --card-w: clamp(150px, 19vw, 300px);
   position: absolute;
   top: 0.75rem;
   right: 5.25rem;
@@ -232,7 +330,7 @@
 
 /* --slot is capped by height too, so a lifted cup never reaches the clue card on a wide screen. */
 .sc-stage {
-  --slot: min(calc(90vw / var(--cups)), 31vh);
+  --slot: min(calc(var(--panel-vw) * 0.9vw / var(--cups)), 31vh);
   position: absolute;
   left: 50%;
   bottom: 12vh;

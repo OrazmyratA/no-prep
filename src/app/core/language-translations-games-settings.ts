@@ -1335,4 +1335,30 @@ export const GAME_SETTINGS_TRANSLATIONS: TranslationDictionary = {
   sa: 'بطيء جدًا',
   vi: 'Rất chậm',
 },
+
+'settingsShuffleCupsTeamHint': {
+  en: 'With teams, each team plays its own cups at the same time. The team that finishes all its rounds first takes first place.',
+  tk: 'Toparlar bilen oýnalanda, her topar öz käseleri bilen bir wagtda oýnaýar. Ähli tapgyrlaryny ilkinji tamamlan topar birinji orny alýar.',
+  ru: 'В командной игре каждая команда одновременно играет со своими стаканчиками. Первое место занимает команда, которая раньше всех пройдёт все раунды.',
+  cn: '团队模式下，每队同时玩自己的杯子。最先完成所有回合的队伍获得第一名。',
+  cde: 'Mit Teams spielt jedes Team gleichzeitig mit seinen eigenen Bechern. Das Team, das zuerst alle Runden schafft, belegt den ersten Platz.',
+  es: 'Con equipos, cada equipo juega con sus propios vasos al mismo tiempo. El equipo que termina primero todas sus rondas queda en primer lugar.',
+  fr: 'En équipes, chaque équipe joue en même temps avec ses propres gobelets. L\'équipe qui termine la première toutes ses manches prend la première place.',
+  kr: '팀 게임에서는 각 팀이 자기 컵으로 동시에 게임합니다. 모든 라운드를 가장 먼저 끝낸 팀이 1등입니다.',
+  sa: 'في لعب الفرق، يلعب كل فريق بأكوابه الخاصة في الوقت نفسه. الفريق الذي ينهي جميع جولاته أولًا يحتل المركز الأول.',
+  vi: 'Khi chơi theo đội, mỗi đội chơi với các cốc riêng cùng lúc. Đội hoàn thành tất cả các vòng trước tiên sẽ đứng thứ nhất.',
+},
+
+'settingsWordTrailTeamHint': {
+  en: 'With teams, each team plays on its own board at its own speed. The team that finishes all its sentences first takes first place. A wrong word freezes that team for 1 second.',
+  tk: 'Toparlar bilen oýnalanda, her topar öz meýdançasynda öz tizliginde oýnaýar. Ähli sözlemlerini ilkinji tamamlan topar birinji orny alýar. Ýalňyş söz ol topary 1 sekunt saklaýar.',
+  ru: 'В командной игре каждая команда играет на своём поле в своём темпе. Первое место занимает команда, которая раньше всех закончит все предложения. Неверное слово замораживает команду на 1 секунду.',
+  cn: '团队模式下，每队在自己的板面上按自己的速度玩。最先完成所有句子的队伍获得第一名。选错单词会让该队冻结 1 秒。',
+  cde: 'Mit Teams spielt jedes Team auf seinem eigenen Feld in seinem eigenen Tempo. Das Team, das zuerst alle Sätze schafft, belegt den ersten Platz. Ein falsches Wort sperrt das Team für 1 Sekunde.',
+  es: 'Con equipos, cada equipo juega en su propio tablero a su propio ritmo. El equipo que termina primero todas sus oraciones queda en primer lugar. Una palabra equivocada congela a ese equipo durante 1 segundo.',
+  fr: 'En équipes, chaque équipe joue sur son propre plateau à son rythme. L\'équipe qui termine la première toutes ses phrases prend la première place. Un mauvais mot bloque cette équipe pendant 1 seconde.',
+  kr: '팀 게임에서는 각 팀이 자기 보드에서 자기 속도로 게임합니다. 모든 문장을 가장 먼저 끝낸 팀이 1등입니다. 틀린 단어를 고르면 그 팀은 1초 동안 멈춥니다.',
+  sa: 'في لعب الفرق، يلعب كل فريق على لوحته الخاصة بسرعته الخاصة. الفريق الذي ينهي جميع جمله أولًا يحتل المركز الأول. الكلمة الخطأ تجمّد ذلك الفريق لمدة ثانية واحدة.',
+  vi: 'Khi chơi theo đội, mỗi đội chơi trên bảng riêng theo tốc độ của mình. Đội hoàn thành tất cả các câu trước tiên sẽ đứng thứ nhất. Chọn sai từ sẽ khiến đội đó bị dừng 1 giây.',
+},
 };

@@ -9,84 +9,100 @@
     title="Keyboard shortcuts">
   </app-game-keyboard-help>
 
-  <div *ngIf="phase === 'loading'" class="sc-loading">
+  <div *ngIf="loading" class="sc-loading">
     <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
   </div>
 
-  <ng-container *ngIf="phase !== 'loading' && !gameFinished">
-    <div class="sc-hud">
-      <span class="sc-pill">{{ roundIndex + 1 }} / {{ totalRounds }}</span>
-      <span class="sc-pill">⭐ {{ firstTryCount }}</span>
-    </div>
-
-    <div class="sc-status" aria-live="polite">
-      <p class="sc-status-text">{{ statusKey | translate }}</p>
-      <div *ngIf="revealType && target" class="sc-reveal">
-        <img *ngIf="revealType === 'image'" [src]="imageUrl(target)" alt="" draggable="false">
-        <span *ngIf="revealType === 'text'">{{ target.text }}</span>
-        <button *ngIf="revealType === 'audio'" type="button" class="sc-speaker" (click)="playRevealAudio()">🔊</button>
-      </div>
-    </div>
-
-    <!-- The clue: locked until the shuffle is over, so nobody knows the target while following it. -->
-    <div *ngIf="target" class="sc-card-stage" [class.locked]="cardLocked" [class.attention]="phase === 'clue'" [class.nudged]="cardNudged">
-      <div *ngFor="let layer of stackLayers" class="sc-card-layer"></div>
-      <div class="sc-card" [class.flipped]="cardFlipped" (click)="onCardClick()">
-        <span class="sc-card-face sc-card-front">
-          <span class="sc-card-pattern"></span>
-          <span *ngIf="clueIsAudio" class="sc-speaker">🔊</span>
-          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge sc-card-hint">{{ clueIsAudio ? 'Space' : 'F' }}</span>
+  <!-- Buttons answer to pointerdown: a screen only turns one finger's touch into a click, and teams
+       press at the same time. -->
+  <div *ngIf="!loading && !gameFinished" class="sc-tables" [class.teams]="teamMode">
+    <section *ngFor="let table of tables" class="sc-panel" [style.--panel-vw]="panelWidthVw">
+      <div class="sc-hud">
+        <span *ngIf="teamMode" class="sc-pill sc-team-name" [style.background]="teamColors[table.team]">
+          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ keyboardShortcuts[0].key.split(' / ')[table.team] }}</span>
+          {{ teamName(table.team) }}
         </span>
-        <span *ngIf="!clueIsAudio" class="sc-card-face sc-card-back">
-          <img *ngIf="ait.clue === 'image'" [src]="imageUrl(target)" alt="" draggable="false">
-          <span *ngIf="ait.clue === 'text'" class="sc-card-text">{{ target.text }}</span>
-        </span>
+        <span class="sc-pill">{{ table.phase === 'finished' ? table.totalRounds : table.roundIndex + 1 }} / {{ table.totalRounds }}</span>
+        <span class="sc-pill">⭐ {{ table.firstTryCount }}</span>
       </div>
-    </div>
 
-    <div class="sc-stage" [style.--cups]="cups.length" [style.--swap-ms]="swapMs + 'ms'">
-      <div *ngFor="let cup of cups; trackBy: trackCup"
-           class="sc-slot"
-           [style.--pos]="cup.slot"
-           [class.front]="cup.arc === 'front'"
-           [class.back]="cup.arc === 'back'">
-        <div class="sc-arc" [class.arc-front]="cup.arc === 'front'" [class.arc-back]="cup.arc === 'back'" [class.shake]="cup.shaking">
-          <button type="button"
-                  class="sc-cup"
-                  [class.lifted]="cup.lifted"
-                  [class.ruled-out]="cup.ruledOut"
-                  [class.found]="isFound(cup)"
-                  [disabled]="cup.ruledOut"
-                  (click)="chooseCup(cup)">
-            <span class="sc-shadow"></span>
-            <span class="sc-item">
-              <img *ngIf="ait.cup === 'image'" [src]="imageUrl(cup.item)" alt="" draggable="false">
-              <span *ngIf="ait.cup === 'text'" class="sc-item-text" [class.long]="isLongText(cup.item.text)">{{ cup.item.text }}</span>
-            </span>
-            <img class="sc-cup-img" src="assets/images/cup1-red.webp" alt="" draggable="false">
-            <ng-container *ngIf="isFound(cup)">
-              <span class="sc-star s1">⭐</span>
-              <span class="sc-star s2">✨</span>
-              <span class="sc-star s3">⭐</span>
-            </ng-container>
-            <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge sc-cup-hint">{{ cup.slot + 1 }}</span>
-          </button>
+      <div *ngIf="table.phase === 'finished'; else playing" class="sc-finished">
+        <span class="sc-finished-medal">{{ medals[(table.place ?? 1) - 1] }}</span>
+        <p>{{ table.statusKey | translate }}</p>
+      </div>
+
+      <ng-template #playing>
+        <div class="sc-status" aria-live="polite">
+          <p class="sc-status-text">{{ table.statusKey | translate }}</p>
+          <div *ngIf="table.revealType && table.target" class="sc-reveal">
+            <img *ngIf="table.revealType === 'image'" [src]="imageUrl(table.target)" alt="" draggable="false">
+            <span *ngIf="table.revealType === 'text'">{{ table.target.text }}</span>
+            <button *ngIf="table.revealType === 'audio'" type="button" class="sc-speaker" (pointerdown)="press($event, table.playRevealAudio.bind(table))">🔊</button>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <button *ngIf="phase === 'show'" type="button" class="sc-action" (click)="startShuffle()">
-      🎩 {{ 'shuffleCupsShuffle' | translate }}
-    </button>
-    <button *ngIf="phase === 'found'" type="button" class="sc-action" (click)="nextRound()">
-      {{ 'shuffleCupsNext' | translate }} &#9654;&#xFE0E;
-    </button>
-  </ng-container>
+        <!-- The clue: locked until the shuffle is over, so nobody knows the target while following it. -->
+        <div *ngIf="table.target" class="sc-card-stage" [class.locked]="table.cardLocked" [class.attention]="table.phase === 'clue'" [class.nudged]="table.cardNudged">
+          <div *ngFor="let layer of table.stackLayers" class="sc-card-layer"></div>
+          <div class="sc-card" [class.flipped]="table.cardFlipped" (pointerdown)="table.onCardClick()">
+            <span class="sc-card-face sc-card-front">
+              <span class="sc-card-pattern"></span>
+              <span *ngIf="table.clueIsAudio" class="sc-speaker">🔊</span>
+              <span *ngIf="keyboardHintsVisible && !teamMode" class="game-keyboard-hint-badge sc-card-hint">{{ table.clueIsAudio ? 'Space' : 'F' }}</span>
+            </span>
+            <span *ngIf="!table.clueIsAudio" class="sc-card-face sc-card-back">
+              <img *ngIf="ait.clue === 'image'" [src]="imageUrl(table.target)" alt="" draggable="false">
+              <span *ngIf="ait.clue === 'text'" class="sc-card-text">{{ table.target.text }}</span>
+            </span>
+          </div>
+        </div>
+
+        <div class="sc-stage" [style.--cups]="table.cups.length" [style.--swap-ms]="swapMs + 'ms'">
+          <div *ngFor="let cup of table.cups; trackBy: trackCup"
+               class="sc-slot"
+               [style.--pos]="cup.slot"
+               [class.front]="cup.arc === 'front'"
+               [class.back]="cup.arc === 'back'">
+            <div class="sc-arc" [class.arc-front]="cup.arc === 'front'" [class.arc-back]="cup.arc === 'back'" [class.shake]="cup.shaking">
+              <button type="button"
+                      class="sc-cup"
+                      [class.lifted]="cup.lifted"
+                      [class.ruled-out]="cup.ruledOut"
+                      [class.found]="table.isFound(cup)"
+                      [disabled]="cup.ruledOut"
+                      (pointerdown)="table.chooseCup(cup)">
+                <span class="sc-shadow"></span>
+                <span class="sc-item">
+                  <img *ngIf="ait.cup === 'image'" [src]="imageUrl(cup.item)" alt="" draggable="false">
+                  <span *ngIf="ait.cup === 'text'" class="sc-item-text" [class.long]="isLongText(cup.item.text)">{{ cup.item.text }}</span>
+                </span>
+                <img class="sc-cup-img" src="assets/images/cup1-red.webp" alt="" draggable="false">
+                <ng-container *ngIf="table.isFound(cup)">
+                  <span class="sc-star s1">⭐</span>
+                  <span class="sc-star s2">✨</span>
+                  <span class="sc-star s3">⭐</span>
+                </ng-container>
+                <span *ngIf="keyboardHintsVisible && !teamMode" class="game-keyboard-hint-badge sc-cup-hint">{{ cup.slot + 1 }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button *ngIf="table.phase === 'show'" type="button" class="sc-action" (pointerdown)="press($event, table.startShuffle.bind(table))">
+          🎩 {{ 'shuffleCupsShuffle' | translate }}
+        </button>
+        <button *ngIf="table.phase === 'found'" type="button" class="sc-action" (pointerdown)="press($event, table.nextRound.bind(table))">
+          {{ 'shuffleCupsNext' | translate }} &#9654;&#xFE0E;
+        </button>
+      </ng-template>
+    </section>
+  </div>
 
   <app-game-finish-overlay
     *ngIf="gameFinished"
-    [title]="'shuffleCupsAllFound' | translate"
+    [title]="finishTitle"
     [message]="finishMessage"
+    [rankings]="finishRankings"
     (playAgain)="startGame()"
     (activities)="goToActivities()">
   </app-game-finish-overlay>
