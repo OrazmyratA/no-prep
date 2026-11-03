@@ -28,7 +28,8 @@ const routes: Routes = [
   { path: 'tracing', loadComponent: () => import('./tracing').then(m => m.TracingComponent) },
   { path: 'line-trace-match', loadComponent: () => import('./line-trace-match').then(m => m.LineTraceMatchComponent) },
   { path: 'flashcard-hunt', loadComponent: () => import('./flashcard-hunt').then(m => m.FlashcardHuntComponent) },
-  { path: 'shuffle-cups', loadComponent: () => import('./shuffle-cups').then(m => m.ShuffleCupsComponent) }
+  { path: 'shuffle-cups', loadComponent: () => import('./shuffle-cups').then(m => m.ShuffleCupsComponent) },
+  { path: 'word-trail', loadComponent: () => import('./word-trail').then(m => m.WordTrailComponent) }
 ];
 
 @NgModule({

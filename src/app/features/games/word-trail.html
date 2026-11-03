@@ -1,0 +1,114 @@
+<div class="wt-root">
+  <app-game-keyboard-help
+    class="wt-keyboard-help"
+    [shortcuts]="keyboardShortcuts"
+    (openChange)="keyboardHintsVisible = $event"
+    title="Keyboard shortcuts">
+  </app-game-keyboard-help>
+
+  <div *ngIf="loading" class="wt-loading">
+    <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white"></div>
+  </div>
+
+  <p *ngIf="!loading && !gameFinished && !teamMode"
+     class="wt-status"
+     [class.done]="boards[0].phase === 'done'"
+     aria-live="polite">{{ soloStatus }}</p>
+
+  <!-- Buttons answer to pointerdown: a screen only turns one finger's touch into a click, and teams
+       press at the same time. -->
+  <div *ngIf="!loading && !gameFinished" class="wt-boards" [class.teams]="teamMode">
+    <section *ngFor="let board of boards"
+             class="wt-panel"
+             [class.with-card]="reservesCard"
+             [style.--panel-vw]="panelWidthVw"
+             [style.--board-vw]="boardWidthVw"
+             [style.--cols]="board.gridCols"
+             [style.--rows]="board.gridRows"
+             [style.--longest]="board.longestWord">
+      <div class="wt-hud">
+        <span *ngIf="teamMode" class="wt-pill" [style.background]="teamColors[board.team]">
+          <span *ngIf="keyboardHintsVisible" class="game-keyboard-hint-badge">{{ keyboardShortcuts[0].key.split(' / ')[board.team] }}</span>
+          {{ teamName(board.team) }}
+        </span>
+        <span class="wt-pill">{{ board.phase === 'finished' ? board.totalRounds : board.roundIndex + 1 }} / {{ board.totalRounds }}</span>
+        <span class="wt-pill">⭐ {{ board.cleanCount }}</span>
+      </div>
+
+      <div *ngIf="board.phase === 'finished'; else playing" class="wt-finished">
+        <span class="wt-finished-medal">{{ medals[(board.place ?? 1) - 1] }}</span>
+        <p>{{ 'wordTrailAllDone' | translate }}</p>
+      </div>
+
+      <ng-template #playing>
+        <p *ngIf="teamMode" class="wt-sentence" [class.done]="board.phase === 'done'">
+          <span>{{ board.builtSentence || ('wordTrailLink' | translate) }}</span>
+        </p>
+
+        <div *ngIf="board.cardHasImage || board.cardHasAudio" class="wt-card-stage">
+          <div *ngFor="let layer of board.stackLayers" class="wt-card-layer"></div>
+          <div class="wt-card" [class.flipped]="board.cardFlipped" (pointerdown)="board.onCardClick()">
+            <span class="wt-card-face wt-card-front">
+              <span class="wt-card-pattern"></span>
+              <button *ngIf="board.cardHasAudio" type="button" class="wt-speaker" (pointerdown)="press($event, board.playAudio.bind(board))">🔊</button>
+            </span>
+            <span *ngIf="board.cardHasImage" class="wt-card-face wt-card-back">
+              <img [src]="cardImageUrl(board)" alt="" draggable="false">
+            </span>
+          </div>
+        </div>
+
+        <div #boardEl
+             class="wt-board"
+             [class.done]="board.phase === 'done'"
+             [class.frozen]="board.frozen"
+             (pointerdown)="board.pointerDown($event, boardEl)"
+             (pointermove)="board.pointerMove($event)"
+             (pointerup)="board.pointerUp($event)"
+             (pointercancel)="board.pointerCancel($event)">
+          <svg class="wt-lines" aria-hidden="true">
+            <ng-container *ngFor="let tile of board.linked; let i = index">
+              <ng-container *ngIf="i > 0">
+                <line class="wt-line-glow"
+                      [attr.x1]="board.linked[i - 1].x + '%'" [attr.y1]="board.linked[i - 1].y + '%'"
+                      [attr.x2]="tile.x + '%'" [attr.y2]="tile.y + '%'"></line>
+                <line class="wt-line"
+                      [attr.x1]="board.linked[i - 1].x + '%'" [attr.y1]="board.linked[i - 1].y + '%'"
+                      [attr.x2]="tile.x + '%'" [attr.y2]="tile.y + '%'"></line>
+              </ng-container>
+            </ng-container>
+            <line *ngIf="board.liveStart && board.liveEnd" class="wt-line wt-line-live"
+                  [attr.x1]="board.liveStart.x + '%'" [attr.y1]="board.liveStart.y + '%'"
+                  [attr.x2]="board.liveEnd.x + '%'" [attr.y2]="board.liveEnd.y + '%'"></line>
+          </svg>
+
+          <div *ngFor="let tile of board.tiles; trackBy: trackTile"
+               class="wt-tile"
+               [attr.data-tile-id]="tile.id"
+               [class.linked]="tile.order !== null"
+               [class.shake]="tile.shaking"
+               [style.left.%]="tile.x"
+               [style.top.%]="tile.y">
+            <span *ngIf="tile.order !== null" class="wt-tile-order">{{ tile.order }}</span>
+            {{ tile.text }}
+          </div>
+        </div>
+
+        <button *ngIf="board.phase === 'done'" type="button" class="wt-next" (pointerdown)="press($event, board.nextRound.bind(board))">
+          {{ 'wordTrailNext' | translate }} &#9654;&#xFE0E;
+        </button>
+      </ng-template>
+    </section>
+  </div>
+
+  <app-game-finish-overlay
+    *ngIf="gameFinished"
+    [title]="finishTitle"
+    [message]="finishMessage"
+    [rankings]="finishRankings"
+    (playAgain)="startGame()"
+    (activities)="goToActivities()">
+  </app-game-finish-overlay>
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

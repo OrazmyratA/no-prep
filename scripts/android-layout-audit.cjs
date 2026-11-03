@@ -34,6 +34,7 @@ const games = [
   'squid-game',
   'rock-paper-scissors',
   'shuffle-cups',
+  'word-trail',
 ];
 
 let seq = 0;

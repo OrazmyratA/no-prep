@@ -128,7 +128,7 @@ describe('BookCreatorLessonPlanController', () => {
     expect(plan.sections[1].games).toEqual(['unjumble']);
     planner.toggleSectionGame('s2', 'team-sentence');
     expect(plan.sections[1].games).toEqual(['unjumble', 'team-sentence']);
-    expect(planner.sectionChoices('s2')).toEqual(['unjumble', 'team-sentence']);
+    expect(planner.sectionChoices('s2')).toEqual(['unjumble', 'team-sentence', 'word-trail']);
     expect(planner.sectionPage(plan.sections[0].page)).toBe(2); // only page 54 was read; page 1 falls back
     planner.setObjectives(' one \n\n two ');
     expect(plan.objectives).toEqual(['one', 'two']);

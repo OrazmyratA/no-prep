@@ -181,6 +181,13 @@ export const GAMES: GameConfig[] = [
     icon: '\u{1F3A9}',
     requiresSettings: true,
   },
+  {
+    id: 'word-trail',
+    nameKey: 'gameWordTrailName',
+    descKey: 'gameWordTrailDesc',
+    icon: '\u{1F320}',
+    requiresSettings: true,
+  },
   // Reading Detective and Writing Workshop are structured literacy exercises rather than quick
   // arcade-style games, so they go last — a different kind of activity from everything above.
   {
