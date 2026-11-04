@@ -174,6 +174,23 @@ describe('ShuffleCupsComponent', () => {
     expect(component.finishTitle).toContain('2');
   });
 
+  it('shows new items each round until the whole topic has been seen, then still gives every item its turn', async () => {
+    await start([1, 2, 3, 4, 5, 6, 7, 8, 9].map(makeItem), { cups: '3' });
+    const targets = new Set<Item>();
+    const shown = new Set<Item>();
+    for (let round = 0; round < 9; round++) {
+      const before = shown.size;
+      table().cups.forEach(cup => shown.add(cup.item));
+      if (round < 3) expect(shown.size).toBe(before + 3);
+      targets.add(table().target!);
+      await reachChoose();
+      table().chooseCup(rightCup());
+      table().nextRound();
+    }
+    expect(targets.size).toBe(9);
+    expect(table().phase).toBe('finished');
+  });
+
   it('every item is the target once for each team', async () => {
     await start([1, 2, 3].map(makeItem), { teamCount: '2' });
     const seen = new Set<Item>();

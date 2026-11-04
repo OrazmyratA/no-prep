@@ -1,8 +1,96 @@
-import { buildReadingText, findKeyAt, headingSeconds, wordDelayMs } from './reading-model';
+import { buildReadingText, clozeAnswerKey, findKeyAt, headingSeconds, wordDelayMs } from './reading-model';
 
 const image = new Blob(['q']);
 
 describe('reading-model', () => {
+  describe('short texts', () => {
+    const notices = [{ text: 'Pool closed on Monday.' }, { text: '* Tom will be late.' }];
+
+    it('ties each question to its paragraph by the letter', () => {
+      const text = buildReadingText([...notices, { text: '? SHORT B: Who is late? {*Tom | Sam}' }, { text: '? SHORT a) When is it closed? {*Monday | Friday}' }]);
+      expect(text.shorts.map(short => [short.question, short.paragraph])).toEqual([['Who is late?', 1], ['When is it closed?', 0]]);
+      expect(text.shorts[0].options.map(option => option.correct)).toEqual([true, false]);
+    });
+
+    it('allows no question, as the options can say what the text means', () => {
+      expect(buildReadingText([...notices, { text: '? SHORT A: {*It is shut | It is open}' }]).shorts[0].question).toBe('');
+    });
+
+    it('leaves out a question without a real letter or two options', () => {
+      const text = buildReadingText([...notices, { text: '? SHORT C: Who? {*Tom | Sam}' }, { text: '? SHORT Who is late? {*Tom | Sam}' }, { text: '? SHORT A: Who? {*Tom}' }]);
+      expect(text.shorts).toEqual([]);
+    });
+  });
+
+  describe('matching', () => {
+    const texts = [{ text: 'Anna lives in Rome.' }, { text: '* Ben lives in Oslo.' }, { text: '* Cem lives in Baku.' }];
+
+    it('reads the letter as the paragraph, in capitals or not', () => {
+      const text = buildReadingText([...texts, { text: '? MATCH Who lives in Norway? {B}' }, { text: '? MATCH Who lives in Italy? {a}' }]);
+      expect(text.matches.map(match => [match.prompt, match.paragraph])).toEqual([['Who lives in Norway?', 1], ['Who lives in Italy?', 0]]);
+    });
+
+    it('counts only paragraphs with sentences, not a heading with nothing after it', () => {
+      const text = buildReadingText([
+        { text: '# Spare heading' }, { text: '# Rome' }, { text: 'Anna lives in Rome.' }, { text: '# Oslo' }, { text: 'Ben lives in Oslo.' },
+        { text: '? MATCH Who lives in Norway? {B}' }
+      ]);
+      expect(text.paragraphs.length).toBe(2);
+      expect(text.matches[0].paragraph).toBe(1);
+    });
+
+    it('leaves out a sentence without a real letter', () => {
+      const text = buildReadingText([...texts, { text: '? MATCH Who? {D}' }, { text: '? MATCH Who? {AB}' }, { text: '? MATCH Who?' }, { text: '? MATCH {A}' }]);
+      expect(text.matches).toEqual([]);
+    });
+
+    it('does not make the sentence part of the text', () => {
+      const text = buildReadingText([...texts, { text: '? MATCH Who lives in Norway? {B}' }]);
+      expect(text.sentences.length).toBe(3);
+    });
+  });
+
+  describe('gap fill', () => {
+    const story = [{ text: 'We walked to the river.' }, { text: 'I stayed there for four weeks.' }, { text: 'We walked to the shop.' }];
+    const clozes = (...tasks: string[]) => buildReadingText([...story, ...tasks.map(text => ({ text }))]);
+
+    it('finds the hidden word, with options or open, in the order of the text', () => {
+      const text = clozes('? GAP I stayed there _ four weeks. {for | during}', '? GAP We _ to the river. {*walked | ran | sat}');
+      expect(text.clozes.map(cloze => cloze.id)).toEqual([0, 1]);
+      expect(text.clozes[0].words.map(id => text.words[id].text)).toEqual(['walked']);
+      expect(text.clozes[0].options?.map(option => option.correct)).toEqual([true, false, false]);
+      expect(text.clozes[1].options).toBeNull();
+      expect(text.clozes[1].answers).toEqual(['for', 'during']);
+    });
+
+    it('does not make the gap sentence part of the text', () => {
+      const text = clozes('? GAP We _ to the river. {*walked | ran}');
+      expect(text.sentences.length).toBe(3);
+      expect(text.words.map(word => word.text).join(' ')).not.toContain('_');
+    });
+
+    it('tells apart the same words in different places by what is around them', () => {
+      const text = clozes('? GAP We _ to the shop. {*walked | ran}');
+      expect(text.sentences[text.words[text.clozes[0].words[0]].sentence].id).toBe(2);
+    });
+
+    it('never puts two gaps on one word', () => {
+      const text = clozes('? GAP We _ to {*walked | ran}', '? GAP We _ to {*walked | ran}');
+      expect(new Set(text.clozes.map(cloze => cloze.words[0])).size).toBe(2);
+    });
+
+    it('leaves out a gap it cannot place', () => {
+      expect(clozes('? GAP We _ to the moon. {*walked | ran}').clozes).toEqual([]);
+      expect(clozes('? GAP We walked to the river. {*walked | ran}').clozes).toEqual([]);
+      expect(clozes('? GAP We _ to the river. {*walked}').clozes).toEqual([]);
+      expect(buildReadingText([{ text: '~ We walked home.' }, { text: '? GAP We _ home. {walked}' }]).clozes).toEqual([]);
+    });
+
+    it('compares answers without capitals or edge punctuation', () => {
+      expect(clozeAnswerKey(' Walked. ')).toBe('walked');
+    });
+  });
+
   describe('buildReadingText', () => {
     it('builds paragraphs from # headings, keeps distractors, numbers words across the text', () => {
       const text = buildReadingText([

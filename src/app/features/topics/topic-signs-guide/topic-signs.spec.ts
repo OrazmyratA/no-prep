@@ -21,6 +21,9 @@ describe('topic-signs (the 📘 guide)', () => {
     // Every proof quote is really in the text.
     expect(text.statements.filter(s => s.answer !== 'ng').every(s => s.proof >= 0)).toBe(true);
     expect(text.choices.length).toBe(1);
+    expect(text.matches.map(match => match.paragraph)).toEqual([1]);
+    expect(text.shorts.map(short => short.paragraph)).toEqual([0]);
+    expect(text.clozes.map(cloze => cloze.answers[0])).toEqual(['for', 'walked']);
     expect(text.choices[0].proof).toBeGreaterThanOrEqual(0);
     expect(text.choices[0].options.find(o => o.correct)?.text).toBe('Near a river');
     expect(text.wordTasks.map(w => w.key.text)).toEqual(['sad']);
@@ -28,7 +31,7 @@ describe('topic-signs (the 📘 guide)', () => {
 
   it('reading signs: every task example is a task the game understands', () => {
     const tasks = guide('reading').steps.flatMap(step => step.signs).map(row => row.example).filter(line => line.startsWith('?'));
-    expect(tasks.map(line => parseTaskItem(line)?.tag)).toEqual(['TFNG', 'YNNG', 'MC', 'WORD', 'EXTRA']);
+    expect(tasks.map(line => parseTaskItem(line)?.tag)).toEqual(['TFNG', 'YNNG', 'MC', 'WORD', 'GAP', 'MATCH', 'SHORT', 'EXTRA']);
   });
 
   it('writing example: three paragraphs, two open gaps and one with a known answer', () => {

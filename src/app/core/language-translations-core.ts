@@ -3394,6 +3394,45 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Trắc nghiệm: các lựa chọn ngăn bằng |, đáp án đúng bắt đầu bằng *.',
 },
 
+'signsReadGap': {
+  en: 'Gap fill: a few words of the sentence with _ for the missing word. In { } star the right option, or give only the word for an open gap.',
+  tk: 'Boşluk doldurmak: sözlemiň birnäçe sözi, ýetmeýän sözüň ýerinde _. { } içinde dogry saýlawy ýyldyz bilen belläň ýa-da açyk boşluk üçin diňe sözi ýazyň.',
+  ru: 'Заполнение пропусков: несколько слов предложения, вместо пропущенного слова _. В { } отметьте верный вариант звёздочкой или укажите только слово для открытого пропуска.',
+  cn: '填空：句子中的几个词，用 _ 代替缺失的词。在 { } 中给正确选项加星号，开放填空则只写这个词。',
+  cde: 'Lückentext: einige Wörter des Satzes mit _ für das fehlende Wort. In { } die richtige Option mit Stern markieren oder bei einer offenen Lücke nur das Wort angeben.',
+  es: 'Completar huecos: unas palabras de la oración con _ en lugar de la palabra que falta. En { } marca con asterisco la opción correcta, o pon solo la palabra si el hueco es abierto.',
+  fr: 'Texte à trous : quelques mots de la phrase avec _ à la place du mot manquant. Dans { }, mettez une étoile à la bonne option, ou seulement le mot pour un trou ouvert.',
+  kr: '빈칸 채우기: 문장의 몇 단어를 쓰고 빠진 단어 자리에 _를 넣습니다. { } 안에서 정답 보기에 별표를 하거나, 주관식 빈칸은 단어만 씁니다.',
+  sa: 'ملء الفراغات: بضع كلمات من الجملة مع _ مكان الكلمة الناقصة. داخل { } ضع نجمة على الخيار الصحيح، أو اكتب الكلمة فقط للفراغ المفتوح.',
+  vi: 'Điền chỗ trống: vài từ của câu với _ ở vị trí từ còn thiếu. Trong { } đánh dấu sao lựa chọn đúng, hoặc chỉ ghi từ đó nếu là chỗ trống tự do.',
+},
+
+'signsReadMatch': {
+  en: 'Matching: each paragraph is a text with a letter (A, B, C...). Write a sentence and, in { }, the letter of the text it is about.',
+  tk: 'Gabat getirmek: her abzas harply tekstdir (A, B, C...). Sözlem ýazyň we { } içinde onuň degişli tekstiniň harpyny görkeziň.',
+  ru: 'Сопоставление: каждый абзац — текст с буквой (A, B, C...). Напишите предложение, а в { } букву текста, к которому оно относится.',
+  cn: '匹配：每段是一篇带字母的短文（A、B、C……）。写一句话，并在 { } 中写出它对应短文的字母。',
+  cde: 'Zuordnung: Jeder Absatz ist ein Text mit Buchstaben (A, B, C...). Schreibe einen Satz und in { } den Buchstaben des passenden Textes.',
+  es: 'Emparejar: cada párrafo es un texto con una letra (A, B, C...). Escribe una oración y, entre { }, la letra del texto al que se refiere.',
+  fr: 'Association : chaque paragraphe est un texte avec une lettre (A, B, C...). Écrivez une phrase et, dans { }, la lettre du texte dont elle parle.',
+  kr: '연결하기: 각 문단은 글자가 붙은 글입니다(A, B, C...). 문장을 쓰고 { } 안에 해당 글의 글자를 쓰세요.',
+  sa: 'المطابقة: كل فقرة نص له حرف (A, B, C...). اكتب جملة، وداخل { } حرف النص الذي تتحدث عنه.',
+  vi: 'Nối: mỗi đoạn là một văn bản có chữ cái (A, B, C...). Viết một câu và ghi trong { } chữ cái của văn bản mà câu đó nói đến.',
+},
+
+'signsReadShort': {
+  en: 'Short texts: each paragraph is a notice or message with a letter (A, B, C...). Write its letter and a question, then the options in { } with a star on the right one.',
+  tk: 'Gysga tekstler: her abzas harply bildiriş ýa-da hatdyr (A, B, C...). Onuň harpyny we soragy ýazyň, soňra { } içinde saýlawlary ýazyp, dogrusyny ýyldyz bilen belläň.',
+  ru: 'Короткие тексты: каждый абзац — объявление или сообщение с буквой (A, B, C...). Напишите его букву и вопрос, затем варианты в { }, отметив верный звёздочкой.',
+  cn: '短文：每段是一则带字母的通知或消息（A、B、C……）。写出它的字母和问题，然后在 { } 中写选项，并给正确选项加星号。',
+  cde: 'Kurze Texte: Jeder Absatz ist eine Notiz oder Nachricht mit Buchstaben (A, B, C...). Schreibe den Buchstaben und eine Frage, dann in { } die Optionen, die richtige mit Stern.',
+  es: 'Textos breves: cada párrafo es un aviso o mensaje con una letra (A, B, C...). Escribe su letra y una pregunta, y luego las opciones entre { }, con un asterisco en la correcta.',
+  fr: 'Textes courts : chaque paragraphe est une annonce ou un message avec une lettre (A, B, C...). Écrivez sa lettre et une question, puis les options dans { }, avec une étoile sur la bonne.',
+  kr: '짧은 글: 각 문단은 글자가 붙은 안내문이나 메시지입니다(A, B, C...). 글자와 질문을 쓰고, { } 안에 보기를 쓰되 정답에 별표를 하세요.',
+  sa: 'نصوص قصيرة: كل فقرة إعلان أو رسالة لها حرف (A, B, C...). اكتب حرفها وسؤالًا، ثم الخيارات داخل { } مع نجمة على الصحيح.',
+  vi: 'Văn bản ngắn: mỗi đoạn là một thông báo hoặc tin nhắn có chữ cái (A, B, C...). Viết chữ cái và câu hỏi, rồi ghi các lựa chọn trong { } và đánh dấu sao lựa chọn đúng.',
+},
+
 'signsReadWord': {
   en: 'Find the word: a clue, and the word from the text in { }.',
   tk: 'Sözi tap: ýol görkeziji we { } içinde tekstdäki söz.',

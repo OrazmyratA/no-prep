@@ -11,7 +11,7 @@
   </div>
 
   <!-- Stage icons -->
-  <ng-template #stageIcon let-stage="stage"><ng-container [ngSwitch]="stage"><span *ngSwitchCase="'gapped'">🧩</span><span *ngSwitchCase="'keys'">🔍</span><span *ngSwitchCase="'questions'">❓</span><span *ngSwitchCase="'statements'">⚖️</span><span *ngSwitchCase="'choice'">🔘</span><span *ngSwitchCase="'word'">🔎</span><span *ngSwitchDefault>📖</span></ng-container></ng-template>
+  <ng-template #stageIcon let-stage="stage"><ng-container [ngSwitch]="stage"><span *ngSwitchCase="'gapped'">🧩</span><span *ngSwitchCase="'cloze'">✏️</span><span *ngSwitchCase="'match'">🔗</span><span *ngSwitchCase="'short'">📌</span><span *ngSwitchCase="'keys'">🔍</span><span *ngSwitchCase="'questions'">❓</span><span *ngSwitchCase="'statements'">⚖️</span><span *ngSwitchCase="'choice'">🔘</span><span *ngSwitchCase="'word'">🔎</span><span *ngSwitchDefault>📖</span></ng-container></ng-template>
 
   <!-- The whole text on a sheet of paper (every stage but Read & head, and the final review) -->
   <ng-template #articleTpl let-review="review">
@@ -27,7 +27,16 @@
         </div>
       </header>
       <div class="rd-paper-body">
-        <section *ngFor="let paragraph of text.paragraphs; trackBy: trackById" class="rd-para" [class.rd-para-hint]="hintParagraph === paragraph.id">
+        <section *ngFor="let paragraph of text.paragraphs; trackBy: trackById"
+                 class="rd-para"
+                 [class.rd-para-hint]="hintParagraph === paragraph.id"
+                 [class.rd-para-match]="!review && matchMode"
+                 [class.rd-para-notice]="!review && !!currentShort"
+                 [class.rd-para-hidden]="!review && isOtherShortText(paragraph)"
+                 [class.rd-para-right]="!review && justMatched === paragraph.id"
+                 [class.rd-para-wrong]="!review && wrongParagraph === paragraph.id"
+                 (click)="!review && matchMode && chooseMatch(paragraph.id)">
+          <span *ngIf="!review && matchMode" class="rd-para-letter">{{ letters[paragraph.id] }}</span>
           <h3 *ngIf="review && headingFor(paragraph) as heading" class="rd-review-heading">{{ heading.text }}</h3>
           <p class="rd-para-text">
             <ng-container *ngFor="let sentence of paragraph.sentences; trackBy: trackById">
@@ -47,14 +56,17 @@
                       [class.rd-sent-wrong]="wrongSentence === sentence.id"
                       (click)="!review && articleMode === 'sentences' && onSentenceClick(sentence)"><span
                         *ngIf="answered.get(sentence.id) as number" class="rd-sent-badge">{{ number }}</span><span
-                        *ngIf="proved.has(sentence.id)" class="rd-sent-badge rd-proof-badge">🔍</span><span
-                        *ngFor="let word of sentence.words; trackBy: trackById"
+                        *ngIf="proved.has(sentence.id)" class="rd-sent-badge rd-proof-badge">🔍</span><ng-container
+                        *ngFor="let word of sentence.words; trackBy: trackById"><span
+                        *ngIf="!review && clozeAt(word) as cloze; else shownWord"
+                        ><span *ngIf="cloze.words[0] === word.id" class="rd-word rd-cloze-slot" [class.rd-cloze-current]="currentCloze === cloze">{{ clozeLead(cloze) }}<span
+                          *ngIf="stage === 'cloze'" class="rd-gap-number">{{ cloze.id + 1 }}</span><span class="rd-gap-line rd-cloze-line" aria-hidden="true"></span>{{ clozeTail(cloze) }}</span></span><ng-template #shownWord><span
                         class="rd-word"
                         [class.rd-word-found]="foundWords.has(word.id) || (review && word.key >= 0)"
-                        [class.rd-word-hit]="wordHits.has(word.id)"
+                        [class.rd-word-hit]="wordHits.has(word.id) || isClozeWordFilled(word)"
                         [class.rd-word-fresh]="freshWords.has(word.id)"
                         [class.rd-word-wrong]="wrongWord === word.id"
-                        (click)="!review && articleMode === 'words' && onWordClick(word)">{{ word.text }}</span></span>
+                        (click)="!review && articleMode === 'words' && onWordClick(word)">{{ word.text }}</span></ng-template></ng-container></span>
               </ng-template>
             </ng-container>
           </p>
@@ -156,6 +168,97 @@
             <span class="rd-option-letter">{{ usedCards.has(card.id) ? '✓' : letters[i] }}</span>
             <span class="rd-bank-text">{{ card.text }}</span>
           </button>
+        </div>
+      </ng-container>
+
+      <!-- Short texts -->
+      <ng-container *ngIf="stage === 'short' && currentShort as short">
+        <p class="rd-kicker">📌 {{ 'readingDetectiveShortWhat' | translate }}</p>
+        <ng-container *ngFor="let s of [short]; trackBy: trackById">
+          <div *ngIf="s.question" class="rd-task-card" [class.rd-task-card-done]="taskPhase === 'done'">
+            <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
+            <p class="rd-task-text">{{ s.question }}</p>
+            <span *ngIf="taskPhase === 'done' && !skipping" class="rd-qcard-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-options">
+          <button *ngFor="let option of currentShortOptions; let i = index" type="button"
+                  class="rd-option"
+                  [class.rd-option-chosen]="chosenOption === i"
+                  [class.rd-option-faded]="chosenOption >= 0 && chosenOption !== i"
+                  [class.rd-shake]="wrongOption === i"
+                  [class.rd-option-wrong]="wrongOption === i"
+                  [disabled]="busy"
+                  (click)="chooseShortOption(i)">
+            <span class="rd-option-letter">{{ letters[i] }}</span>
+            <span class="rd-option-text">{{ option.text }}</span>
+          </button>
+        </div>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
+        </div>
+      </ng-container>
+
+      <!-- Matching -->
+      <ng-container *ngIf="stage === 'match' && currentMatch as match">
+        <p class="rd-kicker">🔗 {{ 'readingDetectiveMatchWhich' | translate }}</p>
+        <ng-container *ngFor="let m of [match]; trackBy: trackById">
+          <div class="rd-task-card" [class.rd-task-card-done]="taskPhase === 'done'">
+            <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
+            <p class="rd-task-text">{{ m.prompt }}</p>
+            <span *ngIf="taskPhase === 'done' && !skipping" class="rd-qcard-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-match-letters">
+          <button *ngFor="let paragraph of text.paragraphs; trackBy: trackById" type="button"
+                  class="rd-match-letter"
+                  [class.rd-match-letter-right]="justMatched === paragraph.id"
+                  [class.rd-match-letter-wrong]="wrongParagraph === paragraph.id"
+                  [class.rd-shake]="wrongParagraph === paragraph.id"
+                  [disabled]="busy"
+                  (click)="chooseMatch(paragraph.id)">{{ letters[paragraph.id] }}</button>
+        </div>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
+        </div>
+      </ng-container>
+
+      <!-- Gap fill -->
+      <ng-container *ngIf="stage === 'cloze' && currentCloze as cloze">
+        <p class="rd-kicker">✏️ {{ (cloze.options ? 'readingDetectiveClozeChoose' : 'readingDetectiveClozeType') | translate: { n: cloze.id + 1 } }}</p>
+        <div *ngIf="cloze.options" class="rd-options">
+          <button *ngFor="let option of currentClozeOptions; let i = index" type="button"
+                  class="rd-option"
+                  [class.rd-option-chosen]="chosenOption === i"
+                  [class.rd-option-faded]="chosenOption >= 0 && chosenOption !== i"
+                  [class.rd-shake]="wrongOption === i"
+                  [class.rd-option-wrong]="wrongOption === i"
+                  [disabled]="busy"
+                  (click)="chooseClozeOption(i)">
+            <span class="rd-option-letter">{{ letters[i] }}</span>
+            <span class="rd-option-text">{{ option.text }}</span>
+          </button>
+        </div>
+        <form *ngIf="!cloze.options" class="rd-cloze-form" [class.rd-shake]="wrongCloze" (submit)="$event.preventDefault(); submitClozeAnswer()">
+          <input #clozeField
+                 type="text"
+                 class="rd-cloze-input"
+                 [class.rd-cloze-input-wrong]="wrongCloze"
+                 [value]="clozeInput"
+                 [disabled]="busy"
+                 autocomplete="off"
+                 autocapitalize="off"
+                 spellcheck="false"
+                 [attr.aria-label]="'readingDetectiveClozeType' | translate: { n: cloze.id + 1 }"
+                 (input)="clozeInput = $any($event.target).value">
+          <button type="submit" class="rd-cloze-check" [disabled]="busy || !clozeInput.trim()">{{ 'readingDetectiveClozeCheck' | translate }}</button>
+        </form>
+        <p *ngIf="clozeHintLetter" class="rd-hint">💡 {{ 'readingDetectiveClozeStarts' | translate: { letter: clozeHintLetter } }}</p>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
         </div>
       </ng-container>
 

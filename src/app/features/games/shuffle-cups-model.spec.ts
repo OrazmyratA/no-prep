@@ -1,11 +1,52 @@
 import { Item } from '../../core/db.model';
-import { buildCupsPool, clampCupCount, planSwaps, resolveCupsAit, swapSpeed } from './shuffle-cups-model';
+import { buildCupsPool, clampCupCount, pickCupsRound, planSwaps, resolveCupsAit, swapSpeed } from './shuffle-cups-model';
 
 const image = (size: number) => new Blob([new Uint8Array(size)], { type: 'image/png' });
 const item = (id: number, text: string, imageSize = id): Item =>
   ({ id, topicId: 1, text, image: image(imageSize), order: id } as unknown as Item);
 
 describe('Shuffle Cups rules', () => {
+  it('fills a round with what has been shown least', () => {
+    const pool = [1, 2, 3, 4, 5].map(id => item(id, 'word' + id));
+    const shown = new Map<Item, number>([[pool[0], 2], [pool[1], 2], [pool[2], 1]]);
+    for (let run = 0; run < 20; run++) {
+      const { target, others } = pickCupsRound(pool, pool, shown, 3);
+      expect(pool.slice(3)).toContain(target);
+      expect(others.length).toBe(2);
+      expect(others).not.toContain(target);
+      expect(others).toContain(pool[2]);
+    }
+  });
+
+  it('practises every item, whatever the topic size and cup count', () => {
+    for (let size = 2; size <= 30; size++) {
+      for (let cups = 2; cups <= 7; cups++) {
+        const pool = Array.from({ length: size }, (_, i) => item(i + 1, 'word' + i));
+        const shown = new Map<Item, number>();
+        const targets = new Set<Item>();
+        let left = [...pool];
+        for (let round = 0; round < size; round++) {
+          const { target, others } = pickCupsRound(pool, left, shown, cups);
+          expect(others.length).toBe(Math.min(cups, size) - 1);
+          targets.add(target);
+          left = left.filter(entry => entry !== target);
+          [target, ...others].forEach(entry => shown.set(entry, (shown.get(entry) ?? 0) + 1));
+          // Everything is on the table as early as the cup count allows.
+          if (round + 1 === Math.ceil(size / cups)) expect(shown.size).toBe(size);
+        }
+        expect(targets.size).toBe(size);
+      }
+    }
+  });
+
+  it('only takes the target from the items still waiting for a turn', () => {
+    const pool = [1, 2, 3, 4].map(id => item(id, 'word' + id));
+    const shown = new Map<Item, number>([[pool[0], 5]]);
+    for (let run = 0; run < 20; run++) {
+      expect(pickCupsRound(pool, [pool[0]], shown, 2).target).toBe(pool[0]);
+    }
+  });
+
   it('puts the 1st pick under the cups, the 2nd on the card and the 3rd on the reveal', () => {
     expect(resolveCupsAit(['text', 'audio', 'image'])).toEqual({ cup: 'text', clue: 'audio', reveal: 'image' });
     expect(resolveCupsAit(['image', 'text'])).toEqual({ cup: 'image', clue: 'text', reveal: null });

@@ -2,7 +2,7 @@ import { Item } from '../../core/db.model';
 import { AitType } from '../../shared/ait-selector';
 import { itemHasAitContent } from '../../shared/ait-content';
 import { TimerBag, TrackedAudio, shuffled } from './game-utils';
-import { CupsAit, planSwaps } from './shuffle-cups-model';
+import { CupsAit, pickCupsRound, planSwaps } from './shuffle-cups-model';
 
 export interface Cup {
   id: number;
@@ -53,7 +53,8 @@ export class CupTable {
   /** 1 for the first team to finish every round, and so on. */
   place: number | null = null;
 
-  private rounds: Item[] = [];
+  private targetsLeft: Item[] = [];
+  private timesShown = new Map<Item, number>();
   private peeking = false;
   private disposed = false;
   private timers = new TimerBag(() => this.disposed);
@@ -95,8 +96,9 @@ export class CupTable {
   }
 
   start() {
-    this.rounds = shuffled(this.host.pool);
-    this.totalRounds = this.rounds.length;
+    this.targetsLeft = [...this.host.pool];
+    this.timesShown = new Map();
+    this.totalRounds = this.targetsLeft.length;
     this.roundIndex = 0;
     this.firstTryCount = 0;
     this.place = null;
@@ -172,8 +174,9 @@ export class CupTable {
 
   private startRound() {
     this.resetRoundState();
-    const target = this.rounds[this.roundIndex];
-    const others = shuffled(this.host.pool.filter(item => item !== target)).slice(0, this.host.cupCount - 1);
+    const { target, others } = pickCupsRound(this.host.pool, this.targetsLeft, this.timesShown, this.host.cupCount);
+    this.targetsLeft = this.targetsLeft.filter(item => item !== target);
+    [target, ...others].forEach(item => this.timesShown.set(item, (this.timesShown.get(item) ?? 0) + 1));
     this.target = target;
     this.cups = shuffled([target, ...others]).map((item, slot) => ({
       id: slot,

@@ -1,6 +1,7 @@
 import { Item } from '../../core/db.model';
 import { AitType } from '../../shared/ait-selector';
 import { aitContentKey, itemHasAitContent } from '../../shared/ait-content';
+import { shuffled } from './game-utils';
 
 export const MIN_CUPS = 2;
 export const MAX_CUPS = 7;
@@ -50,6 +51,23 @@ export function buildCupsPool(items: Item[], ait: CupsAit): Item[] {
     seenClues.add(clueKey);
     return true;
   });
+}
+
+/**
+ * The next round's target and the items for the other cups. Whatever has been shown least goes first,
+ * so the class meets every item in the topic as early as the cup count allows, not the same few again.
+ */
+export function pickCupsRound(
+  pool: Item[],
+  targetsLeft: Item[],
+  timesShown: ReadonlyMap<Item, number>,
+  cupCount: number
+): { target: Item; others: Item[] } {
+  const leastShownFirst = (items: Item[]) =>
+    shuffled(items).sort((a, b) => (timesShown.get(a) ?? 0) - (timesShown.get(b) ?? 0));
+  const target = leastShownFirst(targetsLeft)[0];
+  const others = leastShownFirst(pool.filter(item => item !== target)).slice(0, cupCount - 1);
+  return { target, others };
 }
 
 export function clampCupCount(value: number): number {

@@ -67,6 +67,29 @@ export interface RdWordTask {
   key: RdKey;          // the answer as a findable phrase (paragraph = where it first appears)
 }
 
+/** Gap fill: words of the text hidden until the student gives them. */
+export interface RdCloze {
+  id: number;          // in text order
+  words: number[];     // RdWord ids
+  options: { text: string; correct: boolean }[] | null;  // null = an open gap, typed in
+  answers: string[];   // the accepted answers, compared with clozeAnswerKey
+}
+
+/** Matching: which paragraph (each one a lettered text) a sentence is about. */
+export interface RdMatch {
+  id: number;
+  prompt: string;
+  paragraph: number;   // RdParagraph.id, which is also its letter: 0 = A
+}
+
+/** Short texts: a question on one paragraph, which is shown alone (a notice, a message...). */
+export interface RdShort {
+  id: number;
+  question: string;    // may be empty: the options then say what the text means
+  paragraph: number;   // RdParagraph.id
+  options: { text: string; correct: boolean }[];
+}
+
 export interface ReadingText<T = unknown> {
   paragraphs: RdParagraph<T>[];
   sentences: RdSentence<T>[];
@@ -78,12 +101,15 @@ export interface ReadingText<T = unknown> {
   statements: RdStatement[];
   choices: RdChoice[];
   wordTasks: RdWordTask[];
+  clozes: RdCloze[];
+  matches: RdMatch[];
+  shorts: RdShort[];
 }
 
 export function buildReadingText<T extends { text?: string; image?: Blob }>(items: readonly T[]): ReadingText<T> {
   const text: ReadingText<T> = {
     paragraphs: [], sentences: [], words: [], keys: [], headings: [],
-    gaps: [], extras: [], statements: [], choices: [], wordTasks: []
+    gaps: [], extras: [], statements: [], choices: [], wordTasks: [], clozes: [], matches: [], shorts: []
   };
   const withText = items.filter(item => item.text?.trim());
 
@@ -176,6 +202,54 @@ function addTasks(text: ReadingText<unknown>, taskTexts: string[]) {
         clue: task.prompt,
         key: { id: -1, text: answer, words: cores, paragraph }
       });
+    } else if (task.tag === 'GAP') {
+      addCloze(text, task.prompt, task.answers);
+    } else if (task.tag === 'SHORT') {
+      const head = /^([a-z])\s*[:.)]\s*(.*)$/i.exec(task.prompt);
+      const paragraph = head ? head[1].toUpperCase().charCodeAt(0) - 65 : -1;
+      const options = parseOptions(task.answers);
+      if (!head || !text.paragraphs[paragraph] || options.length < 2) continue;
+      text.shorts.push({ id: text.shorts.length, question: head[2], paragraph, options });
+    } else if (task.tag === 'MATCH') {
+      const letter = /^[a-z]$/i.test(task.answers[0] ?? '') ? task.answers[0].toUpperCase().charCodeAt(0) - 65 : -1;
+      if (!task.prompt || !text.paragraphs[letter]) continue;
+      text.matches.push({ id: text.matches.length, prompt: task.prompt, paragraph: letter });
+    }
+  }
+  text.clozes.sort((a, b) => a.words[0] - b.words[0]);
+  text.clozes.forEach((cloze, id) => { cloze.id = id; });
+}
+
+/** Lets a typed answer match whatever its capitals and edge punctuation. */
+export function clozeAnswerKey(answer: string): string {
+  return answer.split(/\s+/).map(wordCore).filter(Boolean).join(' ');
+}
+
+// A gap whose words can't be found, or that sits in a sentence taken out for Gapped text, is left out:
+// nothing can be shown for it.
+function addCloze(text: ReadingText<unknown>, context: string, answers: string[]) {
+  const starred = answers.some(answer => answer.startsWith('*'));
+  const options = starred ? parseOptions(answers) : null;
+  if (options && options.length < 2) return;
+  const accepted = (options ? options.filter(option => option.correct).map(option => option.text) : answers)
+    .map(clozeAnswerKey).filter(Boolean);
+  const tokens = context.split(/\s+/);
+  const gapAt = tokens.findIndex(token => token.includes('_'));
+  if (!accepted.length || gapAt < 0) return;
+  const coresOf = (part: string[]) => part.map(wordCore).filter(Boolean);
+  const before = coresOf(tokens.slice(0, gapAt));
+  const after = coresOf(tokens.slice(gapAt + 1));
+  const taken = new Set(text.clozes.flatMap(cloze => cloze.words));
+
+  for (const answer of accepted) {
+    const answerCores = answer.split(' ');
+    const cores = [...before, ...answerCores, ...after];
+    for (let start = 0; start + cores.length <= text.words.length; start++) {
+      if (!cores.every((core, i) => text.words[start + i].core === core)) continue;
+      const words = answerCores.map((_, i) => start + before.length + i);
+      if (words.some(id => taken.has(id) || text.sentences[text.words[id].sentence].removed)) continue;
+      text.clozes.push({ id: text.clozes.length, words, options, answers: accepted });
+      return;
     }
   }
 }
