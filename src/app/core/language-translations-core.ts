@@ -2787,6 +2787,21 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'menuBackToBook': {
+  en: 'Back to Book',
+  tk: 'Kitaba gaýt',
+  ru: 'Назад к книге',
+  cn: '返回书本',
+  cde: 'Zurück zum Buch',
+  es: 'Volver al libro',
+  fr: 'Retour au livre',
+  kr: '책으로 돌아가기',
+  sa: 'العودة إلى الكتاب',
+  vi: 'Quay lại sách',
+},
+
+
+
 'menuActivityPage': {
   en: 'Activity Page',
   tk: 'Oýunlar sahypasy',

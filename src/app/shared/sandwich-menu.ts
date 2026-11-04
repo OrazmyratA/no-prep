@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { TranslatePipe } from './translate-pipe';
+import { BookReturn, bookReturnFromQuery, goBackToBook } from '../core/book-return';
 
 @Component({
   selector: 'app-sandwich-menu',
@@ -15,6 +16,11 @@ export class SandwichMenuComponent {
   isOpen = false;
 
   constructor(private router: Router) {}
+
+  /** Set when this game was opened from a book: the first menu item then returns there. */
+  get bookReturn(): BookReturn | null {
+    return bookReturnFromQuery(this.router.parseUrl(this.router.url).queryParamMap);
+  }
 
   @HostListener('window:keydown', ['$event'])
   onWindowKeydown(event: KeyboardEvent) {
@@ -52,7 +58,12 @@ export class SandwichMenuComponent {
 
   onAction(action: string) {
     if (action === 'topics') {
-      this.router.navigate(['/topics']);
+      const bookReturn = this.bookReturn;
+      if (bookReturn) {
+        goBackToBook(this.router, bookReturn);
+      } else {
+        this.router.navigate(['/topics']);
+      }
       this.closeMenu();
       return;
     }

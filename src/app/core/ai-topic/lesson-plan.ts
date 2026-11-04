@@ -130,8 +130,10 @@ export const LESSON_PLAN_GAMES: { id: string; about: string }[] = [
   { id: 'rock-paper-scissors', about: 'team duel with quiz questions - energetic team practice' },
   { id: 'ball-sort', about: 'sort cards by coloured balls with quiz gates - team practice' },
   { id: 'flashcard-hunt', about: 'shoot flashcards on the board, then answer them - energetic recall' },
+  { id: 'shuffle-cups', about: 'cards hide under cups, the class follows the shuffle and finds the one on the clue card - memory, whole class' },
   { id: 'unjumble', about: 'drag words into the right order to build sentences - grammar and word order' },
   { id: 'team-sentence', about: 'teams race to build correct sentences - grammar, competitive' },
+  { id: 'word-trail', about: 'link scattered words in order by tracing lines or clicking - word order, whole class' },
   { id: 'reading-detective', about: 'reading lesson: key words, find the answers in the text, match paragraph headings' },
   { id: 'writing-workshop', about: 'writing lesson: rebuild a model text paragraph by paragraph, then write' },
   { id: 'talk-show', about: 'speaking mock exam with examiner lines, timers and a mark sheet' }
@@ -140,7 +142,7 @@ export const LESSON_PLAN_GAMES: { id: string; about: string }[] = [
 const PICTURE_WORD_GAMES = [
   'flip-tiles', 'match-pairs', 'watch-memorize', 'spotlight', 'spin-wheel', 'reveal-game', 'pop-balloon', 'test-abc',
   'anagram', 'tracing', 'word-search', 'line-trace-match', 'spelling-check', 'team-tug', 'cup-clash', 'odd-one-out',
-  'squid-game', 'rock-paper-scissors', 'ball-sort', 'flashcard-hunt'
+  'squid-game', 'rock-paper-scissors', 'ball-sort', 'flashcard-hunt', 'shuffle-cups'
 ];
 /** Word on one side, a text card (definition, translation, gapped sentence...) on the other. */
 const WORD_CARD_GAMES = [
@@ -161,7 +163,7 @@ export function gamesForRecipe(recipe: AiRecipeId, variant: AiRecipeVariantId | 
       const fallback = findRecipe(recipe)?.defaultVariant ?? 'findWord';
       return (variant ?? fallback) === 'findWord' ? WORD_CARD_GAMES : WORD_CARD_GAMES.filter(id => !SPELLING_GAMES.includes(id));
     }
-    case 'sentences': return ['unjumble', 'team-sentence'];
+    case 'sentences': return ['unjumble', 'team-sentence', 'word-trail'];
     case 'reading': return ['reading-detective'];
     case 'writing': return ['writing-workshop'];
     case 'speaking': return ['talk-show'];

@@ -5,17 +5,14 @@ import { GAMES, GameConfig } from '../games.config';
 import { db } from '../../../core/db.model'; // Direct Dexie import
 import { ResizeService } from '../../../core/resize';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
+import { BookReturn, bookReturnFromQuery, bookReturnStorageKey, goBackToBook } from '../../../core/book-return';
 import {
   ActivityAccessMode,
   filterGamesByActivityRestriction,
   normalizeAllowedActivityIds
 } from './activity-restriction';
 
-type BookActivityReturnContext = {
-  bookId: string;
-  pageId: string;
-  pageSource: 'main' | 'workbook';
-  workbookId: string;
+type BookActivityReturnContext = BookReturn & {
   activityMode: ActivityAccessMode;
   allowedActivityIds: string[];
 };
@@ -171,15 +168,7 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
 
   goBack() {
     if (this.bookReturnContext?.bookId) {
-      const context = this.bookReturnContext;
-      this.clearBookReturnContext();
-      this.router.navigate(['/books', context.bookId, 'read'], {
-        state: {
-          pageId: context.pageId,
-          pageSource: context.pageSource,
-          workbookId: context.workbookId
-        }
-      });
+      goBackToBook(this.router, this.bookReturnContext);
       return;
     }
     this.router.navigate(['/topics']);
@@ -187,13 +176,10 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
 
   private loadBookReturnContext(): BookActivityReturnContext | null {
     const query = this.route.snapshot.queryParamMap;
-    const bookId = query.get('returnToBookId') || '';
-    if (bookId) {
+    const bookReturn = bookReturnFromQuery(query);
+    if (bookReturn) {
       const context: BookActivityReturnContext = {
-        bookId,
-        pageId: query.get('returnToBookPageId') || '',
-        pageSource: query.get('returnToBookPageSource') === 'workbook' ? 'workbook' : 'main',
-        workbookId: query.get('returnToWorkbookId') || '',
+        ...bookReturn,
         activityMode: query.get('bookActivityMode') === 'selected' ? 'selected' : 'all',
         allowedActivityIds: normalizeAllowedActivityIds(query.get('bookAllowedActivityIds'))
       };
@@ -253,16 +239,8 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
     }
   }
 
-  private clearBookReturnContext(): void {
-    try {
-      sessionStorage.removeItem(this.bookReturnStorageKey());
-    } catch {
-      // Nothing to clean up when storage is unavailable.
-    }
-  }
-
   private bookReturnStorageKey(): string {
-    return `noprep-book-activity-return:${this.topicId}`;
+    return bookReturnStorageKey(this.topicId);
   }
 
 }

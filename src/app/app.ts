@@ -171,7 +171,7 @@ hideLicenseOverlay() {
   }
 
   private isThemeExcludedRoute(url: string): boolean {
-    return url.includes('/team-sentence') || url.includes('/pop-balloon') || url.includes('/flashcard-hunt');
+    return url.includes('/team-sentence') || url.includes('/pop-balloon') || url.includes('/flashcard-hunt') || url.includes('/shuffle-cups') || url.includes('/word-trail');
   }
 
   private updateThemeBodyClasses() {
