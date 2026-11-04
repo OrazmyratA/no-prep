@@ -17,6 +17,7 @@ import {
   RdMatch,
   RdParagraph,
   RdSentence,
+  RdShort,
   RdStatement,
   RdWord,
   RdWordTask,
@@ -42,10 +43,11 @@ import { TranslatePipe } from '../../shared/translate-pipe';
 // - Read & head - the text appears word by word, paragraph by paragraph, at the level's speed;
 //   after each paragraph the student picks its heading against a timer (main idea).
 // - True/False (T/F/NG and Y/N/NG), Multiple choice - answer, then "prove it": tap the sentence.
+// - Short texts - one notice or message at a time, with a multiple-choice question on it.
 // - Matching - each paragraph is a lettered text: tap the one a sentence is about.
 // - Find the word - tap the word in the text that matches a clue.
 
-export type RdStage = 'gapped' | 'cloze' | 'keys' | 'questions' | 'reading' | 'statements' | 'choice' | 'match' | 'word';
+export type RdStage = 'gapped' | 'cloze' | 'keys' | 'questions' | 'reading' | 'statements' | 'choice' | 'short' | 'match' | 'word';
 /** Statements and multiple choice: answer, then tap the proof sentence. */
 type TaskPhase = 'answer' | 'prove' | 'done';
 
@@ -74,7 +76,7 @@ interface HeadingResult {
 }
 
 // Gapped text and Gap fill come first: once the whole text has been read, the gaps would be filled from memory.
-const STAGES: RdStage[] = ['gapped', 'cloze', 'keys', 'questions', 'reading', 'statements', 'choice', 'match', 'word'];
+const STAGES: RdStage[] = ['gapped', 'cloze', 'keys', 'questions', 'reading', 'statements', 'choice', 'short', 'match', 'word'];
 export const VERDICTS: Verdict[] = ['yes', 'no', 'ng'];
 const SHAKE_MS = 600;
 const FOUND_NEXT_MS = 750;
@@ -167,6 +169,9 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
   clozeInput = '';
   wrongCloze = false;
   @ViewChild('clozeField') private clozeField?: ElementRef<HTMLInputElement>;
+
+  // Short texts
+  shortOptions: { text: string; correct: boolean }[][] = [];
 
   // Matching
   /** The paragraph just matched, or -1. */
@@ -276,6 +281,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       case 'gapped': return this.text.gaps.length;
       case 'cloze': return this.text.clozes.length;
       case 'match': return this.text.matches.length;
+      case 'short': return this.text.shorts.length;
       case 'keys': return this.text.keys.length;
       case 'questions': return this.text.sentences.filter(sentence => sentence.hasQuestion).length;
       case 'reading': return this.text.paragraphs.length;
@@ -412,6 +418,9 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       score.total = this.text.clozes.length;
     } else if (stage === 'match') {
       score.total = this.text.matches.length;
+    } else if (stage === 'short') {
+      this.shortOptions = this.text.shorts.map(short => shuffled(short.options));
+      score.total = this.text.shorts.length;
     } else if (stage === 'statements') {
       score.total = this.text.statements.length;
       score.proofTotal = this.text.statements.filter(statement => statement.proof >= 0).length;
@@ -605,6 +614,13 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
         next = () => this.nextGap();
         break;
       }
+      case 'short': {
+        if (!this.currentShort) return;
+        this.chosenOption = this.currentShortOptions.findIndex(option => option.correct);
+        this.taskPhase = 'done';
+        next = () => this.nextTask();
+        break;
+      }
       case 'match': {
         const match = this.currentMatch;
         if (!match) return;
@@ -736,6 +752,39 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     }
     this.playSound(this.popSound, 0.35);
     this.cdr.detectChanges();
+  }
+
+  // ---- Short texts ----
+
+  get currentShort(): RdShort | null {
+    return this.stage === 'short' ? this.text.shorts[this.taskIndex] ?? null : null;
+  }
+
+  get currentShortOptions(): { text: string; correct: boolean }[] {
+    return this.stage === 'short' ? this.shortOptions[this.taskIndex] ?? [] : [];
+  }
+
+  /** Only the text the question is about shows. */
+  isOtherShortText(paragraph: RdParagraph): boolean {
+    const short = this.view === 'play' ? this.currentShort : null;
+    return !!short && short.paragraph !== paragraph.id;
+  }
+
+  chooseShortOption(index: number) {
+    const option = this.currentShortOptions[index];
+    if (this.view !== 'play' || !option || this.busy) return;
+    if (!option.correct) {
+      this.wrongAnswer(() => { this.wrongOption = index; }, () => { this.wrongOption = -1; });
+      return;
+    }
+    if (this.mistakes === 0) this.scores.short.got++;
+    this.busy = true;
+    this.chosenOption = index;
+    this.wrongOption = -1;
+    this.taskPhase = 'done';
+    this.playSound(this.collectSound, 0.5);
+    this.cdr.detectChanges();
+    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
   }
 
   // ---- Matching ----
@@ -1344,7 +1393,12 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     const letter = /^[a-i]$/.test(key) ? key.charCodeAt(0) - 97 : -1;
     const index = number >= 0 ? number : letter;
     if (index < 0) return;
-    if (this.stage === 'match') {
+    if (this.stage === 'short') {
+      if (index < this.currentShortOptions.length) {
+        event.preventDefault();
+        this.chooseShortOption(index);
+      }
+    } else if (this.stage === 'match') {
       if (index < this.text.paragraphs.length) {
         event.preventDefault();
         this.chooseMatch(index);

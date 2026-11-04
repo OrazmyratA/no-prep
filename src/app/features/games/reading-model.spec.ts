@@ -3,6 +3,25 @@ import { buildReadingText, clozeAnswerKey, findKeyAt, headingSeconds, wordDelayM
 const image = new Blob(['q']);
 
 describe('reading-model', () => {
+  describe('short texts', () => {
+    const notices = [{ text: 'Pool closed on Monday.' }, { text: '* Tom will be late.' }];
+
+    it('ties each question to its paragraph by the letter', () => {
+      const text = buildReadingText([...notices, { text: '? SHORT B: Who is late? {*Tom | Sam}' }, { text: '? SHORT a) When is it closed? {*Monday | Friday}' }]);
+      expect(text.shorts.map(short => [short.question, short.paragraph])).toEqual([['Who is late?', 1], ['When is it closed?', 0]]);
+      expect(text.shorts[0].options.map(option => option.correct)).toEqual([true, false]);
+    });
+
+    it('allows no question, as the options can say what the text means', () => {
+      expect(buildReadingText([...notices, { text: '? SHORT A: {*It is shut | It is open}' }]).shorts[0].question).toBe('');
+    });
+
+    it('leaves out a question without a real letter or two options', () => {
+      const text = buildReadingText([...notices, { text: '? SHORT C: Who? {*Tom | Sam}' }, { text: '? SHORT Who is late? {*Tom | Sam}' }, { text: '? SHORT A: Who? {*Tom}' }]);
+      expect(text.shorts).toEqual([]);
+    });
+  });
+
   describe('matching', () => {
     const texts = [{ text: 'Anna lives in Rome.' }, { text: '* Ben lives in Oslo.' }, { text: '* Cem lives in Baku.' }];
 

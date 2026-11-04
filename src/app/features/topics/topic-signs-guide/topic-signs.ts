@@ -58,6 +58,7 @@ export const SIGNS_GUIDES: SignsGuide[] = [
           { sign: '? WORD', meaningKey: 'signsReadWord', example: '? WORD Find a word in paragraph 3 that means "unhappy". {sad}' },
           { sign: '? GAP', meaningKey: 'signsReadGap', example: '? GAP Every morning we _ to the river. {*walked | ran | sat}' },
           { sign: '? MATCH', meaningKey: 'signsReadMatch', example: '? MATCH Which paragraph is about catching fish? {B}' },
+          { sign: '? SHORT', meaningKey: 'signsReadShort', example: '? SHORT A: Where does grandma live? {*In a village | In a city | By the sea}' },
           { sign: '~', meaningKey: 'signsReadRemoved', example: '~ Grandma showed me how to be patient.' },
           { sign: '? EXTRA', meaningKey: 'signsReadExtra', example: '? EXTRA We went swimming in the sea.' }
         ]
@@ -84,6 +85,7 @@ export const SIGNS_GUIDES: SignsGuide[] = [
       '? GAP Every morning we _ to the river. {*walked | ran | sat}',
       '? GAP I stayed there _ four weeks. {for}',
       '? MATCH Which paragraph is about catching fish? {B}',
+      '? SHORT A: Where does grandma live? {*In a village | In a city | By the sea}',
       '? EXTRA We went swimming in the sea.'
     ]
   },

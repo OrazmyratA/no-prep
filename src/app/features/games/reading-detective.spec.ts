@@ -112,6 +112,56 @@ describe('ReadingDetectiveComponent', () => {
     expect(component.hintParagraph).toBe(0);
   });
 
+  describe('short texts', () => {
+    const NOTICES: Item[] = [
+      item(0, 'Pool closed on Monday.'),
+      item(1, '* Tom will be late.'),
+      item(2, '? SHORT B: Who is late? {*Tom | Sam | Ana}'),
+      item(3, '? SHORT A: When is it closed? {*Monday | Friday | Sunday}')
+    ];
+    const pick = (label: string) => component.currentShortOptions.findIndex(option => option.text === label);
+
+    it('shows only the text the question is about, counting first tries only', async () => {
+      await create(NOTICES);
+      component.start();
+      expect(component.stage).toBe('short');
+      expect(component.isOtherShortText(component.text.paragraphs[0])).toBe(true);
+      expect(component.isOtherShortText(component.text.paragraphs[1])).toBe(false);
+
+      component.chooseShortOption(pick('Sam'));
+      expect(component.wrongOption).toBe(pick('Sam'));
+      vi.advanceTimersByTime(600);
+      component.chooseShortOption(pick('Tom'));
+      expect(component.scores.short.got).toBe(0);
+      vi.advanceTimersByTime(950);
+      expect(component.isOtherShortText(component.text.paragraphs[0])).toBe(false);
+      expect(component.isOtherShortText(component.text.paragraphs[1])).toBe(true);
+
+      component.chooseShortOption(pick('Monday'));
+      vi.advanceTimersByTime(950);
+      expect(component.scores.short.got).toBe(1);
+      expect(component.view).toBe('results');
+      expect(component.isOtherShortText(component.text.paragraphs[1])).toBe(false);
+    });
+
+    it('shows the answer when skipped, and scores nothing', async () => {
+      await create(NOTICES);
+      component.start();
+      component.skipQuestion();
+      expect(component.currentShortOptions[component.chosenOption].text).toBe('Tom');
+      expect(component.scores.short.got).toBe(0);
+      vi.advanceTimersByTime(950);
+      expect(component.taskIndex).toBe(1);
+    });
+
+    it('chooses an option with its number key', async () => {
+      await create(NOTICES);
+      component.start();
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: String(pick('Tom') + 1) }));
+      expect(component.busy).toBe(true);
+    });
+  });
+
   describe('matching', () => {
     const TEXTS: Item[] = [
       item(0, 'Anna lives in Rome.'),

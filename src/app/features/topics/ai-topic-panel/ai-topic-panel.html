@@ -119,14 +119,18 @@
         <!-- Reading Detective: which parts and tasks the AI makes -->
         <div *ngIf="showReadingTasks" class="ai-reading-tasks">
           <ng-container *ngIf="readingExamGroups.length">
-            <label class="ai-levels-label" for="aiReadingExamPart">🎯 {{ 'aiTopicExamPart' | translate }}</label>
-            <select id="aiReadingExamPart" class="ai-input ai-exam-part" [disabled]="generating" (change)="setReadingExamPart($any($event.target).value)">
-              <option value="" [selected]="!readingExamPartId">{{ 'aiTopicExamPartFree' | translate }}</option>
-              <optgroup *ngFor="let group of readingExamGroups" [label]="group.exam">
-                <option *ngFor="let part of group.parts" [value]="part.id" [disabled]="!part.tasks" [selected]="readingExamPartId === part.id">{{ readingExamPartLabel(part) }}</option>
-              </optgroup>
+            <label class="ai-levels-label" for="aiReadingExam">🎯 {{ 'aiTopicExamName' | translate }}</label>
+            <select id="aiReadingExam" class="ai-input ai-exam-part" [disabled]="generating" (change)="setReadingExam($any($event.target).value)">
+              <option value="" [selected]="!readingExamGroup">{{ 'aiTopicExamPartFree' | translate }}</option>
+              <option *ngFor="let group of readingExamGroups" [value]="group.exam" [selected]="readingExamGroup?.exam === group.exam">{{ group.exam }}</option>
             </select>
-            <p class="ai-hint ai-exam-part-hint">{{ 'aiTopicExamPartHint' | translate }}</p>
+            <ng-container *ngIf="readingExamGroup as group">
+              <label class="ai-levels-label ai-exam-part-label" for="aiReadingExamPart">📑 {{ 'aiTopicExamPart' | translate }}</label>
+              <select id="aiReadingExamPart" class="ai-input ai-exam-part" [disabled]="generating" (change)="setReadingExamPart($any($event.target).value)">
+                <option *ngFor="let part of group.parts" [value]="part.id" [disabled]="!part.tasks" [selected]="readingExamPartId === part.id">{{ readingExamPartLabel(part) }}</option>
+              </select>
+              <p class="ai-hint ai-exam-part-hint">{{ (readingExamPartIsPassage ? 'aiTopicExamPassageHint' : 'aiTopicExamPartHint') | translate }}</p>
+            </ng-container>
           </ng-container>
           <span class="ai-levels-label">📖 {{ 'aiTopicReadingTasks' | translate }}</span>
           <div class="ai-task-grid">

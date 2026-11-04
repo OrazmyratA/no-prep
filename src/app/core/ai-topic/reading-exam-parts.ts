@@ -4,13 +4,17 @@ import { ReadingTasksRequest } from './ai-topic-prompt';
 // The reading parts of each level's tests, for the ✨ panel's "Exam part" list (docs/reading-detective.md).
 // Formats come from the exams' own pages and handbooks. Word counts per part aren't published, so
 // the AI is only asked for the length usual for the part. First, Advanced and Proficiency also list
-// Parts 1-2 of their Reading and Use of English paper, because they are gap fills.
+// Parts 1-2 of their Reading and Use of English paper, because they are gap fills. IELTS passages have
+// no fixed tasks, so their tasks are a typical mix, chosen by us rather than by the exam.
 
 export interface ReadingExamPart {
   id: string;
-  /** The part's number in the exam; IELTS has question types rather than numbered parts. */
-  part: number | null;
-  taskKey: string;
+  /** The part's number in the exam. */
+  part: number;
+  /** IELTS: called "Reading passage 1", not "Part 1". */
+  passage?: boolean;
+  /** The part's one task, shown after its number. A passage mixes tasks, so it has none. */
+  taskKey?: string;
   /** What to make, with the part's usual amounts. Null: Reading Detective can't play it yet. */
   tasks: Partial<ReadingTasksRequest> | null;
   /** How this part's tasks differ from the general rules, for the AI. The tasks' amounts stay in the request's list. */
@@ -24,21 +28,25 @@ export interface ReadingExamGroup {
 }
 
 const NO_TASKS: ReadingTasksRequest = {
-  keys: 0, questions: 0, headings: false, statements: 0, choice: 0, gapped: 0, word: 0, gapOptions: 0, gapOpen: 0, match: 0
+  keys: 0, questions: 0, headings: false, statements: 0, choice: 0, gapped: 0, word: 0, gapOptions: 0, gapOpen: 0, match: 0, short: 0
 };
 
 const IN_ORDER = 'The questions follow the order of the text.';
-const soon = (id: string, part: number | null, taskKey: string): ReadingExamPart => ({ id, part, taskKey, tasks: null });
+const IELTS_PASSAGE = 'If you write the passage yourself, make it about 700-900 words in 5-7 paragraphs, and write every sentence of it however many items that takes. Multiple-choice questions have exactly 4 options. TFNG and YNNG statements and multiple-choice questions follow the order of the text. Each MATCH sentence names a piece of information found in one paragraph; some paragraphs may not be used, and one may be used more than once.';
+const soon = (id: string, part: number, taskKey: string): ReadingExamPart => ({ id, part, taskKey, tasks: null });
 
 /** Multiple-choice gaps. */
 const gapsWithOptions = (id: string, part: number, gapOptions: number, rules: string): ReadingExamPart =>
   ({ id, part, taskKey: 'aiExamTaskGapOptions', tasks: { gapOptions }, rules });
 /** Sentences matched to lettered texts. */
-const matching = (id: string, part: number | null, match: number, rules: string, taskKey = 'aiExamTaskMatching'): ReadingExamPart =>
-  ({ id, part, taskKey, tasks: { match }, rules });
+const matching = (id: string, part: number, match: number, rules: string): ReadingExamPart =>
+  ({ id, part, taskKey: 'aiExamTaskMatching', tasks: { match }, rules });
 /** One word typed into each gap. */
 const openGaps = (id: string, part: number, gapOpen: number, rules: string): ReadingExamPart =>
   ({ id, part, taskKey: 'aiExamTaskGapOpen', tasks: { gapOpen }, rules });
+/** One long IELTS Academic passage. */
+const passage = (part: number, tasks: Partial<ReadingTasksRequest>, rules: string): ReadingExamPart =>
+  ({ id: `ielts-${part}`, part, passage: true, tasks, rules: `${rules} ${IELTS_PASSAGE}` });
 
 export const READING_EXAM_GROUPS: ReadingExamGroup[] = [
   {
@@ -69,7 +77,10 @@ export const READING_EXAM_GROUPS: ReadingExamGroup[] = [
     exam: 'A2 Key (KET)',
     levels: ['A2'],
     parts: [
-      soon('key-1', 1, 'aiExamTaskShortTexts'),
+      {
+        id: 'key-1', part: 1, taskKey: 'aiExamTaskShortTexts', tasks: { short: 6 },
+        rules: 'Short real-world texts, each read for its main message.'
+      },
       matching('key-2', 2, 7, 'Exactly three short texts on the same topic, one paragraph each. Every sentence is answered by one of them.'),
       {
         id: 'key-3', part: 3, taskKey: 'readingDetectiveStage_choice', tasks: { choice: 5 },
@@ -83,7 +94,10 @@ export const READING_EXAM_GROUPS: ReadingExamGroup[] = [
     exam: 'B1 Preliminary (PET)',
     levels: ['B1'],
     parts: [
-      soon('pet-1', 1, 'aiExamTaskShortTexts'),
+      {
+        id: 'pet-1', part: 1, taskKey: 'aiExamTaskShortTexts', tasks: { short: 5 },
+        rules: 'Real-world notices, messages and other short texts, each read for its main message.'
+      },
       matching('pet-2', 2, 5, 'Exactly eight short texts on one topic, one paragraph each. Each sentence describes a person and what they want, and exactly one text suits that person. Each person has a different text, so three texts are left over.'),
       {
         id: 'pet-3', part: 3, taskKey: 'readingDetectiveStage_choice', tasks: { choice: 5 },
@@ -144,28 +158,12 @@ export const READING_EXAM_GROUPS: ReadingExamGroup[] = [
     ]
   },
   {
-    exam: 'IELTS',
+    exam: 'IELTS Academic',
     levels: ['B2', 'C1', 'C2'],
     parts: [
-      {
-        id: 'ielts-tfng', part: null, taskKey: 'aiExamTaskTFNG', tasks: { statements: 5 },
-        rules: `One passage with TFNG statements only, about facts the text gives. Include real Not Given statements. ${IN_ORDER}`
-      },
-      {
-        id: 'ielts-ynng', part: null, taskKey: 'aiExamTaskYNNG', tasks: { statements: 5 },
-        rules: `One passage that argues a point, with YNNG statements only, about the writer's views and claims. Include real Not Given statements. ${IN_ORDER}`
-      },
-      {
-        id: 'ielts-headings', part: null, taskKey: 'aiTopicTaskHeadings', tasks: { headings: true },
-        rules: 'One passage where every paragraph has a clear main idea, with more headings than paragraphs.'
-      },
-      {
-        id: 'ielts-choice', part: null, taskKey: 'readingDetectiveStage_choice', tasks: { choice: 5 },
-        rules: `One passage with multiple-choice questions, each with exactly 4 options. ${IN_ORDER}`
-      },
-      matching('ielts-matching', null, 5, 'One passage with lettered paragraphs. Each sentence names a piece of information found in one paragraph. Some paragraphs may not be used, and one may be used more than once.', 'aiExamTaskMatchingInfo'),
-      soon('ielts-sentence', null, 'aiExamTaskSentenceCompletion'),
-      soon('ielts-summary', null, 'aiExamTaskSummaryCompletion')
+      passage(1, { statements: 7, match: 6 }, 'The easiest of the three passages: factual and descriptive. TFNG statements only, about facts the text gives. Include real Not Given statements.'),
+      passage(2, { headings: true, match: 6, choice: 7 }, 'Harder than passage 1: a factual or discursive text where every paragraph has a clear main idea, with more headings than paragraphs.'),
+      passage(3, { statements: 7, choice: 6 }, 'The hardest of the three passages: a text that argues a point. YNNG statements only, about the writer\'s views and claims. Include real Not Given statements.')
     ]
   }
 ];

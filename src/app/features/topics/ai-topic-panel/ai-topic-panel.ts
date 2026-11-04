@@ -153,6 +153,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     { key: 'gapped', labelKey: 'readingDetectiveStage_gapped', fallback: 3, max: 10 },
     { key: 'gapOptions', labelKey: 'aiExamTaskGapOptions', fallback: 6, max: 10 },
     { key: 'gapOpen', labelKey: 'aiExamTaskGapOpen', fallback: 6, max: 10 },
+    { key: 'short', labelKey: 'aiExamTaskShortTexts', fallback: 5, max: 10 },
     { key: 'match', labelKey: 'readingDetectiveStage_match', fallback: 6, max: 10 },
     { key: 'word', labelKey: 'readingDetectiveStage_word', fallback: 4, max: 10 }
   ];
@@ -387,6 +388,20 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     return readingExamGroupsFor(this.level);
   }
 
+  /** The exam of the chosen part. There is no exam without a part: choosing one picks its first part. */
+  get readingExamGroup(): ReadingExamGroup | null {
+    return findReadingExamPart(this.readingExamPartId)?.group ?? null;
+  }
+
+  get readingExamPartIsPassage(): boolean {
+    return Boolean(findReadingExamPart(this.readingExamPartId)?.part.passage);
+  }
+
+  setReadingExam(exam: string): void {
+    const group = this.readingExamGroups.find(entry => entry.exam === exam);
+    this.setReadingExamPart(group?.parts.find(part => part.tasks)?.id ?? '');
+  }
+
   /** Every level's parts are different, so a part chosen for another level no longer applies. */
   setLevel(level: CefrLevel | null): void {
     this.level = level;
@@ -408,10 +423,10 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   }
 
   readingExamPartLabel(part: ReadingExamPart): string {
-    const task = this.langService.translate(part.taskKey);
-    const number = part.part ? `${this.langService.translate('aiTopicExamPartNumber', { n: part.part })}: ` : '';
+    const name = this.langService.translate(part.passage ? 'aiTopicExamPassage' : 'aiTopicExamPartNumber', { n: part.part });
+    const task = part.taskKey ? `: ${this.langService.translate(part.taskKey)}` : '';
     const soon = part.tasks ? '' : ` (${this.langService.translate('aiTopicExamPartSoon')})`;
-    return number + task + soon;
+    return name + task + soon;
   }
 
   isReadingTaskOn(task: ReadingTaskRow): boolean {

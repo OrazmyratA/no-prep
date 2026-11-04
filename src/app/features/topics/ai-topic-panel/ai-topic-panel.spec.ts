@@ -339,7 +339,7 @@ describe('AiTopicPanelComponent exam parts', () => {
       return component.readingExamGroups.map(group => group.exam);
     };
     expect(exams('A2')).toEqual(['A2 Flyers', 'A2 Key (KET)']);
-    expect(exams('B2')).toEqual(['B2 First (FCE)', 'IELTS']);
+    expect(exams('B2')).toEqual(['B2 First (FCE)', 'IELTS Academic']);
     expect(exams('A1')).toEqual(['A1 Movers']);
     expect(exams(null)).toEqual([]);
   });
@@ -347,7 +347,7 @@ describe('AiTopicPanelComponent exam parts', () => {
   it('fills in only the part\'s tasks, which the teacher can still change', () => {
     component.setLevel('B1');
     component.setReadingExamPart('pet-4');
-    expect(component.readingTasks).toEqual({ keys: 0, questions: 0, headings: false, statements: 0, choice: 0, gapped: 5, word: 0, gapOptions: 0, gapOpen: 0, match: 0 });
+    expect(component.readingTasks).toEqual({ keys: 0, questions: 0, headings: false, statements: 0, choice: 0, gapped: 5, word: 0, gapOptions: 0, gapOpen: 0, match: 0, short: 0 });
     component.setReadingCount(component.readingTaskRows.find(task => task.key === 'gapped')!, '3');
     expect(component.readingTasks.gapped).toBe(3);
     expect(component.readingExamPartId).toBe('pet-4');
@@ -363,17 +363,40 @@ describe('AiTopicPanelComponent exam parts', () => {
 
   it('drops the part when the level changes to one without it, but keeps it within the level\'s tests', () => {
     component.setLevel('B2');
-    component.setReadingExamPart('ielts-tfng');
+    component.setReadingExamPart('ielts-1');
     component.setLevel('C1');
-    expect(component.readingExamPartId).toBe('ielts-tfng');
+    expect(component.readingExamPartId).toBe('ielts-1');
     component.setLevel('A2');
     expect(component.readingExamPartId).toBe('');
     expect(component.readingTasks).toEqual(DEFAULT_READING_TASKS);
   });
 
+  it('choosing an exam picks its first part the game can play, and no exam means free choice', () => {
+    component.setLevel('B2');
+    component.setReadingExam('IELTS Academic');
+    expect(component.readingExamPartId).toBe('ielts-1');
+    expect(component.readingExamGroup?.exam).toBe('IELTS Academic');
+    expect(component.readingTasks.statements).toBe(7);
+    expect(component.readingTasks.match).toBe(6);
+    component.setLevel('A1');
+    component.setReadingExam('A1 Movers');
+    expect(component.readingExamPartId).toBe('movers-4');
+    component.setReadingExam('');
+    expect(component.readingExamGroup).toBeNull();
+    expect(component.readingTasks).toEqual(DEFAULT_READING_TASKS);
+  });
+
+  it('calls IELTS parts passages, and other exams\' parts by number and task', () => {
+    component.setLevel('B2');
+    const lang = TestBed.inject(LanguageService);
+    const [first, ielts] = component.readingExamGroups;
+    expect(component.readingExamPartLabel(ielts.parts[1])).toBe(lang.translate('aiTopicExamPassage', { n: 2 }));
+    expect(component.readingExamPartLabel(first.parts[0])).toContain(lang.translate('aiTopicExamPartNumber', { n: 1 }) + ': ');
+  });
+
   it('refuses a part the game can\'t play yet', () => {
-    component.setLevel('B1');
-    component.setReadingExamPart('pet-1');
+    component.setLevel('A2');
+    component.setReadingExamPart('flyers-1');
     expect(component.readingExamPartId).toBe('');
     expect(component.readingExamPartLabel(component.readingExamGroups[0].parts[0])).toContain('(');
   });

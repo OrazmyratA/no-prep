@@ -50,6 +50,7 @@ export interface ReadingTasksRequest {
   gapOptions: number;  // ? GAP with options
   gapOpen: number;     // ? GAP typed in
   match: number;       // ? MATCH
+  short: number;       // ? SHORT
 }
 
 export interface SpeakingTestRequest {
@@ -66,7 +67,7 @@ export const SPEAKING_COUNT_UNITS: Record<SpeakingTaskType, string> = {
 };
 
 export const DEFAULT_READING_TASKS: ReadingTasksRequest = {
-  keys: 5, questions: 5, headings: true, statements: 5, choice: 0, gapped: 0, word: 0, gapOptions: 0, gapOpen: 0, match: 0
+  keys: 5, questions: 5, headings: true, statements: 5, choice: 0, gapped: 0, word: 0, gapOptions: 0, gapOpen: 0, match: 0, short: 0
 };
 
 // Versioned so changes to the instructions are easy to trace in support reports.
@@ -149,6 +150,7 @@ The teacher's request always wins over the defaults. Examples:
   - Gap fill with options (the number asked for): "? GAP <3-8 words copied EXACTLY from one sentence, with _ in place of the one word to find> {*<that word> | <wrong word> | <wrong word>}" - e.g. "? GAP Every morning we _ to the river. {*walked | ran | sat}". 3 options (4 from B2 up); the wrong ones are the same kind of word but clearly wrong in that sentence. This is the one place where "_" is used, and the sentence itself stays complete.
   - Open gap fill (the number asked for): the same, with only the word and no star: "? GAP I stayed there _ four weeks. {for}". Choose words that the sentence around them decides, mostly grammar words. If another word also fits, list it after: "{for | during}". The word from the text comes first.
   - Multiple matching (the number asked for): "? MATCH <a sentence about one text> {<letter>}" - e.g. "? MATCH Who stayed for a month? {B}". Every paragraph counts as one separate text, lettered in order: the first paragraph is A, the next B, and so on (a heading with no sentences after it doesn't count). Paraphrase, so students must understand the text, not match words. Only one text may answer each sentence, but a text may answer several sentences. Mix the letters: they do not follow the order of the text. If you write the texts yourself, each one is one paragraph on the same topic.
+  - Short texts (the number asked for): write that many separate short real-world texts (notices, messages, signs, emails, labels), each one paragraph on its own subject, with no headings. For each, "? SHORT <its letter>: <short question> {*<right option> | <wrong option> | <wrong option>}" - e.g. "? SHORT B: What does Tom want Sam to do? {*Bring his book | Call him tonight | Meet him at school}". The letters are in order: the first paragraph is A, the next B, and so on. Exactly 3 options; the wrong ones are plausible but what the text doesn't say. Students see only that one text, so never ask about another text.
   - For both kinds of gap: the copied words must appear only once in the text. At most one gap per sentence, spread over all the paragraphs, written in the order of the text, never in a "~ " sentence. If the text is too short for the number asked, make as many as fit and say so in "notes".
 
 Book pages (when photos are attached):
@@ -223,11 +225,12 @@ export function buildAiTopicUserText(request: AiTopicRequest): string {
       `- Find the word (WORD): ${count(tasks.word, 'words')}`,
       `- Gap fill with options (GAP): ${count(tasks.gapOptions, 'gaps')}`,
       `- Open gap fill (GAP): ${count(tasks.gapOpen, 'gaps')}`,
-      `- Multiple matching (MATCH): ${count(tasks.match, 'sentences to match')}`
+      `- Multiple matching (MATCH): ${count(tasks.match, 'sentences to match')}`,
+      `- Short texts (SHORT): ${count(tasks.short, 'short texts, one question each')}`
     );
     const exam = findReadingExamPart(request.readingExamPart);
     if (exam?.part.rules) {
-      const partName = exam.part.part ? `Part ${exam.part.part}` : 'reading';
+      const partName = `${exam.part.passage ? 'Reading passage' : 'Part'} ${exam.part.part}`;
       lines.push(
         '',
         `These tasks practise ${exam.group.exam} ${partName}. Make them like the real exam part; where these rules differ from the general ones, these win. ${exam.part.rules}`,

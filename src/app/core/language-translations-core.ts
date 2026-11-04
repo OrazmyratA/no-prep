@@ -3420,6 +3420,19 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
   vi: 'Nối: mỗi đoạn là một văn bản có chữ cái (A, B, C...). Viết một câu và ghi trong { } chữ cái của văn bản mà câu đó nói đến.',
 },
 
+'signsReadShort': {
+  en: 'Short texts: each paragraph is a notice or message with a letter (A, B, C...). Write its letter and a question, then the options in { } with a star on the right one.',
+  tk: 'Gysga tekstler: her abzas harply bildiriş ýa-da hatdyr (A, B, C...). Onuň harpyny we soragy ýazyň, soňra { } içinde saýlawlary ýazyp, dogrusyny ýyldyz bilen belläň.',
+  ru: 'Короткие тексты: каждый абзац — объявление или сообщение с буквой (A, B, C...). Напишите его букву и вопрос, затем варианты в { }, отметив верный звёздочкой.',
+  cn: '短文：每段是一则带字母的通知或消息（A、B、C……）。写出它的字母和问题，然后在 { } 中写选项，并给正确选项加星号。',
+  cde: 'Kurze Texte: Jeder Absatz ist eine Notiz oder Nachricht mit Buchstaben (A, B, C...). Schreibe den Buchstaben und eine Frage, dann in { } die Optionen, die richtige mit Stern.',
+  es: 'Textos breves: cada párrafo es un aviso o mensaje con una letra (A, B, C...). Escribe su letra y una pregunta, y luego las opciones entre { }, con un asterisco en la correcta.',
+  fr: 'Textes courts : chaque paragraphe est une annonce ou un message avec une lettre (A, B, C...). Écrivez sa lettre et une question, puis les options dans { }, avec une étoile sur la bonne.',
+  kr: '짧은 글: 각 문단은 글자가 붙은 안내문이나 메시지입니다(A, B, C...). 글자와 질문을 쓰고, { } 안에 보기를 쓰되 정답에 별표를 하세요.',
+  sa: 'نصوص قصيرة: كل فقرة إعلان أو رسالة لها حرف (A, B, C...). اكتب حرفها وسؤالًا، ثم الخيارات داخل { } مع نجمة على الصحيح.',
+  vi: 'Văn bản ngắn: mỗi đoạn là một thông báo hoặc tin nhắn có chữ cái (A, B, C...). Viết chữ cái và câu hỏi, rồi ghi các lựa chọn trong { } và đánh dấu sao lựa chọn đúng.',
+},
+
 'signsReadWord': {
   en: 'Find the word: a clue, and the word from the text in { }.',
   tk: 'Sözi tap: ýol görkeziji we { } içinde tekstdäki söz.',

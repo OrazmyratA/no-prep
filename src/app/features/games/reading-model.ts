@@ -82,6 +82,14 @@ export interface RdMatch {
   paragraph: number;   // RdParagraph.id, which is also its letter: 0 = A
 }
 
+/** Short texts: a question on one paragraph, which is shown alone (a notice, a message...). */
+export interface RdShort {
+  id: number;
+  question: string;    // may be empty: the options then say what the text means
+  paragraph: number;   // RdParagraph.id
+  options: { text: string; correct: boolean }[];
+}
+
 export interface ReadingText<T = unknown> {
   paragraphs: RdParagraph<T>[];
   sentences: RdSentence<T>[];
@@ -95,12 +103,13 @@ export interface ReadingText<T = unknown> {
   wordTasks: RdWordTask[];
   clozes: RdCloze[];
   matches: RdMatch[];
+  shorts: RdShort[];
 }
 
 export function buildReadingText<T extends { text?: string; image?: Blob }>(items: readonly T[]): ReadingText<T> {
   const text: ReadingText<T> = {
     paragraphs: [], sentences: [], words: [], keys: [], headings: [],
-    gaps: [], extras: [], statements: [], choices: [], wordTasks: [], clozes: [], matches: []
+    gaps: [], extras: [], statements: [], choices: [], wordTasks: [], clozes: [], matches: [], shorts: []
   };
   const withText = items.filter(item => item.text?.trim());
 
@@ -195,6 +204,12 @@ function addTasks(text: ReadingText<unknown>, taskTexts: string[]) {
       });
     } else if (task.tag === 'GAP') {
       addCloze(text, task.prompt, task.answers);
+    } else if (task.tag === 'SHORT') {
+      const head = /^([a-z])\s*[:.)]\s*(.*)$/i.exec(task.prompt);
+      const paragraph = head ? head[1].toUpperCase().charCodeAt(0) - 65 : -1;
+      const options = parseOptions(task.answers);
+      if (!head || !text.paragraphs[paragraph] || options.length < 2) continue;
+      text.shorts.push({ id: text.shorts.length, question: head[2], paragraph, options });
     } else if (task.tag === 'MATCH') {
       const letter = /^[a-z]$/i.test(task.answers[0] ?? '') ? task.answers[0].toUpperCase().charCodeAt(0) - 65 : -1;
       if (!task.prompt || !text.paragraphs[letter]) continue;

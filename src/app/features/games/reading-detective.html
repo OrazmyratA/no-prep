@@ -11,7 +11,7 @@
   </div>
 
   <!-- Stage icons -->
-  <ng-template #stageIcon let-stage="stage"><ng-container [ngSwitch]="stage"><span *ngSwitchCase="'gapped'">🧩</span><span *ngSwitchCase="'cloze'">✏️</span><span *ngSwitchCase="'match'">🔗</span><span *ngSwitchCase="'keys'">🔍</span><span *ngSwitchCase="'questions'">❓</span><span *ngSwitchCase="'statements'">⚖️</span><span *ngSwitchCase="'choice'">🔘</span><span *ngSwitchCase="'word'">🔎</span><span *ngSwitchDefault>📖</span></ng-container></ng-template>
+  <ng-template #stageIcon let-stage="stage"><ng-container [ngSwitch]="stage"><span *ngSwitchCase="'gapped'">🧩</span><span *ngSwitchCase="'cloze'">✏️</span><span *ngSwitchCase="'match'">🔗</span><span *ngSwitchCase="'short'">📌</span><span *ngSwitchCase="'keys'">🔍</span><span *ngSwitchCase="'questions'">❓</span><span *ngSwitchCase="'statements'">⚖️</span><span *ngSwitchCase="'choice'">🔘</span><span *ngSwitchCase="'word'">🔎</span><span *ngSwitchDefault>📖</span></ng-container></ng-template>
 
   <!-- The whole text on a sheet of paper (every stage but Read & head, and the final review) -->
   <ng-template #articleTpl let-review="review">
@@ -31,6 +31,8 @@
                  class="rd-para"
                  [class.rd-para-hint]="hintParagraph === paragraph.id"
                  [class.rd-para-match]="!review && matchMode"
+                 [class.rd-para-notice]="!review && !!currentShort"
+                 [class.rd-para-hidden]="!review && isOtherShortText(paragraph)"
                  [class.rd-para-right]="!review && justMatched === paragraph.id"
                  [class.rd-para-wrong]="!review && wrongParagraph === paragraph.id"
                  (click)="!review && matchMode && chooseMatch(paragraph.id)">
@@ -166,6 +168,35 @@
             <span class="rd-option-letter">{{ usedCards.has(card.id) ? '✓' : letters[i] }}</span>
             <span class="rd-bank-text">{{ card.text }}</span>
           </button>
+        </div>
+      </ng-container>
+
+      <!-- Short texts -->
+      <ng-container *ngIf="stage === 'short' && currentShort as short">
+        <p class="rd-kicker">📌 {{ 'readingDetectiveShortWhat' | translate }}</p>
+        <ng-container *ngFor="let s of [short]; trackBy: trackById">
+          <div *ngIf="s.question" class="rd-task-card" [class.rd-task-card-done]="taskPhase === 'done'">
+            <span class="rd-qcard-number">{{ taskIndex + 1 }}</span>
+            <p class="rd-task-text">{{ s.question }}</p>
+            <span *ngIf="taskPhase === 'done' && !skipping" class="rd-qcard-tick">✓</span>
+          </div>
+        </ng-container>
+        <div class="rd-options">
+          <button *ngFor="let option of currentShortOptions; let i = index" type="button"
+                  class="rd-option"
+                  [class.rd-option-chosen]="chosenOption === i"
+                  [class.rd-option-faded]="chosenOption >= 0 && chosenOption !== i"
+                  [class.rd-shake]="wrongOption === i"
+                  [class.rd-option-wrong]="wrongOption === i"
+                  [disabled]="busy"
+                  (click)="chooseShortOption(i)">
+            <span class="rd-option-letter">{{ letters[i] }}</span>
+            <span class="rd-option-text">{{ option.text }}</span>
+          </button>
+        </div>
+        <div class="rd-progress">
+          <div class="rd-progress-bar"><span [style.width.%]="(taskIndex / taskCount) * 100"></span></div>
+          <span class="rd-progress-text">{{ taskIndex + 1 }} / {{ taskCount }}</span>
         </div>
       </ng-container>
 

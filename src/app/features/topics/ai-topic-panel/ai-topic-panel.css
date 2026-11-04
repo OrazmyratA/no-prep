@@ -496,6 +496,11 @@
   margin-top: 4px;
 }
 
+.ai-exam-part-label {
+  display: block;
+  margin-top: 10px;
+}
+
 .ai-exam-part-hint {
   margin: 4px 0 10px;
 }

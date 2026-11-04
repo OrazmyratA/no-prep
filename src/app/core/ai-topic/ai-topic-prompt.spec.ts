@@ -30,6 +30,12 @@ describe('ai-topic-prompt', () => {
     expect(text).toContain('- Gapped text: 5 sentences taken out');
   });
 
+  it('names an IELTS passage as a passage', () => {
+    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS }, readingExamPart: 'ielts-3' });
+    expect(text).toContain('These tasks practise IELTS Academic Reading passage 3.');
+    expect(text).toContain('about 700-900 words');
+  });
+
   it('asks for gap fills by their number, and explains the sign', () => {
     const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, gapOptions: 6, gapOpen: 4 } });
     expect(text).toContain('- Gap fill with options (GAP): 6 gaps');
@@ -42,6 +48,12 @@ describe('ai-topic-prompt', () => {
     const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, match: 7 } });
     expect(text).toContain('- Multiple matching (MATCH): 7 sentences to match');
     expect(buildAiTopicSystemPrompt()).toContain('? MATCH Who stayed for a month? {B}');
+  });
+
+  it('asks for short texts by their number, and explains the sign', () => {
+    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, short: 6 } });
+    expect(text).toContain('- Short texts (SHORT): 6 short texts, one question each');
+    expect(buildAiTopicSystemPrompt()).toContain('? SHORT B: What does Tom want Sam to do?');
   });
 
   it('adds no exam part rules for a free choice', () => {

@@ -162,6 +162,10 @@ other stage and game. A gap that can't be placed, or that sits in a `~` sentence
 comes straight after Gapped text, and the gaps stay empty during Gapped text so it can't give the answers
 away. After 3 wrong answers an open gap shows its first letter.
 
+**Short texts** (`? SHORT`, stage `short`): `? SHORT B: What does Tom want? {*His book | A pen}`. Each paragraph is a
+notice or message; the letter says which, and only that one shows with its question. The question may be left
+empty when the options say what the text means. A letter with no paragraph is left out.
+
 **Matching** (`? MATCH`, stage `match`): `? MATCH Who stayed for a month? {B}`. Every paragraph counts as one
 separate text, lettered in order (a heading with no sentences after it doesn't count), so several short
 texts need no new format. Students tap the text or its letter. A text may answer several sentences, the
@@ -179,9 +183,14 @@ The "📖 Reading text" chip shows **Tasks to make**:
 - ticks with counts (1–10) for True/False (5), Multiple choice (4), Gapped text (3),
   Find the word (4).
 
-Above them, once a level is chosen, the **Exam part** list (`reading-exam-parts.ts`) shows that level's
-tests. Choosing a part fills in the tasks with its real amounts (they can still be changed) and sends
-the part's rules to the AI: options per question, number of extra sentences, order of the questions.
+Above them, once a level is chosen, the **Exam** list (`reading-exam-parts.ts`) shows that level's
+tests, and choosing one opens the **Reading part** list with its first playable part picked. Choosing a
+part fills in the tasks with its real amounts (they can still be changed) and sends the part's rules to
+the AI: options per question, number of extra sentences, order of the questions.
+IELTS Academic lists Reading passage 1, 2 and 3. Real passages have about 13 questions of mixed, changing
+types, so their tasks are a typical mix we chose, not official ones: 1 = 7 TFNG + 6 Matching; 2 = headings
++ 6 Matching + 7 Multiple choice; 3 = 7 YNNG + 6 Multiple choice. Sentence and summary completion can join
+the mix once the game plays them. General Training isn't listed: its sections are built differently.
 Parts the game can't play yet are greyed out. Word counts per part aren't published in the handbooks, so the AI is only asked for the usual
 length. Free choice is the default and sends no exam rules.
 

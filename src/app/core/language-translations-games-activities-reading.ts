@@ -925,6 +925,58 @@ export const GAME_READING_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   vi: 'Đó là văn bản nào? Chạm vào văn bản hoặc chữ cái của nó.',
 },
 
+'readingDetectiveStage_short': {
+  en: 'Short texts',
+  tk: 'Gysga tekstler',
+  ru: 'Короткие тексты',
+  cn: '短文',
+  cde: 'Kurze Texte',
+  es: 'Textos breves',
+  fr: 'Textes courts',
+  kr: '짧은 글',
+  sa: 'نصوص قصيرة',
+  vi: 'Văn bản ngắn',
+},
+
+'readingDetectiveStageDesc_short': {
+  en: 'Read each notice or message and choose what it says.',
+  tk: 'Her bildirişi ýa-da haty okaň we onda näme aýdylýandygyny saýlaň.',
+  ru: 'Прочитайте каждое объявление или сообщение и выберите, о чём в нём говорится.',
+  cn: '阅读每则通知或消息，选出它的意思。',
+  cde: 'Lies jede Notiz oder Nachricht und wähle, was sie aussagt.',
+  es: 'Lee cada aviso o mensaje y elige lo que dice.',
+  fr: 'Lisez chaque annonce ou message et choisissez ce qu\'il dit.',
+  kr: '각 안내문이나 메시지를 읽고 내용을 고르세요.',
+  sa: 'اقرأ كل إعلان أو رسالة واختر ما تقوله.',
+  vi: 'Đọc từng thông báo hoặc tin nhắn và chọn nội dung của nó.',
+},
+
+'readingDetectiveCount_short': {
+  en: '{n} short texts',
+  tk: '{n} gysga tekst',
+  ru: 'Коротких текстов: {n}',
+  cn: '{n} 篇短文',
+  cde: '{n} kurze Texte',
+  es: '{n} textos breves',
+  fr: '{n} textes courts',
+  kr: '짧은 글 {n}개',
+  sa: '{n} نصوص قصيرة',
+  vi: '{n} văn bản ngắn',
+},
+
+'readingDetectiveShortWhat': {
+  en: 'What does this text say?',
+  tk: 'Bu tekstde näme aýdylýar?',
+  ru: 'О чём говорится в этом тексте?',
+  cn: '这段文字说了什么？',
+  cde: 'Was sagt dieser Text?',
+  es: '¿Qué dice este texto?',
+  fr: 'Que dit ce texte ?',
+  kr: '이 글의 내용은 무엇인가요?',
+  sa: 'ماذا يقول هذا النص؟',
+  vi: 'Văn bản này nói gì?',
+},
+
 'readingDetectiveCount_word': {
   en: '{n} words',
   tk: '{n} söz',
