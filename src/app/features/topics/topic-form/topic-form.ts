@@ -280,6 +280,8 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
       case 'YNNG': return { kind: 'task', key: '', literal: 'Y / N / NG' };
       case 'MC': return { kind: 'task', key: 'readingDetectiveStage_choice', literal: '' };
       case 'WORD': return { kind: 'task', key: 'readingDetectiveStage_word', literal: '' };
+      case 'GAP': return { kind: 'task', key: 'readingDetectiveStage_cloze', literal: '' };
+      case 'MATCH': return { kind: 'task', key: 'readingDetectiveStage_match', literal: '' };
       case 'EXTRA': return { kind: 'gap', key: 'topicFormBadgeExtra', literal: '' };
       default: return { kind: 'unknown', key: 'topicFormBadgeUnknown', literal: '' };
     }

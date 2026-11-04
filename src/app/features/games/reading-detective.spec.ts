@@ -112,6 +112,180 @@ describe('ReadingDetectiveComponent', () => {
     expect(component.hintParagraph).toBe(0);
   });
 
+  describe('matching', () => {
+    const TEXTS: Item[] = [
+      item(0, 'Anna lives in Rome.'),
+      item(1, '* Ben lives in Oslo.'),
+      item(2, '* Cem lives in Baku.'),
+      item(3, '? MATCH Who lives in Norway? {B}'),
+      item(4, '? MATCH Who lives in Italy? {A}')
+    ];
+
+    it('takes the right text, counting first tries only, in the order they were written', async () => {
+      await create(TEXTS);
+      component.start();
+      expect(component.stage).toBe('match');
+      expect(component.matchMode).toBe(true);
+      expect(component.currentMatch?.prompt).toBe('Who lives in Norway?');
+
+      component.chooseMatch(0);
+      expect(component.wrongParagraph).toBe(0);
+      expect(component.taskIndex).toBe(0);
+      vi.advanceTimersByTime(600);
+      expect(component.wrongParagraph).toBe(-1);
+
+      component.chooseMatch(1);
+      expect(component.justMatched).toBe(1);
+      expect(component.scores.match.got).toBe(0);
+      vi.advanceTimersByTime(950);
+      expect(component.justMatched).toBe(-1);
+      expect(component.currentMatch?.prompt).toBe('Who lives in Italy?');
+
+      component.chooseMatch(0);
+      vi.advanceTimersByTime(950);
+      expect(component.scores.match.got).toBe(1);
+      expect(component.scores.match.total).toBe(2);
+      expect(component.view).toBe('results');
+    });
+
+    it('lets a text answer more than one sentence', async () => {
+      await create([...TEXTS.slice(0, 3), item(3, '? MATCH Who lives in Norway? {B}'), item(4, '? MATCH Whose city is Oslo? {B}')]);
+      component.start();
+      component.chooseMatch(1);
+      vi.advanceTimersByTime(950);
+      component.chooseMatch(1);
+      vi.advanceTimersByTime(950);
+      expect(component.scores.match.got).toBe(2);
+    });
+
+    it('lights up the right text after three wrong tries', async () => {
+      await create(TEXTS);
+      component.start();
+      for (let i = 0; i < 3; i++) {
+        component.chooseMatch(2);
+        vi.advanceTimersByTime(600);
+      }
+      expect(component.hintParagraph).toBe(1);
+    });
+
+    it('shows the answer when skipped, and scores nothing', async () => {
+      await create(TEXTS);
+      component.start();
+      component.skipQuestion();
+      expect(component.justMatched).toBe(1);
+      expect(component.scores.match.got).toBe(0);
+      vi.advanceTimersByTime(950);
+      expect(component.taskIndex).toBe(1);
+    });
+
+    it('chooses a text with its letter key or number key', async () => {
+      await create(TEXTS);
+      component.start();
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'b' }));
+      expect(component.justMatched).toBe(1);
+      vi.advanceTimersByTime(950);
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: '1' }));
+      expect(component.justMatched).toBe(0);
+    });
+  });
+
+  describe('gap fill', () => {
+    const GAPS: Item[] = [
+      item(0, 'We walked to the river.'),
+      item(1, 'I stayed there for four weeks.'),
+      item(2, '? GAP We _ to the river. {*walked | ran | sat}'),
+      item(3, '? GAP I stayed there _ four weeks. {for | during}')
+    ];
+    const wordOf = (text: string) => component.text.words.find(word => word.text === text)!;
+    const pick = (label: string) => component.currentClozeOptions.findIndex(option => option.text === label);
+
+    it('hides the words until the right option is chosen, counting first tries only', async () => {
+      await create(GAPS);
+      component.start();
+      expect(component.stage).toBe('cloze');
+      expect(component.clozeAt(wordOf('walked'))?.id).toBe(0);
+      expect(component.clozeAt(wordOf('river.'))).toBeNull();
+
+      component.chooseClozeOption(pick('ran'));
+      expect(component.wrongOption).toBe(pick('ran'));
+      vi.advanceTimersByTime(600);
+      component.chooseClozeOption(pick('walked'));
+      expect(component.clozeAt(wordOf('walked'))).toBeNull();
+      expect(component.isClozeWordFilled(wordOf('walked'))).toBe(true);
+      expect(component.scores.cloze.got).toBe(0);
+      vi.advanceTimersByTime(950);
+      expect(component.taskIndex).toBe(1);
+    });
+
+    it('takes a typed answer in any capitals, and any accepted word', async () => {
+      await create(GAPS);
+      component.start();
+      component.chooseClozeOption(pick('walked'));
+      vi.advanceTimersByTime(950);
+
+      component.clozeInput = 'in';
+      component.submitClozeAnswer();
+      expect(component.wrongCloze).toBe(true);
+      vi.advanceTimersByTime(600);
+      component.clozeInput = ' DURING ';
+      component.submitClozeAnswer();
+      expect(component.clozeFilled.has(1)).toBe(true);
+      vi.advanceTimersByTime(950);
+      expect(component.view).toBe('results');
+      expect(component.scores.cloze.got).toBe(1);
+    });
+
+    it('gives the first letter after three wrong answers on an open gap', async () => {
+      await create([GAPS[0], GAPS[1], GAPS[3]]);
+      component.start();
+      expect(component.clozeHintLetter).toBe('');
+      for (let i = 0; i < 3; i++) {
+        component.clozeInput = 'no';
+        component.submitClozeAnswer();
+        vi.advanceTimersByTime(600);
+      }
+      expect(component.clozeHintLetter).toBe('F');
+    });
+
+    it('shows the answer when a gap is skipped, and scores nothing', async () => {
+      await create(GAPS);
+      component.start();
+      component.skipQuestion();
+      expect(component.clozeFilled.has(0)).toBe(true);
+      expect(component.scores.cloze.got).toBe(0);
+      vi.advanceTimersByTime(950);
+      expect(component.taskIndex).toBe(1);
+    });
+
+    it('chooses an option with number and letter keys', async () => {
+      await create(GAPS);
+      component.start();
+      const right = pick('walked');
+      component.onWindowKeyDown(new KeyboardEvent('keydown', { key: String(right + 1) }));
+      expect(component.clozeFilled.has(0)).toBe(true);
+    });
+
+    it('keeps the gaps empty during Gapped text, which comes first, and shows the words after Gap fill', async () => {
+      await create([...GAPS, item(4, '~ Then we went home.')]);
+      component.start();
+      expect(component.stage).toBe('gapped');
+      expect(component.clozeAt(wordOf('walked'))).not.toBeNull();
+      component.skipStage();
+      expect(component.stage).toBe('cloze');
+      component.skipStage();
+      expect(component.clozeAt(wordOf('walked'))).toBeNull();
+    });
+  });
+
+  it('stage 2: the questions follow the order of the text', async () => {
+    await create(STORY);
+    component.start();
+    component.skipStage();
+    const inText = component.text.sentences.filter(sentence => sentence.hasQuestion);
+    expect(inText.length).toBe(3);
+    expect(component.questions).toEqual(inText);
+  });
+
   it('stage 2: the answer is the sentence of the question card', async () => {
     await create(STORY);
     component.start();
@@ -224,6 +398,15 @@ describe('ReadingDetectiveComponent', () => {
     expect(component.headingResult(component.text.paragraphs[0])?.missed).toBe(true);
     vi.advanceTimersByTime(2600);
     expect(component.readIndex).toBe(1);
+  });
+
+  it('skips the read-through when the text has no headings but has other tasks, unless the teacher turns it on', async () => {
+    await create([item(0, 'One two three.', true), item(1, '* Four five.')]);
+    expect(component.availableStages).toContain('reading');
+    expect(component.isStageOn('reading')).toBe(false);
+    expect(component.activeStages).toEqual(['questions']);
+    component.toggleStage('reading');
+    expect(component.isStageOn('reading')).toBe(true);
   });
 
   it('stage 3 without headings: each paragraph waits for Next', async () => {

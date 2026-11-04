@@ -6,9 +6,12 @@
 //   ? YNNG  The writer thinks fishing is boring. {No | "patient and quiet"}
 //   ? MC    Why was the writer nervous? {*She didn't know anyone | The house was cold | "know anyone"}
 //   ? WORD  Find a word that means "calm". {quiet}
+//   ? MATCH Who stayed for a month? {B}                 (matching: the letter of the paragraph, A = the first)
 //   ? EXTRA The weather was terrible all summer.        (a wrong extra sentence for Gapped text)
+//   ? GAP   We _ to the river. {*walked | ran | sat}    (gap fill: words of the text, _ for the missing word)
+//   ? GAP   We went _ the river. {to | towards}         (no star = an open gap; every part is accepted)
 
-export type TaskTag = 'TFNG' | 'YNNG' | 'MC' | 'WORD' | 'EXTRA';
+export type TaskTag = 'TFNG' | 'YNNG' | 'MC' | 'WORD' | 'EXTRA' | 'GAP' | 'MATCH';
 /** yes = True / Yes, no = False / No, ng = Not given. */
 export type Verdict = 'yes' | 'no' | 'ng';
 
@@ -19,7 +22,7 @@ export interface ParsedTask {
   quote: string;      // evidence quote, '' when none
 }
 
-const KNOWN_TAGS: readonly string[] = ['TFNG', 'YNNG', 'MC', 'WORD', 'EXTRA'];
+const KNOWN_TAGS: readonly string[] = ['TFNG', 'YNNG', 'MC', 'WORD', 'EXTRA', 'GAP', 'MATCH'];
 const TASK_LINE = /^\s*\?\s*([A-Za-z]+)\b\s*([\s\S]*)$/;
 const ANSWER_BRACES = /\{([^{}]*)\}\s*$/;
 const QUOTED = /^["“”„«»]([\s\S]*)["“”„«»]$/;

@@ -5,6 +5,7 @@ import { AiTopicPanelComponent } from './ai-topic-panel';
 import { AiTopicError, AiTopicService } from '../../../core/ai-topic/ai-topic.service';
 import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
 import { LanguageService } from '../../../core/language';
+import { DEFAULT_READING_TASKS } from '../../../core/ai-topic/ai-topic-prompt';
 
 type FakeProvider = { id: string; configured: boolean; maxImages?: number };
 
@@ -274,5 +275,106 @@ describe('AiTopicPanelComponent: what is happening', () => {
     });
     await panel.generate();
     expect(seen).toEqual({ kind: 'wait', reason: 'busy', seconds: 6 });
+  });
+});
+
+describe('AiTopicPanelComponent reading task amounts', () => {
+  let component: AiTopicPanelComponent;
+  const row = (key: string) => component.readingTaskRows.find(task => task.key === key)!;
+
+  beforeEach(async () => {
+    component = (await makePanel([])).componentInstance;
+  });
+
+  it('asks for 5 key words and 5 questions by default', () => {
+    expect([component.readingCount('keys'), component.readingCount('questions')]).toEqual([5, 5]);
+  });
+
+  it('lets the teacher choose up to 20 key words and questions, and 10 of the other tasks', () => {
+    component.setReadingCount(row('keys'), '12');
+    expect(component.readingCount('keys')).toBe(12);
+    component.setReadingCount(row('questions'), '50');
+    expect(component.readingCount('questions')).toBe(20);
+    component.setReadingCount(row('statements'), '50');
+    expect(component.readingCount('statements')).toBe(10);
+  });
+
+  it('keeps the task ticked while the number box is being retyped', () => {
+    component.setReadingCount(row('keys'), '12');
+    component.setReadingCount(row('keys'), '');
+    expect(component.readingCount('keys')).toBe(12);
+    component.setReadingCount(row('keys'), '0');
+    expect(component.readingCount('keys')).toBe(1);
+  });
+
+  it('turns numbered tasks off and back on at their usual amount, and headings on and off', () => {
+    component.setReadingCount(row('questions'), '12');
+    component.toggleReadingTask(row('questions'));
+    expect(component.isReadingTaskOn(row('questions'))).toBe(false);
+    expect(component.readingTasks.questions).toBe(0);
+    component.toggleReadingTask(row('questions'));
+    expect(component.readingCount('questions')).toBe(5);
+
+    expect(row('headings').max).toBeUndefined();
+    component.toggleReadingTask(row('headings'));
+    expect(component.readingTasks.headings).toBe(false);
+    component.toggleReadingTask(row('headings'));
+    expect(component.readingTasks.headings).toBe(true);
+  });
+});
+
+describe('AiTopicPanelComponent exam parts', () => {
+  let fixture: ComponentFixture<AiTopicPanelComponent>;
+  let component: AiTopicPanelComponent;
+
+  beforeEach(async () => {
+    fixture = await makePanel([]);
+    component = fixture.componentInstance;
+    component.readingMode = true;
+  });
+
+  it('lists the chosen level\'s tests, and none for Auto', () => {
+    const exams = (level: 'A1' | 'A2' | 'B2' | null) => {
+      component.setLevel(level);
+      return component.readingExamGroups.map(group => group.exam);
+    };
+    expect(exams('A2')).toEqual(['A2 Flyers', 'A2 Key (KET)']);
+    expect(exams('B2')).toEqual(['B2 First (FCE)', 'IELTS']);
+    expect(exams('A1')).toEqual(['A1 Movers']);
+    expect(exams(null)).toEqual([]);
+  });
+
+  it('fills in only the part\'s tasks, which the teacher can still change', () => {
+    component.setLevel('B1');
+    component.setReadingExamPart('pet-4');
+    expect(component.readingTasks).toEqual({ keys: 0, questions: 0, headings: false, statements: 0, choice: 0, gapped: 5, word: 0, gapOptions: 0, gapOpen: 0, match: 0 });
+    component.setReadingCount(component.readingTaskRows.find(task => task.key === 'gapped')!, '3');
+    expect(component.readingTasks.gapped).toBe(3);
+    expect(component.readingExamPartId).toBe('pet-4');
+  });
+
+  it('brings back the usual tasks for free choice', () => {
+    component.setLevel('B1');
+    component.setReadingExamPart('pet-3');
+    component.setReadingExamPart('');
+    expect(component.readingTasks).toEqual(DEFAULT_READING_TASKS);
+    expect(component.readingExamPartId).toBe('');
+  });
+
+  it('drops the part when the level changes to one without it, but keeps it within the level\'s tests', () => {
+    component.setLevel('B2');
+    component.setReadingExamPart('ielts-tfng');
+    component.setLevel('C1');
+    expect(component.readingExamPartId).toBe('ielts-tfng');
+    component.setLevel('A2');
+    expect(component.readingExamPartId).toBe('');
+    expect(component.readingTasks).toEqual(DEFAULT_READING_TASKS);
+  });
+
+  it('refuses a part the game can\'t play yet', () => {
+    component.setLevel('B1');
+    component.setReadingExamPart('pet-1');
+    expect(component.readingExamPartId).toBe('');
+    expect(component.readingExamPartLabel(component.readingExamGroups[0].parts[0])).toContain('(');
   });
 });

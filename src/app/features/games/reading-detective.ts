@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener, NgZone } from '@angular/core';
+import { Component, ElementRef, OnInit, OnDestroy, ChangeDetectorRef, HostListener, NgZone, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
@@ -11,8 +11,10 @@ import {
   MAX_WPM,
   MIN_WPM,
   RdChoice,
+  RdCloze,
   RdHeading,
   RdKey,
+  RdMatch,
   RdParagraph,
   RdSentence,
   RdStatement,
@@ -20,6 +22,7 @@ import {
   RdWordTask,
   ReadingText,
   buildReadingText,
+  clozeAnswerKey,
   findKeyAt,
   headingSeconds,
   wordDelayMs
@@ -33,14 +36,16 @@ import { TranslatePipe } from '../../shared/translate-pipe';
 // Reading Detective (docs/reading-detective.md): one reading text, up to seven stages (each one
 // only when the topic has items for it; the teacher can switch stages off on the start screen).
 // - Gapped text - put the `~` sentences back into their gaps (first, before the text is read).
+// - Gap fill - find the missing words, with options or typed in (also before the text is read).
 // - Key words - find each [key word] in the text (scanning; together they tell the gist).
 // - Questions - tap the sentence that answers each question card (reading for detail).
 // - Read & head - the text appears word by word, paragraph by paragraph, at the level's speed;
 //   after each paragraph the student picks its heading against a timer (main idea).
 // - True/False (T/F/NG and Y/N/NG), Multiple choice - answer, then "prove it": tap the sentence.
+// - Matching - each paragraph is a lettered text: tap the one a sentence is about.
 // - Find the word - tap the word in the text that matches a clue.
 
-export type RdStage = 'gapped' | 'keys' | 'questions' | 'reading' | 'statements' | 'choice' | 'word';
+export type RdStage = 'gapped' | 'cloze' | 'keys' | 'questions' | 'reading' | 'statements' | 'choice' | 'match' | 'word';
 /** Statements and multiple choice: answer, then tap the proof sentence. */
 type TaskPhase = 'answer' | 'prove' | 'done';
 
@@ -68,8 +73,8 @@ interface HeadingResult {
   missed: boolean;
 }
 
-// Gapped text comes first: once the whole text has been read, the gaps would be filled from memory.
-const STAGES: RdStage[] = ['gapped', 'keys', 'questions', 'reading', 'statements', 'choice', 'word'];
+// Gapped text and Gap fill come first: once the whole text has been read, the gaps would be filled from memory.
+const STAGES: RdStage[] = ['gapped', 'cloze', 'keys', 'questions', 'reading', 'statements', 'choice', 'match', 'word'];
 export const VERDICTS: Verdict[] = ['yes', 'no', 'ng'];
 const SHAKE_MS = 600;
 const FOUND_NEXT_MS = 750;
@@ -156,6 +161,18 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
   wordHits = new Set<number>();
   proofMistakes = 0;
 
+  // Gap fill
+  clozeOptions: { text: string; correct: boolean }[][] = [];
+  clozeFilled = new Set<number>();
+  clozeInput = '';
+  wrongCloze = false;
+  @ViewChild('clozeField') private clozeField?: ElementRef<HTMLInputElement>;
+
+  // Matching
+  /** The paragraph just matched, or -1. */
+  justMatched = -1;
+  wrongParagraph = -1;
+
   // Feedback flashes
   wrongWord = -1;
   wrongSentence = -1;
@@ -176,6 +193,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     { key: 'Shift + R', action: 'Start over' }
   ];
 
+  private clozeByWord = new Map<number, RdCloze>();
   private imageUrls = new Map<Item, string>();
   private buzzSound: HTMLAudioElement | null = null;
   private collectSound: HTMLAudioElement | null = null;
@@ -214,6 +232,9 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       this.topicName = topic?.name ?? '';
       this.setLevel(normalizeCefrLevel(topic?.level) ?? 'A2');
       this.text = buildReadingText(items);
+      // Without headings, this stage has nothing to answer: it stays off when the text has real tasks, and the teacher can still turn it on.
+      if (this.headingCount === 0 && this.availableStages.length > 1) this.enabledStages.delete('reading');
+      this.text.clozes.forEach(cloze => cloze.words.forEach(id => this.clozeByWord.set(id, cloze)));
       if (this.text.sentences.length === 0) {
         showAppNotification(this.langService.translate('readingDetectiveNoText'), 'error');
         this.router.navigate(['/topics', this.topicId, 'activities']);
@@ -253,6 +274,8 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
   stageCount(stage: RdStage): number {
     switch (stage) {
       case 'gapped': return this.text.gaps.length;
+      case 'cloze': return this.text.clozes.length;
+      case 'match': return this.text.matches.length;
       case 'keys': return this.text.keys.length;
       case 'questions': return this.text.sentences.filter(sentence => sentence.hasQuestion).length;
       case 'reading': return this.text.paragraphs.length;
@@ -330,6 +353,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     const first = STAGES.find(stage => this.isStageOn(stage));
     if (!first) return;
     this.scores = this.emptyScores();
+    this.clozeFilled = new Set();
     this.beginStage(first);
   }
 
@@ -382,6 +406,12 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       this.usedCards = new Set();
       this.filledGaps = new Set();
       score.total = this.text.gaps.length;
+    } else if (stage === 'cloze') {
+      this.clozeOptions = this.text.clozes.map(cloze => cloze.options ? shuffled(cloze.options) : []);
+      this.clozeFilled = new Set();
+      score.total = this.text.clozes.length;
+    } else if (stage === 'match') {
+      score.total = this.text.matches.length;
     } else if (stage === 'statements') {
       score.total = this.text.statements.length;
       score.proofTotal = this.text.statements.filter(statement => statement.proof >= 0).length;
@@ -400,7 +430,8 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       this.freshWords = new Set();
       score.total = this.text.keys.length;
     } else if (stage === 'questions') {
-      this.questions = shuffled(this.text.sentences.filter(sentence => sentence.hasQuestion));
+      // In the order of the text, so students follow the story as they answer.
+      this.questions = this.text.sentences.filter(sentence => sentence.hasQuestion);
       this.questionIndex = 0;
       this.answered = new Map();
       this.justAnswered = -1;
@@ -414,6 +445,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       this.startParagraph(0);
     }
     this.cdr.detectChanges();
+    this.showCurrentCloze();
   }
 
   private finishStage() {
@@ -450,6 +482,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.usedHeadings = new Set();
     this.filledGaps = new Set();
     this.usedCards = new Set();
+    this.clozeFilled = new Set();
     this.proved = new Set();
     this.wordHits = new Set();
     this.resetTaskFlags();
@@ -572,6 +605,24 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
         next = () => this.nextGap();
         break;
       }
+      case 'match': {
+        const match = this.currentMatch;
+        if (!match) return;
+        this.justMatched = match.paragraph;
+        this.taskPhase = 'done';
+        next = () => this.nextTask();
+        break;
+      }
+      case 'cloze': {
+        const cloze = this.currentCloze;
+        if (!cloze) return;
+        this.chosenOption = this.currentClozeOptions.findIndex(option => option.correct);
+        this.clozeFilled.add(cloze.id);
+        this.freshWords = new Set(cloze.words);
+        this.taskPhase = 'done';
+        next = () => this.nextTask();
+        break;
+      }
       case 'keys':
       case 'word': {
         const key = this.stage === 'word' ? this.currentWordTask?.key : this.currentKey;
@@ -687,6 +738,118 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  // ---- Matching ----
+
+  get currentMatch(): RdMatch | null {
+    return this.stage === 'match' ? this.text.matches[this.taskIndex] ?? null : null;
+  }
+
+  /** Every paragraph shows as a lettered text that can be tapped. */
+  get matchMode(): boolean {
+    return this.view === 'play' && this.stage === 'match';
+  }
+
+  chooseMatch(paragraph: number) {
+    const match = this.currentMatch;
+    if (this.view !== 'play' || !match || this.busy || !this.text.paragraphs[paragraph]) return;
+    if (paragraph !== match.paragraph) {
+      this.wrongAnswer(() => { this.wrongParagraph = paragraph; }, () => { this.wrongParagraph = -1; });
+      return;
+    }
+    if (this.mistakes === 0) this.scores.match.got++;
+    this.busy = true;
+    this.justMatched = paragraph;
+    this.wrongParagraph = -1;
+    this.taskPhase = 'done';
+    this.playSound(this.collectSound, 0.5);
+    this.cdr.detectChanges();
+    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
+  }
+
+  // ---- Gap fill ----
+
+  get currentCloze(): RdCloze | null {
+    return this.stage === 'cloze' ? this.text.clozes[this.taskIndex] ?? null : null;
+  }
+
+  get currentClozeOptions(): { text: string; correct: boolean }[] {
+    return this.stage === 'cloze' ? this.clozeOptions[this.taskIndex] ?? [] : [];
+  }
+
+  /**
+   * The gap to show in place of this word, or null when the word shows. Gapped text comes first and
+   * would give the answers away, so the gaps are empty there too.
+   */
+  clozeAt(word: RdWord): RdCloze | null {
+    if (this.view !== 'play' || (this.stage !== 'cloze' && this.stage !== 'gapped') || !this.isStageOn('cloze')) return null;
+    const cloze = this.clozeByWord.get(word.id);
+    return cloze && !this.clozeFilled.has(cloze.id) ? cloze : null;
+  }
+
+  isClozeWordFilled(word: RdWord): boolean {
+    const cloze = this.clozeByWord.get(word.id);
+    return this.stage === 'cloze' && !!cloze && this.clozeFilled.has(cloze.id);
+  }
+
+  /** The punctuation kept beside an empty gap: it isn't part of the answer. */
+  clozeLead(cloze: RdCloze): string {
+    return /^[^\p{L}\p{N}]*/u.exec(this.text.words[cloze.words[0]].text)?.[0] ?? '';
+  }
+
+  clozeTail(cloze: RdCloze): string {
+    return /[^\p{L}\p{N}]*$/u.exec(this.text.words[cloze.words[cloze.words.length - 1]].text)?.[0] ?? '';
+  }
+
+  /** The first letter, once an open gap has had a few wrong tries. */
+  get clozeHintLetter(): string {
+    const cloze = this.currentCloze;
+    if (!cloze || cloze.options || this.mistakes < HINT_AFTER_MISTAKES) return '';
+    return cloze.answers[0].charAt(0).toLocaleUpperCase();
+  }
+
+  chooseClozeOption(index: number) {
+    const cloze = this.currentCloze;
+    const option = this.currentClozeOptions[index];
+    if (this.view !== 'play' || !cloze || !option || this.busy) return;
+    if (!option.correct) {
+      this.wrongAnswer(() => { this.wrongOption = index; }, () => { this.wrongOption = -1; });
+      return;
+    }
+    this.chosenOption = index;
+    this.fillCloze(cloze);
+  }
+
+  submitClozeAnswer() {
+    const cloze = this.currentCloze;
+    const answer = clozeAnswerKey(this.clozeInput);
+    if (this.view !== 'play' || !cloze || !answer || this.busy) return;
+    if (!cloze.answers.includes(answer)) {
+      this.wrongAnswer(() => { this.wrongCloze = true; }, () => { this.wrongCloze = false; });
+      return;
+    }
+    this.fillCloze(cloze);
+  }
+
+  private fillCloze(cloze: RdCloze) {
+    if (this.mistakes === 0) this.scores.cloze.got++;
+    this.busy = true;
+    this.wrongOption = -1;
+    this.wrongCloze = false;
+    this.taskPhase = 'done';
+    this.clozeFilled.add(cloze.id);
+    this.freshWords = new Set(cloze.words);
+    this.playSound(this.collectSound, 0.5);
+    this.cdr.detectChanges();
+    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
+  }
+
+  /** Keeps the current gap on screen and, for an open gap, the cursor in its box. */
+  private showCurrentCloze() {
+    if (!this.currentCloze) return;
+    this.clozeField?.nativeElement.focus();
+    document.querySelector('.rd-cloze-current')?.scrollIntoView?.({ block: 'nearest' });
+  }
+
   // ---- True/False, multiple choice, find the word ----
 
   get currentStatement(): RdStatement | null {
@@ -787,12 +950,17 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     }
     this.playSound(this.flipSound, 0.4);
     this.cdr.detectChanges();
+    this.showCurrentCloze();
   }
 
   private resetTaskFlags() {
     this.chosenOption = -1;
     this.wrongOption = -1;
     this.wrongCard = -1;
+    this.wrongCloze = false;
+    this.clozeInput = '';
+    this.justMatched = -1;
+    this.wrongParagraph = -1;
     this.ruleTipShown = false;
     this.justProved = -1;
     this.freshWords = new Set();
@@ -1014,6 +1182,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     if (this.stage === 'keys') return this.currentKey?.paragraph ?? -1;
     if (this.stage === 'questions') return this.currentQuestion?.paragraph ?? -1;
     if (this.stage === 'word') return this.currentWordTask?.key.paragraph ?? -1;
+    if (this.stage === 'match') return this.currentMatch?.paragraph ?? -1;
     return -1;
   }
 
@@ -1099,6 +1268,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.wrongHeading = -1;
     this.wrongCard = -1;
     this.wrongOption = -1;
+    this.wrongParagraph = -1;
     this.missionShake = false;
   }
 
@@ -1174,7 +1344,17 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     const letter = /^[a-i]$/.test(key) ? key.charCodeAt(0) - 97 : -1;
     const index = number >= 0 ? number : letter;
     if (index < 0) return;
-    if (this.stage === 'choice' && this.taskPhase === 'answer' && index < this.currentOptions.length) {
+    if (this.stage === 'match') {
+      if (index < this.text.paragraphs.length) {
+        event.preventDefault();
+        this.chooseMatch(index);
+      }
+    } else if (this.stage === 'cloze') {
+      if (index < this.currentClozeOptions.length) {
+        event.preventDefault();
+        this.chooseClozeOption(index);
+      }
+    } else if (this.stage === 'choice' && this.taskPhase === 'answer' && index < this.currentOptions.length) {
       event.preventDefault();
       this.chooseOption(index);
     } else if (this.stage === 'gapped') {

@@ -61,10 +61,10 @@
           <div class="ai-level-chips" role="radiogroup" [attr.aria-label]="'aiTopicLevel' | translate">
             <button type="button" class="ai-level" role="radio" [disabled]="generating"
                     [class.ai-level-active]="!level" [attr.aria-checked]="!level"
-                    (click)="level = null">{{ 'aiTopicAuto' | translate }}</button>
+                    (click)="setLevel(null)">{{ 'aiTopicAuto' | translate }}</button>
             <button *ngFor="let l of cefrLevels" type="button" class="ai-level" role="radio" [disabled]="generating"
                     [class.ai-level-active]="level === l" [attr.aria-checked]="level === l"
-                    [title]="cefrExamNames[l]" (click)="level = l">{{ l }}</button>
+                    [title]="cefrExamNames[l]" (click)="setLevel(l)">{{ l }}</button>
           </div>
           <span *ngIf="level" class="ai-levels-exam">{{ cefrExamNames[level] }}</span>
           <label *ngIf="!speakingMode" class="ai-task ai-simple" [title]="'aiTopicSimpleHint' | translate">
@@ -118,18 +118,25 @@
 
         <!-- Reading Detective: which parts and tasks the AI makes -->
         <div *ngIf="showReadingTasks" class="ai-reading-tasks">
+          <ng-container *ngIf="readingExamGroups.length">
+            <label class="ai-levels-label" for="aiReadingExamPart">🎯 {{ 'aiTopicExamPart' | translate }}</label>
+            <select id="aiReadingExamPart" class="ai-input ai-exam-part" [disabled]="generating" (change)="setReadingExamPart($any($event.target).value)">
+              <option value="" [selected]="!readingExamPartId">{{ 'aiTopicExamPartFree' | translate }}</option>
+              <optgroup *ngFor="let group of readingExamGroups" [label]="group.exam">
+                <option *ngFor="let part of group.parts" [value]="part.id" [disabled]="!part.tasks" [selected]="readingExamPartId === part.id">{{ readingExamPartLabel(part) }}</option>
+              </optgroup>
+            </select>
+            <p class="ai-hint ai-exam-part-hint">{{ 'aiTopicExamPartHint' | translate }}</p>
+          </ng-container>
           <span class="ai-levels-label">📖 {{ 'aiTopicReadingTasks' | translate }}</span>
           <div class="ai-task-grid">
-            <label *ngFor="let part of readingParts" class="ai-task">
-              <input type="checkbox" [checked]="readingTasks[part]" [disabled]="generating" (change)="toggleReadingPart(part)">
-              <span>{{ readingPartLabel(part) | translate }}</span>
-            </label>
-            <label *ngFor="let task of readingCounted" class="ai-task">
-              <input type="checkbox" [checked]="readingCount(task.key) > 0" [disabled]="generating" (change)="toggleReadingTask(task)">
+            <label *ngFor="let task of readingTaskRows" class="ai-task">
+              <input type="checkbox" [checked]="isReadingTaskOn(task)" [disabled]="generating" (change)="toggleReadingTask(task)">
               <span>{{ task.labelKey | translate }}</span>
-              <input *ngIf="readingCount(task.key) > 0" type="number" min="1" max="10" class="ai-input ai-task-count"
+              <input *ngIf="task.max && isReadingTaskOn(task)" type="number" min="1" [max]="task.max" class="ai-input ai-task-count"
                      [disabled]="generating" [value]="readingCount(task.key)"
-                     (input)="setReadingCount(task.key, $any($event.target).value)">
+                     (input)="setReadingCount(task, $any($event.target).value)"
+                     (blur)="$any($event.target).value = readingCount(task.key)">
             </label>
           </div>
         </div>

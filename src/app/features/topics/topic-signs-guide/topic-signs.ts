@@ -56,6 +56,8 @@ export const SIGNS_GUIDES: SignsGuide[] = [
           { sign: '? YNNG', meaningKey: 'signsReadYnng', example: '? YNNG The writer wants to visit again. {Yes | "hope to go back"}' },
           { sign: '? MC', meaningKey: 'signsReadMc', example: '? MC Where does grandma live? {*Near a river | In a big city | "by a river"}' },
           { sign: '? WORD', meaningKey: 'signsReadWord', example: '? WORD Find a word in paragraph 3 that means "unhappy". {sad}' },
+          { sign: '? GAP', meaningKey: 'signsReadGap', example: '? GAP Every morning we _ to the river. {*walked | ran | sat}' },
+          { sign: '? MATCH', meaningKey: 'signsReadMatch', example: '? MATCH Which paragraph is about catching fish? {B}' },
           { sign: '~', meaningKey: 'signsReadRemoved', example: '~ Grandma showed me how to be patient.' },
           { sign: '? EXTRA', meaningKey: 'signsReadExtra', example: '? EXTRA We went swimming in the sea.' }
         ]
@@ -79,6 +81,9 @@ export const SIGNS_GUIDES: SignsGuide[] = [
       '? YNNG The writer wants to visit again. {Yes | "hope to go back"}',
       '? MC Where does grandma live? {*Near a river | In a big city | By the sea | "by a river"}',
       '? WORD Find a word in paragraph 3 that means "unhappy". {sad}',
+      '? GAP Every morning we _ to the river. {*walked | ran | sat}',
+      '? GAP I stayed there _ four weeks. {for}',
+      '? MATCH Which paragraph is about catching fish? {B}',
       '? EXTRA We went swimming in the sea.'
     ]
   },

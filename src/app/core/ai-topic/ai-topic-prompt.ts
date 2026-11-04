@@ -2,6 +2,7 @@ import { AI_TOPIC_MAX_ITEMS } from './ai-topic-draft';
 import { CefrLevel, SpeakingExam } from '../db.model';
 import { SPEAKING_EXAMS, SpeakingTaskType } from '../speaking-exams';
 import { AiRecipeId, AiRecipeVariantId, findRecipe, recipeInstructions } from './ai-topic-recipes';
+import { findReadingExamPart } from './reading-exam-parts';
 
 export type AiMediaMode = 'auto' | 'on' | 'off';
 
@@ -16,6 +17,8 @@ export interface AiTopicRequest {
   level?: CefrLevel | null;     // CEFR level the teacher picked; null/absent = not given
   /** Reading Detective mode: which parts and tasks to make (counts: 0 = none). */
   readingTasks?: ReadingTasksRequest | null;
+  /** The exam part the reading tasks practise (reading-exam-parts.ts); null = the teacher's free choice. */
+  readingExamPart?: string | null;
   /** Talk Show mode: the exam and the parts to make, in order. */
   speakingTest?: SpeakingTestRequest | null;
   /** The chip (ready-made task) the request was made with: its expert rules are added. */
@@ -37,13 +40,16 @@ export interface AiTopicRequest {
 }
 
 export interface ReadingTasksRequest {
-  keys: boolean;       // [key words]
-  questions: boolean;  // question word cards on the sentences
+  keys: number;        // [key words]
+  questions: number;   // question word cards on the sentences
   headings: boolean;   // # headings + distractors
   statements: number;  // ? TFNG / ? YNNG
   choice: number;      // ? MC
   gapped: number;      // ~ sentences (+ one ? EXTRA)
   word: number;        // ? WORD
+  gapOptions: number;  // ? GAP with options
+  gapOpen: number;     // ? GAP typed in
+  match: number;       // ? MATCH
 }
 
 export interface SpeakingTestRequest {
@@ -60,11 +66,11 @@ export const SPEAKING_COUNT_UNITS: Record<SpeakingTaskType, string> = {
 };
 
 export const DEFAULT_READING_TASKS: ReadingTasksRequest = {
-  keys: true, questions: true, headings: true, statements: 5, choice: 0, gapped: 0, word: 0
+  keys: 5, questions: 5, headings: true, statements: 5, choice: 0, gapped: 0, word: 0, gapOptions: 0, gapOpen: 0, match: 0
 };
 
 // Versioned so changes to the instructions are easy to trace in support reports.
-export const AI_TOPIC_PROMPT_VERSION = 8;
+export const AI_TOPIC_PROMPT_VERSION = 9;
 
 /**
  * Whether a topic should use simple wording by default: young classes (12 or younger, from the
@@ -134,12 +140,16 @@ The teacher's request always wins over the defaults. Examples:
   2. Then one SENTENCE item per sentence of that paragraph: text = the sentence copied EXACTLY as written (same words, spelling and punctuation; never correct, shorten or reword it), except that you put square brackets around the KEY WORDS: 1-2 words or short phrases (max 3 words each) per paragraph that carry its main idea, so that the bracketed words of the whole text together tell what the text is about. Bracket only words that are really there, at most one pair per sentence, never inside a heading. imageKind = "wordCard" and imageQuery = a short question (max 12 words) in the language of the text that only this sentence answers. The question must PARAPHRASE (synonyms, other structures, e.g. "Where is her home?" for "She lives in a small village."), never copy the sentence's key words, so it trains reading for detail. Ask about facts, reasons, feelings or opinions stated in the sentence. Give most sentences a question; use imageKind = "none" (no question) only for sentences with nothing clear to ask. audioText = the sentence without brackets.
   3. After the last paragraph, 1-2 extra DISTRACTOR heading items ("# " + heading): plausible for this text's topic but matching no paragraph, as in the real exams.
   Keep the text's own paragraphs. If the text is one long block, split it into 3-6 logical paragraphs. Do not include the text's title, subheadings, captions or questions as sentences. Never use "_" here. Write the headings and questions at the given level (simpler words for A1-A2). If the text is longer than the item limit, keep the first paragraphs whole and say so in "notes". Add a note in the teacher's language that they can edit the [key words], headings and questions.
-  Reading Detective parts and tasks: the request says which ones to make. Leave out what is not asked for: without key words, no [ ] at all; without questions, imageKind = "none" for every sentence; without headings, no "# " items - start the first sentence of every later paragraph with "* " instead (and no distractors).
+  Reading Detective parts and tasks: the request says which ones to make. Leave out what is not asked for: without key words, no [ ] at all; without questions, imageKind = "none" for every sentence; without headings, no "# " items - start the first sentence of every later paragraph with "* " instead (and no distractors). The request's numbers of key words and questions replace the amounts above: make exactly that many, spread evenly over all the paragraphs from the first to the last, and every other sentence has no [ ] and imageKind = "none". A sentence has at most one key word and one question, so if the text is too short for the number asked, make as many as fit and say so in "notes".
   After everything else, add the task items that are asked for, in this order. Each is its own item with imageKind = "none" and audioText = "" (they are not part of the text). A "quote" below is 2-6 words copied EXACTLY from the ONE sentence of the text that proves the answer, written in double quotes inside the braces.
   - True/False/Not given (the number asked for): "? TFNG <statement> {True | \"<quote>\"}", "{False | \"<quote>\"}" or "{Not given}" for facts; use "? YNNG <statement> {Yes | \"<quote>\"}", "{No | \"<quote>\"}" or "{Not given}" for the writer's opinions or claims. Paraphrase - never copy the sentence. Mix the answers (some of each). A Not given statement must be about the text's topic but really not answered by the text; it has no quote.
   - Multiple choice: "? MC <question> {*<right option> | <wrong option> | <wrong option> | \"<quote>\"}" - 3 options (4 from B2 up), the right one starts with "*", the wrong ones are plausible; the quote proves the right one.
   - Find the word: "? WORD <clue> {<word>}" - the clue gives a meaning or synonym and names the paragraph, e.g. "Find a word in paragraph 2 that means calm." The answer is 1-2 words copied exactly from the text.
   - Gapped text (the number asked for): put "~ " at the very start of that many sentence items (before any "* "), never a heading or the first sentence of the text, spread over the paragraphs, choosing sentences whose place can be worked out from the sentences around them. Then add one "? EXTRA <sentence>": a wrong extra sentence that fits the topic but none of the gaps.
+  - Gap fill with options (the number asked for): "? GAP <3-8 words copied EXACTLY from one sentence, with _ in place of the one word to find> {*<that word> | <wrong word> | <wrong word>}" - e.g. "? GAP Every morning we _ to the river. {*walked | ran | sat}". 3 options (4 from B2 up); the wrong ones are the same kind of word but clearly wrong in that sentence. This is the one place where "_" is used, and the sentence itself stays complete.
+  - Open gap fill (the number asked for): the same, with only the word and no star: "? GAP I stayed there _ four weeks. {for}". Choose words that the sentence around them decides, mostly grammar words. If another word also fits, list it after: "{for | during}". The word from the text comes first.
+  - Multiple matching (the number asked for): "? MATCH <a sentence about one text> {<letter>}" - e.g. "? MATCH Who stayed for a month? {B}". Every paragraph counts as one separate text, lettered in order: the first paragraph is A, the next B, and so on (a heading with no sentences after it doesn't count). Paraphrase, so students must understand the text, not match words. Only one text may answer each sentence, but a text may answer several sentences. Mix the letters: they do not follow the order of the text. If you write the texts yourself, each one is one paragraph on the same topic.
+  - For both kinds of gap: the copied words must appear only once in the text. At most one gap per sentence, spread over all the paragraphs, written in the order of the text, never in a "~ " sentence. If the text is too short for the number asked, make as many as fit and say so in "notes".
 
 Book pages (when photos are attached):
 - Read the pages and use exactly the words, phrases or sentences printed there that fit the request (usually the vocabulary list or the unit's key words). Do not add words that are not on the pages unless the teacher asks. Keep the book's spelling.
@@ -204,14 +214,26 @@ export function buildAiTopicUserText(request: AiTopicRequest): string {
     lines.push(
       '',
       'Reading Detective parts and tasks to make (nothing else):',
-      `- Key words in [ ]: ${tasks.keys ? 'yes' : 'no'}`,
-      `- Question word cards on the sentences: ${tasks.questions ? 'yes' : 'no'}`,
+      `- Key words in [ ]: ${count(tasks.keys, 'key words or short phrases')}`,
+      `- Question word cards on the sentences: ${count(tasks.questions, 'sentences with a question')}`,
       `- Headings ("# " items + 1-2 distractors): ${tasks.headings ? 'yes' : 'no'}`,
       `- True/False/Not given (TFNG or YNNG): ${count(tasks.statements, 'statements')}`,
       `- Multiple choice (MC): ${count(tasks.choice, 'questions')}`,
       `- Gapped text: ${count(tasks.gapped, 'sentences taken out with "~ " + one EXTRA')}`,
-      `- Find the word (WORD): ${count(tasks.word, 'words')}`
+      `- Find the word (WORD): ${count(tasks.word, 'words')}`,
+      `- Gap fill with options (GAP): ${count(tasks.gapOptions, 'gaps')}`,
+      `- Open gap fill (GAP): ${count(tasks.gapOpen, 'gaps')}`,
+      `- Multiple matching (MATCH): ${count(tasks.match, 'sentences to match')}`
     );
+    const exam = findReadingExamPart(request.readingExamPart);
+    if (exam?.part.rules) {
+      const partName = exam.part.part ? `Part ${exam.part.part}` : 'reading';
+      lines.push(
+        '',
+        `These tasks practise ${exam.group.exam} ${partName}. Make them like the real exam part; where these rules differ from the general ones, these win. ${exam.part.rules}`,
+        'If you write the text yourself, make it the length and kind of text usual for this exam part.'
+      );
+    }
   }
   const speaking = request.speakingTest;
   // A speaking test keeps its exam's own wording.

@@ -29,6 +29,7 @@ import {
 } from '../../../core/ai-topic/ai-topic-recipes';
 import { isPdfFile, OpenedPdf, PdfPagesService } from '../../../core/ai-topic/pdf-pages';
 import { parsePageList } from '../../../core/ai-topic/page-list';
+import { ReadingExamGroup, ReadingExamPart, findReadingExamPart, readingExamGroupsFor, readingTasksForPart } from '../../../core/ai-topic/reading-exam-parts';
 
 export interface AiTopicPanelResult {
   draft: AiTopicDraft;
@@ -85,6 +86,14 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   es: 'Spanish', fr: 'French', kr: 'Korean', sa: 'Arabic', vi: 'Vietnamese'
 };
 
+interface ReadingTaskRow {
+  key: keyof ReadingTasksRequest;
+  labelKey: string;
+  /** Tasks with a number: its usual value and its limit. */
+  fallback?: number;
+  max?: number;
+}
+
 @Component({
   selector: 'app-ai-topic-panel',
   standalone: false,
@@ -132,12 +141,20 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   /** Reading Detective mode (the 📖 chip): which parts and tasks the AI makes. */
   readingMode = false;
   readingTasks: ReadingTasksRequest = { ...DEFAULT_READING_TASKS };
-  readonly readingParts: (keyof ReadingTasksRequest)[] = ['keys', 'questions', 'headings'];
-  readonly readingCounted: { key: keyof ReadingTasksRequest; labelKey: string; fallback: number }[] = [
-    { key: 'statements', labelKey: 'readingDetectiveStage_statements', fallback: 5 },
-    { key: 'choice', labelKey: 'readingDetectiveStage_choice', fallback: 4 },
-    { key: 'gapped', labelKey: 'readingDetectiveStage_gapped', fallback: 3 },
-    { key: 'word', labelKey: 'readingDetectiveStage_word', fallback: 4 }
+  /** The chosen exam part, '' = free choice. */
+  readingExamPartId = '';
+  // Headings have no number: there is one per paragraph.
+  readonly readingTaskRows: ReadingTaskRow[] = [
+    { key: 'keys', labelKey: 'readingDetectiveStage_keys', fallback: 5, max: 20 },
+    { key: 'questions', labelKey: 'readingDetectiveStage_questions', fallback: 5, max: 20 },
+    { key: 'headings', labelKey: 'aiTopicTaskHeadings' },
+    { key: 'statements', labelKey: 'readingDetectiveStage_statements', fallback: 5, max: 10 },
+    { key: 'choice', labelKey: 'readingDetectiveStage_choice', fallback: 4, max: 10 },
+    { key: 'gapped', labelKey: 'readingDetectiveStage_gapped', fallback: 3, max: 10 },
+    { key: 'gapOptions', labelKey: 'aiExamTaskGapOptions', fallback: 6, max: 10 },
+    { key: 'gapOpen', labelKey: 'aiExamTaskGapOpen', fallback: 6, max: 10 },
+    { key: 'match', labelKey: 'readingDetectiveStage_match', fallback: 6, max: 10 },
+    { key: 'word', labelKey: 'readingDetectiveStage_word', fallback: 4, max: 10 }
   ];
 
   /** Speaking test mode (the 🗣️ chip): the exam and its parts. */
@@ -254,6 +271,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     // Reading Detective needs a level for its reading speed: KET unless the teacher picks another.
     if (chip.id === 'reading' && !this.level) this.level = 'A2';
     this.readingMode = chip.id === 'reading';
+    this.dropOtherLevelsExamPart();
     const wasSpeaking = this.speakingMode;
     this.speakingMode = chip.id === 'speaking';
     if (this.speakingMode && !wasSpeaking) this.setSpeakingExam(this.level ? examForLevel(this.level) : 'ket');
@@ -365,23 +383,53 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     };
   }
 
-  readingPartLabel(part: keyof ReadingTasksRequest): string {
-    return part === 'headings' ? 'aiTopicTaskHeadings' : `readingDetectiveStage_${part}`;
+  get readingExamGroups(): ReadingExamGroup[] {
+    return readingExamGroupsFor(this.level);
   }
 
-  toggleReadingPart(part: keyof ReadingTasksRequest): void {
-    (this.readingTasks as unknown as Record<string, boolean>)[part] = !this.readingTasks[part];
+  /** Every level's parts are different, so a part chosen for another level no longer applies. */
+  setLevel(level: CefrLevel | null): void {
+    this.level = level;
+    this.dropOtherLevelsExamPart();
+  }
+
+  private dropOtherLevelsExamPart(): void {
+    if (!this.readingExamPartId) return;
+    const stillListed = this.readingExamGroups.some(group => group.parts.some(part => part.id === this.readingExamPartId));
+    if (!stillListed) this.setReadingExamPart('');
+  }
+
+  /** Fills in the part's tasks. Going back to free choice brings back the usual ones. */
+  setReadingExamPart(id: string): void {
+    const found = findReadingExamPart(id);
+    const playable = found?.part.tasks ? found.part : null;
+    this.readingExamPartId = playable ? id : '';
+    this.readingTasks = playable ? readingTasksForPart(playable) : { ...DEFAULT_READING_TASKS };
+  }
+
+  readingExamPartLabel(part: ReadingExamPart): string {
+    const task = this.langService.translate(part.taskKey);
+    const number = part.part ? `${this.langService.translate('aiTopicExamPartNumber', { n: part.part })}: ` : '';
+    const soon = part.tasks ? '' : ` (${this.langService.translate('aiTopicExamPartSoon')})`;
+    return number + task + soon;
+  }
+
+  isReadingTaskOn(task: ReadingTaskRow): boolean {
+    return Boolean(this.readingTasks[task.key]);
   }
 
   /** A counted task: ticking it uses its usual count, unticking sets 0. */
-  toggleReadingTask(task: { key: keyof ReadingTasksRequest; fallback: number }): void {
-    const counts = this.readingTasks as unknown as Record<string, number>;
-    counts[task.key] = counts[task.key] ? 0 : task.fallback;
+  toggleReadingTask(task: ReadingTaskRow): void {
+    const tasks = this.readingTasks as unknown as Record<string, number | boolean>;
+    if (task.fallback === undefined) tasks[task.key] = !tasks[task.key];
+    else tasks[task.key] = tasks[task.key] ? 0 : task.fallback;
   }
 
-  setReadingCount(key: keyof ReadingTasksRequest, value: string): void {
+  /** An empty box is a teacher halfway through typing a number, not a teacher unticking the task. */
+  setReadingCount(task: ReadingTaskRow, value: string): void {
     const count = Math.round(Number(value));
-    (this.readingTasks as unknown as Record<string, number>)[key] = Number.isFinite(count) ? Math.max(0, Math.min(10, count)) : 0;
+    if (!value.trim() || !Number.isFinite(count)) return;
+    (this.readingTasks as unknown as Record<string, number>)[task.key] = Math.max(1, Math.min(task.max ?? 10, count));
   }
 
   readingCount(key: keyof ReadingTasksRequest): number {
@@ -636,6 +684,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
         level: this.level,
         simpleWording: this.simpleWording,
         readingTasks: this.readingMode ? { ...this.readingTasks } : null,
+        readingExamPart: this.readingMode ? this.readingExamPartId || null : null,
         speakingTest: this.speakingRequest(),
         recipe: chip?.id ?? null,
         recipeVariant: chip ? this.chipVariant(chip) : null

@@ -489,6 +489,17 @@
   accent-color: #4f46e5;
 }
 
+.ai-exam-part {
+  display: block;
+  width: 100%;
+  max-width: 26rem;
+  margin-top: 4px;
+}
+
+.ai-exam-part-hint {
+  margin: 4px 0 10px;
+}
+
 .ai-task-count {
   width: 3.4rem;
   margin-left: auto;

@@ -14,12 +14,39 @@ const base: AiTopicRequest = {
 
 describe('ai-topic-prompt', () => {
   it('lists the Reading Detective tasks the teacher ticked', () => {
-    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, keys: false, gapped: 3 } });
+    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, keys: 0, questions: 12, gapped: 3 } });
     expect(text).toContain('Level: B1 (Cambridge B1 Preliminary (PET))');
-    expect(text).toContain('- Key words in [ ]: no');
+    expect(text).toContain('- Key words in [ ]: none');
+    expect(text).toContain('- Question word cards on the sentences: 12 sentences with a question');
     expect(text).toContain('- True/False/Not given (TFNG or YNNG): 5 statements');
     expect(text).toContain('- Multiple choice (MC): none');
     expect(text).toContain('- Gapped text: 3 sentences taken out');
+  });
+
+  it('tells the AI which exam part the reading tasks practise, and its rules', () => {
+    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, statements: 0, gapped: 5 }, readingExamPart: 'pet-4' });
+    expect(text).toContain('These tasks practise B1 Preliminary (PET) Part 4.');
+    expect(text).toContain('exactly three "? EXTRA" items');
+    expect(text).toContain('- Gapped text: 5 sentences taken out');
+  });
+
+  it('asks for gap fills by their number, and explains the sign', () => {
+    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, gapOptions: 6, gapOpen: 4 } });
+    expect(text).toContain('- Gap fill with options (GAP): 6 gaps');
+    expect(text).toContain('- Open gap fill (GAP): 4 gaps');
+    expect(buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS } })).toContain('- Open gap fill (GAP): none');
+    expect(buildAiTopicSystemPrompt()).toContain('? GAP Every morning we _ to the river.');
+  });
+
+  it('asks for matching by its number, and explains the letters', () => {
+    const text = buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS, match: 7 } });
+    expect(text).toContain('- Multiple matching (MATCH): 7 sentences to match');
+    expect(buildAiTopicSystemPrompt()).toContain('? MATCH Who stayed for a month? {B}');
+  });
+
+  it('adds no exam part rules for a free choice', () => {
+    expect(buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS } })).not.toContain('These tasks practise');
+    expect(buildAiTopicUserText({ ...base, readingTasks: { ...DEFAULT_READING_TASKS }, readingExamPart: 'nothing' })).not.toContain('These tasks practise');
   });
 
   it('uses simple wording for young learners, A1-A2 or no level, unless the teacher says otherwise', () => {

@@ -49,7 +49,7 @@ marks or has a level). Carried through export/import, book topic snapshots and "
   phrase finds it; the same words elsewhere in the text count too (`findKeyAt`). Wrong → red flash
   + buzz + shake. Found words get a marker-pen highlight that stays for stage 2. After 3 wrong taps
   the paragraph with the answer glows. End card shows the key words in order ("they tell the story").
-- **Stage 2**: question card (item image), questions shuffled, tap a sentence. A sentence with the
+- **Stage 2**: question card (item image), questions in the order of the text, tap a sentence. A sentence with the
   very same words also counts. Right → green underline + question number badge.
 - **Stage 3**: the current paragraph appears word by word (unshown words keep their space, so
   lines never jump), current word highlighted like a subtitle cursor. Speed by level
@@ -155,14 +155,37 @@ Parser: `reading-tasks.ts`.
   description becomes a tooltip; the stepper then shows only the current stage's label.
 - Proof marks are cleared at the start of each stage, so they don't hint at the next answers.
 
+**Gap fill** (`? GAP`, stage `cloze`): `? GAP We _ to the river. {*walked | ran | sat}` hides that word in
+the text and offers the options; with no star, `{for | during}` is an open gap that is typed in, and
+every part is accepted. The words around `_` say where the gap is, so the sentence stays whole for every
+other stage and game. A gap that can't be placed, or that sits in a `~` sentence, is left out. The stage
+comes straight after Gapped text, and the gaps stay empty during Gapped text so it can't give the answers
+away. After 3 wrong answers an open gap shows its first letter.
+
+**Matching** (`? MATCH`, stage `match`): `? MATCH Who stayed for a month? {B}`. Every paragraph counts as one
+separate text, lettered in order (a heading with no sentences after it doesn't count), so several short
+texts need no new format. Students tap the text or its letter. A text may answer several sentences, the
+sentences stay in the order they were written, and after 3 wrong tries the right text glows. A letter
+with no paragraph is left out. Matching across texts (Advanced Part 6) works differently and isn't covered.
+
+A text with no headings has nothing to answer in Read & head, so that stage starts switched off when
+the topic has other tasks; the teacher can turn it on on the start screen.
+
 ### AI
 
 The "📖 Reading text" chip shows **Tasks to make**:
-- ticks for Key words / Questions / Headings;
+- a tick for Headings (one per paragraph, so no number);
+- ticks with counts (1–20) for Key words (5) and Questions (5);
 - ticks with counts (1–10) for True/False (5), Multiple choice (4), Gapped text (3),
   Find the word (4).
 
-Defaults: the first three plus 5 True/False. The request lists them
+Above them, once a level is chosen, the **Exam part** list (`reading-exam-parts.ts`) shows that level's
+tests. Choosing a part fills in the tasks with its real amounts (they can still be changed) and sends
+the part's rules to the AI: options per question, number of extra sentences, order of the questions.
+Parts the game can't play yet are greyed out. Word counts per part aren't published in the handbooks, so the AI is only asked for the usual
+length. Free choice is the default and sends no exam rules.
+
+Defaults: Key words, Questions, Headings and 5 True/False. The request lists them
 (`ReadingTasksRequest`, `buildAiTopicUserText`). The system prompt (v4) explains every task syntax:
 paraphrase, mix answers, exact quotes, a real Not given, `~ ` before `* `, and one EXTRA.
 `AI_TOPIC_MAX_ITEMS` is now 80 and an item text may be 400 characters (multiple choice lines are

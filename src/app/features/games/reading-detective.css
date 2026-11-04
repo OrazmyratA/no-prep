@@ -1343,6 +1343,115 @@
   border-bottom: 3px dotted rgba(100, 116, 139, 0.7);
 }
 
+.rd-para-match {
+  position: relative;
+  margin-bottom: 0.7em;
+  padding: 0.6em 0.8em 0.6em 3em;
+  border-radius: 12px;
+  background: rgba(100, 116, 139, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(100, 116, 139, 0.25);
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rd-para-match:hover { box-shadow: inset 0 0 0 2px var(--rd-amber); }
+.rd-para-right { background: #dcfce7; box-shadow: inset 0 0 0 3px var(--rd-green); }
+.rd-para-wrong { background: #fee2e2; box-shadow: inset 0 0 0 3px var(--rd-red); animation: rd-shake 0.4s ease; }
+
+.rd-para-letter {
+  position: absolute;
+  top: 0.6em;
+  left: 0.6em;
+  width: 1.8em;
+  height: 1.8em;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--rd-navy);
+  color: var(--rd-gold);
+  font-family: system-ui, sans-serif;
+  font-weight: 900;
+  font-size: 0.85em;
+}
+
+.rd-para-right .rd-para-letter { background: var(--rd-green); color: #fff; }
+.rd-para-match .rd-para-text { text-indent: 0; }
+
+.rd-match-letters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.2rem, 1fr));
+  gap: 0.5rem;
+}
+
+.rd-match-letter {
+  min-height: 3.2rem;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--rd-navy);
+  font-size: 1.3rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.rd-match-letter:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--rd-gold); }
+.rd-match-letter:disabled { cursor: default; }
+.rd-match-letter-right { background: var(--rd-green); color: #fff; }
+.rd-match-letter-wrong { background: #fee2e2; box-shadow: inset 0 0 0 2px var(--rd-red); }
+
+.rd-cloze-slot {
+  display: inline;
+  white-space: nowrap;
+  text-indent: 0;
+}
+
+.rd-cloze-line {
+  width: 4em;
+  margin-left: 0.2em;
+}
+
+.rd-cloze-current .rd-gap-number { background: var(--rd-gold); color: var(--rd-navy); box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.35); }
+.rd-cloze-current .rd-cloze-line { border-bottom-color: var(--rd-amber); animation: rd-dot 1.2s ease-in-out infinite; }
+
+.rd-cloze-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.rd-cloze-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.6rem 0.8rem;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--rd-navy);
+  font-size: 1.15rem;
+  font-weight: 700;
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--rd-gold);
+}
+
+.rd-cloze-input-wrong {
+  background: #fee2e2;
+  box-shadow: inset 0 0 0 2px var(--rd-red);
+}
+
+.rd-cloze-check {
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--rd-gold);
+  color: var(--rd-navy);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rd-cloze-check:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .rd-gap-current .rd-gap-number { background: var(--rd-gold); color: var(--rd-navy); box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.35); }
 .rd-gap-current .rd-gap-line { border-bottom-color: var(--rd-amber); animation: rd-dot 1.2s ease-in-out infinite; }
 
