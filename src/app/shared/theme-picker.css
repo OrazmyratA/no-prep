@@ -311,13 +311,13 @@
 }
 
 .theme-season.selected {
-  outline-color: #f97316;
+  outline-color: var(--np-dialog-accent, #f97316);
 }
 
 .theme-season-icon {
   font-size: 2rem;
   line-height: 1;
-  filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.7));
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.45));
 }
 
 .theme-season-name {

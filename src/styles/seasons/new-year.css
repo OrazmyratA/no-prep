@@ -1,0 +1,174 @@
+/*
+  New Year pack: tokens + small ornaments. Applied while the New Year season theme is active
+  (AppComponent sets html[data-season]). The animated scene lives in the lazy
+  shared/season-ambient/new-year-ambient component; this file only styles the UI on top of it.
+  Midnight blue, with gold for what matters most and a festive crimson on the main buttons.
+  No backdrop-filter on cards: blurring over the animated scene would repaint every frame.
+*/
+html[data-season='new-year'] {
+  --np-surface: 12 26 56;
+  --np-surface-alpha: 0.94;
+  --np-glass: 17 35 72;
+  --np-ink: 243 248 255;
+  --np-ink-soft: 212 228 250;
+  --np-ink-muted: 170 195 228;
+  --np-ink-faint: 134 160 198;
+  --np-line: 62 96 150;
+  --np-accent: 255 206 92;
+  --np-accent-ink: 28 26 18;
+  --np-accent-soft: 70 56 24;
+  --np-accent-strong: 255 226 150;
+  /* Light frost chips: round icon buttons carry dark line icons (translate, settings ...). */
+  --np-chip: 226 238 255;
+  --np-chip-hover: 200 222 252;
+
+  --np-card-shadow: 0 18px 38px -14px rgb(2 8 28 / 0.8), 0 0 0 1px rgb(150 196 255 / 0.2);
+  --np-card-shadow-hover: 0 26px 52px -12px rgb(2 8 28 / 0.85), 0 0 30px rgb(255 206 92 / 0.32), 0 0 0 1px rgb(255 214 120 / 0.65);
+
+  --np-primary: linear-gradient(to right, #b4153a, #e8345a);
+  --np-primary-hover: linear-gradient(to right, #970f30, #cf2449);
+  --np-primary-glow: 0 0 22px rgb(232 52 90 / 0.42), 0 10px 18px -6px rgb(2 8 28 / 0.65);
+  --np-primary-book: linear-gradient(to right, #1d4fd0, #0a84c6);
+  --np-primary-book-hover: linear-gradient(to right, #1a43ad, #0872ab);
+
+  --np-go: linear-gradient(to right, #0d7f76, #0d78b0);
+  --np-go-hover: linear-gradient(to right, #0b6b63, #0b6696);
+  --np-title-gradient: linear-gradient(to right, #ffd978, #ffffff 52%, #9be8ff);
+  --np-title-gradient-alt: var(--np-title-gradient);
+  --np-ring-selected: 255 206 92;
+  --np-game-header:
+    radial-gradient(1.5px 1.5px at 14% 24%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 32% 70%, #ffe9a8 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 72% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 58%, #bfe8ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 55% 40%, #fff 50%, transparent 51%),
+    radial-gradient(circle at 50% 54%, rgba(190, 222, 255, 0.34), transparent 36%),
+    radial-gradient(ellipse 80% 90% at 75% 120%, rgba(52, 245, 181, 0.5), transparent 70%),
+    radial-gradient(ellipse 60% 80% at 15% 110%, rgba(139, 92, 246, 0.55), transparent 72%),
+    linear-gradient(165deg, #081431 0%, #12306b 100%);
+
+  --np-avatar-topic: linear-gradient(135deg, #e3a11f, #9a5f08);
+  --np-avatar-book: linear-gradient(135deg, #38bdf8, #1d4fd0);
+  --np-cover-topic:
+    radial-gradient(circle at 86% 30%, #fff 0 5%, rgba(220, 236, 255, 0.34) 7%, transparent 17%),
+    radial-gradient(ellipse 90% 70% at 30% 118%, rgba(52, 245, 181, 0.55), transparent 70%),
+    radial-gradient(ellipse 70% 80% at 92% 110%, rgba(139, 92, 246, 0.6), transparent 72%),
+    linear-gradient(165deg, #0a1a40 0%, #173a7c 100%);
+  --np-cover-book:
+    radial-gradient(circle at 86% 30%, #ffe9a8 0 5%, rgba(255, 217, 120, 0.32) 7%, transparent 17%),
+    radial-gradient(ellipse 90% 70% at 20% 118%, rgba(56, 189, 248, 0.55), transparent 70%),
+    linear-gradient(165deg, #071230 0%, #1b2f70 100%);
+
+  --np-link-ink: rgb(190 226 255);
+  --np-amber-ink: #ffd978;
+  --np-amber-soft: rgba(255, 206, 92, 0.13);
+  --np-amber-soft-hover: rgba(255, 206, 92, 0.24);
+  --np-dialog: linear-gradient(180deg, #13295a, #0b1a3c);
+  /* Dialog frame (theme picker; editor/leaderboard dialogs keep light inputs and paper inside). */
+  --np-dialog-border: rgba(255, 214, 120, 0.42);
+  --np-dialog-scheme: dark;
+  --np-dialog-scrollbar: rgba(255, 214, 120, 0.5) transparent;
+  --np-dialog-title: var(--np-title-gradient);
+  --np-dialog-ink: #f3f8ff;
+  --np-dialog-heading: #ffd978;
+  --np-dialog-muted: #aac3e4;
+  --np-dialog-line: rgba(120, 165, 225, 0.38);
+  --np-dialog-well: rgba(255, 255, 255, 0.06);
+  --np-dialog-chip: rgba(226, 238, 255, 0.14);
+  --np-dialog-chip-ink: #eaf3ff;
+  --np-dialog-accent: #ffce5c;
+  --np-dialog-primary: linear-gradient(135deg, #b4153a, #e8345a);
+  --np-dialog-primary-shadow: rgba(232, 52, 90, 0.38);
+  --np-dialog-primary-hover: linear-gradient(135deg, #970f30, #cf2449);
+  --np-dialog-chip-hover: rgba(226, 238, 255, 0.24);
+  --np-dialog-danger: #fda4af;
+  --np-dialog-ok-ink: #86efac;
+  /* Leaderboard header buttons carry dark line-art icons: light frost chips. */
+  --np-lb-btn: rgb(226 238 255 / 0.92);
+  --np-lb-btn-hover: rgb(200 222 252);
+  --np-lb-btn-ink: #0c1a38;
+  --np-fab: linear-gradient(135deg, #b4153a, #e8345a);
+  --np-help-trigger: rgb(226 238 255 / 0.92);
+  --np-countdown-stroke: #0b1a3c;
+  --np-countdown-go: #ffd978;
+
+  /* In-game chrome (games read these with their own fallbacks). */
+  /* Tile covers: -flat is a single layer for games that put their own pattern on top. */
+  --np-tile-cover-flat: linear-gradient(150deg, #2f6fd6 0%, #1a4aa6 55%, #102f75 100%);
+  --np-tile-cover:
+    radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.3), transparent 42%),
+    var(--np-tile-cover-flat);
+  --np-tile-frame: #0b1a3c;
+  --np-letter-tile: #ffd978;
+  --np-letter-tile-hover: #ffe7a6;
+  --np-word-tile: #2563c9;
+  --np-word-tile-hover: #3176e0;
+  --np-nav-btn: linear-gradient(135deg, #1d7fd0, #7c3aed);
+  --np-game-btn: #1d4fd0;
+  --np-game-btn-hover: #1a43ad;
+  --np-game-btn-alt: #c81e45;
+  --np-game-btn-alt-hover: #a81739;
+  /* Canvas wedges (Spin the Wheel), read by seasonPalette() in games/game-utils.ts. */
+  --np-wheel-palette: #1d4fd0 #c81e45 #0d7f76 #b8780f #6d3bd1 #0a84c6;
+
+  /* Game finish overlay (shared/game-finish-overlay.css). */
+  --np-finish-backdrop:
+    radial-gradient(circle at 50% 36%, rgba(255, 206, 92, 0.26), transparent 24rem),
+    radial-gradient(circle at 18% 20%, rgba(52, 245, 181, 0.18), transparent 20rem),
+    radial-gradient(circle at 84% 74%, rgba(139, 92, 246, 0.26), transparent 19rem),
+    rgba(4, 11, 32, 0.87);
+  --np-finish-card: linear-gradient(180deg, #13295a, #0a1736);
+  --np-finish-border: rgba(255, 214, 120, 0.62);
+  --np-finish-glow: rgba(255, 206, 92, 0.36);
+  --np-finish-sheen:
+    linear-gradient(90deg, transparent, rgba(255, 233, 168, 0.14), transparent),
+    radial-gradient(circle at 50% 0%, rgba(255, 206, 92, 0.26), transparent 40%);
+  --np-finish-crown: linear-gradient(145deg, #fff3c4, #ffc53d 58%, #d9921c);
+  --np-finish-ink: #f3f8ff;
+  --np-finish-title: #ffe39a;
+  --np-finish-message: #c4d8f3;
+  --np-finish-row: linear-gradient(180deg, rgba(38, 78, 150, 0.48), rgba(18, 42, 94, 0.48));
+  --np-finish-row-border: rgba(120, 165, 225, 0.36);
+  --np-finish-primary: linear-gradient(135deg, #b4153a, #e8345a);
+  --np-finish-primary-shadow: rgba(232, 52, 90, 0.42);
+  --np-finish-secondary: linear-gradient(135deg, #12306b, #1d4fd0);
+}
+
+/* Actions: midnight blue wearing their hue as a tint + a fine rim. The solid base keeps the scene
+   (snow, fir) from showing through buttons that sit low on the screen. */
+html[data-season='new-year'] .np-action {
+  background: linear-gradient(rgb(var(--hue) / 0.26), rgb(var(--hue) / 0.26)), rgb(12 26 56 / 0.95);
+  color: rgb(var(--np-ink));
+  box-shadow: inset 0 0 0 1.5px rgb(var(--hue) / 0.8), 0 0 14px rgb(var(--hue) / 0.28);
+}
+
+html[data-season='new-year'] .np-action:hover {
+  background: linear-gradient(rgb(var(--hue) / 0.45), rgb(var(--hue) / 0.45)), rgb(12 26 56 / 0.95);
+}
+
+html[data-season='new-year'] .np-action--fresh {
+  --hue: 56 189 248;
+}
+
+/* Fresh snow lying along the top of every card: over the coloured header, never over text, and
+   under the card's own controls (checkbox z-20, hover actions z-10). */
+html[data-season='new-year'] .np-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  height: 15px;
+  pointer-events: none;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  filter: drop-shadow(0 1.5px 1.5px rgb(8 22 60 / 0.35));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'%3E%3Cpath fill='%23f7fbff' d='M0 0H400V5C386 11 372 12 358 8S330 3 314 8 290 18 270 13 244 4 226 7 196 14 176 11 150 3 130 6 104 16 84 12 58 4 40 7 14 14 0 8Z'/%3E%3C/svg%3E") no-repeat top / 100% 100%;
+}
+
+/* Its icon is dark line art: a frost chip keeps it visible on the night scene. */
+html[data-season='new-year'] .app-fullscreen-toggle {
+  background: rgb(226 238 255 / 0.72);
+  opacity: 0.72;
+}

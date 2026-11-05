@@ -69,16 +69,19 @@ function getMainThreadConfetti(): ConfettiInstance {
   return mainThreadConfetti;
 }
 
-// Halloween season pack (html[data-season]): pumpkin/violet confetti with bats, pumpkins and ghosts
-// mixed in. Emoji shapes are rasterised once by canvas-confetti, then drawn like any other piece.
-const HALLOWEEN_COLORS = ['#f97316', '#fb923c', '#fdba74', '#a855f7', '#7c3aed', '#84cc16', '#ffffff'];
-const HALLOWEEN_EMOJI_SCALAR = 2.4;
-let halloweenShapes: confetti.Shape[] | null = null;
-function getHalloweenShapes(): confetti.Shape[] {
-  if (!halloweenShapes) {
-    halloweenShapes = ['🦇', '🎃', '👻'].map(text => confetti.shapeFromText({ text, scalar: HALLOWEEN_EMOJI_SCALAR }));
+// Season packs (html[data-season]) dress the confetti in their colours with their emoji mixed in.
+// Emoji shapes are rasterised once by canvas-confetti, then drawn like any other piece.
+const SEASON_CONFETTI: Record<string, { colors: string[]; emoji: string[] }> = {
+  halloween: { colors: ['#f97316', '#fb923c', '#fdba74', '#a855f7', '#7c3aed', '#84cc16', '#ffffff'], emoji: ['🦇', '🎃', '👻'] },
+  'new-year': { colors: ['#ffd978', '#ffc53d', '#fff3c4', '#ffffff', '#9be8ff', '#38bdf8', '#e8345a'], emoji: ['❄️', '🎄', '⭐'] }
+};
+const SEASON_EMOJI_SCALAR = 2.4;
+const seasonShapes = new Map<string, confetti.Shape[]>();
+function getSeasonShapes(season: string, emoji: string[]): confetti.Shape[] {
+  if (!seasonShapes.has(season)) {
+    seasonShapes.set(season, emoji.map(text => confetti.shapeFromText({ text, scalar: SEASON_EMOJI_SCALAR })));
   }
-  return halloweenShapes;
+  return seasonShapes.get(season)!;
 }
 
 function activeSeason(): string | undefined {
@@ -281,19 +284,21 @@ export class GameFinishOverlayComponent implements AfterViewInit, OnDestroy {
       ...options
     };
 
-    if (activeSeason() !== 'halloween') {
+    const season = activeSeason();
+    const dress = season ? SEASON_CONFETTI[season] : undefined;
+    if (!season || !dress) {
       this.confettiInstance(base);
       return;
     }
 
-    // Same burst, re-dressed: most pieces in pumpkin/violet plus a sprinkle of big emoji (more than
+    // Same burst, re-dressed: most pieces in the season's colours plus a sprinkle of big emoji (more than
     // ~10% buries the title).
     const count = base.particleCount ?? 50;
-    this.confettiInstance({ ...base, colors: HALLOWEEN_COLORS, particleCount: Math.round(count * 0.75) });
+    this.confettiInstance({ ...base, colors: dress.colors, particleCount: Math.round(count * 0.75) });
     this.confettiInstance({
       ...base,
-      shapes: getHalloweenShapes(),
-      scalar: HALLOWEEN_EMOJI_SCALAR,
+      shapes: getSeasonShapes(season, dress.emoji),
+      scalar: SEASON_EMOJI_SCALAR,
       flat: true,
       particleCount: Math.max(6, Math.round(count * 0.09))
     });
