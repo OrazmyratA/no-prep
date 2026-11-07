@@ -22,6 +22,9 @@
   padding: 1.25rem;
   color: var(--np-dialog-ink, #111827);
   color-scheme: var(--np-dialog-scheme, normal);
+  /* A slim scrollbar on a clear track stays inside the rounded corners. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--np-dialog-scrollbar, rgb(100 116 139 / 0.45) transparent);
 }
 
 .theme-header {
@@ -54,6 +57,13 @@
   color: var(--np-dialog-chip-ink, #111827);
   font-weight: 800;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.15s ease;
+}
+
+.theme-close:hover {
+  background: var(--np-dialog-chip-hover, #d1d5db);
 }
 
 .theme-section {
@@ -436,4 +446,12 @@
   .theme-dim input {
     grid-column: 1 / -1;
   }
+}
+
+.theme-season-light {
+  color: #162240;
+}
+
+.theme-season-light .theme-season-name {
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
 }

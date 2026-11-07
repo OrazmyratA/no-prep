@@ -400,3 +400,54 @@
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(0, var(--tile), 0); }
 }
+
+/* ── Day: a bright snowy morning (NewYearDayAmbientComponent) ────── */
+
+:host(.day) .stars,
+:host(.day) .aurora,
+:host(.day) .shooting-star,
+:host(.day) .firework,
+:host(.day) .gold-glow {
+  display: none;
+}
+
+/* The moon becomes a low winter sun. */
+:host(.day) .moon {
+  background: radial-gradient(circle at 40% 38%, #fffef6 0%, #fff3c9 55%, #ffe08a 100%);
+  box-shadow: 0 0 46px 14px rgba(255, 226, 150, 0.55);
+}
+
+:host(.day) .moon::after {
+  background: radial-gradient(circle, rgba(255, 236, 180, 0.45) 0%, rgba(255, 236, 180, 0.12) 45%, transparent 70%);
+}
+
+:host(.day) .land-back {
+  opacity: 1;
+}
+
+:host(.day) .land-back > path:nth-of-type(1) { fill: #b9d0ee; }
+:host(.day) .land-back > path:nth-of-type(2) { fill: #ffffff; opacity: 0.95; }
+:host(.day) .land-back > g:nth-of-type(1) { fill: #8fb1cf; }
+:host(.day) .land-back > path:nth-of-type(3) { fill: #e6f0fb; }
+:host(.day) .land-back > g:nth-of-type(2) { fill: #2e6560; }
+:host(.day) .village use { fill: #24524c; }
+:host(.day) .village circle { opacity: 0.35; }
+:host(.day) .land-hill path:first-child { fill: #f4f8fe; }
+:host(.day) .land-hill path:nth-child(2) { stroke: #c9dcf4; opacity: 1; }
+:host(.day) .land-front path { fill: #e3edfa; }
+:host(.day) .fir-glow-svg { opacity: 0.4; }
+
+:host(.day) .snow-far {
+  opacity: 0.7;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340'%3E%3Cg fill='%237fa3d6'%3E%3Ccircle cx='74.4' cy='100.1' r='1.1' opacity='0.89'/%3E%3Ccircle cx='75.6' cy='76.7' r='0.8' opacity='0.69'/%3E%3Ccircle cx='264.7' cy='328.4' r='0.9' opacity='0.62'/%3E%3Ccircle cx='206.2' cy='204.5' r='1.3' opacity='0.74'/%3E%3Ccircle cx='114.4' cy='32.2' r='1.1' opacity='0.90'/%3E%3Ccircle cx='212.4' cy='270.5' r='1.1' opacity='0.62'/%3E%3Ccircle cx='256.0' cy='231.7' r='1.0' opacity='0.99'/%3E%3Ccircle cx='65.8' cy='318.5' r='1.3' opacity='0.99'/%3E%3Ccircle cx='317.9' cy='331.1' r='1.3' opacity='0.57'/%3E%3Ccircle cx='217.6' cy='329.5' r='0.8' opacity='0.84'/%3E%3Ccircle cx='251.3' cy='150.8' r='0.9' opacity='0.94'/%3E%3Ccircle cx='63.6' cy='189.4' r='1.3' opacity='0.78'/%3E%3Ccircle cx='154.4' cy='34.0' r='1.2' opacity='0.74'/%3E%3Ccircle cx='314.5' cy='109.1' r='1.4' opacity='0.77'/%3E%3Ccircle cx='291.0' cy='49.5' r='1.2' opacity='0.46'/%3E%3Ccircle cx='152.9' cy='127.3' r='1.1' opacity='0.76'/%3E%3Ccircle cx='282.7' cy='310.7' r='1.3' opacity='0.97'/%3E%3Ccircle cx='319.1' cy='63.8' r='1.2' opacity='0.66'/%3E%3Ccircle cx='181.3' cy='51.3' r='1.2' opacity='0.99'/%3E%3Ccircle cx='311.8' cy='249.5' r='0.9' opacity='0.51'/%3E%3Ccircle cx='40.9' cy='181.0' r='0.8' opacity='0.62'/%3E%3Ccircle cx='165.1' cy='337.4' r='1.3' opacity='0.54'/%3E%3Ccircle cx='20.9' cy='208.2' r='0.7' opacity='0.53'/%3E%3Ccircle cx='55.5' cy='246.7' r='0.9' opacity='0.79'/%3E%3Ccircle cx='337.8' cy='332.9' r='0.8' opacity='0.59'/%3E%3Ccircle cx='95.6' cy='195.0' r='1.1' opacity='0.78'/%3E%3Ccircle cx='55.3' cy='266.9' r='1.1' opacity='0.80'/%3E%3Ccircle cx='318.3' cy='165.6' r='1.3' opacity='0.78'/%3E%3Ccircle cx='124.9' cy='189.1' r='1.1' opacity='0.55'/%3E%3Ccircle cx='177.6' cy='152.8' r='1.1' opacity='0.48'/%3E%3Ccircle cx='188.3' cy='113.5' r='1.1' opacity='0.69'/%3E%3Ccircle cx='263.2' cy='175.7' r='0.8' opacity='0.90'/%3E%3Ccircle cx='306.9' cy='41.0' r='1.0' opacity='0.67'/%3E%3Ccircle cx='153.4' cy='59.3' r='0.7' opacity='0.85'/%3E%3Ccircle cx='174.5' cy='216.4' r='0.9' opacity='0.68'/%3E%3Ccircle cx='174.6' cy='337.1' r='0.9' opacity='0.63'/%3E%3Ccircle cx='211.9' cy='138.5' r='0.8' opacity='0.53'/%3E%3Ccircle cx='307.2' cy='213.5' r='0.9' opacity='0.76'/%3E%3Ccircle cx='146.1' cy='42.4' r='1.1' opacity='0.71'/%3E%3Ccircle cx='298.4' cy='30.7' r='1.4' opacity='0.75'/%3E%3Ccircle cx='147.6' cy='120.7' r='0.9' opacity='0.81'/%3E%3Ccircle cx='302.2' cy='118.1' r='1.4' opacity='0.70'/%3E%3Ccircle cx='127.5' cy='189.7' r='1.2' opacity='0.70'/%3E%3Ccircle cx='18.0' cy='90.3' r='0.7' opacity='0.64'/%3E%3Ccircle cx='240.3' cy='135.5' r='1.0' opacity='0.58'/%3E%3Ccircle cx='49.4' cy='275.4' r='1.4' opacity='0.57'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+:host(.day) .snow-mid {
+  opacity: 0.8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cg fill='%238fb0de'%3E%3Ccircle cx='343.7' cy='197.2' r='2.6' opacity='0.64'/%3E%3Ccircle cx='108.4' cy='317.2' r='1.6' opacity='0.46'/%3E%3Ccircle cx='438.1' cy='411.3' r='1.6' opacity='0.62'/%3E%3Ccircle cx='353.0' cy='407.5' r='1.9' opacity='0.84'/%3E%3Ccircle cx='216.5' cy='511.2' r='1.8' opacity='0.62'/%3E%3Ccircle cx='54.2' cy='71.5' r='1.7' opacity='0.71'/%3E%3Ccircle cx='429.3' cy='478.6' r='1.9' opacity='0.73'/%3E%3Ccircle cx='198.0' cy='315.1' r='1.7' opacity='0.92'/%3E%3Ccircle cx='65.5' cy='41.3' r='2.4' opacity='0.82'/%3E%3Ccircle cx='323.7' cy='47.7' r='2.3' opacity='0.54'/%3E%3Ccircle cx='410.4' cy='320.2' r='2.1' opacity='0.83'/%3E%3Ccircle cx='277.0' cy='266.0' r='1.8' opacity='0.84'/%3E%3Ccircle cx='106.4' cy='484.4' r='2.2' opacity='0.52'/%3E%3Ccircle cx='185.8' cy='141.5' r='2.0' opacity='0.60'/%3E%3Ccircle cx='302.1' cy='236.5' r='2.0' opacity='0.46'/%3E%3Ccircle cx='211.8' cy='490.1' r='1.6' opacity='0.75'/%3E%3Ccircle cx='294.9' cy='398.1' r='1.9' opacity='0.78'/%3E%3Ccircle cx='75.8' cy='181.6' r='2.5' opacity='0.82'/%3E%3Ccircle cx='166.4' cy='46.7' r='2.5' opacity='0.49'/%3E%3Ccircle cx='419.7' cy='452.3' r='1.8' opacity='0.94'/%3E%3Ccircle cx='98.4' cy='517.2' r='1.6' opacity='0.74'/%3E%3Ccircle cx='335.3' cy='85.9' r='1.9' opacity='0.50'/%3E%3Ccircle cx='496.7' cy='280.8' r='2.0' opacity='0.92'/%3E%3Ccircle cx='337.9' cy='49.1' r='2.4' opacity='0.80'/%3E%3Ccircle cx='336.2' cy='304.6' r='1.8' opacity='0.87'/%3E%3Ccircle cx='474.2' cy='25.8' r='1.5' opacity='0.48'/%3E%3Ccircle cx='445.5' cy='280.2' r='2.1' opacity='0.92'/%3E%3Ccircle cx='264.2' cy='282.7' r='2.3' opacity='0.45'/%3E%3Ccircle cx='371.6' cy='179.4' r='1.8' opacity='0.84'/%3E%3Ccircle cx='488.5' cy='70.7' r='1.7' opacity='0.48'/%3E%3Ccircle cx='177.0' cy='419.6' r='1.5' opacity='0.51'/%3E%3Ccircle cx='96.7' cy='328.8' r='2.4' opacity='0.86'/%3E%3Ccircle cx='467.6' cy='126.5' r='2.3' opacity='0.63'/%3E%3Ccircle cx='121.8' cy='347.9' r='2.1' opacity='0.75'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+:host(.day) .snow-near {
+  opacity: 0.75;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='760' height='760'%3E%3Cdefs%3E%3CradialGradient id='f'%3E%3Cstop offset='0.35' stop-color='%23a9c4ea'/%3E%3Cstop offset='1' stop-color='%23a9c4ea' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='url(%23f)'%3E%3Ccircle cx='187.2' cy='300.4' r='7.9' opacity='0.64'/%3E%3Ccircle cx='207.5' cy='403.5' r='6.3' opacity='0.47'/%3E%3Ccircle cx='23.6' cy='546.7' r='5.7' opacity='0.61'/%3E%3Ccircle cx='274.0' cy='254.4' r='7.0' opacity='0.47'/%3E%3Ccircle cx='375.5' cy='727.5' r='6.7' opacity='0.95'/%3E%3Ccircle cx='538.3' cy='374.3' r='7.4' opacity='0.86'/%3E%3Ccircle cx='577.8' cy='19.7' r='5.1' opacity='0.98'/%3E%3Ccircle cx='400.8' cy='403.4' r='5.5' opacity='0.52'/%3E%3Ccircle cx='513.4' cy='111.9' r='5.4' opacity='0.96'/%3E%3Ccircle cx='285.4' cy='131.6' r='7.1' opacity='0.60'/%3E%3Ccircle cx='182.4' cy='350.6' r='4.1' opacity='0.72'/%3E%3Ccircle cx='115.5' cy='555.1' r='6.5' opacity='0.81'/%3E%3Ccircle cx='442.5' cy='599.1' r='7.7' opacity='0.64'/%3E%3Ccircle cx='447.1' cy='689.1' r='6.4' opacity='0.88'/%3E%3Ccircle cx='419.1' cy='596.0' r='4.2' opacity='0.93'/%3E%3C/g%3E%3C/svg%3E");
+}

@@ -4,6 +4,7 @@ import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/dr
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { StarPillComponent } from '../../shared/star-pill';
 import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 import { CommonModule } from '@angular/common';
@@ -24,7 +25,7 @@ interface AnimatingTile {
 
 @Component({
   selector: 'app-unjumble',
-  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe, DragDropModule],
+  imports: [CommonModule, StarPillComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe, DragDropModule],
   templateUrl: './unjumble.html',
   styleUrls: ['./unjumble.css']
 })
@@ -40,6 +41,8 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
   loading = true;
   isMediaFlipped = false;
   solvedIndexes: Set<number> = new Set();
+  /** Sentences where a wrong word or a wrong order was tried; only the others earn a ⭐. */
+  missedIndexes: Set<number> = new Set();
   solvedState: Map<number, { source: WordTile[]; target: WordTile[] }> = new Map();
   animatingTiles: Map<string, AnimatingTile> = new Map();
   keyboardSelectedSourceIndex = 0;
@@ -74,7 +77,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private langService: LanguageService  
+    private langService: LanguageService
   ) {}
 
   async ngOnInit() {
@@ -208,7 +211,8 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     if (isCorrect) {
       this.completeCurrentSentence();
     } else {
-      // Optionally play a small buzz if they want feedback? But maybe not.
+      // Every word is down but in the wrong order: that's a wrong try (no buzz, as before).
+      this.missedIndexes.add(this.currentIndex);
     }
   }
 
@@ -309,6 +313,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.solvedIndexes.clear();
     this.solvedState.clear();
+    this.missedIndexes.clear();
     this.keyboardSelectedSourceIndex = 0;
     this.loadItem(0);
   }
@@ -332,6 +337,7 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
     // Check if clicked word matches the expected word
     if (word.word !== expectedWord) {
+      this.missedIndexes.add(this.currentIndex);
       this.playSound(this.buzzSound, 0.4);
       this.triggerShake(word.id);
       return;
@@ -489,6 +495,13 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
 
   private getKeyboardDigit(event: KeyboardEvent): string | null {
     return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  /** ⭐ count: solved sentences put together with no wrong try. */
+  get cleanCount(): number {
+    let count = 0;
+    this.solvedIndexes.forEach(index => { if (!this.missedIndexes.has(index)) count++; });
+    return count;
   }
 
   private completeCurrentSentence() {

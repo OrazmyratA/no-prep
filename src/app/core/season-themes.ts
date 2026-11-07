@@ -9,6 +9,8 @@ export interface SeasonTheme {
   nameKey: string;
   icon: string;
   background: string;
+  /** A light backdrop: the picker writes its name in dark ink. */
+  light?: boolean;
   loadAmbient: () => Promise<Type<unknown>>;
 }
 
@@ -25,8 +27,19 @@ export const SEASON_THEMES: SeasonTheme[] = [
     loadAmbient: () => import('../shared/season-ambient/halloween-ambient').then(m => m.HalloweenAmbientComponent)
   },
   {
-    id: 'new-year',
+    id: 'new-year-day',
     nameKey: 'themeSeasonNewYear',
+    icon: '⛄',
+    light: true,
+    background: [
+      'radial-gradient(ellipse 55% 40% at 10% 18%, rgba(255, 244, 214, 0.95) 0%, rgba(255, 236, 190, 0.35) 32%, transparent 62%)',
+      'linear-gradient(180deg, #b9d7fb 0%, #d8e9fe 42%, #edf5ff 72%, #f7fbff 100%)'
+    ].join(', '),
+    loadAmbient: () => import('../shared/season-ambient/new-year-day-ambient').then(m => m.NewYearDayAmbientComponent)
+  },
+  {
+    id: 'new-year',
+    nameKey: 'themeSeasonNewYearNight',
     icon: '🎄',
     background: [
       'radial-gradient(ellipse 80% 40% at 50% 104%, rgba(90, 170, 255, 0.5) 0%, rgba(56, 120, 220, 0.18) 48%, transparent 76%)',

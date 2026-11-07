@@ -41,26 +41,21 @@
       </button>
     </div>
 
-    <!-- Top-left controls: progress, speaker, and keyboard help -->
-    <div class="top-left-controls">
-      <div class="top-left-control-row">
-        <div class="progress">
-          {{ currentIndex + 1 }} / {{ items.length }}
-        </div>
-        <button *ngIf="currentItem"
-                (click)="playCurrentItemSound()"
-                class="speaker-btn"
-                [class.disabled]="!currentHasAudio"
-                [disabled]="!currentHasAudio">
-          &#128266;
-        </button>
-      </div>
+    <!-- Shared corner: info, then progress and the item's sound. -->
+    <div class="np-game-corner">
       <app-game-keyboard-help
-        class="spotlight-keyboard-help"
         [shortcuts]="keyboardShortcuts"
         (openChange)="keyboardHintsVisible = $event"
         title="Keyboard shortcuts">
       </app-game-keyboard-help>
+      <span class="np-game-pill">{{ currentIndex + 1 }} / {{ items.length }}</span>
+      <button *ngIf="currentItem"
+              type="button"
+              (click)="playCurrentItemSound()"
+              class="np-game-pill np-game-pill-btn"
+              [disabled]="!currentHasAudio">
+        &#128266;
+      </button>
     </div>
   </div>
 

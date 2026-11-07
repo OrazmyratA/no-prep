@@ -51,7 +51,7 @@ export interface Item {
 }
 
 export type AppThemeType = 'default' | 'color' | 'image' | 'season';
-export type SeasonThemeId = 'halloween' | 'new-year';
+export type SeasonThemeId = 'halloween' | 'new-year' | 'new-year-day';
 
 export interface ThemeBackground {
   id?: number;

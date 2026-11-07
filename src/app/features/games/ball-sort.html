@@ -9,12 +9,22 @@
      [class.reverse-mode]="reverseMode"
      [style.--team-count]="teamCount"
      [style.--capacity]="ballsPerColor">
-  <app-game-keyboard-help
-    class="ball-sort-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="keyboardHintsVisible = $event"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+    <ng-container *ngIf="!loading && !loadError && teamCount === 1 && teams[0] as solo">
+      <span class="np-game-pill">{{ solo.completedGroupIds.size }} / {{ colorGroups.length }}</span>
+      <button type="button"
+              class="np-game-pill np-game-pill-btn ball-sort-corner-add"
+              [disabled]="!canAddTube(solo)"
+              [attr.aria-label]="'ballSortAddTube' | translate"
+              [attr.title]="'ballSortAddTube' | translate"
+              (click)="addTube(solo)">+</button>
+    </ng-container>
+  </div>
 
   <div *ngIf="loading" class="ball-sort-loading">
     <div class="ball-sort-spinner"></div>
@@ -34,7 +44,7 @@
              [style.--ball-size]="team.layout.ballSize + 'px'"
              [style.--tube-columns]="team.layout.columns"
              [style.--tube-gap]="team.layout.gap + 'px'">
-      <div class="team-header">
+      <div class="team-header" [class.team-header-solo]="teamCount === 1">
         <div class="team-meta">
           <h3 *ngIf="teamCount > 1">{{ team.name }}</h3>
           <span class="ball-sort-progress">{{ team.completedGroupIds.size }} / {{ colorGroups.length }}</span>

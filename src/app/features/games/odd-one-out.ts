@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { StarPillComponent } from '../../shared/star-pill';
 import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { shuffled, isTypingTarget, TimerBag } from './game-utils';
 import { CommonModule } from '@angular/common';
@@ -17,7 +18,7 @@ interface RoundItem {
 
 @Component({
   selector: 'app-odd-one-out',
-  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
+  imports: [CommonModule, StarPillComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './odd-one-out.html',
   styleUrls: ['./odd-one-out.css']
 })
@@ -76,7 +77,7 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private langService: LanguageService  
+    private langService: LanguageService
   ) {}
 
   async ngOnInit() {

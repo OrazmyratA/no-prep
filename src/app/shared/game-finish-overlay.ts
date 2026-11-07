@@ -73,7 +73,8 @@ function getMainThreadConfetti(): ConfettiInstance {
 // Emoji shapes are rasterised once by canvas-confetti, then drawn like any other piece.
 const SEASON_CONFETTI: Record<string, { colors: string[]; emoji: string[] }> = {
   halloween: { colors: ['#f97316', '#fb923c', '#fdba74', '#a855f7', '#7c3aed', '#84cc16', '#ffffff'], emoji: ['🦇', '🎃', '👻'] },
-  'new-year': { colors: ['#ffd978', '#ffc53d', '#fff3c4', '#ffffff', '#9be8ff', '#38bdf8', '#e8345a'], emoji: ['❄️', '🎄', '⭐'] }
+  'new-year': { colors: ['#ffd978', '#ffc53d', '#fff3c4', '#ffffff', '#9be8ff', '#38bdf8', '#e8345a'], emoji: ['❄️', '🎄', '⭐'] },
+  'new-year-day': { colors: ['#e8345a', '#c81e45', '#ffc53d', '#ffd978', '#38bdf8', '#1d6fd0', '#0f8f72'], emoji: ['❄️', '⛄', '🎁'] }
 };
 const SEASON_EMOJI_SCALAR = 2.4;
 const seasonShapes = new Map<string, confetti.Shape[]>();

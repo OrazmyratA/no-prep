@@ -1,15 +1,16 @@
 <div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-green-900 to-teal-800 p-4 flex flex-col game-container">
-  <app-game-keyboard-help
-    class="flip-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="keyboardHintsVisible = $event"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+  </div>
 
   <div class="w-full mx-auto flex flex-col flex-1 min-h-0">
     <!-- Header with title and speaker button -->
-    <div class="flip-header flex justify-between items-center">
-      <h2 class="text-2xl md:text-4xl font-bold text-white text-center flex-1">{{ 'flipTilesTitle' | translate }}</h2>
+    <div class="flip-header flex justify-end items-center">
+      <h2 class="sr-only">{{ 'flipTilesTitle' | translate }}</h2>
       <div class="flip-header-actions">
         <button type="button" (click)="toggleTextVisibility()"
                 class="text-toggle-btn"
@@ -114,10 +115,10 @@
 <!-- Fullscreen Overlay Modal -->
 <div *ngIf="fullscreenVisible" class="fullscreen-overlay" (click)="closeFullscreen()">
   <div class="fullscreen-content">
-    
+
     <!-- Left navigation button -->
-    <button class="fullscreen-nav-btn prev" 
-            (click)="$event.stopPropagation(); navigateFullscreen(-1)" 
+    <button class="fullscreen-nav-btn prev"
+            (click)="$event.stopPropagation(); navigateFullscreen(-1)"
             [disabled]="fullscreenIndex === 0">
       ◀
     </button>
@@ -130,8 +131,8 @@
         [class.fullscreen-card--has-audio]="fItem.item.audio"
         (click)="$event.stopPropagation()">
         <!-- Speaker button inside the card (top‑right) -->
-        <button *ngIf="fItem.item.audio" 
-                class="fullscreen-speaker" 
+        <button *ngIf="fItem.item.audio"
+                class="fullscreen-speaker"
                 (click)="playFullscreenAudio()">
           🔊
         </button>
@@ -172,8 +173,8 @@
     </ng-container>
 
     <!-- Right navigation button -->
-    <button class="fullscreen-nav-btn next" 
-            (click)="$event.stopPropagation(); navigateFullscreen(1)" 
+    <button class="fullscreen-nav-btn next"
+            (click)="$event.stopPropagation(); navigateFullscreen(1)"
             [disabled]="fullscreenIndex === cards.length - 1">
       ▶
     </button>

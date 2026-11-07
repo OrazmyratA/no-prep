@@ -1,12 +1,13 @@
 <div class="ws-root">
-  <app-game-keyboard-help
-    class="ws-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="keyboardHintsVisible = $event"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+  </div>
 
-  <h2 class="ws-title">{{ 'gameWritingWorkshopName' | translate }}</h2>
+  <h2 class="sr-only">{{ 'gameWritingWorkshopName' | translate }}</h2>
 
   <div *ngIf="loading" class="flex justify-center items-center h-64">
     <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>

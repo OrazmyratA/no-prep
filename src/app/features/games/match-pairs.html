@@ -1,26 +1,24 @@
 <div #gameShell class="h-screen overflow-hidden bg-gradient-to-br from-purple-900 to-indigo-800 p-4 flex flex-col game-container">
-  <div class="match-progress">{{ remainingPairs }} / {{ totalPairs }}</div>
-
-  <app-game-keyboard-help
-    class="match-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="keyboardHintsVisible = $event"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+    <span class="np-game-pill">{{ remainingPairs }} / {{ totalPairs }}</span>
+    <span class="np-game-pill" [attr.title]="'matchPairsTurnsLabel' | translate">🔄 {{ turns }}</span>
+    <button type="button" (click)="peek()" [disabled]="isPeeking" class="np-game-pill np-game-pill-btn"
+            [attr.title]="'matchPairsPeek' | translate" [attr.aria-label]="'matchPairsPeek' | translate">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+      </svg>
+    </button>
+  </div>
 
   <div class="w-full mx-auto flex flex-col flex-1 min-h-0">
-    <div class="match-header flex items-center justify-center">
-      <button (click)="peek()"
-              [disabled]="isPeeking"
-              class="mr-4 text-white hover:text-gray-300 transition disabled:opacity-50"
-              [attr.title]="'matchPairsPeek' | translate">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-        </svg>
-      </button>
-      <h2 class="text-4xl font-bold text-white">{{ 'matchPairsTitle' | translate }}</h2>
-    </div>
+    <h2 class="sr-only">{{ 'matchPairsTitle' | translate }}</h2>
+    <div class="match-header np-game-top-space" aria-hidden="true"></div>
 
     <!-- Loading -->
     <div *ngIf="!cards.length" class="flex justify-center items-center h-64">
@@ -28,7 +26,7 @@
     </div>
 
     <!-- Dynamic Game Grid -->
-    <div *ngIf="cards.length > 0" 
+    <div *ngIf="cards.length > 0"
          class="game-board-container">
       <div #gridContainer class="game-grid"
            [style.gap.px]="gap"
@@ -104,6 +102,7 @@
     <app-game-finish-overlay
       *ngIf="gameFinished"
       [title]="'matchPairsYouGotThemAll' | translate"
+      [message]="'matchPairsTurnsResult' | translate: { pairs: totalPairs, turns: turns }"
       (playAgain)="resetGame()"
       (activities)="onMenuAction('activity')">
     </app-game-finish-overlay>

@@ -14,7 +14,7 @@
 
   <div *ngIf="!loading && !gameFinished && questions.length" class="game-board">
     <div class="header">
-      <div class="score">{{ 'score' | translate }}: {{ score }} / {{ questions.length }}</div>
+      <div class="score"><app-star-pill [plain]="true" [count]="score" [total]="questions.length" [label]="'gameStars' | translate"></app-star-pill></div>
       <div class="progress">{{ currentIndex + 1 }} / {{ questions.length }}</div>
     </div>
 
@@ -101,7 +101,7 @@
   <app-game-finish-overlay
     *ngIf="gameFinished"
     [title]="'spellingCheckVictory' | translate"
-    [message]="('spellingCheckScore' | translate) + ': ' + score + ' / ' + questions.length"
+    [message]="'⭐ ' + ('spellingCheckScore' | translate) + ': ' + score + ' / ' + questions.length"
     (playAgain)="resetGame()"
     (activities)="goToActivities()">
   </app-game-finish-overlay>

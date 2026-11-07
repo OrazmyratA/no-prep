@@ -1,6 +1,8 @@
 @import './styles/theme-tokens.css';
 @import './styles/seasons/halloween.css';
 @import './styles/seasons/new-year.css';
+@import './styles/seasons/new-year-day.css';
+@import './styles/game-chrome.css';
 
 @tailwind base;
 @tailwind components;

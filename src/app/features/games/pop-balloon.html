@@ -25,12 +25,14 @@
     </div>
   </div>
 
-  <app-game-keyboard-help
-    class="pop-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="keyboardHintsVisible = $event"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+    <span *ngIf="!teamMode && teams[0] as solo" class="np-game-pill">{{ solo.score }} / {{ solo.balloons.length }}</span>
+  </div>
 
   <!-- Loading Spinner -->
   <div *ngIf="loading" class="loading-overlay">
@@ -100,11 +102,6 @@
              class="gift-image">
       </div>
 
-      <div *ngIf="!teamMode" class="game-info lane-info">
-        <div class="progress">
-          {{ team.score }} / {{ team.balloons.length }}
-        </div>
-      </div>
 
       <div *ngIf="team.showQuiz && team.selectedItem"
            class="balloon-quiz-overlay"

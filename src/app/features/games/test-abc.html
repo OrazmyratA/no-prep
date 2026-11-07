@@ -1,10 +1,13 @@
 <div class="game-container">
-  <app-game-keyboard-help
-    class="test-abc-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="keyboardHintsVisible = $event"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="keyboardHintsVisible = $event"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+    <span *ngIf="!loading && !gameFinished && questions.length" class="np-game-pill">{{ currentIndex + 1 }} / {{ questions.length }}</span>
+    <app-star-pill *ngIf="!loading && !gameFinished && questions.length" [count]="score" [label]="'gameStars' | translate"></app-star-pill>
+  </div>
 
   <!-- Loading -->
   <div *ngIf="loading" class="loading-overlay">
@@ -16,7 +19,6 @@
     <!-- Header with score and progress -->
     <div class="quiz-header">
       <div class="score">{{ 'score' | translate }}: {{ score }} / {{ questions.length }}</div>
-      <div class="progress">{{ currentIndex + 1 }} / {{ questions.length }}</div>
     </div>
 
     <!-- Question area -->
@@ -95,7 +97,7 @@
   <app-game-finish-overlay
     *ngIf="gameFinished"
     [title]="'testAbcQuizComplete' | translate"
-    [message]="('testAbcYourScore' | translate) + ': ' + score + ' / ' + questions.length"
+    [message]="'⭐ ' + ('testAbcYourScore' | translate) + ': ' + score + ' / ' + questions.length"
     (playAgain)="resetGame()"
     (activities)="goToActivities()">
   </app-game-finish-overlay>

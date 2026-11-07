@@ -2489,6 +2489,19 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'themeSeasonNewYearNight': {
+  en: 'New Year night',
+  tk: 'Täze ýyl gijesi',
+  ru: 'Новогодняя ночь',
+  cn: '新年之夜',
+  cde: 'Neujahrsnacht',
+  es: 'Noche de Año Nuevo',
+  fr: 'Nuit du Nouvel An',
+  kr: '새해 밤',
+  sa: 'ليلة رأس السنة',
+  vi: 'Đêm Giao thừa',
+},
+
 'themeSeasonNewYear': {
   en: 'New Year',
   tk: 'Täze ýyl',
