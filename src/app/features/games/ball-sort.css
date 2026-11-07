@@ -874,3 +874,9 @@
     height: 2.1rem;
   }
 }
+
+/* One player: progress and "add a tube" live in the shared corner. The header keeps its place so
+   the tubes are laid out exactly as before. */
+.team-header.team-header-solo {
+  visibility: hidden;
+}

@@ -323,6 +323,9 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     if (bookPages.length) {
       this.aiInitialPages = bookPages;
       this.setAiPanelOpen(true);
+    } else if (!id && this.route.snapshot.queryParamMap.get('ai') === '1') {
+      // The ✨ on the "New topic" card: the teacher came here for the AI.
+      this.setAiPanelOpen(true);
     }
   }
 

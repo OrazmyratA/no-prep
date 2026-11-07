@@ -1,4 +1,4 @@
-<div class="topics-page min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+<div class="topics-page np-page min-h-screen p-6">
   <div class="topics-shell mx-auto w-full max-w-screen-xl">
     <div *ngIf="leaderboardState.isSelecting" class="leaderboard-picker-banner">
       <span>{{ pickerBannerHintKey | translate }}</span>
@@ -58,8 +58,8 @@
   <!-- Right side: action buttons + flags -->
   <div class="topics-actions flex flex-wrap lg:flex-nowrap items-center gap-2" [class.books-mode]="isBooksCategory">
     <!-- Combine button -->
-    <button (click)="combineSelectedLibrary()"
-            class="topics-action-btn np-action np-action--violet font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+    <button *ngIf="selectedLibraryCount" (click)="combineSelectedLibrary()"
+            class="topics-action-btn np-tool np-action--violet font-bold py-3 px-6 rounded-full transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!canCombineLibrary">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path>
@@ -70,7 +70,7 @@
     <!-- Export All -->
     <button *ngIf="isTopicsCategory"
             (click)="fullAccess ? exportAllTopics() : licenseService.requestReopen()"
-            class="topics-action-btn np-action np-action--green font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            class="topics-action-btn np-tool np-action--green font-bold py-3 px-6 rounded-full transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!fullAccess">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
@@ -82,7 +82,7 @@
     <button *ngIf="isTopicsCategory"
             type="button"
             (click)="toggleDriveLinksPanel()"
-            class="topics-action-btn drive-links-action np-action np-action--amber font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            class="topics-action-btn drive-links-action np-tool np-action--amber font-bold py-3 px-6 rounded-full transition flex items-center whitespace-nowrap"
             [attr.title]="'quickLinksButton' | translate"
             [attr.aria-label]="'quickLinksButton' | translate">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,21 +94,9 @@
             [attr.title]="(driveBackup.safe ? 'driveBackupOnTitle' : 'driveBackupOffTitle') | translate">{{ driveBackup.safe ? '✓' : '' }}</span>
     </button>
 
-    <!-- Create Book -->
-    <button *ngIf="isBooksCategory"
-            (click)="fullAccess ? createBook() : licenseService.requestReopen()"
-            class="topics-action-btn book-create-action np-action np-action--sky font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
-            [class.btn-disabled]="!fullAccess">
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m6-6H6"/>
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h9a3 3 0 013 3v17H8a3 3 0 01-3-3V4z"/>
-      </svg>
-      {{ 'createBook' | translate }}
-    </button>
-
     <!-- Import -->
     <button (click)="fullAccess ? importLibrary() : licenseService.requestReopen()"
-            class="topics-action-btn library-import-action np-action np-action--blue font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
+            class="topics-action-btn library-import-action np-tool np-action--blue font-bold py-3 px-6 rounded-full transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!fullAccess">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -126,16 +114,6 @@
       <img src="assets/images/book/storage.png" alt="">
     </button>
 
-    <!-- New Topic -->
-    <button *ngIf="isTopicsCategory"
-            (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()"
-            class="topics-action-btn np-action np-action--fresh font-bold py-3 px-6 rounded-full shadow-lg transition flex items-center whitespace-nowrap"
-            [class.btn-disabled]="!fullAccess">
-      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7H5"></path>
-      </svg>
-      {{ 'newTopic' | translate }}
-    </button>
 
 <!-- Language dropdown -->
 <div class="relative language-dropdown library-language-action">
@@ -361,9 +339,16 @@
     <section class="library-section">
       <div *ngIf="visibleBooks.length; else noBooks"
            class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <button *ngIf="!leaderboardState.isSelecting" type="button"
+                class="library-new-card library-new-card--book np-card"
+                [class.btn-disabled]="!fullAccess"
+                (click)="fullAccess ? createBook() : licenseService.requestReopen()">
+          <span class="library-new-plus" aria-hidden="true"></span>
+          <span class="library-new-label">{{ 'createBook' | translate }}</span>
+        </button>
         <div *ngFor="let book of visibleBooks; trackBy: trackByBookId"
              (click)="onBookClick(book.id)"
-             class="topics-card book-card group relative np-card rounded-2xl overflow-hidden transform transition-all duration-300 hover:scale-105"
+             class="topics-card book-card group relative np-card np-card-lift rounded-2xl overflow-hidden"
              [class.topic-armed]="isBookArmed(book.id)"
              [class.book-locked]="!fullAccess">
           <div *ngIf="!fullAccess" class="book-lock-badge" title="{{ 'license.title' | translate }}">
@@ -382,7 +367,7 @@
 
           <div class="topic-actions absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
             <button (click)="$event.stopPropagation(); fullAccess ? copyBook(book.id) : licenseService.requestReopen()"
-                    class="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-full shadow-md"
+                    class="np-card-tool np-action--violet"
                     [class.btn-disabled]="!fullAccess"
                     title="Copy book">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -391,7 +376,7 @@
               </svg>
             </button>
             <button (click)="$event.stopPropagation(); fullAccess ? editBook(book.id) : licenseService.requestReopen()"
-                    class="bg-yellow-400 hover:bg-yellow-500 text-white p-2 rounded-full shadow-md"
+                    class="np-card-tool np-action--amber"
                     [class.btn-disabled]="!fullAccess"
                     title="Edit book">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -399,7 +384,7 @@
               </svg>
             </button>
             <button (click)="$event.stopPropagation(); fullAccess ? exportBook(book.id) : licenseService.requestReopen()"
-                    class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-md"
+                    class="np-card-tool np-action--green"
                     [class.btn-disabled]="!fullAccess"
                     title="Export book folder to Desktop">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,7 +392,7 @@
               </svg>
             </button>
             <button (click)="$event.stopPropagation(); fullAccess ? deleteBook(book.id) : licenseService.requestReopen()"
-                    class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md"
+                    class="np-card-tool np-action--red"
                     [class.btn-disabled]="!fullAccess"
                     title="Delete book">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -421,17 +406,11 @@
             <span *ngIf="!book.coverPath">Book</span>
           </div>
 
-          <div class="cursor-pointer p-6">
-            <div class="flex items-center justify-between mb-4">
-              <div class="w-12 h-12 np-avatar-book rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-                {{ book.title.charAt(0).toUpperCase() }}
-              </div>
-              <span class="text-xs text-ink-faint">{{ book.updatedAt | date:'mediumDate' }}</span>
-            </div>
-            <h3 class="text-xl font-bold text-ink mb-2">{{ book.title }}</h3>
-            <div class="book-meta">
-              <span>{{ book.pageCount }} pages</span>
-              <span>{{ formatBookSize(book.sizeBytes) }}</span>
+          <div class="library-card-body cursor-pointer">
+            <h3 class="library-card-title">{{ book.title }}</h3>
+            <div class="library-card-meta">
+              <span class="library-card-count">{{ book.pageCount }} pages · {{ formatBookSize(book.sizeBytes) }}</span>
+              <span>{{ book.updatedAt | date:'mediumDate' }}</span>
             </div>
           </div>
         </div>
@@ -462,9 +441,26 @@
     <ng-container *ngIf="isTopicsCategory">
     <div *ngIf="(filteredTopics$ | async)?.length; else emptyOrNoMatch"
          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div *ngIf="!leaderboardState.isSelecting"
+           class="library-new-card library-new-card--topic np-card"
+           [class.btn-disabled]="!fullAccess">
+        <button type="button" class="library-new-main"
+                (click)="fullAccess ? router.navigate(['/topics/new']) : licenseService.requestReopen()">
+          <span class="library-new-plus" aria-hidden="true"></span>
+          <span class="library-new-label">{{ 'newTopic' | translate }}</span>
+        </button>
+        <!-- The magic light sweeps across the card on hover, from the ✨ corner side. -->
+        <span class="library-new-sweep" aria-hidden="true"></span>
+        <button type="button" class="library-new-ai"
+                (click)="fullAccess ? router.navigate(['/topics/new'], { queryParams: { ai: 1 } }) : licenseService.requestReopen()"
+                [attr.title]="'aiTopicTitle' | translate" [attr.aria-label]="'aiTopicTitle' | translate">
+          <span class="library-new-ai-icon" aria-hidden="true">✨</span>
+          <span class="library-new-ai-label">{{ 'aiTopicTitle' | translate }}</span>
+        </button>
+      </div>
       <div *ngFor="let topic of filteredTopics$ | async | slice:0:topicCardLimit; trackBy: trackByTopicId"
            (click)="onTopicClick(topic.id!)"
-           class="topics-card topic-card group relative np-card rounded-2xl overflow-hidden transform transition-all duration-300 hover:scale-105"
+           class="topics-card topic-card group relative np-card np-card-lift rounded-2xl overflow-hidden"
            [class.topic-armed]="isTopicArmed(topic.id!)">
         <label class="absolute top-3 left-3 flex items-center bg-surface/90 p-2 rounded-full shadow z-20"
                (click)="$event.stopPropagation()">
@@ -478,7 +474,7 @@
         <!-- Action Buttons (appear on hover) -->
         <div class="topic-actions absolute top-3 right-3 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <button (click)="$event.stopPropagation(); fullAccess ? copyTopic(topic.id!) : licenseService.requestReopen()"
-                  class="bg-indigo-500 hover:bg-indigo-600 text-white p-2 rounded-full shadow-md"
+                  class="np-card-tool np-action--violet"
                   [class.btn-disabled]="!fullAccess"
                   [attr.title]="'copyTopic' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -487,7 +483,7 @@
             </svg>
           </button>
           <button (click)="$event.stopPropagation(); fullAccess ? editTopic(topic.id!) : licenseService.requestReopen()"
-                  class="bg-yellow-400 hover:bg-yellow-500 text-white p-2 rounded-full shadow-md"
+                  class="np-card-tool np-action--amber"
                   [class.btn-disabled]="!fullAccess"
                   [attr.title]="'editTopic' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -495,7 +491,7 @@
             </svg>
           </button>
           <button (click)="$event.stopPropagation(); fullAccess ? exportSingleTopic(topic.id!) : licenseService.requestReopen()"
-                  class="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-md"
+                  class="np-card-tool np-action--green"
                   [class.btn-disabled]="!fullAccess"
                   [attr.title]="'exportTopic' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -503,7 +499,7 @@
             </svg>
           </button>
           <button (click)="$event.stopPropagation(); fullAccess ? deleteTopic(topic.id!) : licenseService.requestReopen()"
-                  class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-md"
+                  class="np-card-tool np-action--red"
                   [class.btn-disabled]="!fullAccess"
                   [attr.title]="'deleteTopic' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -512,21 +508,19 @@
           </button>
         </div>
 
-        <div class="topic-cover" [class.has-cover]="!!getTopicCoverUrl(topic)">
+        <div class="topic-cover" [class.has-cover]="!!getTopicCoverUrl(topic)"
+             [style.--cover]="getTopicCoverUrl(topic) ? 'url(' + getTopicCoverUrl(topic) + ')' : null">
           <img *ngIf="getTopicCoverUrl(topic)" [src]="getTopicCoverUrl(topic)" [alt]="topic.name + ' cover'" loading="lazy" decoding="async">
           <span *ngIf="!getTopicCoverUrl(topic)">{{ topic.name.charAt(0).toUpperCase() }}</span>
         </div>
 
         <!-- Topic Content -->
-        <div class="cursor-pointer p-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="w-12 h-12 np-avatar-topic rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg">
-              {{ topic.name.charAt(0).toUpperCase() }}
-            </div>
-            <span class="text-xs text-ink-faint">{{ topic.updatedAt | date:'mediumDate' }}</span>
+        <div class="library-card-body cursor-pointer">
+          <h3 class="library-card-title">{{ topic.name }}</h3>
+          <div class="library-card-meta">
+            <span class="library-card-count">{{ 'items' | translate }}: {{ topic.itemCount || 0 }}</span>
+            <span>{{ topic.updatedAt | date:'mediumDate' }}</span>
           </div>
-          <h3 class="text-xl font-bold text-ink mb-2">{{ topic.name }}</h3>
-          <span class="text-xs text-ink-faint">{{ 'items' | translate }}: {{ topic.itemCount || 0 }}</span>
         </div>
       </div>
     </div>

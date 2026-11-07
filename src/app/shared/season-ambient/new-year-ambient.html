@@ -1,0 +1,309 @@
+<!-- Shared drawings -->
+<svg class="defs" width="0" height="0">
+  <defs>
+    <symbol id="ny-fir" viewBox="0 0 40 72" overflow="visible">
+      <path d="M20 0 30 19H25L34 37H28L39 59H23V72H17V59H1L12 37H6L15 19H10Z" />
+      <path d="M20 0 26 12 20 9.5 14 12ZM13 20 9.5 25.5 15 24ZM27 20 30.5 25.5 25 24ZM10.5 38 6.5 45 12.5 43ZM29.5 38 33.5 45 27.5 43Z" fill="#dcecff" opacity="0.72" />
+    </symbol>
+
+    <linearGradient id="ny-aurora-a" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8b5cf6" stop-opacity="0" />
+      <stop offset="0.3" stop-color="#8b5cf6" stop-opacity="0.75" />
+      <stop offset="0.62" stop-color="#22d3ee" stop-opacity="0.95" />
+      <stop offset="0.88" stop-color="#34f5b5" stop-opacity="1" />
+      <stop offset="1" stop-color="#34f5b5" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="ny-aurora-b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ec4899" stop-opacity="0" />
+      <stop offset="0.34" stop-color="#a855f7" stop-opacity="0.7" />
+      <stop offset="0.72" stop-color="#38bdf8" stop-opacity="0.85" />
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0" />
+    </linearGradient>
+    <filter id="ny-aurora-rays" x="-5%" y="-10%" width="110%" height="120%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.014 0.0007" numOctaves="3" seed="11" result="noise" />
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.1 0 0 0 -0.5" result="rays" />
+      <feComposite in="SourceGraphic" in2="rays" operator="in" result="curtain" />
+      <feGaussianBlur in="curtain" stdDeviation="5 16" />
+    </filter>
+
+    <linearGradient id="ny-ridge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3f649e" />
+      <stop offset="1" stop-color="#21406f" />
+    </linearGradient>
+    <linearGradient id="ny-hill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f77b3" />
+      <stop offset="0.45" stop-color="#2c4f86" />
+      <stop offset="1" stop-color="#172f58" />
+    </linearGradient>
+    <linearGradient id="ny-drift" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3c629e" />
+      <stop offset="1" stop-color="#10234a" />
+    </linearGradient>
+    <linearGradient id="ny-fir-left" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#127a6b" />
+      <stop offset="1" stop-color="#07403f" />
+    </linearGradient>
+    <linearGradient id="ny-fir-right" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26b593" />
+      <stop offset="1" stop-color="#0d6a60" />
+    </linearGradient>
+    <radialGradient id="ny-warm-glow">
+      <stop offset="0" stop-color="#ffc86b" stop-opacity="0.75" />
+      <stop offset="1" stop-color="#ffc86b" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="ny-star-glow">
+      <stop offset="0" stop-color="#fff0b8" stop-opacity="0.95" />
+      <stop offset="0.35" stop-color="#ffd978" stop-opacity="0.42" />
+      <stop offset="1" stop-color="#ffd978" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="ny-gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff3c4" />
+      <stop offset="0.55" stop-color="#ffd166" />
+      <stop offset="1" stop-color="#d99a21" />
+    </linearGradient>
+    <linearGradient id="ny-trail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffd978" stop-opacity="0" />
+      <stop offset="1" stop-color="#ffe9a8" stop-opacity="0.85" />
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- Sky -->
+<div class="stars"></div>
+<div class="stars stars-late"></div>
+<div class="aurora aurora-a">
+  <svg viewBox="0 0 1600 600" preserveAspectRatio="none">
+    <path filter="url(#ny-aurora-rays)" fill="url(#ny-aurora-a)"
+          d="M-60 40C180 10 360 96 610 62S1040 -6 1260 48 1560 72 1680 30V300C1540 440 1370 210 1130 356S760 540 520 330 170 230 -60 450Z" />
+  </svg>
+</div>
+<div class="aurora aurora-b">
+  <svg viewBox="0 0 1600 600" preserveAspectRatio="none">
+    <path filter="url(#ny-aurora-rays)" fill="url(#ny-aurora-b)"
+          d="M-60 110C240 44 470 150 760 92S1280 34 1680 122V250C1440 410 1200 180 930 340S400 470 -60 230Z" />
+  </svg>
+</div>
+
+<div class="moon"></div>
+
+<div class="shooting-star"></div>
+<div class="shooting-star shooting-star-late"></div>
+
+@for (firework of fireworks; track $index) {
+  <svg
+    class="firework"
+    viewBox="0 0 200 200"
+    [style.left]="firework.left"
+    [style.top]="firework.top"
+    [style.width]="firework.size"
+    [style.height]="firework.size"
+    [style.--duration]="firework.duration"
+    [style.--delay]="firework.delay"
+    [style.color]="firework.color">
+    <circle cx="100" cy="100" r="62" fill="currentColor" opacity="0.07" />
+    <g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="currentColor">
+      @for (ray of rays; track $index) {
+        <line [attr.x1]="ray.x1" [attr.y1]="ray.y1" [attr.x2]="ray.x2" [attr.y2]="ray.y2" />
+        <circle [attr.cx]="ray.tipX" [attr.cy]="ray.tipY" r="2.6" stroke="none" />
+      }
+    </g>
+  </svg>
+}
+
+<!-- Grandfather Frost's sleigh -->
+<div class="sleigh-flight">
+  <svg class="sleigh" viewBox="-110 -12 450 84">
+    <path d="M-105 40C-60 34 -20 42 18 38L18 42C-20 48 -60 42 -105 40Z" fill="url(#ny-trail)" />
+    <g fill="#ffe9a8">
+      <path d="M-58 28l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6Z" />
+      <path d="M-22 48l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2Z" />
+      <path d="M-84 46l1 2.6 2.6 1-2.6 1-1 2.6-1-2.6-2.6-1 2.6-1Z" />
+    </g>
+
+    <!-- Reins -->
+    <path d="M87 25C110 18 124 19 148 22C174 18 192 19 216 22" fill="none" stroke="#ffe9a8" stroke-width="1" />
+
+    <!-- Sack and driver -->
+    <ellipse cx="36" cy="27" rx="13" ry="14" fill="#3b82f6" />
+    <path d="M30 14 36 8 42 14Z" fill="#60a5fa" />
+    <path d="M48 37C48 21 54 13 62 13S76 21 76 37Z" fill="#e11d48" />
+    <path d="M60 14H64V37H60Z" fill="#fff" opacity="0.92" />
+    <path d="M71 21C77 22 82 24 88 25" fill="none" stroke="#e11d48" stroke-width="4.5" stroke-linecap="round" />
+    <circle cx="62" cy="9" r="5.4" fill="#fbdcc8" />
+    <path d="M56 10C55 22 59 31 62 33 65 31 69 22 68 10 65 13.5 59 13.5 56 10Z" fill="#fff" />
+    <path d="M55.5 6C55 -8 69 -8 68.5 6Z" fill="#e11d48" />
+    <rect x="53.5" y="3.4" width="17" height="5" rx="2.5" fill="#fff" />
+
+    <!-- Sleigh -->
+    <path d="M20 29C20 43 29 49 47 49H89C100 49 108 40 113 26C115 21 121 21 122 25C118 44 106 56 89 56H46C27 56 15 44 15 29Z" fill="url(#ny-gold)" />
+    <path d="M23 34C24 42 32 47 47 47H88C98 47 105 40 109 30L100 33C93 37 88 37 80 37H34C29 37 26 36 23 34Z" fill="#b91c3c" />
+    <path d="M36 56 33 65M86 56 89 65" stroke="#ffd166" stroke-width="2.4" stroke-linecap="round" />
+    <path d="M8 65H100C114 65 122 58 127 49" fill="none" stroke="url(#ny-gold)" stroke-width="3.4" stroke-linecap="round" />
+
+    <!-- Reindeer -->
+    <use href="#ny-reindeer" x="136" y="12" />
+    <use href="#ny-reindeer" x="204" y="10" />
+    <symbol id="ny-reindeer" width="70" height="58" viewBox="-2 -12 70 58" overflow="visible">
+      <path d="M8 22C12 15 30 14 40 18L46 7C47 3 52 2 56 5L62 9 56 12 51 14 46 27C40 31 20 31 13 28Z" fill="url(#ny-gold)" />
+      <path d="M16 28 7 39M23 29 17 41M38 28 47 39M43 25 54 33M8 22 2 18" fill="none" stroke="#ffd166" stroke-width="2.8" stroke-linecap="round" />
+      <path d="M50 4 46 -6M48 -1 42 -3M54 3 57 -8M55.4 -2 62 -5" fill="none" stroke="#ffe9a8" stroke-width="1.8" stroke-linecap="round" />
+      <circle cx="61" cy="9" r="2" fill="#ff5468" />
+    </symbol>
+  </svg>
+</div>
+
+<!-- Land: distant peaks and forest -->
+<svg class="land land-back" viewBox="0 0 1440 300" preserveAspectRatio="xMidYMax slice">
+  <path d="M0 196 130 112 226 168 348 74 470 170 588 112 720 186 860 96 980 170 1112 62 1240 166 1344 110 1440 170V300H0Z" fill="#1d3a6b" />
+  <path d="M348 74 318 98 336 94 350 110 364 92 386 106ZM130 112 106 128 124 126 134 138 148 126 164 136ZM860 96 830 116 850 112 862 126 876 110 898 122ZM1112 62 1078 90 1098 86 1114 104 1130 84 1156 100ZM588 112 566 126 582 124 592 134 604 124 620 132ZM1344 110 1322 124 1338 122 1348 132 1358 122 1374 130Z" fill="#bcd5f5" opacity="0.8" />
+  <g fill="#1a3866">
+    @for (tree of farForest; track $index) {
+      <use href="#ny-fir" width="40" height="72" [attr.transform]="'translate(' + tree.x + ' ' + tree.y + ') scale(' + tree.scale + ')'" />
+    }
+  </g>
+  <path d="M0 214C210 190 400 222 640 208S1120 186 1440 214V300H0Z" fill="url(#ny-ridge)" />
+  <g fill="#10284f">
+    @for (tree of nearForest; track $index) {
+      <use href="#ny-fir" width="40" height="72" [attr.transform]="'translate(' + tree.x + ' ' + tree.y + ') scale(' + tree.scale + ')'" />
+    }
+  </g>
+</svg>
+
+@for (glow of glows; track $index) {
+  <div
+    class="gold-glow"
+    [style.left]="glow.left"
+    [style.width]="glow.size"
+    [style.height]="glow.size"
+    [style.--duration]="glow.duration"
+    [style.--delay]="glow.delay"></div>
+}
+
+<!-- Village, on the left -->
+<div class="village">
+  <svg viewBox="0 0 430 190">
+    <circle cx="96" cy="126" r="66" fill="url(#ny-warm-glow)" opacity="0.65" />
+    <circle cx="238" cy="136" r="54" fill="url(#ny-warm-glow)" opacity="0.6" />
+    <circle cx="346" cy="146" r="42" fill="url(#ny-warm-glow)" opacity="0.5" />
+
+    <use href="#ny-fir" x="4" y="72" width="62" height="112" fill="#0d2348" />
+    <use href="#ny-fir" x="166" y="86" width="50" height="92" fill="#0d2348" />
+    <use href="#ny-fir" x="382" y="96" width="46" height="84" fill="#0d2348" />
+
+    <!-- Big cabin -->
+    <path d="M36 186 96 62 156 186Z" fill="#132a54" />
+    <path d="M96 62 156 186H96Z" fill="#1b3768" />
+    <path d="M96 56 28 190 42 190 96 82 150 190 164 190Z" fill="#e8f2ff" />
+    <path d="M96 56 164 190 150 190 96 82Z" fill="#b9d1f2" />
+    <path d="M96 100 126 180H66Z" fill="#ffc86b" />
+    <path d="M96 100 126 180H96Z" fill="#ffdd96" />
+    <path d="M96 100V180M78 148H114M86 124H106" stroke="#7a4b16" stroke-width="2.2" />
+    <rect x="124" y="82" width="12" height="30" fill="#132a54" />
+    <rect x="121" y="78" width="18" height="6" rx="2" fill="#e8f2ff" />
+
+    <!-- Middle cabin -->
+    <path d="M196 186 238 100 280 186Z" fill="#132a54" />
+    <path d="M238 100 280 186H238Z" fill="#1b3768" />
+    <path d="M238 94 188 190 198 190 238 114 278 190 288 190Z" fill="#e8f2ff" />
+    <path d="M238 94 288 190 278 190 238 114Z" fill="#b9d1f2" />
+    <path d="M238 130 258 182H218Z" fill="#ffc86b" />
+    <path d="M238 130 258 182H238Z" fill="#ffdd96" />
+    <path d="M238 130V182M226 160H250" stroke="#7a4b16" stroke-width="1.8" />
+
+    <!-- Small cabin -->
+    <path d="M314 186 346 124 378 186Z" fill="#132a54" />
+    <path d="M346 124 378 186H346Z" fill="#1b3768" />
+    <path d="M346 118 306 190 314 190 346 134 378 190 386 190Z" fill="#e8f2ff" />
+    <path d="M346 118 386 190 378 190 346 134Z" fill="#b9d1f2" />
+    <path d="M346 148 360 182H332Z" fill="#ffc86b" />
+    <path d="M346 148V182" stroke="#7a4b16" stroke-width="1.6" />
+  </svg>
+</div>
+
+<!-- The hill they stand on -->
+<svg class="land land-hill" viewBox="0 0 1440 160" preserveAspectRatio="none">
+  <path d="M0 58C180 22 420 72 690 52S1180 10 1440 60V160H0Z" fill="url(#ny-hill)" />
+  <path d="M0 58C180 22 420 72 690 52S1180 10 1440 60" fill="none" stroke="#cfe2fb" stroke-width="1.6" opacity="0.55" vector-effect="non-scaling-stroke" />
+</svg>
+
+<!-- The fir, on the right -->
+<div class="fir">
+  <svg class="fir-glow-svg" viewBox="0 0 240 390"><circle cx="120" cy="210" r="118" fill="url(#ny-warm-glow)" opacity="0.32" /></svg>
+  <svg viewBox="0 0 240 390">
+    <path d="M28 390C52 352 188 352 212 390Z" fill="#dcebff" />
+    <path d="M120 359C160 359 196 366 212 390H120Z" fill="#a9c6ee" />
+    <rect x="108" y="340" width="24" height="30" rx="2" fill="#2a1a12" />
+    <rect x="120" y="340" width="12" height="30" fill="#46301f" />
+
+    <!-- Tiers, widest first: each a darker and a lighter face, with snow on the tips -->
+    <path d="M120 200 6 334C60 356 90 346 120 352Z" fill="url(#ny-fir-left)" />
+    <path d="M120 200 234 334C180 356 150 346 120 352Z" fill="url(#ny-fir-right)" />
+    <path d="M120 150 26 278C70 298 96 288 120 294Z" fill="url(#ny-fir-left)" />
+    <path d="M120 150 214 278C170 298 144 288 120 294Z" fill="url(#ny-fir-right)" />
+    <path d="M120 100 48 222C80 240 102 230 120 236Z" fill="url(#ny-fir-left)" />
+    <path d="M120 100 192 222C160 240 138 230 120 236Z" fill="url(#ny-fir-right)" />
+    <path d="M120 60 70 170C92 184 106 176 120 180Z" fill="url(#ny-fir-left)" />
+    <path d="M120 60 170 170C148 184 134 176 120 180Z" fill="url(#ny-fir-right)" />
+    <path d="M120 26 92 112C104 122 112 116 120 119Z" fill="url(#ny-fir-left)" />
+    <path d="M120 26 148 112C136 122 128 116 120 119Z" fill="url(#ny-fir-right)" />
+
+    <g fill="#eaf4ff">
+      <path d="M120 26 110 57 120 52 130 57Z" />
+      <path d="M6 334 19 319 29 334 18 340ZM234 334 221 319 211 334 222 340Z" />
+      <path d="M26 278 38 263 47 279 36 284ZM214 278 202 263 193 279 204 284Z" />
+      <path d="M48 222 58 206 67 223 57 228ZM192 222 182 206 173 223 183 228Z" />
+      <path d="M70 170 78 154 86 172 77 175ZM170 170 162 154 154 172 163 175Z" />
+    </g>
+
+    <!-- Garlands -->
+    <g fill="none" stroke="#ffe39a" stroke-width="1.1" opacity="0.5">
+      <path d="M99 86Q120 100 143 82" />
+      <path d="M79 134Q122 158 163 128" />
+      <path d="M58 186Q122 220 184 180" />
+      <path d="M36 242Q120 284 206 236" />
+      <path d="M18 298Q122 346 224 292" />
+    </g>
+
+    <!-- Baubles -->
+    <g>
+      <circle cx="104" cy="134" r="7" fill="#e11d48" />
+      <circle cx="152" cy="178" r="7.5" fill="url(#ny-gold)" />
+      <circle cx="82" cy="196" r="7.5" fill="#38bdf8" />
+      <circle cx="130" cy="244" r="8.5" fill="#e11d48" />
+      <circle cx="66" cy="252" r="8" fill="url(#ny-gold)" />
+      <circle cx="180" cy="258" r="8" fill="#38bdf8" />
+      <circle cx="100" cy="312" r="9" fill="url(#ny-gold)" />
+      <circle cx="158" cy="306" r="9" fill="#e11d48" />
+      <circle cx="46" cy="306" r="8" fill="#38bdf8" />
+      <g fill="#fff" opacity="0.65">
+        <circle cx="102" cy="132" r="1.8" /><circle cx="150" cy="175.5" r="2" /><circle cx="80" cy="193.5" r="2" />
+        <circle cx="127.5" cy="241" r="2.2" /><circle cx="63.5" cy="249.5" r="2.1" /><circle cx="177.5" cy="255.5" r="2.1" />
+        <circle cx="97.5" cy="309" r="2.3" /><circle cx="155.5" cy="303" r="2.3" /><circle cx="43.5" cy="303.5" r="2.1" />
+      </g>
+    </g>
+
+    <!-- Star -->
+    <path d="M120 2 126.5 21.5 147 21.7 130.5 33.8 136.8 53.4 120 41.5 103.2 53.4 109.5 33.8 93 21.7 113.5 21.5Z" fill="url(#ny-gold)" />
+    <path d="M120 2 126.5 21.5 147 21.7 130.5 33.8 136.8 53.4 120 41.5Z" fill="#ffc53d" opacity="0.55" />
+  </svg>
+
+  @for (layer of lightLayers; track $index) {
+    <svg class="fir-lights" [class]="'fir-lights fir-lights-' + $index" viewBox="0 0 240 390">
+      @for (bulb of layer; track $index) {
+        <circle [attr.cx]="bulb.x" [attr.cy]="bulb.y" r="8" [attr.fill]="bulb.color" opacity="0.26" />
+        <circle [attr.cx]="bulb.x" [attr.cy]="bulb.y" r="2.8" [attr.fill]="bulb.color" />
+      }
+    </svg>
+  }
+  <svg class="fir-star-glow" viewBox="0 0 240 390"><circle cx="120" cy="28" r="58" fill="url(#ny-star-glow)" /></svg>
+</div>
+
+<!-- Close by -->
+<svg class="land land-front" viewBox="0 0 1440 120" preserveAspectRatio="none">
+  <path d="M0 62C260 96 520 58 780 84S1240 110 1440 70V120H0Z" fill="url(#ny-drift)" />
+</svg>
+
+<!-- Snow: far, middle, near -->
+<div class="snow-sway snow-sway-far"><div class="snow snow-far"></div></div>
+<div class="snow-sway snow-sway-mid"><div class="snow snow-mid"></div></div>
+<div class="snow-sway snow-sway-near"><div class="snow snow-near"></div></div>

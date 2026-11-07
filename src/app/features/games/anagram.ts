@@ -4,6 +4,7 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { StarPillComponent } from '../../shared/star-pill';
 import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { TrackedAudio, isTypingTarget, TimerBag } from './game-utils';
 import { CommonModule } from '@angular/common';
@@ -29,7 +30,7 @@ interface AnimatingTile {
 
 @Component({
   selector: 'app-anagram',
-  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe, DragDropModule],
+  imports: [CommonModule, StarPillComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe, DragDropModule],
   templateUrl: './anagram.html',
   styleUrls: ['./anagram.css']
 })
@@ -47,6 +48,8 @@ export class AnagramComponent implements OnInit, OnDestroy {
   loading = true;
   isMediaFlipped = false;
   solvedWordIndexes: Set<number> = new Set();
+  /** Words where a wrong letter was tried; a solved word earns a ⭐ only if it isn't here. */
+  missedWordIndexes: Set<number> = new Set();
   solvedWordState: Map<number, { target: (LetterTile | null)[]; source: LetterTile[] }> = new Map();
   targetIndexToOriginalIndex: number[] = [];
   animatingTiles: Map<string, AnimatingTile> = new Map();
@@ -115,6 +118,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
 
       this.solvedWordIndexes.clear();
       this.solvedWordState.clear();
+      this.missedWordIndexes.clear();
       this.loadItem(0);
     } catch (error) {
       console.error('Failed to load items', error);
@@ -214,6 +218,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     const originalIndex = this.targetIndexToOriginalIndex[targetIndex];
     const correctLetter = originalIndex === undefined ? '' : this.originalWord[originalIndex];
     if (tile.letter !== correctLetter) {
+      this.missedWordIndexes.add(this.currentIndex);
       this.playSound(this.buzzSound, 0.4);
       return;
     }
@@ -346,6 +351,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     this.gameFinished = false;
     this.solvedWordIndexes.clear();
     this.solvedWordState.clear();
+    this.missedWordIndexes.clear();
     this.keyboardSelectedSourceIndex = 0;
     this.loadItem(0);
   }
@@ -379,6 +385,7 @@ export class AnagramComponent implements OnInit, OnDestroy {
     const correctLetter = originalIndex === undefined ? '' : this.originalWord[originalIndex];
 
     if (tile.letter !== correctLetter) {
+      this.missedWordIndexes.add(this.currentIndex);
       this.playSound(this.buzzSound, 0.4);
       this.triggerShake(tile.id);
       return;
@@ -545,6 +552,13 @@ export class AnagramComponent implements OnInit, OnDestroy {
 
   private getKeyboardDigit(event: KeyboardEvent): string | null {
     return /^\d$/.test(event.key) ? event.key : null;
+  }
+
+  /** ⭐ count: solved words built with no wrong letter. */
+  get cleanCount(): number {
+    let count = 0;
+    this.solvedWordIndexes.forEach(index => { if (!this.missedWordIndexes.has(index)) count++; });
+    return count;
   }
 
   private completeCurrentWord() {

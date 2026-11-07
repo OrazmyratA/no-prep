@@ -2489,6 +2489,32 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
 
 
 
+'themeSeasonNewYearNight': {
+  en: 'New Year night',
+  tk: 'Täze ýyl gijesi',
+  ru: 'Новогодняя ночь',
+  cn: '新年之夜',
+  cde: 'Neujahrsnacht',
+  es: 'Noche de Año Nuevo',
+  fr: 'Nuit du Nouvel An',
+  kr: '새해 밤',
+  sa: 'ليلة رأس السنة',
+  vi: 'Đêm Giao thừa',
+},
+
+'themeSeasonNewYear': {
+  en: 'New Year',
+  tk: 'Täze ýyl',
+  ru: 'Новый год',
+  cn: '新年',
+  cde: 'Neujahr',
+  es: 'Año Nuevo',
+  fr: 'Nouvel An',
+  kr: '새해',
+  sa: 'رأس السنة',
+  vi: 'Năm mới',
+},
+
 'themeSeasonHalloween': {
   en: 'Halloween',
   tk: 'Hellouin',
@@ -4384,16 +4410,16 @@ export const CORE_TRANSLATIONS: TranslationDictionary = {
 },
 
 'tipSeasonalThemesBody': {
-  en: 'Turn on the Halloween theme in Settings for a festive look across the app.',
-  tk: 'Ähli programmada baýramçylyk görnüşi üçin Sazlamalarda Halloween temasyny açyň.',
-  ru: 'Включите тему Хэллоуина в настройках, чтобы придать всему приложению праздничный вид.',
-  cn: '在设置中打开万圣节主题，为整个应用带来节日氛围。',
-  cde: 'Aktiviere das Halloween-Thema in den Einstellungen für einen festlichen Look in der ganzen App.',
-  es: 'Activa el tema de Halloween en Ajustes para darle un toque festivo a toda la app.',
-  fr: 'Activez le thème Halloween dans les Paramètres pour un look festif dans toute l\'application.',
-  kr: '설정에서 할로윈 테마를 켜면 앱 전체가 축제 분위기로 바뀝니다.',
-  sa: 'فعّل سمة الهالوين من الإعدادات لإضفاء طابع احتفالي على التطبيق بالكامل.',
-  vi: 'Bật chủ đề Halloween trong Cài đặt để toàn bộ ứng dụng có không khí lễ hội.',
+  en: 'Turn on the New Year or Halloween theme in Settings for a festive look across the app.',
+  tk: 'Ähli programmada baýramçylyk görnüşi üçin Sazlamalarda Täze ýyl ýa-da Hellouin temasyny açyň.',
+  ru: 'Включите тему Нового года или Хэллоуина в настройках, чтобы придать всему приложению праздничный вид.',
+  cn: '在设置中打开新年或万圣节主题，为整个应用带来节日氛围。',
+  cde: 'Aktiviere das Neujahrs- oder Halloween-Thema in den Einstellungen für einen festlichen Look in der ganzen App.',
+  es: 'Activa el tema de Año Nuevo o de Halloween en Ajustes para darle un toque festivo a toda la app.',
+  fr: 'Activez le thème Nouvel An ou Halloween dans les Paramètres pour un look festif dans toute l\'application.',
+  kr: '설정에서 새해 또는 할로윈 테마를 켜면 앱 전체가 축제 분위기로 바뀝니다.',
+  sa: 'فعّل سمة رأس السنة أو الهالوين من الإعدادات لإضفاء طابع احتفالي على التطبيق بالكامل.',
+  vi: 'Bật chủ đề Năm mới hoặc Halloween trong Cài đặt để toàn bộ ứng dụng có không khí lễ hội.',
 },
 
 'tipAndroidUpdateTitle': {

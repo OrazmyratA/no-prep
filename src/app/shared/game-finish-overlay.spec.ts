@@ -100,6 +100,30 @@ describe('GameFinishOverlayComponent', () => {
     expect(confettiLauncher).toHaveBeenCalledTimes(4);
   });
 
+  it('dresses each burst in gold and ice plus snowflakes, firs and stars during the New Year season', async () => {
+    fixture.destroy();
+    confettiLauncher.mockClear();
+    const shape = { type: 'bitmap' } as unknown as confetti.Shape;
+    const shapeSpy = vi.spyOn(confetti, 'shapeFromText').mockReturnValue(shape);
+    document.documentElement.dataset['season'] = 'new-year';
+
+    try {
+      fixture = TestBed.createComponent(GameFinishOverlayComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      await Promise.resolve();
+
+      expect(confettiLauncher).toHaveBeenCalledTimes(6);
+      const [colored, emoji] = confettiLauncher.mock.calls.slice(0, 2).map(call => call[0] as any);
+      expect(colored.colors).toContain('#ffd978');
+      expect(emoji.flat).toBe(true);
+      expect(shapeSpy.mock.calls.map(call => (call[0] as { text: string }).text)).toEqual(['❄️', '🎄', '⭐']);
+    } finally {
+      delete document.documentElement.dataset['season'];
+      shapeSpy.mockRestore();
+    }
+  });
+
   it('dresses each burst in Halloween colours plus bats, pumpkins and ghosts during the Halloween season', async () => {
     fixture.destroy();
     confettiLauncher.mockClear();

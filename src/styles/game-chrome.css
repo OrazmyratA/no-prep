@@ -1,0 +1,71 @@
+/*
+  Shared game chrome. Every game puts its info button in .np-game-corner, top left, followed by its
+  progress pills, so the corner reads the same in every game and the board gets the rest of the
+  screen. The game's name stays in the page for screen readers (sr-only), not on the board.
+*/
+.np-game-corner {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.np-game-corner > * {
+  pointer-events: auto;
+}
+
+.np-game-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  height: 42px;
+  min-width: 42px;
+  padding: 0 0.95rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 0.55);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 6px 14px -6px rgb(0 0 0 / 0.5);
+}
+
+.np-game-pill-btn {
+  padding: 0 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.np-game-pill-btn:hover:not(:disabled) {
+  background: rgb(15 23 42 / 0.75);
+  transform: translateY(-1px);
+}
+
+.np-game-pill-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A slim band the size of the corner, so the board starts below it (much less than the old title). */
+.np-game-top-space {
+  flex: 0 0 auto;
+  height: 3.1rem;
+}
+
+.ball-sort-corner-add {
+  font-size: 1.6rem;
+  background: #2563eb;
+}
+
+body.np-side-panel-open .rp-fab,
+body.np-side-panel-open .app-fullscreen-toggle {
+  opacity: 0;
+  pointer-events: none;
+}

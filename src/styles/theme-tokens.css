@@ -24,12 +24,12 @@
   --np-chip: 229 231 235;
   --np-chip-hover: 209 213 219;
 
-  --np-card-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --np-card-shadow-hover: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --np-card-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 10px 26px -12px rgb(15 23 42 / 0.22);
+  --np-card-shadow-hover: 0 2px 4px rgb(15 23 42 / 0.06), 0 22px 40px -16px rgb(15 23 42 / 0.32);
 
-  --np-primary: linear-gradient(to right, #3b82f6, #9333ea);
-  --np-primary-hover: linear-gradient(to right, #2563eb, #7e22ce);
-  --np-primary-glow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --np-primary: linear-gradient(135deg, #5b6cff, #7c4dff);
+  --np-primary-hover: linear-gradient(135deg, #4a59f0, #6a3df0);
+  --np-primary-glow: 0 8px 20px -6px rgb(91 108 255 / 0.55), 0 2px 4px rgb(15 23 42 / 0.08);
 
   --np-go: linear-gradient(to right, #4ade80, #3b82f6);
   --np-go-hover: linear-gradient(to right, #22c55e, #2563eb);
@@ -46,6 +46,68 @@
   --np-cover-book:
     linear-gradient(135deg, rgba(14, 165, 233, 0.88), rgba(37, 99, 235, 0.92)),
     repeating-linear-gradient(90deg, transparent, transparent 13px, rgba(255, 255, 255, 0.12) 13px, rgba(255, 255, 255, 0.12) 14px);
+
+  /* Page backdrop for the library pages: calm paper with two soft washes of the brand colours. */
+  --np-page:
+    radial-gradient(1100px 520px at -5% -10%, rgba(99, 102, 241, 0.12), transparent 62%),
+    radial-gradient(900px 480px at 105% -5%, rgba(236, 72, 153, 0.08), transparent 60%),
+    linear-gradient(180deg, #f7f8fc 0%, #f2f4fa 100%);
+}
+
+.np-page {
+  background: var(--np-page);
+}
+
+/* The round class-tools button sits on the right edge, mid-height: keep cards out from under it. */
+@media (min-width: 769px) {
+  .np-page {
+    padding-right: max(1.5rem, calc(5.5rem - (100vw - 1280px) / 2)) !important;
+  }
+}
+
+/*
+  A secondary toolbar button: the page's surface with its hue on the icon, so the one primary
+  action stands out. Pair with an np-action--<hue> class, which only sets --hue here.
+*/
+.np-tool {
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  border: 1px solid rgb(var(--np-line) / 0.75);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 14px -8px rgb(15 23 42 / 0.25);
+}
+
+.np-tool svg {
+  color: rgb(var(--hue));
+}
+
+.np-tool:hover {
+  border-color: rgb(var(--hue) / 0.55);
+  background: linear-gradient(rgb(var(--hue) / 0.08), rgb(var(--hue) / 0.08)), rgb(var(--np-surface));
+}
+
+/* Small round tools on a card (copy, edit, export, delete). */
+.np-card-tool {
+  display: inline-flex;
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background: rgb(var(--np-surface) / 0.96);
+  color: rgb(var(--hue));
+  box-shadow: 0 4px 12px -4px rgb(15 23 42 / 0.35);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.np-card-tool:hover {
+  background: rgb(var(--hue));
+  color: #fff;
+}
+
+/* Cards rise a little under the pointer. */
+.np-card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.np-card-lift:hover {
+  transform: translateY(-4px);
 }
 
 /* ── Shared building blocks ──────────────────────────────────────── */
@@ -94,6 +156,10 @@
 /* Coloured band at the top of a game card, behind the game's icon. */
 .np-game-header {
   background: var(--np-game-header);
+}
+
+html:not([data-season]) .np-game-header {
+  background: var(--game-tint, var(--np-game-header));
 }
 
 .np-btn-primary--book {

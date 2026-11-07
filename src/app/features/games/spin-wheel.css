@@ -262,3 +262,8 @@ button.quiz-option.keyboard-selected:not(.fade-out) {
 }
 
 
+
+/* Room above the wheel for its pointer, now that the game's name is no longer shown there. */
+.spin-layout {
+  padding-top: 1.4rem;
+}

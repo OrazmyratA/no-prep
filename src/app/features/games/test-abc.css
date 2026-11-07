@@ -73,6 +73,7 @@
 }
 
 .quiz-header {
+  display: none !important;
   position: absolute;
   top: 16px;
   left: 16px;
@@ -526,3 +527,12 @@
 
 
 
+
+/* Fits the screen exactly: 100vw counted the scrollbar, and the board ran 8px past the bottom. */
+.game-container {
+  width: 100%;
+}
+
+.quiz-board {
+  padding-bottom: 8px;
+}

@@ -1,12 +1,13 @@
 <div #host class="game-shell">
-  <app-game-keyboard-help
-    class="reveal-keyboard-help"
-    [shortcuts]="keyboardShortcuts"
-    (openChange)="setKeyboardHintsVisible($event)"
-    title="Keyboard shortcuts">
-  </app-game-keyboard-help>
+  <div class="np-game-corner">
+    <app-game-keyboard-help
+      [shortcuts]="keyboardShortcuts"
+      (openChange)="setKeyboardHintsVisible($event)"
+      title="Keyboard shortcuts">
+    </app-game-keyboard-help>
+  </div>
 
-  <h2 class="text-4xl font-bold text-white mb-2">{{ 'revealGameTitle' | translate }}</h2>
+  <h2 class="sr-only">{{ 'revealGameTitle' | translate }}</h2>
 
   <!-- Loading -->
   <div *ngIf="loading" class="flex items-center justify-center h-64">
@@ -21,7 +22,7 @@
 
   <!-- Game active -->
   <div *ngIf="!loading && items.length > 0 && gameActive && currentItem" class="flex flex-col items-center">
-<div class="reveal-container" (click)="openQuiz()" [attr.title]="'revealGameTapForQuestion' | translate">     
+<div class="reveal-container" (click)="openQuiz()" [attr.title]="'revealGameTapForQuestion' | translate">
    <img [src]="imageUrl(currentItem.image!, currentItem.id!)" class="reveal-image">
       <div class="grid-overlay"
           [class.cover-resetting]="isCoverResetting"

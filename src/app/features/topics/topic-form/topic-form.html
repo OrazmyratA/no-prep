@@ -112,10 +112,10 @@
 
       <!-- Who fills each column, right above it: the item text, its picture, its voice
            (docs/ai-choices-plan.md). Same grid as the items below, so each sits over its column. -->
-      <div class="item-ai-headers ml-12 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <app-ai-choice job="text" variant="header"></app-ai-choice>
-        <app-ai-choice job="picture" variant="header" [allowNone]="true"></app-ai-choice>
-        <app-ai-choice job="voice" variant="header" [allowNone]="true"></app-ai-choice>
+      <div class="item-ai-headers ml-12 grid grid-cols-1 md:grid-cols-12 gap-3">
+        <app-ai-choice class="md:col-span-4" job="text" variant="header"></app-ai-choice>
+        <app-ai-choice class="md:col-span-5" job="picture" variant="header" [allowNone]="true"></app-ai-choice>
+        <app-ai-choice class="md:col-span-3" job="voice" variant="header" [allowNone]="true"></app-ai-choice>
       </div>
 
       <!-- Result of the last AI fill -->
@@ -217,7 +217,7 @@
               </div>
 
               <!-- Image uploader -->
-              <div class="md:col-span-4">
+              <div class="md:col-span-5">
                 <button *ngIf="!isImagePanelOpen(item)"
                         type="button"
                         class="optional-media-card"
@@ -268,7 +268,7 @@
               </div>
 
               <!-- Audio uploader -->
-             <div class="md:col-span-4">
+             <div class="md:col-span-3">
                 <button *ngIf="!isAudioPanelOpen(item)"
                         type="button"
                         class="optional-media-card"
@@ -308,15 +308,18 @@
       </div>
     </div>
 
-    <!-- Form actions -->
-    <div class="flex flex-wrap gap-3 justify-end border-t pt-6 mt-6">
-      <button type="button" (click)="goBack()" 
-              class="px-5 py-2.5 rounded-xl border border-line text-ink-soft hover:bg-ink/5 transition">
+    <!-- Form actions: stay in reach at the bottom of the screen, however long the list. -->
+    <div class="topic-form-bar">
+      <button type="button" (click)="addItem()" [disabled]="!licenseService.fullAccess"
+              class="topic-form-bar-add np-tool np-action--blue">
+        {{ 'addItem' | translate }}
+      </button>
+      <span class="topic-form-bar-space"></span>
+      <button type="button" (click)="goBack()" class="topic-form-bar-cancel">
         {{ 'cancel' | translate }}
       </button>
       <!-- Only blocked while busy: otherwise a click always saves or says why it can't. -->
-      <button type="submit" [disabled]="saving || !!aiProgress"
-              class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-md hover:shadow-lg disabled:opacity-50 transition-all">
+      <button type="submit" [disabled]="saving || !!aiProgress" class="topic-form-bar-save np-btn-primary">
         {{ 'save' | translate }}
       </button>
     </div>
@@ -327,13 +330,4 @@
                          [scene]="editor.scene" [instruction]="editor.instruction" [area]="editor.area"
                          (saved)="onAreaSaved($event)" (closed)="areaEditor = null">
   </app-point-area-editor>
-  <!-- Floating action button: always visible bottom-right -->
-<button type="button" (click)="addItem()"
-        [disabled]="!licenseService.fullAccess"
-        class="fixed bottom-24 right-6 z-50 w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center"
-        aria-label="Add new item">
-  <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path>
-  </svg>
-</button>
 </div>

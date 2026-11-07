@@ -2,6 +2,17 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GAMES, GameConfig } from '../games.config';
+
+const GAME_TINTS = [
+  'linear-gradient(160deg, #e0e7ff, #c7d2fe)',
+  'linear-gradient(160deg, #dcfce7, #bbf7d0)',
+  'linear-gradient(160deg, #fef3c7, #fde68a)',
+  'linear-gradient(160deg, #fce7f3, #fbcfe8)',
+  'linear-gradient(160deg, #e0f2fe, #bae6fd)',
+  'linear-gradient(160deg, #ede9fe, #ddd6fe)',
+  'linear-gradient(160deg, #ffedd5, #fed7aa)',
+  'linear-gradient(160deg, #ccfbf1, #99f6e4)'
+];
 import { db } from '../../../core/db.model'; // Direct Dexie import
 import { ResizeService } from '../../../core/resize';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
@@ -25,10 +36,25 @@ type BookActivityReturnContext = BookReturn & {
 })
 export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy {
   games = GAMES;
+
+  /** A soft colour of its own for each game card, so the grid is easy to scan. */
+  gameTint(index: number): string {
+    return GAME_TINTS[index % GAME_TINTS.length];
+  }
   topicId!: number;
   topicName: string = '';
   selectedGame: GameConfig | null = null;
-  showSettings = false;
+  private settingsOpen = false;
+
+  /** While the settings panel is open, the floating class-tools button steps aside (it would sit on the panel). */
+  get showSettings(): boolean {
+    return this.settingsOpen;
+  }
+
+  set showSettings(open: boolean) {
+    this.settingsOpen = open;
+    document.body.classList.toggle('np-side-panel-open', open);
+  }
   settings: any = {};
   private bookReturnContext: BookActivityReturnContext | null = null;
   private layoutSubscription?: Subscription;
@@ -61,6 +87,7 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
 
   ngOnDestroy() {
     this.layoutSubscription?.unsubscribe();
+    document.body.classList.remove('np-side-panel-open');
   }
 
   private recalculateLayout() {

@@ -783,3 +783,8 @@
 @keyframes result-bar-grow {
   from { width: 0; }
 }
+
+/* The game's name no longer sits here: the bar starts after the shared info button instead. */
+.word-search-header {
+  padding-left: 3.6rem;
+}

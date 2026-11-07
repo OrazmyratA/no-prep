@@ -213,6 +213,9 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  /** Two cards turned over = one turn; the class can try to beat it next time. */
+  turns = 0;
+
   get remainingPairs(): number {
     return this.cards.filter(card => !card.matched).length / 2;
   }
@@ -283,6 +286,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.cards = pairs;
     this.flippedCards = [];
+    this.turns = 0;
     this.gameFinished = false;
     // The peek's "hide again" timer was just cleared above, so it can't reset this itself.
     this.isPeeking = false;
@@ -332,6 +336,7 @@ export class MatchPairsComponent implements OnInit, AfterViewInit, OnDestroy {
   private checkMatch() {
     const [cardA, cardB] = this.flippedCards;
     const isMatch = cardA.pairId === cardB.pairId;
+    this.turns++;
 
     if (isMatch) {
       this.playSound(this.collectSound);

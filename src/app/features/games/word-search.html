@@ -1,7 +1,7 @@
 <div class="word-search-shell h-screen overflow-hidden bg-gradient-to-br from-indigo-900 to-purple-800">
   <div class="word-search-frame">
     <header class="word-search-header">
-      <h2>{{ 'wordSearchTitle' | translate }}</h2>
+      <h2 class="sr-only">{{ 'wordSearchTitle' | translate }}</h2>
       <div class="word-search-header-tools">
         <!-- Two teams: the text toggle lives up here since each half has its own list -->
         <button
@@ -30,12 +30,13 @@
       </div>
     </header>
 
-    <app-game-keyboard-help
-      class="word-search-keyboard-help"
-      [shortcuts]="keyboardShortcuts"
-      (openChange)="keyboardHintsVisible = $event"
-      title="Keyboard shortcuts">
-    </app-game-keyboard-help>
+    <div class="np-game-corner">
+      <app-game-keyboard-help
+        [shortcuts]="keyboardShortcuts"
+        (openChange)="keyboardHintsVisible = $event"
+        title="Keyboard shortcuts">
+      </app-game-keyboard-help>
+    </div>
 
     <div *ngIf="loading" class="word-search-loading">
       <div class="loading-spinner"></div>

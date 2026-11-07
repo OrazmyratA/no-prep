@@ -12,6 +12,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { LanguageService } from '../../core/language';
+import { StarPillComponent } from '../../shared/star-pill';
 import { showAppNotification } from '../../core/notification';
 import { ThemeService } from '../../core/theme';
 import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
@@ -51,7 +52,7 @@ interface MatchedLine {
 
 @Component({
   selector: 'app-line-trace-match',
-  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
+  imports: [CommonModule, StarPillComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './line-trace-match.html',
   styleUrls: ['./line-trace-match.css']
 })
@@ -207,6 +208,11 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     this.imageUrls.clear();
   }
+
+  /** ⭐ count: matches made with no wrong pair tried since the last match. */
+  cleanCount = 0;
+  /** A wrong pair was tried since the last match (a crossing line isn't a wrong answer). */
+  private missedSinceMatch = false;
 
   get matchedCount(): number {
     return this.matchedLines.length;
@@ -462,6 +468,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
       if (isCorrectPair && this.normalizeText(source.text) === this.currentSoundText) {
         this.tryCommitMatch(source, target, path);
       } else {
+        this.missedSinceMatch = true;
         this.showWrongFlash(source, target, path, true);
       }
       return;
@@ -470,6 +477,7 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     if (isCorrectPair) {
       this.tryCommitMatch(source, target, path);
     } else {
+      this.missedSinceMatch = true;
       this.showWrongFlash(source, target, path);
     }
   }
@@ -515,6 +523,8 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     this.matchedLines.push({ itemId: source.itemId, color, points: path.map(p => this.toPct(p)) });
     source.matched = true;
     target.matched = true;
+    if (!this.missedSinceMatch) this.cleanCount++;
+    this.missedSinceMatch = false;
     this.playSound(this.collectSound, 0.6);
 
     if (this.soundQuizActive && this.normalizeText(source.text) === this.currentSoundText) {
@@ -634,6 +644,8 @@ export class LineTraceMatchComponent implements OnInit, AfterViewInit, OnDestroy
     this.currentSoundText = null;
     this.gameFinished = false;
     this.matchedLines = [];
+    this.cleanCount = 0;
+    this.missedSinceMatch = false;
     this.colorIndex = 0;
     this.selectedElementId = null;
     this.activePointerId = null;

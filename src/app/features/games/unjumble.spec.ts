@@ -20,4 +20,10 @@ describe('UnjumbleComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('gives a star only to sentences put together with no wrong try', () => {
+    component.solvedIndexes = new Set([0, 2]);
+    component.missedIndexes = new Set([2]);
+    expect(component.cleanCount).toBe(1);
+  });
 });

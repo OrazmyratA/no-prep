@@ -1,8 +1,8 @@
-<div class="activity-page min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 p-6">
+<div class="activity-page np-page min-h-screen p-6">
   <div class="activity-shell mx-auto w-full max-w-screen-xl">
     <!-- Header with back button -->
     <div class="flex items-center mb-8">
-      <button (click)="goBack()" 
+      <button (click)="goBack()"
               class="bg-surface rounded-full p-2 shadow-md hover:shadow-lg transition mr-4"
               [attr.title]="'backToTopics' | translate">
         <svg class="w-6 h-6 text-ink-soft" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,24 +15,25 @@
     </div>
 
     <!-- Games Grid -->
-    <div *ngIf="games.length; else noLinkedActivities" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div *ngIf="games.length; else noLinkedActivities" class="game-grid">
       <!-- Game card with conditional behavior for AI game -->
-      <div *ngFor="let game of games"
+      <div *ngFor="let game of games; let i = index"
            (click)="onGameClick(game)"
-           class="np-card relative rounded-2xl overflow-hidden transform transition-all duration-300 hover:scale-105"
+           class="game-card np-card np-card-lift relative rounded-2xl overflow-hidden"
+           [style.--game-tint]="gameTint(i)"
            [class.opacity-40.2]="selectedGame && selectedGame !== game"
            [class.np-ring-selected]="selectedGame === game"
            [style.z-index]="selectedGame === game && showSettings ? 15 : null">
         <!-- Game Icon -->
-        <div class="np-game-header h-32 flex items-center justify-center">
-          <img *ngIf="game.iconImage" [src]="game.iconImage" alt="" class="h-20 w-20 object-contain drop-shadow-md">
-          <span *ngIf="!game.iconImage" class="text-6xl">{{ game.icon }}</span>
+        <div class="np-game-header game-card-header">
+          <img *ngIf="game.iconImage" [src]="game.iconImage" alt="" class="game-card-icon">
+          <span *ngIf="!game.iconImage" class="game-card-emoji">{{ game.icon }}</span>
         </div>
-        
+
         <!-- Game Info -->
-        <div class="p-5">
-          <h3 class="text-xl font-bold text-ink mb-2">{{ game.nameKey | translate }}</h3>
-          <p class="text-ink-muted text-sm">{{ game.descKey | translate }}</p>
+        <div class="game-card-body">
+          <h3 class="game-card-title">{{ game.nameKey | translate }}</h3>
+          <p class="game-card-desc">{{ game.descKey | translate }}</p>
         </div>
 
         <!-- Settings indicator (if needed) -->
@@ -60,35 +61,41 @@
 
     <!-- Settings Panel (slides in) -->
     <div *ngIf="selectedGame && showSettings"
-         class="fixed inset-y-0 right-0 w-96 bg-surface text-ink shadow-2xl p-6 transform transition-transform duration-500 ease-in-out overflow-y-auto z-20"
-         [class.translate-x-0]="showSettings"
-         [class.translate-x-full]="!showSettings">
-      
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-ink">{{ selectedGame.name }} {{ 'settings' | translate }}</h2>
-        <button (click)="cancelSelection()" class="text-ink-faint hover:text-ink-soft" [attr.title]="'close' | translate">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+         class="game-settings-panel bg-surface text-ink z-20"
+         role="dialog" aria-modal="true" aria-labelledby="gameSettingsTitle">
+      <!-- The game it sets up, in the game's own colour, so the teacher sees what they picked. -->
+      <div class="game-settings-head np-game-header" [style.--game-tint]="gameTint(games.indexOf(selectedGame))">
+        <img *ngIf="selectedGame.iconImage" [src]="selectedGame.iconImage" alt="" class="game-settings-icon">
+        <span *ngIf="!selectedGame.iconImage" class="game-settings-icon game-settings-emoji">{{ selectedGame.icon }}</span>
+        <div class="game-settings-heading">
+          <span class="game-settings-kicker">{{ 'settings' | translate }}</span>
+          <h2 id="gameSettingsTitle">{{ selectedGame.nameKey | translate }}</h2>
+        </div>
+        <button type="button" (click)="cancelSelection()" class="game-settings-close"
+                [attr.title]="'close' | translate" [attr.aria-label]="'close' | translate">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
       </div>
 
       <!-- Settings form -->
-      <app-settings-panel
-        [gameId]="selectedGame.id"
-        [initialValue]="settings"
-        (settingsChange)="onSettingsChange($event)"
-        (chooseGiftTopic)="chooseGiftTopic()">
-      </app-settings-panel>
+      <div class="game-settings-body">
+        <app-settings-panel
+          [gameId]="selectedGame.id"
+          [initialValue]="settings"
+          (settingsChange)="onSettingsChange($event)"
+          (chooseGiftTopic)="chooseGiftTopic()">
+        </app-settings-panel>
+      </div>
 
-      <div class="flex space-x-3 mt-8">
-        <button (click)="startGame()" 
-                class="flex-1 np-btn-go font-bold py-3 px-4 rounded-lg transition transform hover:scale-105">
-          {{ 'startGame' | translate }}
-        </button>
-        <button (click)="cancelSelection()" 
-                class="flex-1 bg-ink/10 hover:bg-ink/20 text-ink font-bold py-3 px-4 rounded-lg shadow transition">
+      <!-- Always in reach at the bottom, however long the settings. -->
+      <div class="game-settings-foot">
+        <button type="button" (click)="cancelSelection()" class="game-settings-cancel">
           {{ 'cancelOption' | translate }}
+        </button>
+        <button type="button" (click)="startGame()" class="game-settings-start np-btn-go">
+          {{ 'startGame' | translate }}
         </button>
       </div>
     </div>

@@ -1,0 +1,79 @@
+/*
+  New Year (day) pack: the everyday bright look, dressed for winter. White cards and dark text, as
+  the projector likes them; crimson and gold for festive accents, ice blue for the frame. The scene
+  is shared with the night pack (shared/season-ambient, repainted by :host(.day)).
+*/
+html[data-season='new-year-day'] {
+  --np-surface: 255 255 255;
+  --np-surface-alpha: 0.97;
+  --np-glass: 255 255 255;
+  --np-ink: 22 34 64;
+  --np-ink-soft: 52 70 108;
+  --np-ink-muted: 92 110 145;
+  --np-ink-faint: 130 146 176;
+  --np-line: 196 214 238;
+  --np-accent: 200 30 69;
+  --np-accent-ink: 255 255 255;
+  --np-accent-soft: 253 232 237;
+  --np-accent-strong: 168 21 54;
+  --np-chip: 232 241 253;
+  --np-chip-hover: 214 230 250;
+
+  --np-card-shadow: 0 1px 2px rgb(30 60 110 / 0.06), 0 12px 28px -12px rgb(30 60 110 / 0.28), 0 0 0 1px rgb(186 210 240 / 0.6);
+  --np-card-shadow-hover: 0 2px 4px rgb(30 60 110 / 0.08), 0 22px 40px -16px rgb(30 60 110 / 0.36), 0 0 0 1px rgb(255 196 70 / 0.8);
+
+  --np-primary: linear-gradient(135deg, #c81e45, #e8345a);
+  --np-primary-hover: linear-gradient(135deg, #a81739, #cf2449);
+  --np-primary-glow: 0 8px 20px -6px rgb(200 30 69 / 0.5), 0 2px 4px rgb(15 23 42 / 0.08);
+  --np-go: linear-gradient(135deg, #0f8f72, #0d78b0);
+  --np-go-hover: linear-gradient(135deg, #0c765e, #0b6696);
+  --np-title-gradient: linear-gradient(to right, #c81e45, #d4891a);
+  --np-title-gradient-alt: var(--np-title-gradient);
+  --np-ring-selected: 200 30 69;
+  --np-game-header:
+    radial-gradient(2px 2px at 16% 26%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 34% 68%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 72% 20%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 88% 60%, #fff 50%, transparent 51%),
+    radial-gradient(circle at 50% 54%, rgba(255, 255, 255, 0.75), transparent 38%),
+    linear-gradient(165deg, #e4f0ff 0%, #c6dcf9 100%);
+
+  --np-avatar-topic: linear-gradient(135deg, #e8345a, #a81739);
+  --np-avatar-book: linear-gradient(135deg, #38bdf8, #1d4fd0);
+  --np-cover-topic:
+    radial-gradient(circle at 84% 28%, #fff6d8 0 6%, rgba(255, 226, 150, 0.45) 9%, transparent 20%),
+    linear-gradient(165deg, #cfe3fd 0%, #eaf3ff 100%);
+  --np-cover-book:
+    radial-gradient(circle at 84% 28%, #fff6d8 0 6%, rgba(255, 226, 150, 0.45) 9%, transparent 20%),
+    linear-gradient(165deg, #b9d4f7 0%, #dceafd 100%);
+  --np-cover-well: #eaf2fd;
+
+  --np-fab: linear-gradient(135deg, #c81e45, #e8345a);
+  --np-dialog-accent: #c81e45;
+  --np-countdown-go: #c81e45;
+
+  /* Canvas wedges (Spin the Wheel), read by seasonPalette() in games/game-utils.ts. */
+  --np-wheel-palette: #c81e45 #1d6fd0 #0f8f72 #d4891a #6d3bd1 #0a84c6;
+
+  /* Game finish overlay: the default bright card, with a festive glow. */
+  --np-finish-glow: rgba(255, 196, 70, 0.45);
+  --np-finish-crown: linear-gradient(145deg, #fff3c4, #ffc53d 58%, #d9921c);
+  --np-finish-primary: linear-gradient(135deg, #c81e45, #e8345a);
+  --np-finish-primary-shadow: rgba(200, 30, 69, 0.4);
+}
+
+/* Fresh snow along the top of every card, with a soft blue edge so it shows on white. */
+html[data-season='new-year-day'] .np-card::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  height: 15px;
+  pointer-events: none;
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  filter: drop-shadow(0 1.5px 1.5px rgb(60 100 160 / 0.35));
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 20' preserveAspectRatio='none'%3E%3Cpath fill='%23ffffff' d='M0 0H400V5C386 11 372 12 358 8S330 3 314 8 290 18 270 13 244 4 226 7 196 14 176 11 150 3 130 6 104 16 84 12 58 4 40 7 14 14 0 8Z'/%3E%3C/svg%3E") no-repeat top / 100% 100%;
+}

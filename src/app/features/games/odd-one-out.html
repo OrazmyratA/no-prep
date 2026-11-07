@@ -20,7 +20,7 @@
     <header class="game-header">
       <div class="score-card">
         <p class="label">{{ 'score' | translate }}</p>
-        <strong>{{ score }} / {{ totalRounds }}</strong>
+        <strong><app-star-pill [plain]="true" [count]="score" [total]="totalRounds" [label]="'gameStars' | translate"></app-star-pill></strong>
       </div>
       <div class="timer-card" [class.urgent]="timerRemaining <= 5">
         <p class="label">{{ 'oddOneOutTimeLeft' | translate }}</p>
@@ -76,7 +76,7 @@
   <app-game-finish-overlay
     *ngIf="gameFinished"
     [title]="'oddOneOutVictory' | translate"
-    [message]="('oddOneOutFinalScore' | translate) + ' ' + score + ' / ' + totalRounds"
+    [message]="'⭐ ' + ('oddOneOutFinalScore' | translate) + ' ' + score + ' / ' + totalRounds"
     (playAgain)="resetGame()"
     (activities)="goToActivities()">
   </app-game-finish-overlay>

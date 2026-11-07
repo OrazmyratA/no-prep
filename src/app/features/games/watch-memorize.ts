@@ -15,6 +15,7 @@ import { Subscription } from 'rxjs';
 import { db, Item } from '../../core/db.model';
 import { showAppNotification } from '../../core/notification';
 import { LanguageService } from '../../core/language';
+import { StarPillComponent } from '../../shared/star-pill';
 import { ResizeService } from '../../core/resize';
 import { GameKeyboardShortcut, GameKeyboardHelpComponent } from '../../shared/game-keyboard-help';
 import { isTypingTarget } from './game-utils';
@@ -25,7 +26,7 @@ import { TranslatePipe } from '../../shared/translate-pipe';
 
 @Component({
   selector: 'app-watch-memorize',
-  imports: [CommonModule, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
+  imports: [CommonModule, StarPillComponent, GameFinishOverlayComponent, GameKeyboardHelpComponent, SandwichMenuComponent, TranslatePipe],
   templateUrl: './watch-memorize.html',
   styleUrl: `./watch-memorize.css`
 })
@@ -292,6 +293,8 @@ trackByItemId(index: number, item: Item): number | string {
     this.activeAnimation = null;
     this.keyboardSelectedIndex = 0;
     this.selectedIndices.clear();
+    this.cleanCount = 0;
+    this.missedSincePick = false;
     this.clearTimers();
     this.cdr.detectChanges();
 
@@ -323,7 +326,7 @@ private nextScrollItem() {
   if (!container || !element) return;
 
   const startTime = performance.now();
-  const duration = this.speed * 1000; 
+  const duration = this.speed * 1000;
 const startLeft = -element.offsetWidth;   // fully off‑screen left
 const endLeft = container.offsetWidth;    // fully off‑screen right         // move until left edge reaches right edge
   element.style.left = startLeft + 'px';
@@ -466,6 +469,8 @@ private runActiveAnimation() {
     if (isCorrect) {
       if (!this.selectedIndices.has(index)) {
         this.selectedIndices.add(index);
+        if (!this.missedSincePick) this.cleanCount++;
+        this.missedSincePick = false;
         this.playSound(this.collectSound, 0.5);
         this.normalizeKeyboardSelection();
 
@@ -483,6 +488,7 @@ private runActiveAnimation() {
         }
       }
     } else {
+      this.missedSincePick = true;
       // Incorrect – add shake class temporarily
       const element = document.querySelectorAll('.grid-item')[index] as HTMLElement;
       if (element) {
@@ -758,6 +764,10 @@ private runActiveAnimation() {
     }
     return this.imageUrls.get(itemId)!;
   }
+
+  /** ⭐ count: right picks with no wrong pick since the last right one. */
+  cleanCount = 0;
+  private missedSincePick = false;
 
   resetGame() {
     this.clearTimers();
