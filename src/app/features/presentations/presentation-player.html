@@ -1,0 +1,129 @@
+<div class="pp-page">
+  <header class="pp-bar">
+    <button type="button" class="pp-btn pp-back" (click)="back()"
+            [attr.title]="backLabel | translate" [attr.aria-label]="backLabel | translate">←</button>
+
+    <div class="pp-title" [attr.title]="item?.title">
+      <span class="pp-title-icon" aria-hidden="true">📽️</span>
+      <span class="pp-title-text">{{ item?.title }}</span>
+    </div>
+
+    <div class="pp-steps" [class.is-off]="state !== 'playing'">
+      <button type="button" class="pp-btn" (click)="previous()" [disabled]="state !== 'playing' || covered"
+              [attr.title]="'previousPage' | translate" [attr.aria-label]="'previousPage' | translate">◀</button>
+      <button type="button" class="pp-count" (click)="toggleJump()" [disabled]="state !== 'playing'"
+              [class.is-open]="jumpOpen" [attr.aria-expanded]="jumpOpen"
+              [attr.title]="'presentationJump' | translate" [attr.aria-label]="'presentationJump' | translate">
+        {{ slide || '–' }} <small>/ {{ slides || '–' }}</small>
+        <span class="pp-count-caret" aria-hidden="true">▾</span>
+      </button>
+      <button type="button" class="pp-btn" (click)="next()" [disabled]="state !== 'playing' || covered"
+              [attr.title]="'nextPage' | translate" [attr.aria-label]="'nextPage' | translate">▶</button>
+    </div>
+
+    <!-- Drawing on the slide (PowerPoint's own pen, laser pointer and eraser). -->
+    <div class="pp-tools" [class.is-off]="state !== 'playing'">
+      @for (entry of tools; track entry.tool) {
+        <button type="button" class="pp-btn pp-tool" [class.is-on]="tool === entry.tool" (click)="setTool(entry.tool)"
+                [disabled]="state !== 'playing' || covered" [attr.aria-pressed]="tool === entry.tool"
+                [attr.title]="entry.label | translate" [attr.aria-label]="entry.label | translate">{{ entry.icon }}</button>
+      }
+      <button type="button" class="pp-btn pp-tool" (click)="clearDrawings()" [disabled]="state !== 'playing' || covered"
+              [attr.title]="'presentationToolClear' | translate" [attr.aria-label]="'presentationToolClear' | translate">🧹</button>
+    </div>
+
+    <!-- The floating class leaderboard button lives in this strip (it can slide along it). -->
+    <div #dock class="pp-dock" aria-hidden="true"></div>
+
+    <button type="button" class="pp-btn pp-edit" (click)="edit()" [disabled]="state === 'no-powerpoint'"
+            [attr.title]="'presentationEdit' | translate">
+      ✏️ <span>{{ 'presentationEdit' | translate }}</span>
+    </button>
+    <button type="button" class="pp-btn pp-full" (click)="toggleFullScreen()"
+            [attr.title]="'fullscreen' | translate" [attr.aria-label]="'fullscreen' | translate">
+      <img src="assets/images/maximize.png" alt="" aria-hidden="true">
+    </button>
+  </header>
+
+  <!-- PowerPoint's slideshow window is placed exactly over this box. -->
+  <main #stage class="pp-stage" [class.has-still]="!!still">
+    @if (still) {
+      <img class="pp-still" [src]="still" alt="">
+    }
+    @if (jumpOpen) {
+      <div class="pp-jump" role="dialog" [attr.aria-label]="'presentationJump' | translate" (click)="closeJump()">
+        <div class="pp-jump-panel" (click)="$event.stopPropagation()">
+          <div class="pp-jump-head">
+            <strong>{{ 'presentationJump' | translate }}</strong>
+            <button type="button" class="pp-btn" (click)="closeJump()" aria-label="Close">✕</button>
+          </div>
+          @if (pictures) {
+            <div class="pp-jump-grid">
+              @for (picture of pictures; track $index) {
+                <button type="button" class="pp-jump-item" [class.is-current]="$index + 1 === slide" (click)="jumpTo($index + 1)">
+                  @if (picture) {
+                    <img [src]="picture" alt="" loading="lazy">
+                  } @else {
+                    <span class="pp-jump-empty" aria-hidden="true">📽️</span>
+                  }
+                  <span class="pp-jump-number">{{ $index + 1 }}</span>
+                </button>
+              }
+            </div>
+          } @else {
+            <div class="pp-jump-loading">
+              <span class="pp-spinner" aria-hidden="true"></span>
+              <p>{{ 'presentationJumpPreparing' | translate }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+    @switch (state) {
+      @case ('opening') {
+        <div class="pp-message">
+          <span class="pp-spinner" aria-hidden="true"></span>
+          <p>{{ 'presentationOpening' | translate }}</p>
+        </div>
+      }
+      @case ('ended') {
+        <div class="pp-message">
+          <span class="pp-message-icon" aria-hidden="true">🎉</span>
+          <p>{{ 'presentationEnded' | translate }}</p>
+          <div class="pp-actions">
+            @if (canContinue) {
+              <button type="button" class="pp-action pp-action-main" (click)="continueShow()">▶ {{ 'presentationContinue' | translate: { slide: slide } }}</button>
+              <button type="button" class="pp-action" (click)="playAgain()">↺ {{ 'presentationPlayAgain' | translate }}</button>
+            } @else {
+              <button type="button" class="pp-action pp-action-main" (click)="playAgain()">▶ {{ 'presentationPlayAgain' | translate }}</button>
+            }
+            <button type="button" class="pp-action" (click)="back()">{{ backLabel | translate }}</button>
+          </div>
+        </div>
+      }
+      @case ('failed') {
+        <div class="pp-message">
+          <span class="pp-message-icon" aria-hidden="true">😕</span>
+          <p>{{ failMessage | translate }}</p>
+          <div class="pp-actions">
+            @if (failReason === 'PRESENTATION_EDITING') {
+              <button type="button" class="pp-action pp-action-main" (click)="closeAndPlay()">{{ 'presentationCloseAndPlay' | translate }}</button>
+            } @else {
+              <button type="button" class="pp-action pp-action-main" (click)="playAgain()">{{ 'presentationTryAgain' | translate }}</button>
+            }
+            <button type="button" class="pp-action" (click)="back()">{{ backLabel | translate }}</button>
+          </div>
+        </div>
+      }
+      @case ('no-powerpoint') {
+        <div class="pp-message">
+          <span class="pp-message-icon" aria-hidden="true">📽️</span>
+          <p>{{ 'presentationsNeedPowerPoint' | translate }}</p>
+          <div class="pp-actions">
+            <button type="button" class="pp-action" (click)="back()">{{ backLabel | translate }}</button>
+          </div>
+        </div>
+      }
+    }
+  </main>
+</div>

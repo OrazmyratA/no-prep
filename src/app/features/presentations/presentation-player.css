@@ -1,0 +1,409 @@
+:host {
+  display: block;
+}
+
+.pp-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  /* The slideshow takes all the room under the bar; No-Prep's floating buttons (class
+     leaderboard, full screen) stay usable through holes cut in the slideshow window. */
+  padding: 0.6rem 0.6rem 0.6rem;
+  box-sizing: border-box;
+}
+
+.pp-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  /* Tall enough for the docked leaderboard button (3.4rem). */
+  min-height: 3.7rem;
+}
+
+.pp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 2.8rem;
+  height: 2.8rem;
+  padding: 0 0.7rem;
+  border-radius: 0.9rem;
+  background: rgb(var(--np-surface));
+  box-shadow: 0 4px 12px -6px rgb(15 23 42 / 0.35);
+  color: rgb(var(--np-ink));
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pp-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgb(var(--np-accent) / 0.12);
+}
+
+.pp-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.pp-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pp-back {
+  font-size: 1.4rem;
+}
+
+.pp-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 30rem;
+  height: 2.8rem;
+  padding: 0 1rem;
+  border-radius: 0.9rem;
+  background: rgb(var(--np-surface));
+  box-shadow: 0 4px 12px -6px rgb(15 23 42 / 0.35);
+}
+
+.pp-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: rgb(var(--np-ink));
+}
+
+.pp-steps {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem;
+  border-radius: 1rem;
+  background: rgb(var(--np-surface) / 0.6);
+}
+
+/* Pen, laser, eraser, clear: the one in use is lit. */
+.pp-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border-radius: 1rem;
+  background: rgb(var(--np-surface) / 0.6);
+}
+
+.pp-tool {
+  min-width: 2.6rem;
+  padding: 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.pp-tool.is-on {
+  background: #fb923c;
+  box-shadow: 0 0 0 3px rgb(251 146 60 / 0.35);
+}
+
+.pp-tool.is-on:hover:not(:disabled) {
+  background: #f97316;
+}
+
+/* The slide count also opens "jump to a slide". */
+.pp-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  min-width: 4.4rem;
+  justify-content: center;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: rgb(var(--np-ink));
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pp-count:hover:not(:disabled),
+.pp-count.is-open {
+  background: rgb(var(--np-accent) / 0.12);
+}
+
+.pp-count:disabled {
+  cursor: default;
+}
+
+.pp-count-caret {
+  font-size: 0.7rem;
+  color: rgb(var(--np-ink-faint));
+  transition: transform 0.2s ease;
+}
+
+.pp-count.is-open .pp-count-caret {
+  transform: rotate(180deg);
+}
+
+.pp-count small {
+  color: rgb(var(--np-ink-faint));
+  font-size: 0.85rem;
+}
+
+/* The free strip the floating leaderboard button is kept in while a show plays. */
+.pp-dock {
+  flex: 1;
+  align-self: stretch;
+  min-width: 4rem;
+}
+
+.pp-full img {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.pp-edit span {
+  font-size: 0.9rem;
+}
+
+.pp-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 1rem;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+/* The slide, as a still picture, while the slideshow steps aside for the leaderboard. */
+.pp-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Jump to a slide: every slide as a small picture, over the (stepped-aside) slideshow. */
+.pp-jump {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.55);
+  backdrop-filter: blur(3px);
+  animation: ppFade 0.18s ease-out;
+}
+
+.pp-jump-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 64rem);
+  max-height: 100%;
+  border-radius: 1rem;
+  background: rgb(var(--np-surface));
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 0.35);
+  overflow: hidden;
+  animation: ppDrop 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.pp-jump-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem 0.6rem 1.1rem;
+  color: rgb(var(--np-ink));
+  font-size: 1.05rem;
+}
+
+/* Rows keep their full height and the list scrolls (with 100+ slides, rows sized to fit the
+   panel squeezed together and the pictures piled on top of each other). */
+.pp-jump-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 0.8rem;
+  padding: 0.2rem 1rem 1rem;
+  overflow-y: auto;
+}
+
+.pp-jump-item {
+  position: relative;
+  display: block;
+  padding: 0;
+  border-radius: 0.6rem;
+  border: 3px solid transparent;
+  background: #0f172a;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pp-jump-item:hover {
+  transform: translateY(-2px);
+  border-color: rgb(var(--np-accent) / 0.6);
+  box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 0.2);
+}
+
+.pp-jump-item.is-current {
+  border-color: #ea580c;
+}
+
+.pp-jump-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+.pp-jump-empty {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  font-size: 1.6rem;
+}
+
+.pp-jump-number {
+  position: absolute;
+  left: 0.35rem;
+  bottom: 0.35rem;
+  min-width: 1.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 0.8);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pp-jump-item.is-current .pp-jump-number {
+  background: #ea580c;
+}
+
+.pp-jump-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 2.5rem 1rem;
+  color: rgb(var(--np-ink-soft));
+  font-weight: 800;
+}
+
+.pp-jump-loading p {
+  margin: 0;
+}
+
+.pp-jump-loading .pp-spinner {
+  border-color: rgb(var(--np-ink) / 0.12);
+  border-top-color: #ea580c;
+}
+
+@keyframes ppFade {
+  from { opacity: 0; }
+}
+
+@keyframes ppDrop {
+  from { opacity: 0; transform: translateY(-0.6rem) scale(0.98); }
+}
+
+.pp-message {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 2rem;
+  color: #e2e8f0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pp-message p {
+  margin: 0;
+}
+
+.pp-message-icon {
+  font-size: 3rem;
+}
+
+.pp-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 0.35rem solid rgb(255 255 255 / 0.2);
+  border-top-color: #fb923c;
+  border-radius: 9999px;
+  animation: ppSpin 0.9s linear infinite;
+}
+
+@keyframes ppSpin {
+  to { transform: rotate(360deg); }
+}
+
+.pp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+}
+
+.pp-action {
+  padding: 0.7rem 1.3rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pp-action:hover {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.pp-action-main {
+  background: #ea580c;
+}
+
+.pp-action-main:hover {
+  background: #f97316;
+}
+
+@media (max-width: 760px) {
+  .pp-edit span {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .pp-title {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pp-spinner {
+    animation-duration: 2.4s;
+  }
+
+  .pp-jump,
+  .pp-jump-panel {
+    animation: none;
+  }
+}

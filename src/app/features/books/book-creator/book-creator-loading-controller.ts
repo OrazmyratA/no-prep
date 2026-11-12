@@ -52,7 +52,7 @@ export class BookCreatorLoadingController {
         this.creator.activePageSource = 'workbook';
         this.creator.activeWorkbookId = workbook.id;
         this.creator.selectedWorkbookPageIndex = workbookPageIndex;
-        this.creator.pageJumpValue = String(workbookPageIndex + 1);
+        this.creator.pageJumpValue = this.creator.pageNumberText(workbookPageIndex);
         return;
       }
     }
@@ -62,7 +62,7 @@ export class BookCreatorLoadingController {
       this.creator.activePageSource = 'main';
       this.creator.activeWorkbookId = null;
       this.creator.selectedPageIndex = pageIndex;
-      this.creator.pageJumpValue = String(pageIndex + 1);
+      this.creator.pageJumpValue = this.creator.pageNumberText(pageIndex);
     }
   }
 }

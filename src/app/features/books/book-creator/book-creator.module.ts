@@ -14,6 +14,7 @@ import { BookCreatorToolbarComponent } from './book-creator-toolbar';
 import { BookCreatorVideoSubtitlesComponent } from './book-creator-video-subtitles';
 import { LessonPlanPanelComponent } from './lesson-plan-panel/lesson-plan-panel';
 import { TaskPrepPanelComponent } from './task-prep-panel/task-prep-panel';
+import { BookPresentationLinkComponent } from './book-presentation-link/book-presentation-link';
 
 // Lazy on its own, so opening a book to read does not download the creator.
 @NgModule({
@@ -33,6 +34,7 @@ import { TaskPrepPanelComponent } from './task-prep-panel/task-prep-panel';
     SharedModule,
     TranslatePipe,
     BooksSharedModule,
+    BookPresentationLinkComponent,
     RouterModule.forChild([{ path: '', component: BookCreatorComponent, canDeactivate: [canDeactivateBookCreator] }])
   ]
 })

@@ -59,7 +59,7 @@ export class BookCreatorPageSurfaceController {
         0,
         Math.max(0, this.creator.book.pages.length - 1)
       );
-      this.creator.pageJumpValue = String(this.creator.selectedPageIndex + 1);
+      this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.selectedPageIndex);
       this.creator.refreshSelectedPageRender();
       return;
     }

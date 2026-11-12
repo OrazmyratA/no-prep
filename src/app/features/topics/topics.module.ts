@@ -1,4 +1,5 @@
 import { NgModule } from '@angular/core';
+import { PresentationLibraryComponent } from '../presentations/presentation-library';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
@@ -15,6 +16,7 @@ import { TranslatePipe } from "../../shared/translate-pipe";
 @NgModule({
   declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent, AiTopicPanelComponent, PointAreaEditorComponent, TopicSignsGuideComponent],
   imports: [
+    PresentationLibraryComponent,
     CommonModule,
     FormsModule,
     ReactiveFormsModule,

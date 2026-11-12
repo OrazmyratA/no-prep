@@ -1,0 +1,150 @@
+:host {
+  display: block;
+}
+
+.bpl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.bpl-linked {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border-radius: 0.8rem;
+  border: 2px solid #ea580c;
+  background: rgb(234 88 12 / 0.08);
+}
+
+.bpl-linked-thumb {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 4.6rem;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.4rem;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.bpl-linked-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.bpl-linked-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.bpl-linked-text span,
+.bpl-empty span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: rgb(var(--np-ink-faint));
+}
+
+.bpl-linked-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(var(--np-ink));
+}
+
+.bpl-unlink {
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 9999px;
+  color: rgb(var(--np-ink-soft));
+  cursor: pointer;
+}
+
+.bpl-unlink:hover {
+  background: rgb(220 38 38 / 0.12);
+  color: #dc2626;
+}
+
+.bpl-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.8rem;
+  border: 2px dashed rgb(var(--np-ink) / 0.18);
+}
+
+.bpl-empty strong {
+  font-size: 0.9rem;
+  color: rgb(var(--np-ink));
+}
+
+.bpl-start {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: rgb(var(--np-ink));
+}
+
+.bpl-start input {
+  width: 4.2rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(var(--np-ink) / 0.2);
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  font-weight: 800;
+}
+
+.bpl-start small {
+  color: rgb(var(--np-ink-faint));
+}
+
+/* Canva / Google Slides links: a coloured tile instead of a slide picture. */
+.bpl-link-thumb {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #00c4cc, #7d2ae8) !important;
+  font-size: 1.3rem;
+}
+
+.bpl-link-thumb.is-google {
+  background: linear-gradient(135deg, #fde68a, #f59e0b) !important;
+}
+
+.bpl-linked.is-link {
+  border-color: #7d2ae8;
+  background: rgb(125 42 232 / 0.08);
+}
+
+
+/* "Choose a presentation": goes to the Presentations tab (like the game icon's "Choose topic"). */
+.bpl-choose {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1.5px solid rgb(234 88 12 / 0.45);
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bpl-choose:hover {
+  border-color: #ea580c;
+  background: rgb(234 88 12 / 0.08);
+}

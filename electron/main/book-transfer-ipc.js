@@ -38,8 +38,33 @@ function registerBookTransferIpc({
   validateBookData,
   pruneUnusedBookAssets,
   rewriteRelativeAssetPaths,
+  getPresentations,
   constants
 }) {
+  // The PowerPoint files a book's PPT icons link to travel with an exported book (a
+  // "presentations" folder) and are added to the library when the book is imported.
+  const { presentationIdsInBook } = require('./presentation-service');
+  async function presentationBundle(book) {
+    const presentations = getPresentations?.();
+    if (!presentations) return [];
+    try {
+      return await presentations.bundleEntries(presentationIdsInBook(book));
+    } catch (error) {
+      console.error('Could not collect presentations for the export', error);
+      return [];
+    }
+  }
+  const bundleBytes = (entries) => entries.reduce((sum, entry) => sum + entry.size + 64 * 1024, 0);
+  async function adoptPresentations(bookFolder) {
+    const presentations = getPresentations?.();
+    if (!presentations) return;
+    try {
+      await presentations.adoptBundle(bookFolder);
+    } catch (error) {
+      console.error('Could not add the book\'s presentations', error);
+    }
+  }
+
   ipcMain.handle('books:import-folder', async () => {
     const operationId = createId('import');
     try {
@@ -84,6 +109,7 @@ function registerBookTransferIpc({
       }
       await writeBookJson(destinationFolder, book);
 
+      await adoptPresentations(destinationFolder);
       const sizeBytes = await getDirectorySize(destinationFolder);
       const item = await upsertRegistryItem(makeRegistryItem(book, destinationFolder, sizeBytes));
       sendBookProgress(null);
@@ -154,7 +180,8 @@ function registerBookTransferIpc({
         }
         await writeBookJson(destinationFolder, book);
 
-        const sizeBytes = await getDirectorySize(destinationFolder);
+        await adoptPresentations(destinationFolder);
+      const sizeBytes = await getDirectorySize(destinationFolder);
         const item = await upsertRegistryItem(makeRegistryItem(book, destinationFolder, sizeBytes));
         sendBookProgress(null);
         return operationResult(item);
@@ -205,6 +232,7 @@ function registerBookTransferIpc({
       await fsp.rename(tempFolder, destinationFolder);
       tempFolder = '';
 
+      await adoptPresentations(destinationFolder);
       const sizeBytes = await getDirectorySize(destinationFolder);
       const item = await upsertRegistryItem(makeRegistryItem(book, destinationFolder, sizeBytes));
       sendBookProgress(null);
@@ -240,7 +268,8 @@ function registerBookTransferIpc({
         destination = path.join(desktopRoot, `${baseName} (Copy ${copyIndex})`);
       }
 
-      const totalBytes = await getDirectorySize(book.folderPath);
+      const bundle = await presentationBundle(validated.book);
+      const totalBytes = await getDirectorySize(book.folderPath) + bundleBytes(bundle);
       await ensureEnoughSpace(destination, totalBytes);
       if (!(await confirmBookFileOperation('Export book to Desktop', totalBytes, destination))) {
         return operationError('CANCELLED');
@@ -254,6 +283,11 @@ function registerBookTransferIpc({
       };
       sendBookProgress(operation);
       await copyDirectoryWithProgress(book.folderPath, destination, operation);
+      if (bundle.length) {
+        operation.phase = 'Copying presentations';
+        sendBookProgress(operation);
+        await getPresentations().writeBundle(bundle, path.join(destination, 'presentations'));
+      }
       sendBookProgress(null);
       return operationResult({ destination });
     } catch (error) {
@@ -284,7 +318,8 @@ function registerBookTransferIpc({
         destination = path.join(desktopRoot, `${baseName} (Package ${copyIndex})${constants.BOOK_PACKAGE_EXTENSION}`);
       }
 
-      const totalBytes = await getDirectorySize(book.folderPath);
+      const bundle = await presentationBundle(validated.book);
+      const totalBytes = await getDirectorySize(book.folderPath) + bundleBytes(bundle);
       await ensureEnoughSpace(destination, totalBytes + 64 * 1024 * 1024);
       if (!(await confirmBookFileOperation('Export book package', totalBytes, destination))) {
         return operationError('CANCELLED');
@@ -298,7 +333,8 @@ function registerBookTransferIpc({
         totalBytes
       };
       sendBookProgress(operation);
-      await createZipPackageWithProgress(book.folderPath, destination, operation);
+      const extras = bundle.length ? getPresentations().bundleZipEntries(bundle) : {};
+      await createZipPackageWithProgress(book.folderPath, destination, operation, extras);
       sendBookProgress(null);
       return operationResult({ destination });
     } catch (error) {
@@ -365,6 +401,7 @@ function registerBookTransferIpc({
       await fsp.rename(tempFolder, destinationFolder);
       tempFolder = '';
 
+      await adoptPresentations(destinationFolder);
       const sizeBytes = await getDirectorySize(destinationFolder);
       const item = await upsertRegistryItem(makeRegistryItem(book, destinationFolder, sizeBytes));
       sendBookProgress(null);

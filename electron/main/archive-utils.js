@@ -47,7 +47,8 @@ function createArchiveUtils({ sendProgress }) {
     }
   }
 
-  async function createZipPackageWithProgress(sourceDir, destinationFile, operation) {
+  /** extras: { files: [{ path, name }], texts: [{ name, content }] } added next to the folder's files. */
+  async function createZipPackageWithProgress(sourceDir, destinationFile, operation, extras = {}) {
     await fsp.mkdir(path.dirname(destinationFile), { recursive: true });
     return new Promise((resolve, reject) => {
       const output = fs.createWriteStream(destinationFile);
@@ -66,6 +67,8 @@ function createArchiveUtils({ sendProgress }) {
 
       archive.pipe(output);
       archive.directory(sourceDir, false);
+      for (const file of extras.files || []) archive.file(file.path, { name: file.name });
+      for (const text of extras.texts || []) archive.append(text.content, { name: text.name });
       archive.finalize().catch(reject);
     });
   }

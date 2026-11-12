@@ -1,3 +1,4 @@
+import { MARK_SIZE } from '../../../core/ai-topic/task-gaps';
 import {
   BookElement,
   BookPage,
@@ -44,7 +45,7 @@ export class BookCreatorMediaController {
 
   async addVideo(): Promise<void> {
     if (!this.creator.book) return;
-    this.creator.armMarkerPlacement('video', { src: '', label: 'Video' }, 0.12, 0.1);
+    this.creator.armMarkerPlacement('video', { src: '', label: 'Video' }, MARK_SIZE * 1.25, MARK_SIZE * 1.25);
   }
 
   addImageToCurrentPage(): void {
@@ -53,7 +54,7 @@ export class BookCreatorMediaController {
   }
 
   addAnswerKey(): void {
-    this.creator.armMarkerPlacement('answerKey', { images: [], label: 'Answer key' }, 0.08, 0.08);
+    this.creator.armMarkerPlacement('answerKey', { images: [], label: 'Answer key' }, MARK_SIZE, MARK_SIZE);
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {

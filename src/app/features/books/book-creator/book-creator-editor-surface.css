@@ -165,101 +165,17 @@
   padding: 1rem;
 }
 
+/* ---------- The map editor: a board of sticky notes (see .sn-board below) ---------- */
 .progress-map-preview {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  justify-content: center;
-  gap: 1.6rem 1.4rem;
-  padding: 1.6rem;
-  overflow: auto;
-  background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%);
+  z-index: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
 }
 
-.progress-map-preview-empty {
-  margin: 2rem auto;
-  color: #64748b;
-  font-weight: 600;
-  text-align: center;
-}
-
-.progress-map-preview-unit {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.4rem;
-  width: 8.5rem;
-  border: 2px solid transparent;
-  border-radius: 0.9rem;
-  background: transparent;
-  padding: 0.5rem 0.3rem;
-  font: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-}
-
-.progress-map-preview-unit:hover {
-  background: rgba(96, 165, 250, 0.12);
-}
-
-.progress-map-preview-unit:active {
-  transform: scale(0.97);
-}
-
-.progress-map-preview-unit.selected {
-  border-color: #2563eb;
-  background: rgba(37, 99, 235, 0.1);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.18);
-}
-
-.progress-map-preview-node {
-  width: 3.6rem;
-  height: 3.6rem;
-  border-radius: 9999px;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(circle at 35% 30%, #bfdbfe, #60a5fa 70%);
-  color: #ffffff;
-  font-weight: 900;
-  font-size: 1.1rem;
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.25);
-}
-
-.progress-map-preview-unit.selected .progress-map-preview-node {
-  background: radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 70%);
-  box-shadow: 0 8px 18px rgba(217, 119, 6, 0.35);
-}
-
-.progress-map-preview-name {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #1e293b;
-  text-align: center;
-  overflow-wrap: break-word;
-}
-
-.progress-map-preview-lessons {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem;
-}
-
-.progress-map-preview-lesson {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #7c2d12;
-  background: linear-gradient(180deg, #fde68a, #f59e0b);
-  border-radius: 9999px;
-  padding: 0.18rem 0.5rem;
-}
-
-.progress-map-preview-lesson-empty {
-  font-size: 0.65rem;
-  color: #94a3b8;
-}
 
 .page-starter {
   background:
@@ -300,7 +216,10 @@
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.13);
 }
 
+/* The selected element comes to the front while selected, so its resize corner can always be
+   reached; its saved order on the page doesn't change. (Below the drawing and tracing layers.) */
 .creator-element.selected {
+  z-index: 20;
   outline: 3px solid rgba(245, 158, 11, 0.95);
   outline-offset: 2px;
   box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.13), 0 14px 28px rgba(15, 23, 42, 0.14);
@@ -925,4 +844,224 @@
   .creator-element.game-element.plan-draft.plan-working {
     animation: none;
   }
+}
+
+/* ===== The map page in the creator: a board of sticky notes (one per unit, lessons as points) ===== */
+.progress-map-preview.sn-board {
+  --sn-c0: #fef08a;
+  --sn-c1: #fbcfe8;
+  --sn-c2: #bae6fd;
+  --sn-c3: #bbf7d0;
+  --sn-c4: #fed7aa;
+  background: #f8fafc;
+  background-image: radial-gradient(rgb(148 163 184 / 0.35) 1px, transparent 1px);
+  background-size: 22px 22px;
+  padding: 1.2rem 1.4rem 2rem;
+}
+
+.sn-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 3px solid rgb(15 23 42 / 0.08);
+}
+
+.sn-head-title {
+  color: #0f172a;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.sn-head-count {
+  color: #64748b;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.sn-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  align-items: start;
+  gap: 1.4rem 1.1rem;
+}
+
+.sn-note {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 9rem;
+  padding: 1.3rem 1rem 1rem;
+  border: 0;
+  border-radius: 0.3rem 0.3rem 0.9rem 0.3rem;
+  background: var(--sn-color, #fef08a);
+  box-shadow: 0 10px 18px -10px rgb(15 23 42 / 0.45), 0 1px 0 rgb(255 255 255 / 0.6) inset;
+  color: #1e293b;
+  text-align: left;
+  transform: rotate(var(--sn-tilt, 0deg));
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.sn-note:hover {
+  transform: rotate(0deg) translateY(-3px);
+  box-shadow: 0 16px 24px -12px rgb(15 23 42 / 0.5);
+}
+
+.sn-note.selected {
+  transform: rotate(0deg) scale(1.03);
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.sn-note.just-added {
+  animation: snPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes snPop {
+  from { transform: scale(0.6); opacity: 0; }
+}
+
+.sn-pin {
+  position: absolute;
+  top: -0.45rem;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  margin-left: -0.5rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 35%, #fca5a5, #dc2626 70%);
+  box-shadow: 0 3px 4px rgb(0 0 0 / 0.3);
+}
+
+.sn-title {
+  padding-bottom: 0.45rem;
+  border-bottom: 2px solid rgb(15 23 42 / 0.15);
+  font-size: 1.15rem;
+  font-weight: 900;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.sn-lessons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.sn-lesson {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.sn-bullet {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #334155;
+  transform: translateY(-0.1rem);
+}
+
+/* A lesson with no page linked yet: a hollow point, so it stands out as still to do. */
+.sn-lesson.empty .sn-bullet {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px #94a3b8;
+}
+
+.sn-lesson.empty .sn-lesson-name {
+  color: #64748b;
+}
+
+.sn-lesson-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sn-lesson-pages {
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sn-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.sn-cell > .sn-note {
+  flex: 1;
+}
+
+/* On a note's right edge, in the gap to the next one: a small ＋ to add a unit there. */
+.sn-gap-add {
+  position: absolute;
+  top: 50%;
+  right: -0.55rem;
+  z-index: 2;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-top: -0.85rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 0;
+  transform: translateX(50%);
+}
+
+.sn-gap-add::before {
+  content: '＋';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 3px 8px rgb(15 23 42 / 0.25);
+  color: #2563eb;
+  font-size: 1rem;
+  font-weight: 900;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.sn-grid:hover .sn-gap-add::before {
+  opacity: 0.85;
+}
+
+.sn-gap-add:hover::before {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+.sn-note-add {
+  align-items: center;
+  justify-content: center;
+  border: 3px dashed rgb(37 99 235 / 0.35);
+  background: rgb(255 255 255 / 0.6);
+  box-shadow: none;
+  color: #2563eb;
+}
+
+.sn-note-add .sn-title {
+  border-bottom: 0;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.sn-add-plus {
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
 }

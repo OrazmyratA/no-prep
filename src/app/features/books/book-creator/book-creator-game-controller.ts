@@ -1,4 +1,5 @@
-import { BookElement, BookPage } from '../../../core/book.model';
+import { MARK_SIZE } from '../../../core/ai-topic/task-gaps';
+import { BookElement, BookPage, numberedPageCount, pageIndexForNumber } from '../../../core/book.model';
 import { parsePageList } from '../../../core/ai-topic/page-list';
 import { normalizeAllowedActivityIds } from '../../topics/activity-select/activity-restriction';
 import { PdfPageCanvasComponent } from '../pdf-page-canvas/pdf-page-canvas';
@@ -11,10 +12,10 @@ export interface AiPagesError {
 
 /** Book pages rendered for the AI, or why they could not be. */
 export type AiPagesResult =
-  | { ok: true; pages: number[]; images: Blob[] }
+  | { ok: true; pages: number[]; indexes: number[]; images: Blob[] }
   | { ok: false; key: string; params: Record<string, string | number> };
 
-interface GameElementLocation {
+export interface GameElementLocation {
   element: BookElement;
   pageSource: 'main' | 'workbook';
   workbookId: string | null;
@@ -43,7 +44,7 @@ export class BookCreatorGameController {
 
   /** What the pages box shows: the teacher's text, or the page the marker is on. */
   getAiPagesText(element: BookElement): string {
-    return this.aiPagesText.get(element.id) ?? String(this.creator.activePageIndex + 1);
+    return this.aiPagesText.get(element.id) ?? this.creator.pageNumberText(this.creator.activePageIndex);
   }
 
   setAiPagesText(element: BookElement, text: string): void {
@@ -80,17 +81,20 @@ export class BookCreatorGameController {
    */
   async renderAiPages(text: string, maxPages: number): Promise<AiPagesResult> {
     const pages: BookPage[] = this.creator.activePages;
-    const parsed = parsePageList(text, pages.length, maxPages);
+    const count = numberedPageCount(pages);
+    const parsed = parsePageList(text, count, maxPages);
     if (!parsed.ok) {
       const key = parsed.error === 'invalid' ? 'creatorAiPagesInvalid'
         : parsed.error === 'outOfRange' ? 'creatorAiPagesOutOfRange'
         : 'creatorAiPagesTooMany';
-      return { ok: false, key, params: { count: pages.length, max: maxPages } };
+      return { ok: false, key, params: { count, max: maxPages } };
     }
 
     const workbook = this.creator.activePageSource === 'workbook' ? this.creator.activeWorkbook : null;
-    const sources = parsed.pages.map(number => {
-      const page = pages[number - 1];
+    // The typed numbers are the pages' own numbers (the progress map is not counted).
+    const indexes = parsed.pages.map(number => pageIndexForNumber(pages, number));
+    const sources = parsed.pages.map((number, i) => {
+      const page = pages[indexes[i]];
       const url = page.type === 'pdf' ? this.creator.getPagePdfUrl(page, workbook) : '';
       return { number, page, url };
     });
@@ -109,7 +113,7 @@ export class BookCreatorGameController {
       console.error('Could not render book pages for AI', error);
       return { ok: false, key: 'creatorAiPagesFailed', params: {} };
     }
-    return { ok: true, pages: parsed.pages, images };
+    return { ok: true, pages: parsed.pages, indexes, images };
   }
 
   addGameMarker(): void {
@@ -119,7 +123,7 @@ export class BookCreatorGameController {
       topicId: null,
       activityMode: 'all',
       allowedActivityIds: []
-    }, 0.12, 0.1);
+    }, MARK_SIZE * 1.25, MARK_SIZE * 1.25);
   }
 
   isGameActivityRestricted(element: BookElement): boolean {
@@ -319,15 +323,15 @@ export class BookCreatorGameController {
     await this.jumpToGameElement(location);
   }
 
-  private findGameElement(elementId: string): GameElementLocation | null {
+  findGameElement(elementId: string, type: BookElement['type'] = 'game'): GameElementLocation | null {
     for (const [index, page] of this.creator.book.pages.entries()) {
-      const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === 'game');
+      const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === type);
       if (element) return { element, pageSource: 'main', workbookId: null, pageIndex: index };
     }
 
     for (const workbook of this.creator.book.workbooks ?? []) {
       for (const [index, page] of (workbook.pages ?? []).entries()) {
-        const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === 'game');
+        const element = page.elements.find((item: BookElement) => item.id === elementId && item.type === type);
         if (element) return { element, pageSource: 'workbook', workbookId: workbook.id, pageIndex: index };
       }
     }
@@ -335,7 +339,7 @@ export class BookCreatorGameController {
     return null;
   }
 
-  private async jumpToGameElement(location: GameElementLocation): Promise<void> {
+  async jumpToGameElement(location: GameElementLocation): Promise<void> {
     this.creator.activePageSource = location.pageSource;
     this.creator.activeWorkbookId = location.workbookId;
     if (location.pageSource === 'main') {

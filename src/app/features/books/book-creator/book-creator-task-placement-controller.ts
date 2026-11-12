@@ -121,8 +121,8 @@ export class BookCreatorTaskPlacementController {
     this.creator.activeMatchGroupId ||= this.creator.createId('match-group');
     const pairId = pending ? getMatchTaskPairId(pending) : this.creator.createId('match-pair');
     const side = pending ? 'B' : 'A';
-    const width = 0.034;
-    const height = this.creator.clamp(width * rect.width / rect.height, 0.022, 0.06);
+    const width = 0.026;
+    const height = this.creator.clamp(width * rect.width / rect.height, 0.016, 0.045);
     const centerX = this.creator.clamp((event.clientX - rect.left) / rect.width, 0, 1);
     const centerY = this.creator.clamp((event.clientY - rect.top) / rect.height, 0, 1);
     const element: BookElement = {
@@ -176,8 +176,8 @@ export class BookCreatorTaskPlacementController {
     if (!state || !rect?.width || !rect.height || !element || element.id !== state.elementId) return;
     const currentX = this.creator.clamp((clientX - rect.left) / rect.width, 0, 1);
     const currentY = this.creator.clamp((clientY - rect.top) / rect.height, 0, 1);
-    const minWidth = 0.055;
-    const minHeight = 0.025;
+    const minWidth = 0.035;
+    const minHeight = 0.018;
     const left = Math.min(state.startX, currentX);
     const top = Math.min(state.startY, currentY);
     element.x = this.creator.clamp(left, 0, 1 - minWidth);

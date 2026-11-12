@@ -1,7 +1,7 @@
 import type { LessonClass, LessonPlan } from './ai-topic/lesson-plan';
 
 export type BookPageType = 'pdf' | 'blank' | 'progressMap';
-export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note' | 'answerKey' | 'speakingAi' | 'ink' | 'highlighter' | 'text' | 'textTask' | 'choiceTask' | 'circleTask' | 'matchTask' | 'tracingTask';
+export type BookElementType = 'image' | 'video' | 'game' | 'focus' | 'guideDot' | 'note' | 'answerKey' | 'speakingAi' | 'presentation' | 'ink' | 'highlighter' | 'text' | 'textTask' | 'choiceTask' | 'circleTask' | 'matchTask' | 'tracingTask';
 
 export interface BookWordBankOption {
   id: string;
@@ -171,6 +171,35 @@ export interface BookPage {
  */
 export function getProgressNavigationMode(page: BookPage | null | undefined): ProgressNavigationMode {
   return page?.progressNavigationMode === 'explorer' ? 'explorer' : 'reader';
+}
+
+/**
+ * The number a teacher sees for a page: the progress map is not counted (it shows 🗺 instead), so
+ * the numbers match the printed book. null for a map page.
+ */
+export function pageNumberAt(pages: BookPage[], index: number): number | null {
+  if (index < 0 || index >= pages.length || pages[index]?.type === 'progressMap') return null;
+  let number = 0;
+  for (let i = 0; i <= index; i++) {
+    if (pages[i].type !== 'progressMap') number++;
+  }
+  return number;
+}
+
+/** The index of the page that carries this number (see pageNumberAt), or -1. */
+export function pageIndexForNumber(pages: BookPage[], number: number): number {
+  if (!Number.isInteger(number) || number < 1) return -1;
+  let count = 0;
+  for (let i = 0; i < pages.length; i++) {
+    if (pages[i].type === 'progressMap') continue;
+    if (++count === number) return i;
+  }
+  return -1;
+}
+
+/** How many pages carry a number (all but the progress map). */
+export function numberedPageCount(pages: BookPage[]): number {
+  return pages.filter(page => page.type !== 'progressMap').length;
 }
 
 export interface WorkbookLink {

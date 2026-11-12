@@ -1,9 +1,9 @@
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { DbService } from '../core/db';
 import { Item, Topic } from '../core/db.model';
-import { LeaderboardStateService } from '../core/leaderboard-state';
+import { FabZone, LeaderboardStateService } from '../core/leaderboard-state';
 import { LanguageService } from '../core/language';
 import { LicenseService } from '../core/license';
 import { showAppNotification } from '../core/notification';
@@ -22,11 +22,18 @@ const ACTIVE_TOPIC_STORAGE_KEY = 'leaderboardActiveTopicId';
   templateUrl: './random-picker.html',
   styleUrls: ['./random-picker.css']
 })
-export class RandomPickerComponent implements OnInit, OnDestroy {
+export class RandomPickerComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('fabButton') fabButtonRef?: ElementRef<HTMLButtonElement>;
 
   topics: Topic[] = [];
-  overlayOpen = false;
+  private overlayOpenValue = false;
+  get overlayOpen(): boolean {
+    return this.overlayOpenValue;
+  }
+  set overlayOpen(open: boolean) {
+    this.overlayOpenValue = open;
+    if (this.leaderboardState.overlayOpen$.value !== open) this.leaderboardState.overlayOpen$.next(open);
+  }
   loadingTopic = false;
   selectedTopicId: number | null = null;
   roster: Item[] = [];
@@ -95,7 +102,10 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   dragging = false;
 
   private readonly fabPositionStorageKey = 'randomPickerFabPosition';
+  private readonly fabZoneStorageKey = 'randomPickerFabPosition:presentation';
   private readonly fabFallbackSize = 54;
+  private fabResizeObserver?: ResizeObserver;
+  private fabWidth = 0;
   private readonly fabDragThreshold = 4;
   private dragPointerId: number | null = null;
   private dragStartClientX = 0;
@@ -106,6 +116,12 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
 
   private topicsSubscription?: Subscription;
   private topicPickedSubscription?: Subscription;
+  private openRequestSubscription?: Subscription;
+  private fabZoneSubscription?: Subscription;
+  /** A strip the button must stay in (the presentation player's toolbar), or null. */
+  private fabZone: FabZone | null = null;
+  /** Where the button was before it was moved into a zone, to put it back afterwards. */
+  private positionBeforeZone: { left: number; top: number } | null = null;
   private readonly pendingTimers = new Set<ReturnType<typeof setTimeout>>();
   private destroyed = false;
   private readonly imageUrls = new Map<number, string>();
@@ -185,6 +201,8 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
       if (result.source !== 'leaderboard-roster') return;
       void this.onTopicPicked(result.topicId);
     });
+    this.openRequestSubscription = this.leaderboardState.openRequest$.subscribe(() => this.openPicker());
+    this.fabZoneSubscription = this.leaderboardState.fabZone$.subscribe(zone => this.applyFabZone(zone));
 
     this.collectSound = new Audio('assets/sound/collect.mp3');
     this.collectSound.load();
@@ -210,10 +228,37 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     }
   }
 
+  // The button widens into a timer while a countdown runs: it grows towards the middle of the
+  // screen (on the right half its right edge stays put), so it never runs off the edge and comes
+  // back to exactly the same spot when the timer ends.
+  ngAfterViewInit() {
+    const fab = this.fabButtonRef?.nativeElement;
+    if (!fab || typeof ResizeObserver === 'undefined') return;
+    this.fabWidth = fab.offsetWidth;
+    this.fabResizeObserver = new ResizeObserver(() => this.onFabResized());
+    this.fabResizeObserver.observe(fab);
+  }
+
+  private onFabResized() {
+    const fab = this.fabButtonRef?.nativeElement;
+    if (!fab) return;
+    const width = fab.offsetWidth;
+    const grown = width - this.fabWidth;
+    this.fabWidth = width;
+    if (!grown || !this.fabPosition || this.dragging || this.destroyed) return;
+    const oldCentre = this.fabPosition.left + (width - grown) / 2;
+    const left = oldCentre > window.innerWidth / 2 ? this.fabPosition.left - grown : this.fabPosition.left;
+    this.fabPosition = this.clampPosition(left, this.fabPosition.top);
+    this.cdr.detectChanges();
+  }
+
   ngOnDestroy() {
     this.destroyed = true;
+    this.fabResizeObserver?.disconnect();
     this.topicsSubscription?.unsubscribe();
     this.topicPickedSubscription?.unsubscribe();
+    this.openRequestSubscription?.unsubscribe();
+    this.fabZoneSubscription?.unsubscribe();
     this.clearPendingTimers();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     [this.collectSound, this.hammerSound, this.powerUpSound, this.buzzSound, this.achieveSound].forEach(s => s?.pause());
@@ -290,6 +335,16 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
   // letting it keep beating over a number that isn't counting down (see .lb-timer-bg-paused).
   get timerBgPaused(): boolean {
     return this.timerPhase === 'running' && this.timerPaused;
+  }
+
+  /** Time left on the floating button, the same way the timer panel shows it (M:SS or H:MM:SS). */
+  get fabTimerText(): string {
+    const left = this.timerPhase === 'finished' ? 0 : Math.max(0, this.timerRemainingSeconds);
+    const h = Math.floor(left / 3600);
+    const m = Math.floor((left % 3600) / 60);
+    const sec = left % 60;
+    if (this.timerHours > 0 || h > 0) return `${h}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
   }
 
   get timerBgProgress(): number {
@@ -1317,6 +1372,35 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  /**
+   * Keeps the button inside a zone (or lets it go again). In a zone it remembers its own spot,
+   * separately from the teacher's usual one, and goes back to the usual one afterwards.
+   */
+  private applyFabZone(zone: FabZone | null) {
+    const entering = !!zone && !this.fabZone;
+    const leaving = !zone && !!this.fabZone;
+    if (entering) this.positionBeforeZone = this.fabPosition;
+    this.fabZone = zone;
+    if (zone) {
+      const saved = entering ? this.loadZonePosition() : this.fabPosition;
+      // First time: the right end of the strip.
+      this.fabPosition = this.clampPosition(saved?.left ?? zone.left + zone.width, zone.top);
+    } else if (leaving) {
+      this.fabPosition = this.positionBeforeZone;
+      this.positionBeforeZone = null;
+    }
+    this.cdr.detectChanges();
+  }
+
+  private loadZonePosition(): { left: number; top: number } | null {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this.fabZoneStorageKey) || 'null');
+      return typeof parsed?.left === 'number' ? { left: parsed.left, top: 0 } : null;
+    } catch {
+      return null;
+    }
+  }
+
   onFabPointerUp(event: PointerEvent) {
     if (this.dragPointerId !== event.pointerId) return;
     const fab = event.currentTarget as HTMLElement;
@@ -1324,7 +1408,11 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     this.dragPointerId = null;
     this.dragging = false;
     if (this.dragMoved && this.fabPosition) {
-      this.saveFabPosition(this.fabPosition);
+      if (this.fabZone) {
+        try { localStorage.setItem(this.fabZoneStorageKey, JSON.stringify(this.fabPosition)); } catch { /* this session only */ }
+      } else {
+        this.saveFabPosition(this.fabPosition);
+      }
     }
     this.cdr.detectChanges();
   }
@@ -1369,6 +1457,15 @@ export class RandomPickerComponent implements OnInit, OnDestroy {
     const fab = this.fabButtonRef?.nativeElement;
     const width = fab?.offsetWidth || this.fabFallbackSize;
     const height = fab?.offsetHeight || this.fabFallbackSize;
+    const zone = this.fabZone;
+    if (zone) {
+      // Slides along the strip only, centred on it: it never reaches the slideshow below.
+      const maxLeft = Math.max(zone.left, zone.left + zone.width - width);
+      return {
+        left: Math.min(Math.max(left, zone.left), maxLeft),
+        top: zone.top + (zone.height - height) / 2
+      };
+    }
     const margin = 8;
     const maxLeft = Math.max(margin, window.innerWidth - width - margin);
     const maxTop = Math.max(margin, window.innerHeight - height - margin);

@@ -1,0 +1,52 @@
+<div class="bpl">
+  @if (linked; as item) {
+    <div class="bpl-linked">
+      <div class="bpl-linked-thumb">
+        @if (thumb; as src) {
+          <img [src]="src" alt="">
+        } @else {
+          <span aria-hidden="true">📽️</span>
+        }
+      </div>
+      <div class="bpl-linked-text">
+        <span>{{ 'creatorLinkedPresentation' | translate }}</span>
+        <strong [attr.title]="item.title">{{ item.title }}</strong>
+      </div>
+      <button type="button" class="bpl-unlink" (click)="unlink()"
+              [attr.title]="'creatorUnlinkPresentation' | translate" [attr.aria-label]="'creatorUnlinkPresentation' | translate">✕</button>
+    </div>
+    <label class="bpl-start">
+      <span>{{ 'creatorPresentationStartSlide' | translate }}</span>
+      <input type="number" min="1" [attr.max]="item.slideCount || null" [value]="startSlide"
+             (change)="setStartSlide($any($event.target).value)">
+      <small>/ {{ item.slideCount }}</small>
+    </label>
+  } @else if (linkedLink; as link) {
+    <div class="bpl-linked is-link">
+      <div class="bpl-linked-thumb bpl-link-thumb" [class.is-google]="link.source === 'google'">
+        <span aria-hidden="true">{{ link.source === 'google' ? '🟨' : '🎨' }}</span>
+      </div>
+      <div class="bpl-linked-text">
+        <span>{{ 'creatorLinkedPresentation' | translate }} · {{ link.source === 'google' ? 'Google Slides' : 'Canva' }}</span>
+        <strong [attr.title]="link.title">{{ link.title }}</strong>
+      </div>
+      <button type="button" class="bpl-unlink" (click)="unlink()"
+              [attr.title]="'creatorUnlinkPresentation' | translate" [attr.aria-label]="'creatorUnlinkPresentation' | translate">✕</button>
+    </div>
+  } @else {
+    <div class="bpl-empty">
+      @if (linkedId && element.data['presentationTitle']) {
+        <span>{{ 'creatorPresentationNotHere' | translate: { title: element.data['presentationTitle'] } }}</span>
+      } @else {
+        <span>{{ 'creatorNoPresentationLinked' | translate }}</span>
+      }
+      <strong>{{ 'creatorChoosePresentation' | translate }}</strong>
+    </div>
+  }
+
+  <!-- Like the game icon's "Choose topic": pick it on the Presentations tab, come back here. -->
+  <button type="button" class="bpl-choose" (click)="creator.choosePresentationFromList(element)">
+    <span>{{ 'creatorChoosePresentationButton' | translate }}</span>
+    <span aria-hidden="true">🔍</span>
+  </button>
+</div>

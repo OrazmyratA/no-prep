@@ -5,6 +5,14 @@ const routes: Routes = [
   { path: '', redirectTo: '/topics', pathMatch: 'full' },
   { path: 'topics', loadChildren: () => import('./features/topics/topics.module').then(m => m.TopicsModule) },
   { path: 'books', loadChildren: () => import('./features/books/books.module').then(m => m.BooksModule) },
+  {
+    path: 'presentations/link/:id',
+    loadComponent: () => import('./features/presentations/presentation-link-player').then(m => m.PresentationLinkPlayerComponent)
+  },
+  {
+    path: 'presentations/:id/play',
+    loadComponent: () => import('./features/presentations/presentation-player').then(m => m.PresentationPlayerComponent)
+  },
   { path: 'download', loadChildren: () => import('./features/download/download.module').then(m => m.DownloadModule) },
 ];
 

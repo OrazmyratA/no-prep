@@ -444,7 +444,25 @@ function createWindow() {
     }
   );
 
+  // Canva / Google Slides presentations play in a frame (presentation-link-player). Their pages
+  // keep their own rules (No-Prep's would break them); only the "may not be shown inside another
+  // page" parts are dropped, because the app itself is a file:// page that those rules don't name.
+  const EMBED_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(canva\.com|docs\.google\.com)\//i;
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    if (details.resourceType === 'subFrame' && EMBED_HOSTS.test(details.url)) {
+      const responseHeaders = {};
+      for (const [name, value] of Object.entries(details.responseHeaders || {})) {
+        const lower = name.toLowerCase();
+        if (lower === 'x-frame-options') continue;
+        if (lower === 'content-security-policy') {
+          responseHeaders[name] = [].concat(value).map((policy) => String(policy).replace(/(^|;)\s*frame-ancestors[^;]*/gi, '$1'));
+          continue;
+        }
+        responseHeaders[name] = value;
+      }
+      callback({ responseHeaders });
+      return;
+    }
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -458,7 +476,7 @@ function createWindow() {
           "style-src 'self' 'unsafe-inline'; " +
           "img-src 'self' noprep-book: data: blob: https://i.ytimg.com https://*.ytimg.com https://pixabay.com https://cdn.pixabay.com; " +
           "media-src 'self' noprep-book: blob: data:; " +
-          "frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
+          "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://www.canva.com https://docs.google.com; " +
           // Pixabay: image search (API + downloads) for the image uploader and AI topics.
           // GitHub API: release notes for the notification bell's "What's new" (app-notifications.ts).
           // Hugging Face: the speech model for video subtitles (downloaded once, then kept).
@@ -666,6 +684,8 @@ registerBookManagementIpc({
   validateBookData,
   pruneUnusedBookAssets,
   rewriteRelativeAssetPaths,
+  // Made further down (it needs PowerPoint); only used once the app runs.
+  getPresentations: () => presentationService,
   constants: {
     BOOK_JSON_FILE,
     BOOK_PACKAGE_EXTENSION
@@ -674,3 +694,44 @@ registerBookManagementIpc({
 registerLicenseIpc(ipcMain);
 registerSecureFeatureIpc(ipcMain);
 registerUpdateIpc({ ipcMain, updateService });
+
+// Presentations: the teacher's PowerPoint files, played and edited through Microsoft PowerPoint.
+const { spawn } = require('child_process');
+const { createPowerPointService } = require('./main/powerpoint-service');
+const { createPresentationService } = require('./main/presentation-service');
+const { registerPresentationIpc } = require('./main/presentation-ipc');
+const powerPoint = createPowerPointService({ app, fsp, path, spawn, execFileText });
+const presentationService = createPresentationService({ app, fsp, path, pathExists, createId, sanitizeName, powerPoint });
+const presentationIpc = registerPresentationIpc({
+  ipcMain,
+  dialog,
+  fsp,
+  path,
+  app,
+  getMainWindow: () => mainWindow,
+  presentations: presentationService,
+  powerPoint,
+  operationResult,
+  operationError
+});
+// Never leave a slideshow attached to a window that is closing.
+let presentationsShutDown = false;
+app.on('before-quit', (event) => {
+  if (presentationsShutDown) return;
+  event.preventDefault();
+  presentationsShutDown = true;
+  Promise.resolve()
+    .then(() => presentationIpc.stop())
+    .then(() => powerPoint.shutdown())
+    .catch(() => undefined)
+    .finally(() => app.quit());
+});
+app.on('browser-window-created', (_event, win) => {
+  win.on('close', (event) => {
+    if (win !== mainWindow || !presentationIpc.isPlaying()) return;
+    event.preventDefault();
+    presentationIpc.stop().catch(() => undefined).finally(() => {
+      if (!win.isDestroyed()) win.close();
+    });
+  });
+});

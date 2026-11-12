@@ -154,6 +154,19 @@ export interface SpeakingResult {
   recordings: SpeakingResultRecording[];
 }
 
+/** A presentation that plays from a link (Canva, Google Slides) instead of a PowerPoint file. */
+export interface PresentationLink {
+  id: string;
+  title: string;
+  /** The link as the teacher pasted it. */
+  url: string;
+  /** The address the player shows (Canva's "?embed" view, Google Slides' "/embed"). */
+  embedUrl: string;
+  source: 'canva' | 'google';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class AppDatabase extends Dexie {
   topics!: Table<Topic, number>;
   items!: Table<Item, number>;
@@ -167,6 +180,7 @@ export class AppDatabase extends Dexie {
   bookLastPosition!: Table<BookLastPosition, string>;
   speakingResults!: Table<SpeakingResult, number>;
   leaderboardTeams!: Table<LeaderboardTeamSetup, number>;
+  presentationLinks!: Table<PresentationLink, string>;
 
   constructor() {
     super('NoPrepDB');
@@ -291,6 +305,23 @@ export class AppDatabase extends Dexie {
       bookLastPosition: 'key, profileId, bookId, updatedAt',
       speakingResults: '++id, topicId, createdAt, *studentNames',
       leaderboardTeams: 'topicId, updatedAt'
+    });
+    this.version(12).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
+      bookLastPosition: 'key, profileId, bookId, updatedAt',
+      speakingResults: '++id, topicId, createdAt, *studentNames',
+      leaderboardTeams: 'topicId, updatedAt',
+      presentationLinks: 'id, updatedAt'
     });
   }
 }

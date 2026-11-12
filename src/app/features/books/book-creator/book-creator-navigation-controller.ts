@@ -1,4 +1,4 @@
-import { BookWorkbook } from '../../../core/book.model';
+import { BookWorkbook, pageIndexForNumber } from '../../../core/book.model';
 
 export class BookCreatorNavigationController {
   constructor(private readonly creator: any) {}
@@ -10,7 +10,7 @@ export class BookCreatorNavigationController {
     } else {
       this.creator.selectedPageIndex = index;
     }
-    this.creator.pageJumpValue = String(index + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(index);
     this.creator.refreshSelectedPageRender();
     this.creator.scrollPageStripToSelection();
   }
@@ -30,8 +30,9 @@ export class BookCreatorNavigationController {
     if (!this.creator.book || index < 0 || index >= this.creator.book.pages.length) return;
     this.creator.activePageSource = 'main';
     this.creator.activeWorkbookId = null;
+    this.creator.linkReturnPageIndex = null;   // back in the student book: no "Back" to offer
     this.creator.selectedPageIndex = index;
-    this.creator.pageJumpValue = String(index + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(index);
     this.creator.refreshSelectedPageRender();
     this.creator.scrollPageStripToSelection();
   }
@@ -45,7 +46,7 @@ export class BookCreatorNavigationController {
     this.creator.activePageSource = 'workbook';
     this.creator.activeWorkbookId = workbook.id;
     this.creator.selectedWorkbookPageIndex = index;
-    this.creator.pageJumpValue = String(index + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(index);
     this.creator.refreshSelectedPageRender();
     this.creator.scrollPageStripToSelection();
   }
@@ -73,13 +74,41 @@ export class BookCreatorNavigationController {
       return;
     }
     if (this.creator.creatorZoom > 1) return;
+    // Something on the page that scrolls (the progress map) scrolls first: the page only turns
+    // once it has reached its end, and not by the same flick that got it there.
+    const now = Date.now();
+    if (this.innerScrollerCanScroll(event)) {
+      this.lastInnerScrollAt = now;
+      return;
+    }
+    if (now - this.lastInnerScrollAt < 600) {
+      this.lastInnerScrollAt = now;
+      event.preventDefault();
+      return;
+    }
     if (!this.creator.book || Math.abs(event.deltaY) < 18) return;
     event.preventDefault();
-    const now = Date.now();
     if (now - this.creator.lastEditorWheelAt < 240) return;
     this.creator.lastEditorWheelAt = now;
     const direction = event.deltaY > 0 ? 1 : -1;
     this.selectPage(this.creator.activePageIndex + direction);
+  }
+
+  private lastInnerScrollAt = 0;
+
+  /** True when the wheel is over something inside the page that can still scroll that way. */
+  private innerScrollerCanScroll(event: WheelEvent): boolean {
+    const boundary = event.currentTarget as HTMLElement | null;
+    let node = event.target instanceof HTMLElement ? event.target : null;
+    while (node && node !== boundary) {
+      if (node.scrollHeight > node.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(node).overflowY)) {
+        const atTop = node.scrollTop <= 0;
+        const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
+        if ((event.deltaY > 0 && !atBottom) || (event.deltaY < 0 && !atTop)) return true;
+      }
+      node = node.parentElement;
+    }
+    return false;
   }
 
   moveSelectedPage(direction: -1 | 1): void {
@@ -104,21 +133,22 @@ export class BookCreatorNavigationController {
 
   startPageJump(): void {
     if (!this.creator.book) return;
-    this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.activePageIndex);
   }
 
   commitPageJump(): void {
     if (!this.creator.book) return;
-    const pageNumber = Number(this.creator.pageJumpValue);
-    if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > this.creator.activePages.length) {
-      this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+    // The typed number is the page's own number: the progress map is not counted.
+    const index = pageIndexForNumber(this.creator.activePages, Number(this.creator.pageJumpValue));
+    if (index < 0) {
+      this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.activePageIndex);
       return;
     }
-    this.selectPage(pageNumber - 1);
+    this.selectPage(index);
   }
 
   cancelPageJump(): void {
-    this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.activePageIndex);
   }
 
   setCreatorZoom(value: number): void {

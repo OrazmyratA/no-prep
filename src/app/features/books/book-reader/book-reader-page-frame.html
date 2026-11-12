@@ -179,7 +179,7 @@
       [class.ink-element]="element.type === 'ink'"
       [class.highlighter-element]="element.type === 'highlighter'"
       [class.text-mark-element]="element.type === 'text'"
-      [class.game-element]="element.type === 'game'"
+      [class.game-element]="element.type === 'game' || element.type === 'presentation'"
       [class.plan-draft]="element.type === 'game' && element.data['planDraft']"
       [class.text-task-element]="element.type === 'textTask'"
       [class.choice-task-element]="element.type === 'choiceTask'"
@@ -210,6 +210,7 @@
       <img *ngIf="element.type === 'video'" class="book-marker-icon" src="assets/images/book/video.png" [alt]="'bookMarkerVideo' | translate">
       <span *ngIf="element.type === 'focus' && !reader.expandedFocusElement" class="focus-label"></span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+      <img *ngIf="element.type === 'presentation'" class="book-marker-icon" src="assets/images/book/ppt.png" [alt]="'presentationMarker' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
       <span *ngIf="element.type === 'guideDot' && reader.getGuideDotNumber(element, page) as dotNumber" class="guide-dot-number" aria-hidden="true">{{ dotNumber }}</span>
       <img *ngIf="element.type === 'tracingTask'" class="book-marker-icon tracing-marker-icon" src="assets/images/book/pencil.png" alt="Tracing task">

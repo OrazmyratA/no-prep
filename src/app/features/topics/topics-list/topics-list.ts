@@ -17,11 +17,12 @@ import { ResizeService } from '../../../core/resize';
 import { BookLibraryService } from '../../../core/book-library';
 import { BookOperationProgress, BookRegistryItem, BookStorageLocation } from '../../../core/book.model';
 import { LeaderboardStateService } from '../../../core/leaderboard-state';
+import { PresentationPickService } from '../../../core/presentation-pick';
 import { DriveLink, DriveLinksService, isValidDriveLinkUrl } from '../../../core/drive-links';
 import { WebTopicSafetyService } from '../../../core/web-topic-safety';
 import { DriveBackupService, DriveBackupStatus } from '../../../core/drive-backup';
 
-type LibraryCategory = 'topics' | 'books';
+type LibraryCategory = 'topics' | 'books' | 'presentations';
 type PendingBookStorageAction = 'create' | 'import' | null;
 
 // Topic cards are built a batch at a time: the first batch (more than a screenful) at once, the
@@ -131,7 +132,9 @@ onClickOutside(event: MouseEvent) {
     public leaderboardState: LeaderboardStateService,
     private driveLinksService: DriveLinksService,
     private topicSafety: WebTopicSafetyService,
-    public driveBackup: DriveBackupService
+    public driveBackup: DriveBackupService,
+    /** Set while a book's PPT icon is choosing a presentation (see the Presentations tab). */
+    public presentationPick: PresentationPickService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
     this.bookProgress$ = this.bookLibrary.progress$;
@@ -153,6 +156,10 @@ onClickOutside(event: MouseEvent) {
     return this.activeLibraryCategory === 'books';
   }
 
+  get isPresentationsCategory(): boolean {
+    return this.activeLibraryCategory === 'presentations';
+  }
+
   setLibraryCategory(category: LibraryCategory): void {
     if (this.activeLibraryCategory === category) return;
     this.activeLibraryCategory = category;
@@ -161,8 +168,9 @@ onClickOutside(event: MouseEvent) {
   }
 
   ngOnInit() {
-    if (this.route.snapshot.queryParamMap.get('category') === 'books') {
-      this.activeLibraryCategory = 'books';
+    const category = this.route.snapshot.queryParamMap.get('category');
+    if (category === 'books' || category === 'presentations') {
+      this.activeLibraryCategory = category;
     }
     const topics$ = this.db.topics$ as unknown as Observable<Topic[]>;
     this.topics$ = topics$;
@@ -299,6 +307,8 @@ onClickOutside(event: MouseEvent) {
   }
 
   ngOnDestroy() {
+    // A book's "Choose a presentation" the teacher walked away from (a pick or Cancel clears it first).
+    this.presentationPick.reset();
     if (this.viewRefreshHandle) {
       clearTimeout(this.viewRefreshHandle);
       this.viewRefreshHandle = undefined;
@@ -665,6 +675,7 @@ async deleteTopic(id: number) {
   }
 
   get selectedLibraryCount() {
+    if (this.isPresentationsCategory) return 0;
     return this.isBooksCategory ? this.selectedBookIds.size : this.selectedTopicIds.size;
   }
 

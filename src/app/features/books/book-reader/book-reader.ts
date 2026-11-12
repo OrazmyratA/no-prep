@@ -1,4 +1,6 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
+import { PresentationService } from '../../../core/presentations';
+import { PresentationLinkService } from '../../../core/presentation-links';
 import { SwipeDirective } from '../../../shared/swipe.directive';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -39,7 +41,10 @@ import {
   getAnswerKeyImageText,
   getLessonPageRefs,
   getProgressNavigationMode,
-  stripDraftElements
+  stripDraftElements,
+  numberedPageCount,
+  pageIndexForNumber,
+  pageNumberAt
 } from '../../../core/book.model';
 import { normalizeBookGuideTimelines } from '../../../core/guide-timeline';
 import {
@@ -298,6 +303,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private taskResponseSaveTimer: number | null = null;
   private pendingTaskResponseIds = new Set<string>();
   private speakingChatScrollFrame = 0;
+  private readonly presentations = inject(PresentationService);
+  private readonly presentationLinks = inject(PresentationLinkService);
 
   constructor(
     private route: ActivatedRoute,
@@ -1174,6 +1181,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!(await this.confirmStopSpeakingForInterruption())) return;
       this.stopGuideAudioAndReturnHome();
       await this.openGameElement(element, page);
+      return;
+    }
+
+    if (element.type === 'presentation') {
+      if (!(await this.confirmStopSpeakingForInterruption())) return;
+      await this.openPresentationElement(element, page);
     }
   }
 
@@ -1923,6 +1936,59 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         pageId: this.currentPage?.id,
         workbookId: this.activeWorkbookId
       }
+    });
+  }
+
+  /**
+   * A PPT icon: plays the linked presentation in No-Prep's player, which comes back to this page.
+   * A book shared from another computer links a presentation that isn't here; one added here
+   * with the same title is used instead.
+   */
+  private async openPresentationElement(element: BookElement, page = this.currentPage): Promise<void> {
+    const returnParams = {
+      returnToBookId: this.book?.id || '',
+      returnToBookPageId: page?.id || this.currentPage?.id || '',
+      returnToBookPageSource: this.pageSource,
+      returnToWorkbookId: this.activeWorkbookId || ''
+    };
+    if (element.data['presentationKind'] === 'link') {
+      // Canva / Google Slides: plays on every device. The book carries the link, so a book shared
+      // from another teacher adds it to this device's Presentations the first time.
+      const linkId = String(element.data['presentationId'] || '');
+      let link = linkId ? await this.presentationLinks.get(linkId) : null;
+      if (!link && element.data['presentationUrl']) {
+        link = await this.presentationLinks.add(String(element.data['presentationUrl']), String(element.data['presentationTitle'] || ''), linkId || undefined);
+      }
+      if (!link) {
+        window.alert(this.languageService.translate('readerPresentationNotLinked'));
+        return;
+      }
+      this.stopGuideAudioAndReturnHome();
+      await this.router.navigate(['/presentations', 'link', link.id], { queryParams: returnParams });
+      return;
+    }
+    if (!this.presentations.isDesktop) {
+      window.alert(this.languageService.translate('presentationsDesktopOnly'));
+      return;
+    }
+    const linkedId = String(element.data['presentationId'] || '');
+    const title = String(element.data['presentationTitle'] || '').trim().toLowerCase();
+    if (!linkedId) {
+      window.alert(this.languageService.translate('readerPresentationNotLinked'));
+      return;
+    }
+    await this.presentations.refresh();
+    const items = this.presentations.items$.value;
+    const item = items.find((entry) => entry.id === linkedId)
+      ?? (title ? items.find((entry) => entry.title.trim().toLowerCase() === title) : undefined);
+    if (!item) {
+      window.alert(this.languageService.translate('readerPresentationMissing', { title: element.data['presentationTitle'] || '' }));
+      return;
+    }
+    this.stopGuideAudioAndReturnHome();
+    const startSlide = Math.max(1, Number(element.data['startSlide']) || 1);
+    await this.router.navigate(['/presentations', item.id, 'play'], {
+      queryParams: { ...returnParams, ...(startSlide > 1 ? { slide: startSlide } : {}) }
     });
   }
 
@@ -2718,7 +2784,23 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private syncPageJumpValue(): void {
-    this.pageJumpValue = String(this.currentPageIndex + 1);
+    this.pageJumpValue = this.pageNumberText(this.currentPageIndex);
+  }
+
+  /** The page's own number ('' for the progress map, which is not counted, like the printed book). */
+  pageNumberText(index: number): string {
+    const number = pageNumberAt(this.visiblePages, index);
+    return number === null ? '' : String(number);
+  }
+
+  /** How many visible pages carry a number (all but the progress map). */
+  get numberedPageCount(): number {
+    return numberedPageCount(this.visiblePages);
+  }
+
+  /** The visible page that carries this number, or -1. */
+  pageIndexForNumber(number: number): number {
+    return pageIndexForNumber(this.visiblePages, number);
   }
 
   private appendStrokePoint(point: { x: number; y: number }): void {

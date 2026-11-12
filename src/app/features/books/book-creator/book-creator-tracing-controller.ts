@@ -55,8 +55,8 @@ export class BookCreatorTracingController {
       : null;
 
     if (!element) {
-      const width = 0.06;
-      const height = this.creator.clamp(width * rect.width / rect.height, 0.03, 0.09);
+      const width = 0.04;
+      const height = this.creator.clamp(width * rect.width / rect.height, 0.02, 0.06);
       element = {
         id: this.creator.createId('tracing-task'),
         type: 'tracingTask',
