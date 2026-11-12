@@ -1,0 +1,71 @@
+<div class="pp-page">
+  <header class="pp-bar">
+    <button type="button" class="pp-btn pp-back" (click)="back()"
+            [attr.title]="backLabel | translate" [attr.aria-label]="backLabel | translate">←</button>
+
+    <div class="pp-title" [attr.title]="link?.title">
+      <span class="pp-title-icon" aria-hidden="true">{{ link?.source === 'google' ? '🟨' : '🎨' }}</span>
+      <span class="pp-title-text">{{ link?.title }}</span>
+    </div>
+
+    @if (link) {
+      <button type="button" class="pp-btn pl-site" (click)="openSite()"
+              [attr.title]="'creatorPresentationOpenSite' | translate: { site: siteName }"
+              [attr.aria-label]="'creatorPresentationOpenSite' | translate: { site: siteName }">↗</button>
+    }
+
+    <button type="button" class="pp-btn" (click)="toggleHelp()" [class.is-open]="showHelp"
+            [attr.title]="'presentationLinkHelpTitle' | translate" [attr.aria-label]="'presentationLinkHelpTitle' | translate">?</button>
+
+    <!-- The floating class leaderboard button lives in this strip (it can slide along it). -->
+    <div #dock class="pp-dock" aria-hidden="true"></div>
+
+    <button type="button" class="pp-btn pp-full" (click)="toggleFullScreen()"
+            [attr.title]="'fullscreen' | translate" [attr.aria-label]="'fullscreen' | translate">
+      <img src="assets/images/maximize.png" alt="" aria-hidden="true">
+    </button>
+  </header>
+
+  <main class="pp-stage pl-stage">
+    @switch (state) {
+      @case ('missing') {
+        <div class="pp-message">
+          <span class="pp-message-icon" aria-hidden="true">🔗</span>
+          <p>{{ 'presentationLinkMissing' | translate }}</p>
+          <div class="pp-actions">
+            <button type="button" class="pp-action" (click)="back()">{{ backLabel | translate }}</button>
+          </div>
+        </div>
+      }
+      @case ('offline') {
+        <div class="pp-message">
+          <span class="pp-message-icon" aria-hidden="true">📶</span>
+          <p>{{ 'presentationLinkOffline' | translate }}</p>
+          <div class="pp-actions">
+            <button type="button" class="pp-action pp-action-main" (click)="retry()">{{ 'presentationTryAgain' | translate }}</button>
+            <button type="button" class="pp-action" (click)="back()">{{ backLabel | translate }}</button>
+          </div>
+        </div>
+      }
+      @default {
+        @if (state === 'loading') {
+          <div class="pl-loading" aria-hidden="true"><span class="pp-spinner"></span></div>
+        }
+        @if (src) {
+          <iframe class="pl-frame" [src]="src" (load)="onFrameLoad()"
+                  allow="fullscreen; autoplay; clipboard-write" allowfullscreen
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  [attr.title]="link?.title"></iframe>
+        }
+      }
+    }
+
+    @if (showHelp) {
+      <div class="pl-help" role="note">
+        <strong>{{ 'presentationLinkHelpTitle' | translate }}</strong>
+        <p>{{ (link?.source === 'google' ? 'presentationLinkHelpGoogle' : 'presentationLinkHelpCanva') | translate }}</p>
+        <button type="button" class="pp-action" (click)="toggleHelp()">OK</button>
+      </div>
+    }
+  </main>
+</div>

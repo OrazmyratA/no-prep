@@ -4,6 +4,10 @@
       <span>{{ pickerBannerHintKey | translate }}</span>
       <button type="button" (click)="leaderboardState.cancelTopicSelection()">{{ 'leaderboardPickerBannerCancel' | translate }}</button>
     </div>
+    <div *ngIf="presentationPick.isPicking && isPresentationsCategory" class="leaderboard-picker-banner">
+      <span>{{ 'bookPresentationPickerBannerHint' | translate }}</span>
+      <button type="button" (click)="presentationPick.cancel()">{{ 'leaderboardPickerBannerCancel' | translate }}</button>
+    </div>
     <!-- Web only: the topics live in this browser, so a copy now and then keeps them safe. -->
     <div *ngIf="showTopicSafetyNotice && isTopicsCategory" class="topic-safety-notice" role="status">
       <span class="topic-safety-icon" aria-hidden="true">💾</span>
@@ -44,6 +48,15 @@
         [attr.aria-selected]="isBooksCategory"
         (click)="setLibraryCategory('books')">
         {{ 'bookSwitcherBooksTitle' | translate }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="library-category-btn"
+        [class.active]="isPresentationsCategory"
+        [attr.aria-selected]="isPresentationsCategory"
+        (click)="setLibraryCategory('presentations')">
+        {{ 'presentationsTab' | translate }}
       </button>
     </div>
     <div class="search-input-wrapper flex-shrink min-w-0">
@@ -95,7 +108,7 @@
     </button>
 
     <!-- Import -->
-    <button (click)="fullAccess ? importLibrary() : licenseService.requestReopen()"
+    <button *ngIf="!isPresentationsCategory" (click)="fullAccess ? importLibrary() : licenseService.requestReopen()"
             class="topics-action-btn library-import-action np-tool np-action--blue font-bold py-3 px-6 rounded-full transition flex items-center whitespace-nowrap"
             [class.btn-disabled]="!fullAccess">
       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -436,6 +449,12 @@
       </ng-template>
     </section>
     </ng-container>
+
+    <!-- Presentations: PowerPoint files, played inside No-Prep by PowerPoint itself -->
+    <app-presentation-library *ngIf="isPresentationsCategory"
+                              [search]="searchControl.value || ''"
+                              [selecting]="leaderboardState.isSelecting">
+    </app-presentation-library>
 
     <!-- Topics Grid -->
     <ng-container *ngIf="isTopicsCategory">

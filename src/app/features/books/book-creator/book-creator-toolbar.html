@@ -27,14 +27,15 @@
       <input
         type="number"
         min="1"
-        [max]="creator.activePages.length"
+        [max]="creator.numberedPageCount"
+        placeholder="🗺"
         [(ngModel)]="creator.pageJumpValue"
         (focus)="creator.startPageJump()"
         (keydown.enter)="creator.commitPageJump()"
         (keydown.escape)="creator.cancelPageJump()"
         (blur)="creator.commitPageJump()"
         [attr.aria-label]="'readerGoToPage' | translate">
-      <span>/ {{ creator.activePages.length }}</span>
+      <span>/ {{ creator.numberedPageCount }}</span>
       <button
         type="button"
         (click)="creator.selectPage(creator.activePageIndex + 1)"
@@ -150,6 +151,9 @@
       </button>
       <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'game'" (click)="creator.addGameMarker()" [title]="'gameLabel' | translate" [attr.aria-label]="'creatorAddGame' | translate">
         <img src="assets/images/book/game.png" alt="">
+      </button>
+      <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'presentation'" (click)="creator.addPresentationMarker()" [title]="'presentationMarker' | translate" [attr.aria-label]="'creatorAddPresentation' | translate">
+        <img src="assets/images/book/ppt.png" alt="">
       </button>
       <button type="button" class="icon-tool-btn" [class.active]="creator.pendingMarkerPlacement?.type === 'focus'" (click)="creator.addFocus()" [title]="'focusLabel' | translate" [attr.aria-label]="'creatorAddFocusArea' | translate">
         <img src="assets/images/book/focus.png" alt="">

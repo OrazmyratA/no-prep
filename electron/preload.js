@@ -107,6 +107,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('layout-changed', listener);
     return () => ipcRenderer.removeListener('layout-changed', listener);
   },
+  presentations: {
+    status: () => ipcRenderer.invoke('presentations:status'),
+    list: () => ipcRenderer.invoke('presentations:list'),
+    importFiles: () => ipcRenderer.invoke('presentations:import'),
+    createBlank: (title) => ipcRenderer.invoke('presentations:create-blank', { title: String(title ?? '') }),
+    rename: (id, title) => ipcRenderer.invoke('presentations:rename', { id: String(id ?? ''), title: String(title ?? '') }),
+    remove: (id) => ipcRenderer.invoke('presentations:delete', { id: String(id ?? '') }),
+    thumbnail: (id) => ipcRenderer.invoke('presentations:thumbnail', { id: String(id ?? '') }),
+    edit: (id) => ipcRenderer.invoke('presentations:edit', { id: String(id ?? '') }),
+    release: (id) => ipcRenderer.invoke('presentations:release', { id: String(id ?? '') }),
+    play: (id, rect, slide) => ipcRenderer.invoke('presentations:play', { id: String(id ?? ''), rect, slide: Number(slide) || 1 }),
+    move: (rect) => ipcRenderer.invoke('presentations:move', { rect }),
+    command: (command, slide, tool) => ipcRenderer.invoke('presentations:command', { command: String(command ?? ''), slide: Number(slide) || 0, tool: String(tool ?? '') }),
+    warm: () => ipcRenderer.invoke('presentations:warm'),
+    state: () => ipcRenderer.invoke('presentations:state'),
+    snapshot: (width) => ipcRenderer.invoke('presentations:snapshot', { width: Number(width) || 1280 }),
+    slidePictures: (from, to) => ipcRenderer.invoke('presentations:slide-pictures', { from: Number(from) || 1, to: Number(to) || 1 }),
+    stop: () => ipcRenderer.invoke('presentations:stop'),
+    onChanged: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = () => callback();
+      ipcRenderer.on('presentations:changed', listener);
+      return () => ipcRenderer.removeListener('presentations:changed', listener);
+    }
+  },
   checkForUpdates: () => ipcRenderer.invoke('app:check-for-updates'),
   installUpdate: () => ipcRenderer.invoke('app:install-update'),
   onUpdateStatus: (callback) => {

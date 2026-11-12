@@ -11,7 +11,7 @@ import {
   LESSON_INTERACTIONS, LessonClass, LessonPlan, LessonStage, LessonTopic, gamesForRecipe, planMinutes
 } from '../../../core/ai-topic/lesson-plan';
 import { LANGUAGE_NAMES } from '../../topics/ai-topic-panel/ai-topic-panel';
-import { BookElement, BookPage, StoredLessonPlan } from '../../../core/book.model';
+import { BookElement, BookPage, StoredLessonPlan, pageNumberAt } from '../../../core/book.model';
 import { buildLessonPlanHtml } from '../../../core/ai-topic/lesson-plan-report';
 import { showAppNotification } from '../../../core/notification';
 import { dateStamp, htmlLang, printHtml } from '../../../core/print-html';
@@ -56,6 +56,11 @@ export interface LessonPlanError {
   params: Record<string, string | number>;
   /** The AI's own message, shown under the translated one. */
   detail: string;
+}
+
+/** A page's own number in its list (the progress map is not counted); 0 when it isn't there. */
+function pageNumberOfId(pages: BookPage[], id: string): number {
+  return pageNumberAt(pages, pages.findIndex(page => page.id === id)) ?? 0;
 }
 
 export class BookCreatorLessonPlanController {
@@ -113,7 +118,7 @@ export class BookCreatorLessonPlanController {
 
   /** What the pages box shows: the teacher's text, or the open page. */
   get pagesValue(): string {
-    return this.pagesText || String(this.creator.activePageIndex + 1);
+    return this.pagesText || this.creator.pageNumberText(this.creator.activePageIndex);
   }
 
   /** Opens or closes the panel section; opening reads which AIs are linked. */
@@ -293,7 +298,7 @@ export class BookCreatorLessonPlanController {
         this.source = {
           pageSource: this.creator.activePageSource,
           workbookId: this.creator.activePageSource === 'workbook' ? this.creator.activeWorkbookId : null,
-          pageIds: rendered.pages.map(n => pages[n - 1]?.id ?? ''),
+          pageIds: rendered.indexes.map(i => pages[i]?.id ?? ''),
           ratios
         };
         if (replan) this.change = '';
@@ -354,7 +359,7 @@ export class BookCreatorLessonPlanController {
   /** "p. 54-55" style page numbers of a stored plan, in its page list. */
   savedPlanPages(stored: StoredLessonPlan): string {
     const pages = this.pagesOf(stored.pageSource, stored.workbookId);
-    const numbers = stored.pageIds.map(id => pages.findIndex(page => page.id === id) + 1).filter(n => n > 0);
+    const numbers = stored.pageIds.map(id => pageNumberOfId(pages, id)).filter(n => n > 0);
     return numbers.length > 1 && numbers.every((n, i) => i === 0 || n === numbers[i - 1] + 1)
       ? `${numbers[0]}-${numbers[numbers.length - 1]}`
       : numbers.join(', ');
@@ -433,7 +438,7 @@ export class BookCreatorLessonPlanController {
       ratios: [...stored.ratios]
     };
     const pages = this.sourcePages();
-    this.planPages = stored.pageIds.map(id => pages.findIndex(page => page.id === id) + 1);
+    this.planPages = stored.pageIds.map(id => pageNumberOfId(pages, id));
     this.klass = cleanClass(stored.klass);
     this.planClassName = stored.className ?? '';
     this.profileId = this.profiles.find(p => p.name === this.planClassName)?.id ?? null;
@@ -912,7 +917,7 @@ export class BookCreatorLessonPlanController {
   private replanPagesText(): string | null {
     if (!this.source) return this.planPages.join(', ');
     const pages: BookPage[] = this.creator.activePages;
-    const numbers = this.source.pageIds.map(id => pages.findIndex(page => page.id === id) + 1);
+    const numbers = this.source.pageIds.map(id => pageNumberOfId(pages, id));
     return numbers.every(n => n > 0) ? numbers.join(', ') : null;
   }
 

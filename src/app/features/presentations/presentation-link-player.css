@@ -1,0 +1,58 @@
+/* The Canva / Google Slides viewer fills the stage; the page's other styles come from
+   presentation-player.css (same bar, buttons and messages as the PowerPoint player). */
+.pl-stage {
+  display: block;
+}
+
+.pl-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0f172a;
+}
+
+.pl-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.pl-stage .pp-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.pl-help {
+  position: absolute;
+  top: 0.8rem;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  width: min(92%, 30rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem 1.1rem;
+  border-radius: 1rem;
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 0.35);
+}
+
+.pl-help p {
+  margin: 0;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.pl-help .pp-action {
+  align-self: flex-end;
+}

@@ -9,7 +9,7 @@
     class="reader-page-option a4-reader-thumb"
     [class.selected]="item.index === reader.currentPageIndex"
     (click)="reader.goToPage(item.index)"
-    [attr.aria-label]="'readerGoToPageNumber' | translate: {number: item.index + 1}">
+    [attr.aria-label]="'readerGoToPageNumber' | translate: {number: reader.pageNumberText(item.index) || '🗺'}">
     <div class="reader-thumb-page">
       <app-pdf-page-canvas
         *ngIf="item.page.type === 'pdf' && reader.getPagePdfUrl(item.page)"
@@ -21,7 +21,7 @@
       </app-pdf-page-canvas>
       <div class="reader-thumb-blank" *ngIf="item.page.type === 'blank'"></div>
     </div>
-    <span class="reader-thumb-number">{{ item.index + 1 }}</span>
+    <span class="reader-thumb-number">{{ reader.pageNumberText(item.index) || '🗺' }}</span>
     <span class="reader-thumb-source" *ngIf="reader.pageSource === 'workbook'">
       <img src="assets/images/book/switch-book.png" alt="">
     </span>

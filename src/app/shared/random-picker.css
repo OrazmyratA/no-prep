@@ -329,30 +329,66 @@
   filter: brightness(0) invert(1);
 }
 
-/* ===== FAB (rp-fab, the always-visible "Class Leaderboard" launcher): live mini progress ring +
-   glow around it, shown any time a countdown is running or has just finished — see
-   timerBgIndicatorVisible/timerBgUrgent/timerBgDone/timerBgProgress in random-picker.ts. The FAB is
-   the one thing that stays on screen regardless of overlay/drawer state, so it's the natural place
-   to surface a background timer. .rp-fab is already position:fixed, so no extra anchor rule is
-   needed here. Uses the conic-gradient + radial-gradient-mask trick for a pure-CSS ring so it stays
-   lightweight and scales with the button instead of needing its own SVG. ===== */
-.lb-timer-bg-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 9999px;
+/* ===== FAB (rp-fab, the always-visible "Class Leaderboard" launcher) as a countdown timer =====
+   Any time a countdown is running or has just finished, the round button widens into a small
+   timer: icon + time left in big digits + a bar along the bottom that drains (see
+   timerBgIndicatorVisible / fabTimerText / timerBgProgress in random-picker.ts). Readable from
+   the back of the class; back to the plain round icon once the timer is reset. ===== */
+.rp-fab.rp-fab-timer {
+  width: auto;
+  min-width: 3.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.95rem 0.5rem 0.6rem;
+  border-radius: 1.1rem;
+  overflow: hidden;
+}
+
+.rp-fab.rp-fab-timer img {
+  width: 1.55rem;
+  height: 1.55rem;
+  flex: none;
+}
+
+.rp-fab-time {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   pointer-events: none;
-  background: conic-gradient(from -90deg, #818cf8 calc(var(--lb-timer-bg-progress, 0) * 360deg), rgba(129, 140, 248, 0.15) 0deg);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-  transition: background 400ms ease;
 }
 
-.lb-timer-bg-urgent .lb-timer-bg-ring {
-  background: conic-gradient(from -90deg, #ef4444 calc(var(--lb-timer-bg-progress, 0) * 360deg), rgba(239, 68, 68, 0.18) 0deg);
+.rp-fab-timer-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
 }
 
-.lb-timer-bg-done .lb-timer-bg-ring {
-  background: conic-gradient(from -90deg, #22c55e 360deg, transparent 0deg);
+.rp-fab-timer-bar > span {
+  display: block;
+  height: 100%;
+  background: #fff;
+  transition: width 1s linear;
+}
+
+.rp-fab-timer.lb-timer-bg-urgent {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+.rp-fab-timer.lb-timer-bg-done {
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+.rp-fab-timer.lb-timer-bg-paused .rp-fab-time {
+  opacity: 0.75;
 }
 
 .lb-timer-bg-active {

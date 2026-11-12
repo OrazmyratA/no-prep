@@ -1,3 +1,4 @@
+import { MARK_SIZE } from '../../../core/ai-topic/task-gaps';
 import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { LessonPackService } from '../../../core/ai-topic/lesson-pack.service';
 import { AiChoicesService } from '../../../core/ai-topic/ai-choices';
@@ -41,7 +42,9 @@ import {
   ProgressMapUnit,
   ProgressNavigationMode,
   TracingPart,
-  TracingPoint
+  TracingPoint,
+  numberedPageCount,
+  pageNumberAt
 } from '../../../core/book.model';
 import {
   getChoiceTaskBankId,
@@ -68,6 +71,10 @@ import { BookCreatorTracingController, TracingSegmentHandle } from './book-creat
 import { BookCreatorEditorSurfaceComponent } from './book-creator-editor-surface';
 import { BookCreatorPageStripComponent } from './book-creator-page-strip';
 import { AiPagesResult, BookCreatorGameController } from './book-creator-game-controller';
+import { BookCreatorPresentationController } from './book-creator-presentation-controller';
+import { PresentationService } from '../../../core/presentations';
+import { PresentationLinkService } from '../../../core/presentation-links';
+import { PresentationPickService } from '../../../core/presentation-pick';
 import { BookCreatorLessonPlanController } from './book-creator-lesson-plan-controller';
 import { BookCreatorTaskPrepController } from './book-creator-task-prep-controller';
 import { BookCreatorGuideAudioController } from './book-creator-guide-audio-controller';
@@ -82,7 +89,7 @@ import { BookCreatorSaveController } from './book-creator-save-controller';
 import { BookCreatorSpeakingPreviewController } from './book-creator-speaking-preview-controller';
 import { BookCreatorTaskPlacementController } from './book-creator-task-placement-controller';
 import { BookCreatorTaskSettingsController } from './book-creator-task-settings-controller';
-import { BookCreatorWorkbookLinkController } from './book-creator-workbook-link-controller';
+import { BookCreatorWorkbookLinkController, LinkedPageChip } from './book-creator-workbook-link-controller';
 import { BookCreatorLayoutController } from './book-creator-layout-controller';
 import { BookCreatorVirtualPageController } from './book-creator-virtual-page-controller';
 import { BookCreatorLoadingController } from './book-creator-loading-controller';
@@ -158,6 +165,8 @@ export class BookCreatorComponent implements OnInit, AfterViewInit, OnDestroy {
   activeWorkbookId: string | null = null;
   selectedWorkbookPageIndex = 0;
   linkingMainPageId: string | null = null;
+  /** The student book page the teacher left through a linked-workbook-page button (for "Back"). */
+  linkReturnPageIndex: number | null = null;
   progress$: Observable<BookOperationProgress | null>;
   games = GAMES;
   isDirty = false;
@@ -370,6 +379,10 @@ Tomorrow I will help my mom.`;
   readonly lessonPack = inject(LessonPackService);
   readonly aiChoices = inject(AiChoicesService);
   readonly platform = inject(PlatformService);
+  readonly presentations = inject(PresentationService);
+  readonly presentationLinks = inject(PresentationLinkService);
+  readonly presentationPick = inject(PresentationPickService);
+  private readonly presentationController = new BookCreatorPresentationController(this);
   readonly lessonPlanner = new BookCreatorLessonPlanController(this);
   readonly taskPrep = new BookCreatorTaskPrepController(this);
   private readonly guideAudioController = new BookCreatorGuideAudioController(this);
@@ -381,7 +394,7 @@ Tomorrow I will help my mom.`;
   private readonly loadingController = new BookCreatorLoadingController(this);
   private readonly pageImportController = new BookCreatorPageImportController(this);
   private readonly pageSurfaceController = new BookCreatorPageSurfaceController(this);
-  private readonly progressMapController = new BookCreatorProgressMapController(this);
+  readonly progressMapController = new BookCreatorProgressMapController(this);
   private readonly saveController = new BookCreatorSaveController(this);
   private readonly speakingPreviewController = new BookCreatorSpeakingPreviewController(this);
   private readonly taskSettingsController = new BookCreatorTaskSettingsController(this);
@@ -667,7 +680,7 @@ Tomorrow I will help my mom.`;
   }
 
   addNote(): void {
-    this.armMarkerPlacement('note', { content: 'Note' }, 0.08, 0.08);
+    this.armMarkerPlacement('note', { content: 'Note' }, MARK_SIZE, MARK_SIZE);
   }
 
   setCreatorZoom(value: number): void {
@@ -736,7 +749,7 @@ Tomorrow I will help my mom.`;
         useCORS: true,
         logging: false
       });
-      const pageLabel = `${this.activePageLabel || 'page'} ${this.activePageIndex + 1}`;
+      const pageLabel = `${this.activePageLabel || 'page'} ${this.pageNumberText(this.activePageIndex) || 'map'}`;
       await this.platformFile.saveDataUrlToDownloads(
         canvas.toDataURL('image/png'),
         `${this.book.title || 'NoPrep Book'} ${pageLabel}.png`,
@@ -755,12 +768,22 @@ Tomorrow I will help my mom.`;
     this.mediaController.addAnswerKey();
   }
 
+  /** A PPT icon: in the reader it plays the linked presentation inside No-Prep. */
+  addPresentationMarker(): void {
+    this.armMarkerPlacement('presentation', {
+      label: 'PowerPoint',
+      presentationId: null,
+      presentationTitle: '',
+      startSlide: 1
+    }, MARK_SIZE * 1.25, MARK_SIZE * 1.25);
+  }
+
   addSpeakingAi(): void {
     this.armMarkerPlacement('speakingAi', {
       label: 'AI Speaking',
       language: 'en',
       prompt: this.speakingPromptExample
-    }, 0.08, 0.08);
+    }, MARK_SIZE, MARK_SIZE);
   }
 
   toggleTextTaskTool(): void {
@@ -1043,7 +1066,7 @@ Tomorrow I will help my mom.`;
   }
 
   addGuideDot(): void {
-    this.armMarkerPlacement('guideDot', { text: '', audioFiles: [], guideTracks: [] }, 0.08, 0.08);
+    this.armMarkerPlacement('guideDot', { text: '', audioFiles: [], guideTracks: [] }, MARK_SIZE, MARK_SIZE);
   }
 
   async onBookImageSelected(blob: Blob | null, element: BookElement): Promise<void> {
@@ -1298,6 +1321,11 @@ Tomorrow I will help my mom.`;
 
   async editGameTopic(element: BookElement): Promise<void> {
     await this.gameController.editGameTopic(element);
+  }
+
+  /** PPT icon: choose on the Presentations tab, come back with it linked. */
+  async choosePresentationFromList(element: BookElement): Promise<void> {
+    await this.presentationController.choosePresentationFromList(element);
   }
 
   async chooseGameTopicFromList(element: BookElement): Promise<void> {
@@ -1913,6 +1941,17 @@ Tomorrow I will help my mom.`;
     return this.activePageSource === 'workbook' ? this.selectedWorkbookPageIndex : this.selectedPageIndex;
   }
 
+  /** The number teachers see for a page of the open list; '' for the progress map (not counted). */
+  pageNumberText(index: number, pages: BookPage[] = this.activePages): string {
+    const number = pageNumberAt(pages, index);
+    return number === null ? '' : String(number);
+  }
+
+  /** How many pages of the open list carry a number (the progress map doesn't). */
+  get numberedPageCount(): number {
+    return numberedPageCount(this.activePages);
+  }
+
   get activeWorkbook(): BookWorkbook | null {
     if (!this.book || !this.activeWorkbookId) return null;
     return this.book.workbooks?.find((workbook) => workbook.id === this.activeWorkbookId) ?? null;
@@ -1973,11 +2012,11 @@ Tomorrow I will help my mom.`;
   }
 
   isUniformSizeElement(element: BookElement): boolean {
-    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi', 'matchTask', 'tracingTask'].includes(element.type);
+    return ['guideDot', 'note', 'game', 'presentation', 'video', 'answerKey', 'speakingAi', 'matchTask', 'tracingTask'].includes(element.type);
   }
 
   isSquareMarkerElement(element: BookElement): boolean {
-    return ['guideDot', 'note', 'game', 'video', 'answerKey', 'speakingAi', 'tracingTask'].includes(element.type);
+    return ['guideDot', 'note', 'game', 'presentation', 'video', 'answerKey', 'speakingAi', 'tracingTask'].includes(element.type);
   }
 
   getElementWidthPercent(element: BookElement): number {
@@ -2084,6 +2123,7 @@ Tomorrow I will help my mom.`;
       case 'image': return this.languageService.translate('image');
       case 'video': return this.languageService.translate('videoLabel');
       case 'game': return this.languageService.translate('gameLabel');
+      case 'presentation': return this.languageService.translate('presentationMarker');
       case 'note': return this.languageService.translate('noteLabel');
       case 'answerKey': return 'Answer Key';
       case 'speakingAi': return 'AI Speaking';
@@ -2105,6 +2145,28 @@ Tomorrow I will help my mom.`;
 
   getPageLinkCount(page: BookPage): number {
     return this.workbookLinkController.getPageLinkCount(page);
+  }
+
+  readonly trackLinkedChip = (_index: number, chip: LinkedPageChip): string => `${chip.workbookId}:${chip.index}`;
+
+  linkedWorkbookChips(page: BookPage | null): LinkedPageChip[] {
+    return this.workbookLinkController.linkedWorkbookChips(page);
+  }
+
+  linkedStudentChips(page: BookPage | null): LinkedPageChip[] {
+    return this.workbookLinkController.linkedStudentChips(page);
+  }
+
+  openLinkedWorkbookPage(chip: LinkedPageChip): void {
+    this.workbookLinkController.openLinkedWorkbookPage(chip);
+  }
+
+  openStudentPage(index: number): void {
+    this.workbookLinkController.openStudentPage(index);
+  }
+
+  linkReturnLabel(): string {
+    return this.workbookLinkController.linkReturnLabel();
   }
 
   getLinkedWorkbookPageNumbers(page: BookPage | null): string {
@@ -2173,6 +2235,11 @@ Tomorrow I will help my mom.`;
 
   addProgressUnit(): void {
     this.progressMapController.addProgressUnit();
+  }
+
+  /** The + on the map's route: a new unit right after unit \`index\` (-1 = at the start). */
+  addProgressUnitAfter(index: number): void {
+    this.progressMapController.addProgressUnit(index);
   }
 
   removeProgressUnit(unit: ProgressMapUnit): void {
@@ -2932,6 +2999,7 @@ Tomorrow I will help my mom.`;
   }
 
   private async attachReturnedTopic(): Promise<void> {
+    if (await this.presentationController.attachReturnedPresentation()) return;
     await this.gameController.attachReturnedTopic();
   }
 

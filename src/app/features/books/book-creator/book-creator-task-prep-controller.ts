@@ -2,7 +2,7 @@ import { AiTopicError, AiTopicProviderId, AiTopicProviderStatus, providerShortLa
 import { AiCropBox } from '../../../core/ai-topic/ai-topic-draft';
 import { ExerciseKind, PreparedExercise, TaskPrepResult } from '../../../core/ai-topic/task-prep';
 import { GridAnchor, circleBox, gridCells, inkBox, markSize, marksAfter, marksInCorner, matchDots, placeGaps, separateBoxes, squareBox } from '../../../core/ai-topic/task-gaps';
-import { BookElement, BookElementType, BookPage, BookWordBank } from '../../../core/book.model';
+import { BookElement, BookElementType, BookPage, BookWordBank, pageNumberAt } from '../../../core/book.model';
 import { PdfTextItem, findBlanks, findInstructionEnd, findPhrases, snapBoxToText, textInBox } from '../../../core/pdf-text';
 import { LANGUAGE_NAMES } from '../../topics/ai-topic-panel/ai-topic-panel';
 import { PdfPageCanvasComponent } from '../pdf-page-canvas/pdf-page-canvas';
@@ -157,7 +157,7 @@ export class BookCreatorTaskPrepController {
 
   /** What the pages box shows: the teacher's text, or the open page. */
   get pagesValue(): string {
-    return this.pagesText || String(this.creator.activePageIndex + 1);
+    return this.pagesText || this.creator.pageNumberText(this.creator.activePageIndex);
   }
 
   /** Reads the pages, asks the AI for their exercises and prepares each one as a draft. */
@@ -173,7 +173,7 @@ export class BookCreatorTaskPrepController {
         return;
       }
       const pages: BookPage[] = this.creator.activePages;
-      const targets = rendered.pages.map(n => pages[n - 1]);
+      const targets = rendered.indexes.map(i => pages[i]);
       const [result, texts, ratios] = await Promise.all([
         this.askAi(rendered),
         Promise.all(targets.map(page => this.readText(page))),
@@ -535,7 +535,7 @@ export class BookCreatorTaskPrepController {
         if (!this.isTaskDraft(element)) continue;
         // Phase 1 drafts have no exercise id: each frame is its own exercise.
         const exerciseId = String(element.data['exerciseId'] || element.id);
-        const group = groups.get(exerciseId) ?? { exerciseId, page, pageNumber: index + 1, frame: null, tasks: [], marks: [] };
+        const group = groups.get(exerciseId) ?? { exerciseId, page, pageNumber: pageNumberAt(pages, index) ?? index + 1, frame: null, tasks: [], marks: [] };
         if (element.type === 'focus') group.frame = element;
         else if (MARK_TYPES.includes(element.type)) group.marks.push(element);
         else group.tasks.push(element);
@@ -638,7 +638,7 @@ export class BookCreatorTaskPrepController {
 
   /** Opens the draft's page (nothing is selected, so this panel stays open). */
   show(draft: TaskDraft): void {
-    const index = draft.pageNumber - 1;
+    const index = this.creator.activePages.indexOf(draft.page);
     if (this.creator.activePageSource === 'workbook') {
       const workbook = this.creator.activeWorkbook;
       if (workbook) this.creator.selectWorkbookPage(workbook, index);

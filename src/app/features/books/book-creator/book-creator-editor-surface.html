@@ -44,28 +44,63 @@
       </div>
     </div>
 
-    <div class="progress-map-preview" *ngIf="creator.isProgressMapPage(creator.selectedPage)">
-      <div class="progress-map-preview-empty" *ngIf="!creator.getProgressUnits(creator.selectedPage).length">
-        No units yet. Use the panel on the right to add units.
+    <!-- The map page in the creator: a board of sticky notes, one per unit, its lessons as points.
+         Click a note to edit that unit (right panel); ＋ between notes adds a unit there. -->
+    <div class="progress-map-preview sn-board" *ngIf="creator.isProgressMapPage(creator.selectedPage)">
+      @let units = creator.getProgressUnits(creator.selectedPage);
+      @let map = creator.progressMapController;
+      <div class="sn-head">
+        <span class="sn-head-title">{{ creator.book?.title }}</span>
+        <span class="sn-head-count">{{ units.length }} 📌</span>
       </div>
-      <button
-        type="button"
-        class="progress-map-preview-unit"
-        [class.selected]="creator.isProgressUnitSelected(unit)"
-        *ngFor="let unit of creator.getProgressUnits(creator.selectedPage); let i = index; trackBy: creator.trackByProgressUnitId"
-        (click)="creator.selectProgressUnit(unit); $event.stopPropagation()"
-        title="Click to edit this unit">
-        <div class="progress-map-preview-node">{{ i + 1 }}</div>
-        <div class="progress-map-preview-name">{{ unit.name }}</div>
-        <div class="progress-map-preview-lessons">
-          <span
-            class="progress-map-preview-lesson"
-            *ngFor="let lesson of unit.lessons; trackBy: creator.trackByProgressLessonId">
-            {{ lesson.name }}
-          </span>
-          <span class="progress-map-preview-lesson-empty" *ngIf="!unit.lessons.length">No lessons yet</span>
-        </div>
-      </button>
+      <div class="sn-grid">
+        @for (unit of units; track unit.id; let i = $index) {
+          <div class="sn-cell">
+          <button
+            type="button"
+            class="sn-note"
+            [attr.data-unit-id]="unit.id"
+            [class.selected]="creator.isProgressUnitSelected(unit)"
+            [class.just-added]="map.justAddedUnitId === unit.id"
+            [style.--sn-color]="'var(--sn-c' + (i % 5) + ')'"
+            [style.--sn-tilt]="((i % 3) - 1) * 1.2 + 'deg'"
+            (click)="creator.selectProgressUnit(unit); $event.stopPropagation()"
+            [title]="unit.name || ('creatorMapUnnamedUnit' | translate)">
+            <span class="sn-pin" aria-hidden="true"></span>
+            <span class="sn-title">{{ unit.name || ('creatorMapUnnamedUnit' | translate) }}</span>
+            @if (unit.lessons.length) {
+              <span class="sn-lessons">
+                @for (lesson of unit.lessons; track lesson.id) {
+                  <span class="sn-lesson" [class.empty]="!creator.getProgressLessonPages(lesson).length">
+                    <span class="sn-bullet" aria-hidden="true"></span>
+                    <span class="sn-lesson-name">{{ lesson.name }}</span>
+                    <span class="sn-lesson-pages">{{ map.lessonPagesShort(lesson) }}</span>
+                  </span>
+                }
+              </span>
+            }
+          </button>
+          @if (i < units.length - 1) {
+            <!-- On the note's right edge: add a unit between this one and the next. -->
+            <button
+              type="button"
+              class="sn-gap-add"
+              (click)="creator.addProgressUnitAfter(i); $event.stopPropagation()"
+              [title]="'creatorMapAddUnitHere' | translate"
+              [attr.aria-label]="'creatorMapAddUnitHere' | translate">＋</button>
+          }
+          </div>
+        }
+
+        <!-- Where a new unit goes: at the end. -->
+        <button
+          type="button"
+          class="sn-note sn-note-add"
+          (click)="creator.addProgressUnitAfter(units.length - 1); $event.stopPropagation()">
+          <span class="sn-add-plus" aria-hidden="true">＋</span>
+          <span class="sn-title">{{ (units.length ? 'creatorMapAddUnit' : 'creatorMapAddFirstUnit') | translate }}</span>
+        </button>
+      </div>
     </div>
 
     <div
@@ -81,7 +116,7 @@
       [class.ink-element]="element.type === 'ink'"
       [class.highlighter-element]="element.type === 'highlighter'"
       [class.text-mark-element]="element.type === 'text'"
-      [class.game-element]="element.type === 'game'"
+      [class.game-element]="element.type === 'game' || element.type === 'presentation'"
       [class.plan-draft]="element.type === 'game' && element.data['planDraft']"
       [class.task-draft]="element.data['taskDraft']"
       [class.plan-working]="creator.lessonPlanner.isIconWorking(element)"
@@ -109,6 +144,7 @@
       <span *ngIf="element.type === 'focus'" class="focus-label"></span>
       <span *ngIf="element.type === 'focus' && element.data['taskDraft']" class="task-draft-badge" aria-hidden="true">✨ {{ element.data['exerciseNumber'] }}</span>
       <img *ngIf="element.type === 'game'" class="book-marker-icon" src="assets/images/book/game.png" [alt]="'bookMarkerGame' | translate">
+      <img *ngIf="element.type === 'presentation'" class="book-marker-icon" src="assets/images/book/ppt.png" [alt]="'presentationMarker' | translate">
       <img *ngIf="element.type === 'guideDot'" class="book-marker-icon teacher-marker-icon" src="assets/images/book/teacher.png" [alt]="'bookMarkerTeacherGuide' | translate">
       <span *ngIf="element.type === 'guideDot' && creator.getGuideDotNumber(element) as dotNumber" class="guide-dot-number" aria-hidden="true">{{ dotNumber }}</span>
       <img *ngIf="element.type === 'tracingTask'" class="book-marker-icon tracing-marker-icon" src="assets/images/book/pencil.png" alt="Tracing task">

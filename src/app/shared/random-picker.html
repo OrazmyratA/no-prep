@@ -4,22 +4,26 @@
   class="rp-fab"
   [class.rp-fab-positioned]="fabPosition"
   [class.rp-fab-dragging]="dragging"
+  [class.rp-fab-timer]="timerBgIndicatorVisible"
   [class.lb-timer-bg-active]="timerBgIndicatorVisible"
   [class.lb-timer-bg-urgent]="timerBgIndicatorVisible && timerBgUrgent"
   [class.lb-timer-bg-done]="timerBgIndicatorVisible && timerBgDone"
   [class.lb-timer-bg-paused]="timerBgIndicatorVisible && timerBgPaused"
   [style.left.px]="fabPosition?.left"
   [style.top.px]="fabPosition?.top"
-  [style.--lb-timer-bg-progress]="timerBgProgress"
   (pointerdown)="onFabPointerDown($event)"
   (pointermove)="onFabPointerMove($event)"
   (pointerup)="onFabPointerUp($event)"
   (pointercancel)="onFabPointerCancel($event)"
   (click)="onFabClick()"
-  [attr.title]="'randomPickerTrigger' | translate"
-  [attr.aria-label]="'randomPickerTrigger' | translate">
-  <span class="lb-timer-bg-ring" *ngIf="timerBgIndicatorVisible" aria-hidden="true"></span>
+  [attr.title]="('randomPickerTrigger' | translate) + (timerBgIndicatorVisible ? ' · ' + fabTimerText : '')"
+  [attr.aria-label]="('randomPickerTrigger' | translate) + (timerBgIndicatorVisible ? ' · ' + fabTimerText : '')">
   <img src="assets/images/randomize.png" alt="" aria-hidden="true" draggable="false">
+  <!-- While a countdown runs the round button becomes a small timer: time left + a draining bar. -->
+  <ng-container *ngIf="timerBgIndicatorVisible">
+    <span class="rp-fab-time" aria-hidden="true">{{ timerBgPaused ? '⏸ ' : '' }}{{ fabTimerText }}</span>
+    <span class="rp-fab-timer-bar" aria-hidden="true"><span [style.width.%]="timerBgProgress * 100"></span></span>
+  </ng-container>
 </button>
 
 <div class="rp-backdrop" *ngIf="overlayOpen" (click)="closeOverlay($event)">

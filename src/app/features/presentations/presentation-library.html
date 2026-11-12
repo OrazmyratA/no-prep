@@ -1,0 +1,176 @@
+@if (!desktop) {
+  <p class="pres-note">{{ 'presentationsPowerPointDesktopOnly' | translate }}</p>
+} @else if (!loading && !powerPointAvailable) {
+  <p class="pres-note">{{ 'presentationsNeedPowerPoint' | translate }}</p>
+}
+<section class="pres-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+  @if (!selecting) {
+    @if (powerPointHere) {
+        <!-- Add: PowerPoint files (main), or a blank one to make in PowerPoint (corner). -->
+        <div class="library-new-card pres-new-card np-card" [class.btn-disabled]="!fullAccess" [class.busy]="!!busy">
+          <button type="button" class="pres-new-main" (click)="addFiles()" [disabled]="!!busy">
+            <span class="pres-new-icon" aria-hidden="true">
+              <span class="pres-new-sheet"></span>
+              <span class="pres-new-plus">＋</span>
+            </span>
+            <span class="library-new-label">
+              {{ (busy === 'adding' ? 'presentationAdding' : 'presentationAdd') | translate }}
+            </span>
+            <span class="pres-new-hint">.pptx · .ppt</span>
+          </button>
+          <button type="button" class="pres-new-blank" (click)="createBlank()" [disabled]="!!busy"
+                  [attr.title]="'presentationBlank' | translate">
+            <span aria-hidden="true">📝</span>
+            <span>{{ (busy === 'creating' ? 'presentationOpening' : 'presentationBlank') | translate }}</span>
+          </button>
+        </div>
+    }
+      <!-- Add: a Canva or Google Slides link (plays on every device, needs the internet). -->
+      <div class="library-new-card pres-new-card pres-link-new np-card" [class.btn-disabled]="!fullAccess" [class.is-open]="linkFormOpen">
+        @if (!linkFormOpen) {
+          <button type="button" class="pres-new-main" (click)="openLinkForm()">
+            <span class="pres-new-icon pres-link-icon" aria-hidden="true">
+              <span class="pres-new-sheet"></span>
+              <span class="pres-new-plus">🔗</span>
+            </span>
+            <span class="library-new-label">{{ 'presentationAddLink' | translate }}</span>
+            <span class="pres-new-hint">Canva · Google Slides</span>
+          </button>
+          <!-- Make a new one on the site itself; the link comes back through the box above. -->
+          <div class="pres-new-sites">
+            <button type="button" class="pres-new-blank pres-new-site" (click)="createOnSite('canva')"
+                    [attr.title]="'presentationNewOnCanva' | translate">
+              <span aria-hidden="true">🎨</span>
+              <span>{{ 'presentationNewOnCanva' | translate }}</span>
+            </button>
+            <button type="button" class="pres-new-blank pres-new-site" (click)="createOnSite('google')"
+                    [attr.title]="'presentationNewOnGoogle' | translate">
+              <span aria-hidden="true">🟨</span>
+              <span>{{ 'presentationNewOnGoogle' | translate }}</span>
+            </button>
+          </div>
+        } @else {
+          <form class="pres-link-form" (submit)="$event.preventDefault(); addLink()">
+            @if (madeOn) {
+              <p class="pres-link-made">
+                {{ 'presentationMadeOnSiteHint' | translate: { site: madeOn === 'google' ? 'Google Slides' : 'Canva' } }}
+              </p>
+            }
+            <label>
+              <span>{{ 'presentationLinkUrl' | translate }}</span>
+              <input class="pres-link-url" type="text" name="url" [(ngModel)]="linkUrl" (ngModelChange)="linkError = false"
+                     placeholder="https://www.canva.com/design/…" autocomplete="off" spellcheck="false">
+            </label>
+            @if (linkUrl.trim()) {
+              <small class="pres-link-status" [class.is-bad]="!linkSource">
+                {{ linkSource === 'canva' ? '🎨 Canva' : linkSource === 'google' ? '🟨 Google Slides' : ('presentationLinkUnknown' | translate) }}
+              </small>
+            }
+            <label>
+              <span>{{ 'presentationLinkName' | translate }}</span>
+              <input type="text" name="title" [(ngModel)]="linkTitle" [placeholder]="'presentationLinkNameHint' | translate" autocomplete="off">
+            </label>
+            @if (linkError) {
+              <small class="pres-link-status is-bad">{{ 'presentationLinkUnknown' | translate }}</small>
+            }
+            <div class="pres-link-actions">
+              <button type="button" class="pres-link-cancel" (click)="closeLinkForm()">{{ 'presentationLinkCancel' | translate }}</button>
+              <button type="submit" class="pres-link-add" [disabled]="!linkSource">{{ 'presentationAddLinkButton' | translate }}</button>
+            </div>
+          </form>
+        }
+      </div>
+  }
+
+    @for (link of visibleLinks; track link.id) {
+      <article class="pres-card np-card np-card-lift" (click)="playLink(link)">
+        <div class="pres-thumb pres-link-thumb" [class.is-google]="link.source === 'google'">
+          <span class="pres-link-mark" aria-hidden="true">{{ link.source === 'google' ? '🟨' : '🎨' }}</span>
+          <span class="pres-play" aria-hidden="true">{{ pick.isPicking ? '✓' : '▶' }}</span>
+          <span class="pres-type pres-link-type">{{ link.source === 'google' ? 'SLIDES' : 'CANVA' }}</span>
+        </div>
+
+        <div class="pres-tools" (click)="$event.stopPropagation()">
+          <button type="button" class="np-card-tool np-action--violet" (click)="startRenameLink(link)"
+                  [attr.title]="'presentationRename' | translate" [attr.aria-label]="'presentationRename' | translate">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
+          </button>
+          <button type="button" class="np-card-tool np-action--red" (click)="removeLink(link)"
+                  [attr.title]="'presentationDelete' | translate" [attr.aria-label]="'presentationDelete' | translate">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+
+        <div class="library-card-body">
+          @if (renamingId === link.id) {
+            <input class="pres-rename" [attr.data-id]="link.id" [value]="link.title"
+                   (click)="$event.stopPropagation()"
+                   (keydown.enter)="finishRenameLink(link, $any($event.target).value)"
+                   (keydown.escape)="cancelRename()"
+                   (blur)="finishRenameLink(link, $any($event.target).value)">
+          } @else {
+            <h3 class="library-card-title">{{ link.title }}</h3>
+          }
+          <div class="library-card-meta">
+            <span class="library-card-count">🔗 {{ link.source === 'google' ? 'Google Slides' : 'Canva' }}</span>
+            <span>{{ link.createdAt | date: 'mediumDate' }}</span>
+          </div>
+        </div>
+      </article>
+    }
+
+  @if (powerPointHere) {
+      @for (item of visible; track item.id) {
+        <article class="pres-card np-card np-card-lift" [class.is-editing]="editing.has(item.id)" (click)="play(item)">
+          <div class="pres-thumb">
+            @if (thumbs.get(thumbKey(item)); as src) {
+              <img [src]="src" [alt]="item.title" loading="lazy">
+            } @else {
+              <span class="pres-thumb-empty" aria-hidden="true">📽️</span>
+            }
+            @if (editing.has(item.id)) {
+              <span class="pres-editing-badge">✏️ {{ 'presentationEditing' | translate }}</span>
+            } @else {
+              <span class="pres-play" aria-hidden="true">{{ pick.isPicking ? '✓' : '▶' }}</span>
+            }
+            <span class="pres-type">{{ item.fileName.split('.').pop()?.toUpperCase() }}</span>
+          </div>
+
+          <div class="pres-tools" (click)="$event.stopPropagation()">
+            <button type="button" class="np-card-tool np-action--amber" (click)="edit(item)"
+                    [attr.title]="'presentationEdit' | translate" [attr.aria-label]="'presentationEdit' | translate">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </button>
+            <button type="button" class="np-card-tool np-action--violet" (click)="startRename(item)"
+                    [attr.title]="'presentationRename' | translate" [attr.aria-label]="'presentationRename' | translate">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
+            </button>
+            <button type="button" class="np-card-tool np-action--red" (click)="remove(item)"
+                    [attr.title]="'presentationDelete' | translate" [attr.aria-label]="'presentationDelete' | translate">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+          </div>
+
+          <div class="library-card-body">
+            @if (renamingId === item.id) {
+              <input class="pres-rename" [attr.data-id]="item.id" [value]="item.title"
+                     (click)="$event.stopPropagation()"
+                     (keydown.enter)="finishRename(item, $any($event.target).value)"
+                     (keydown.escape)="cancelRename()"
+                     (blur)="finishRename(item, $any($event.target).value)">
+            } @else {
+              <h3 class="library-card-title">{{ item.title }}</h3>
+            }
+            <div class="library-card-meta">
+              <span class="library-card-count">{{ item.slideCount === 1 ? ('presentationOneSlide' | translate) : ('presentationSlides' | translate: { count: item.slideCount }) }}</span>
+              <span>{{ item.updatedAt | date: 'mediumDate' }}</span>
+            </div>
+          </div>
+        </article>
+      }
+  }
+</section>
+
+@if (!loading && powerPointHere && !items.length && !links.length) {
+  <p class="pres-hint">{{ 'presentationsHint' | translate }}</p>
+}

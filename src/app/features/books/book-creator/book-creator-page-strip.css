@@ -239,6 +239,67 @@
   background: #ffffff;
 }
 
+/* The map page's thumbnail: three little sticky notes, like the board itself. */
+.thumb-map {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7%;
+  padding: 18% 12% 8%;
+  background-color: #f8fafc;
+  background-image: radial-gradient(rgba(100, 116, 139, 0.22) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.thumb-note {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12%;
+  padding: 0 12%;
+  border-radius: 3px;
+  background: #fde68a;
+  box-shadow: 0 2px 3px rgba(15, 23, 42, 0.14);
+  transform: rotate(-1.5deg);
+}
+
+.thumb-note:nth-child(2) { background: #fbcfe8; transform: rotate(1.2deg); }
+.thumb-note:nth-child(3) { background: #bfdbfe; transform: rotate(-0.8deg); }
+
+/* The red pin. */
+.thumb-note::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 9999px;
+  background: #ef4444;
+}
+
+/* Lesson lines. */
+.thumb-note i {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(30, 41, 59, 0.35);
+}
+
+.thumb-note i:first-child {
+  width: 70%;
+  height: 3px;
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.page-number.map-number {
+  background: rgba(30, 41, 59, 0.82);
+}
+
 .page-thumb.selected {
   border-color: #2563eb;
   background: #eff6ff;

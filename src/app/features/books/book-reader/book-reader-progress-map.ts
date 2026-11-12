@@ -1,6 +1,13 @@
 import { AfterViewInit, Component, DoCheck, ElementRef, Input, NgZone, OnDestroy, ViewChild } from '@angular/core';
 import { BookPage, getLessonPageRefs, ProgressMapLesson, ProgressMapUnit } from '../../../core/book.model';
 import { ConfettiInstance, GameFinishConfettiService } from '../../../shared/game-finish-overlay';
+import {
+  progressMapHarvestTree,
+  progressMapIslandImage,
+  progressMapLessonAngle,
+  progressMapLessonIcon,
+  progressMapUnitLeftPercent
+} from '../progress-map-layout';
 
 @Component({
   selector: 'app-book-reader-progress-map',
@@ -43,21 +50,7 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
   shareCardImageUrl: string | null = null;
 
   private readonly treeStageFiles = ['dead', 'bud', 'sprout', 'sapling', 'leafing', 'lush', 'blossom', 'green', 'ripening'];
-  private readonly harvestTreeVariants = [
-    'apple-tree',
-    'cherry-tree',
-    'fig-tree',
-    'lemon-tree',
-    'mango-tree',
-    'orange-tree',
-    'peach-tree',
-    'pear-tree',
-    'plump-tree',
-    'pomegranate-tree'
-  ];
   private readonly treeStageCount = 10;
-  private readonly islandCount = 10;
-  private readonly lessonIcons = ['water', 'air', 'sunlight', 'fertilizer'];
 
   private readonly unitStepRem = 12;
   private readonly topPaddingRem = 8;
@@ -421,9 +414,7 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
   }
 
   getUnitLeftPercent(index: number): number {
-    const wave = Math.sin(index * 0.85) * 26;
-    const jitter = (this.seededRandom(index) - 0.5) * 10;
-    return this.clamp(50 + wave + jitter, 16, 84);
+    return progressMapUnitLeftPercent(index);
   }
 
   getUnitTopRem(index: number): number {
@@ -487,22 +478,15 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
   }
 
   private getHarvestVariant(unit: ProgressMapUnit): string {
-    const index = this.units.findIndex((item) => item.id === unit.id);
-    return this.harvestTreeVariants[this.pickStableIndex(index, 5, this.harvestTreeVariants.length)];
+    return progressMapHarvestTree(this.units.findIndex((item) => item.id === unit.id));
   }
 
   getIslandImage(unit: ProgressMapUnit): string {
-    const index = this.units.findIndex((item) => item.id === unit.id);
-    const islandNumber = this.pickStableIndex(index, 11, this.islandCount) + 1;
-    return `assets/images/book/islend/${islandNumber}.webp`;
-  }
-
-  private pickStableIndex(index: number, salt: number, count: number): number {
-    return Math.floor(this.seededRandom(index * 31 + salt) * count) % count;
+    return progressMapIslandImage(this.units.findIndex((item) => item.id === unit.id));
   }
 
   getLessonIcon(index: number): string {
-    return `assets/images/book/tree/${this.lessonIcons[index % this.lessonIcons.length]}.png`;
+    return progressMapLessonIcon(index);
   }
 
   isLessonLocked(unit: ProgressMapUnit, lesson: ProgressMapLesson): boolean {
@@ -515,11 +499,7 @@ export class BookReaderProgressMapComponent implements AfterViewInit, DoCheck, O
   }
 
   private getLessonAngleDeg(unit: ProgressMapUnit, index: number): number {
-    const count = unit.lessons.length;
-    if (count <= 1) return -90;
-    const spread = Math.min(220, 70 + count * 24);
-    const start = -90 - spread / 2;
-    return start + (spread * index) / (count - 1);
+    return progressMapLessonAngle(unit.lessons.length, index);
   }
 
   getLessonOffsetX(unit: ProgressMapUnit, index: number): number {

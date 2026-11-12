@@ -162,7 +162,7 @@ export class BookCreatorSaveController {
         : this.creator.selectedPageIndex;
       this.creator.selectedPageIndex = this.creator.clamp(Math.max(0, pageIndex), 0, Math.max(0, restored.pages.length - 1));
     }
-    this.creator.pageJumpValue = String(this.creator.activePageIndex + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.activePageIndex);
     this.creator.refreshSelectedPageRender();
     if (selectedElementId && this.creator.selectedPage?.elements.some((element: { id: string }) => element.id === selectedElementId)) {
       this.creator.selectedElementId = selectedElementId;

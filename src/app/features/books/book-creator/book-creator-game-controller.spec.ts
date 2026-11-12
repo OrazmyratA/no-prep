@@ -21,6 +21,7 @@ describe('BookCreatorGameController: Create with AI from pages', () => {
       book: { id: 'book-1' },
       activePages: [pdfPage(1), pdfPage(2), { id: 'blank', type: 'blank', elements: [] }, pdfPage(4)],
       activePageIndex: 1,
+      pageNumberText: (index: number) => String(index + 1),
       activePageSource: 'student',
       activeWorkbook: null,
       getPagePdfUrl: () => 'noprep-book://book-1/assets/source.pdf',

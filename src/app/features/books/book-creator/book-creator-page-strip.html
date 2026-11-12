@@ -45,8 +45,14 @@
           [lazy]="true">
         </app-pdf-page-canvas>
         <div class="thumb-blank" *ngIf="item.page.type === 'blank'"></div>
+        <div class="thumb-map" *ngIf="item.page.type === 'progressMap'" aria-hidden="true">
+          <span class="thumb-note"><i></i><i></i><i></i></span>
+          <span class="thumb-note"><i></i><i></i></span>
+          <span class="thumb-note"><i></i><i></i><i></i></span>
+        </div>
       </div>
-      <span class="page-number">{{ item.index + 1 }}</span>
+      <!-- The progress map has no number, so the numbers match the printed book. -->
+      <span class="page-number" [class.map-number]="item.page.type === 'progressMap'">{{ creator.pageNumberText(item.index, creator.book.pages) || '🗺' }}</span>
       <span class="page-status" *ngIf="item.page.hidden">{{ 'hiddenLabel' | translate }}</span>
       <span class="page-link-count" *ngIf="creator.getPageLinkCount(item.page)">{{ creator.getPageLinkCount(item.page) }}</span>
       <span class="page-thumb-actions">

@@ -29,14 +29,15 @@
         <input
           type="number"
           min="1"
-          [max]="reader.visiblePages.length"
+          [max]="reader.numberedPageCount"
+          placeholder="🗺"
           [(ngModel)]="reader.pageJumpValue"
           (focus)="reader.startPageJump()"
           (keydown.enter)="reader.commitPageJump()"
           (keydown.escape)="reader.cancelPageJump()"
           (blur)="reader.commitPageJump()"
           [attr.aria-label]="'readerGoToPage' | translate">
-        <span>/ {{ reader.visiblePages.length }}</span>
+        <span>/ {{ reader.numberedPageCount }}</span>
         <button type="button" class="tool-btn icon-turn-btn" (click)="reader.nextPage()" [disabled]="reader.currentPageIndex >= reader.visiblePages.length - 1" [title]="'nextPage' | translate">
           <img class="turn-icon turn-icon-next" src="assets/images/book/show.png" alt="">
         </button>

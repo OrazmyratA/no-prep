@@ -40,9 +40,10 @@ describe('BookCreatorLessonPlanController', () => {
       refreshSelectedPageRender: vi.fn(),
       aiPageLimit: 3,
       activePageIndex: 53,
+      pageNumberText: (index: number) => String(index + 1),
       languageService: { currentLang: 'ru', translate: (key: string) => key },
       confirmationService: { confirm: vi.fn(async () => true) },
-      renderAiPages: vi.fn(async (text: string) => ({ ok: true, pages: text === '54' ? [54] : [54, 55], images: [new Blob(['p'])] })),
+      renderAiPages: vi.fn(async (text: string) => ({ ok: true, pages: text === '54' ? [54] : [54, 55], indexes: text === '54' ? [53] : [53, 54], images: [new Blob(['p'])] })),
       aiTopic: {
         getStartProvider: async () => ({ providers: [], start: { id: 'groq' } }),
         analyseLesson: vi.fn(async () => makePlan())
@@ -104,7 +105,7 @@ describe('BookCreatorLessonPlanController', () => {
     expect(planner.error).toEqual({ key: 'creatorAiPagesNotPdf', params: { page: 54 }, detail: '' });
     expect(creator.aiTopic.analyseLesson).not.toHaveBeenCalled();
 
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [54], images: [] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [54], indexes: [53], images: [] }));
     creator.aiTopic.analyseLesson = vi.fn(async () => { throw new AiTopicError('Quota exceeded'); });
     await planner.analyse();
     expect(planner.error).toEqual({ key: 'lessonPlanFailed', params: {}, detail: 'Quota exceeded' });
@@ -258,7 +259,7 @@ describe('BookCreatorLessonPlanController', () => {
     plan.sections[1].box = { x: 0.1, y: 0.5, width: 0.6, height: 0.2 };
     creator.aiTopic.analyseLesson = vi.fn(async () => plan);
     const [photo54, photo55] = [new Blob(['54']), new Blob(['55'])];
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [54, 55], images: [photo54, photo55] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [54, 55], indexes: [53, 54], images: [photo54, photo55] }));
     planner.pagesText = '54-55';
     await planner.analyse();
     expect(planner.topicsToCreate.map(t => t.id)).toEqual(['t1', 't2']);

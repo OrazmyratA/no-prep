@@ -353,12 +353,13 @@ export class BookReaderNavigationController {
   }
 
   commitPageJump(): void {
-    const pageNumber = Number(this.reader.pageJumpValue);
-    if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > this.reader.visiblePages.length) {
+    // The typed number is the page's own number: the progress map is not counted.
+    const index = this.reader.pageIndexForNumber(Number(this.reader.pageJumpValue));
+    if (index < 0) {
       this.reader.syncPageJumpValue();
       return;
     }
-    this.reader.goToPage(pageNumber - 1, false);
+    this.reader.goToPage(index, false);
   }
 
   cancelPageJump(): void {

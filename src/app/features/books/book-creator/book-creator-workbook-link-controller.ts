@@ -1,8 +1,16 @@
 import {
   BookPage,
   BookWorkbook,
-  WorkbookLink
+  WorkbookLink,
+  pageNumberAt
 } from '../../../core/book.model';
+
+/** A linked page shown as a button in the inspector. */
+export interface LinkedPageChip {
+  workbookId: string;
+  index: number;
+  label: string;
+}
 
 export class BookCreatorWorkbookLinkController {
   constructor(private readonly creator: any) {}
@@ -84,6 +92,63 @@ export class BookCreatorWorkbookLinkController {
     this.creator.book.workbookLinks[this.creator.linkingMainPageId] = links
       .map((item: WorkbookLink) => ({ ...item, pageIds: item.pageIds.filter(Boolean) }))
       .filter((item: WorkbookLink) => item.pageIds.length > 0);
+  }
+
+  /** The workbook pages linked to this student book page, as buttons (numbered like the input). */
+  linkedWorkbookChips(page: BookPage | null): LinkedPageChip[] {
+    if (!page || !this.creator.book) return [];
+    const chips: LinkedPageChip[] = [];
+    for (const link of this.getWorkbookLinksForPage(page)) {
+      const workbook = this.creator.book.workbooks?.find((item: BookWorkbook) => item.id === link.workbookId);
+      if (!workbook) continue;
+      for (const pageId of link.pageIds) {
+        const index = workbook.pages.findIndex((item: BookPage) => item.id === pageId);
+        if (index >= 0) chips.push({ workbookId: workbook.id, index, label: String(index + 1) });
+      }
+    }
+    return chips;
+  }
+
+  /** The student book pages that link to this workbook page (the way back). */
+  linkedStudentChips(workbookPage: BookPage | null): LinkedPageChip[] {
+    const book = this.creator.book;
+    if (!workbookPage || !book?.workbookLinks) return [];
+    const chips: LinkedPageChip[] = [];
+    book.pages.forEach((mainPage: BookPage, index: number) => {
+      const links: WorkbookLink[] = book.workbookLinks[mainPage.id] ?? [];
+      if (!links.some((link) => link.pageIds.includes(workbookPage.id))) return;
+      const number = pageNumberAt(book.pages, index);
+      chips.push({ workbookId: '', index, label: number === null ? '🗺️' : String(number) });
+    });
+    return chips;
+  }
+
+  /** Opens a linked workbook page and remembers the student book page to come back to. */
+  openLinkedWorkbookPage(chip: LinkedPageChip): void {
+    const workbook = this.creator.book?.workbooks?.find((item: BookWorkbook) => item.id === chip.workbookId);
+    if (!workbook) return;
+    const from = this.creator.activePageSource === 'main' ? this.creator.selectedPageIndex : null;
+    this.creator.linkingMainPageId = null;   // a chip opens the page; it never changes the links
+    this.creator.selectedElementId = null;
+    this.creator.selectWorkbookPage(workbook, chip.index);
+    this.creator.linkReturnPageIndex = from;
+  }
+
+  /** Back to a student book page (the one the teacher came from, or any page linking here). */
+  openStudentPage(index: number): void {
+    this.creator.selectedElementId = null;
+    this.creator.selectMainPage(index);
+    this.creator.linkReturnPageIndex = null;
+  }
+
+  /** Label of the student book page to go back to ("12"), or '' when there is none. */
+  linkReturnLabel(): string {
+    const index = this.creator.linkReturnPageIndex;
+    const book = this.creator.book;
+    if (index === null || index === undefined || !book || this.creator.activePageSource !== 'workbook') return '';
+    if (index < 0 || index >= book.pages.length) return '';
+    const number = pageNumberAt(book.pages, index);
+    return number === null ? '🗺️' : String(number);
   }
 
   getWorkbookLinksForPage(page: BookPage | null): WorkbookLink[] {

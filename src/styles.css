@@ -252,3 +252,9 @@ body.app-theme-active:not(.app-theme-excluded) .game-container::after {
 @keyframes keyboard-selected-orbit {
   to { --keyboard-selected-angle: 360deg; }
 }
+
+/* Presentation player: PowerPoint's slideshow window covers the page below the toolbar, so the
+   floating full-screen button moves into the player's toolbar instead. */
+body.np-presenting .app-fullscreen-toggle {
+  display: none !important;
+}

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 
 export interface TopicSelectionResult {
   topicId: number;
@@ -10,11 +10,32 @@ export interface TopicSelectionResult {
   source: string;
 }
 
+/** A strip of the page the floating leaderboard button must stay in (page pixels). */
+export interface FabZone {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LeaderboardStateService {
   private returnUrl: string | null = null;
   private activeSource: string | null = null;
   readonly topicSelected$ = new Subject<TopicSelectionResult>();
+  /**
+   * Whether the class leaderboard (student selector) is open. The presentation player watches
+   * it: PowerPoint's slideshow window sits above the page, so it steps aside while it's open.
+   */
+  readonly overlayOpen$ = new BehaviorSubject<boolean>(false);
+  /** Asks the leaderboard to open (e.g. from the presentation player's toolbar). */
+  readonly openRequest$ = new Subject<void>();
+  /**
+   * Where the floating leaderboard button must stay, in page pixels; null = anywhere. The
+   * presentation player keeps it in its toolbar, off PowerPoint's slideshow window (which would
+   * cover it).
+   */
+  readonly fabZone$ = new BehaviorSubject<FabZone | null>(null);
 
   constructor(private router: Router) {}
 

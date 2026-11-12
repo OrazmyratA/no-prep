@@ -202,6 +202,37 @@
         placeholder="5, 6, 8, 9">
     </label>
   </div>
+  <!-- Linked workbook pages as buttons: one click opens the page. -->
+  <div class="linked-page-chips" *ngIf="creator.selectedPage && !creator.selectedElement && creator.activePageSource === 'main' && creator.linkedWorkbookChips(creator.selectedPage).length">
+    <span class="linked-page-chips-label">{{ 'creatorOpenWorkbookPage' | translate }}</span>
+    <button
+      type="button"
+      class="linked-page-chip is-workbook"
+      *ngFor="let chip of creator.linkedWorkbookChips(creator.selectedPage); trackBy: creator.trackLinkedChip"
+      (click)="creator.openLinkedWorkbookPage(chip)"
+      [title]="('workbookLabel' | translate) + ' ' + chip.label">📗 {{ chip.label }}</button>
+  </div>
+  <!-- On a workbook page: the way back to the student book. -->
+  <div class="linked-page-chips" *ngIf="creator.selectedPage && !creator.selectedElement && creator.activePageSource === 'workbook' && (creator.linkReturnLabel() || creator.linkedStudentChips(creator.selectedPage).length)">
+    <button
+      type="button"
+      class="linked-page-back"
+      *ngIf="creator.linkReturnLabel() as backLabel"
+      (click)="creator.openStudentPage(creator.linkReturnPageIndex)">
+      ← {{ 'creatorBackToStudentPage' | translate: { page: backLabel } }}
+    </button>
+    <ng-container *ngIf="creator.linkedStudentChips(creator.selectedPage) as chips">
+      <ng-container *ngIf="chips.length">
+        <span class="linked-page-chips-label">{{ 'creatorLinkedFromStudentBook' | translate }}</span>
+        <button
+          type="button"
+          class="linked-page-chip is-student"
+          *ngFor="let chip of chips; trackBy: creator.trackLinkedChip"
+          (click)="creator.openStudentPage(chip.index)"
+          [title]="('studentBookLabel' | translate) + ' ' + chip.label">📘 {{ chip.label }}</button>
+      </ng-container>
+    </ng-container>
+  </div>
 
   <app-lesson-plan-panel *ngIf="!creator.selectedElement && creator.aiPageLimit !== null && creator.book" [creator]="creator"></app-lesson-plan-panel>
   <app-task-prep-panel *ngIf="!creator.selectedElement && creator.aiPageLimit !== null && creator.book" [creator]="creator"></app-task-prep-panel>
@@ -539,6 +570,7 @@
       </div>
       <button type="button" class="mini-btn tracing-add-part-btn" (click)="creator.addTracingPart(element)" title="Start a new tracing part" aria-label="Start a new tracing part">+ New part</button>
     </div>
+    <app-book-presentation-link *ngIf="element.type === 'presentation'" [creator]="creator" [element]="element"></app-book-presentation-link>
     <div class="game-link-panel" *ngIf="element.type === 'game'">
       <div class="linked-topic-card" *ngIf="element.data['topicId']; else noLinkedTopic">
         <span>{{ 'creatorLinkedTopic' | translate }}</span>
@@ -550,9 +582,16 @@
           <strong>{{ 'creatorCreateOrChooseTopic' | translate }}</strong>
         </div>
       </ng-template>
+      <div class="game-topic-actions" *ngIf="element.data['topicId']">
+        <button type="button" class="mini-btn" (click)="creator.editGameTopic(element)">{{ 'creatorEditTopic' | translate }}</button>
+        <button type="button" class="mini-btn game-change-btn" [class.is-open]="isChoosingTopic(element)"
+                (click)="toggleTopicChange(element)" [attr.aria-expanded]="isChoosingTopic(element)">
+          {{ isChoosingTopic(element) ? ('creatorChoiceDone' | translate) : ('🔄 ' + ('creatorChangeChoice' | translate)) }}
+        </button>
+      </div>
+      <ng-container *ngIf="isChoosingTopic(element)">
       <div class="game-topic-actions">
         <button type="button" class="mini-btn" (click)="creator.createTopicForGame(element)">{{ 'createTopic' | translate }}</button>
-        <button type="button" class="mini-btn" (click)="creator.editGameTopic(element)" [disabled]="!element.data['topicId']">{{ 'creatorEditTopic' | translate }}</button>
       </div>
       <div class="game-ai-pages" *ngIf="creator.aiPageLimit !== null">
         <label>
@@ -580,6 +619,7 @@
           <span aria-hidden="true">🔍</span>
         </button>
       </label>
+      </ng-container>
       <div class="game-activity-panel" *ngIf="element.data['topicId']">
         <div class="game-activity-heading">
           <strong>{{ 'activitiesLabel' | translate }}</strong>
@@ -589,13 +629,30 @@
           <button
             type="button"
             [class.active]="!creator.isGameActivityRestricted(element)"
-            (click)="creator.setGameActivityRestriction(element, false)">All</button>
+            (click)="setActivityRestriction(element, false)">All</button>
           <button
             type="button"
             [class.active]="creator.isGameActivityRestricted(element)"
-            (click)="creator.setGameActivityRestriction(element, true)">Selected</button>
+            (click)="setActivityRestriction(element, true)">Selected</button>
         </div>
-        <div class="game-activity-grid" *ngIf="creator.isGameActivityRestricted(element)">
+        <ng-container *ngIf="creator.isGameActivityRestricted(element) && !isEditingActivities(element)">
+          <div class="game-activity-chosen">
+            <span class="game-activity-chip" *ngFor="let game of allowedGames(element)" [title]="game.nameKey | translate">
+              <img *ngIf="game.iconImage" [src]="game.iconImage" alt="" class="game-activity-option-icon">
+              <span *ngIf="!game.iconImage" aria-hidden="true">{{ game.icon }}</span>
+              <small>{{ game.nameKey | translate }}</small>
+            </span>
+          </div>
+          <button type="button" class="mini-btn game-change-btn" (click)="toggleActivitiesEdit(element)" aria-expanded="false">
+            🔄 {{ 'creatorChangeChoice' | translate }}
+          </button>
+        </ng-container>
+        <button type="button" class="mini-btn game-change-btn is-open"
+                *ngIf="creator.isGameActivityRestricted(element) && isEditingActivities(element)"
+                (click)="toggleActivitiesEdit(element)" aria-expanded="true">
+          {{ 'creatorChoiceDone' | translate }}
+        </button>
+        <div class="game-activity-grid" *ngIf="creator.isGameActivityRestricted(element) && isEditingActivities(element)">
           <button
             *ngFor="let game of creator.games"
             type="button"

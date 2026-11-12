@@ -21,6 +21,7 @@ describe('BookCreatorTaskPrepController', () => {
       activePages: pages,
       activePageSource: 'main',
       activePageIndex: 0,
+      pageNumberText: (index: number) => String(index + 1),
       aiPageLimit: 3,
       captureHistory: vi.fn(),
       markBookDirty: vi.fn(),
@@ -29,7 +30,7 @@ describe('BookCreatorTaskPrepController', () => {
       getPageRotation: () => 0,
       languageService: { currentLang: 'en', translate: (key: string) => key },
       confirmationService: { confirm: vi.fn(async () => true) },
-      renderAiPages: vi.fn(async () => ({ ok: true, pages: [1, 2], images: [new Blob(['1']), new Blob(['2'])] })),
+      renderAiPages: vi.fn(async () => ({ ok: true, pages: [1, 2], indexes: [0, 1], images: [new Blob(['1']), new Blob(['2'])] })),
       aiTopic: {
         getStartProvider: async () => ({ providers: [], start: { id: 'gemini' } }),
         prepareTasks: vi.fn(async () => ({
@@ -106,7 +107,7 @@ describe('BookCreatorTaskPrepController', () => {
       { text: 'She ____ to school.', x: 0.12, y: 0.25, width: 0.38, height: 0.02 },
       { text: 'They ____ football.', x: 0.12, y: 0.28, width: 0.38, height: 0.02 }
     ]);
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [{
         id: 'e1', page: 0, box: { x: 0.08, y: 0.18, width: 0.6, height: 0.14 }, number: '1', title: 'Complete', kind: 'gapFill', bank: [], options: [], pairs: [],
@@ -134,7 +135,7 @@ describe('BookCreatorTaskPrepController', () => {
 
   it('turns a word-box exercise into word-bank gaps, and removes the bank with them', async () => {
     vi.spyOn(PdfPageCanvasComponent, 'readText').mockResolvedValue([]); // a scan: the AI's boxes
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [{
         id: 'e1', page: 0, box: { x: 0.1, y: 0.1, width: 0.8, height: 0.3 }, number: '2', title: 'Use the words', kind: 'wordBank', options: [], pairs: [],
@@ -168,7 +169,7 @@ describe('BookCreatorTaskPrepController', () => {
       { text: 'Yesterday I went home.', x: 0.12, y: 0.25, width: 0.4, height: 0.02 },
       { text: 'a go   b went   c gone', x: 0.12, y: 0.28, width: 0.3, height: 0.02 }
     ]);
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [{
         id: 'e1', page: 0, box: { x: 0.08, y: 0.18, width: 0.6, height: 0.14 }, number: '3', title: 'Choose', kind: 'choice', gaps: [], bank: [], pairs: [],
@@ -208,7 +209,7 @@ describe('BookCreatorTaskPrepController', () => {
       { text: '3 horse', x: 0.12, y: 0.33, width: 0.09, height: 0.02 },
       { text: 'c foal', x: 0.5, y: 0.33, width: 0.08, height: 0.02 }
     ]);
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [{
         id: 'e1', page: 0, box: { x: 0.08, y: 0.18, width: 0.6, height: 0.2 }, number: '4', title: 'Match', kind: 'match', gaps: [], bank: [], options: [],
@@ -246,7 +247,7 @@ describe('BookCreatorTaskPrepController', () => {
     // The example's letters are printed in the first row; the grid really starts at x 0.51, y 0.105.
     const letter = (text: string, col: number) => ({ text, x: 0.51 + (col + 0.5) * 0.04 - 0.005, y: 0.125 - 0.02 * 0.71, width: 0.01, height: 0.02 });
     vi.spyOn(PdfPageCanvasComponent, 'readText').mockResolvedValue([letter('G', 0), letter('E', 1), letter('T', 2)]);
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [{
         id: 'e1', page: 0, box: { x: 0.45, y: 0.05, width: 0.5, height: 0.5 }, number: '2', title: 'Crossword', kind: 'crossword', gaps: [], bank: [], options: [], pairs: [],
@@ -284,7 +285,7 @@ describe('BookCreatorTaskPrepController', () => {
       { text: '2 Talk about your day.', x: 0.1, y: 0.7, width: 0.3, height: 0.02 },
       { text: 'Next column', x: 0.42, y: 0.7, width: 0.2, height: 0.02 }
     ]);
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [
         { id: 'e1', page: 0, box: { x: 0.08, y: 0.18, width: 0.6, height: 0.14 }, number: '1', title: 'Complete', instruction: 'Complete the sentences with the words.', instructionBox: null,
@@ -331,7 +332,7 @@ describe('BookCreatorTaskPrepController', () => {
   it('makes tick boxes word-bank gaps with ✔ / ✘ on the AI\'s boxes, and leaves a game idea as a note', async () => {
     prep.marks = { guides: false, keys: false, videos: false, notes: true };
     vi.spyOn(PdfPageCanvasComponent, 'readText').mockResolvedValue([]); // the boxes are drawn, not text
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [
         { id: 'e1', page: 0, box: { x: 0.1, y: 0.1, width: 0.8, height: 0.3 }, number: '1', title: 'Look and tick', instruction: '', instructionBox: null,
@@ -366,7 +367,7 @@ describe('BookCreatorTaskPrepController', () => {
 
   it('leaves an exercise alone when the teacher already made its tasks', async () => {
     creator.activePages[1].elements.push({ id: 'mine', type: 'textTask', x: 0.3, y: 0.2, width: 0.08, height: 0.03, data: { acceptedAnswers: ['x'] } });
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], images: [new Blob(['2'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [2], indexes: [1], images: [new Blob(['2'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => ({
       exercises: [{
         id: 'e1', page: 0, box: { x: 0.29, y: 0.19, width: 0.1, height: 0.05 }, number: '1', title: 'Complete', kind: 'gapFill', bank: [], options: [], pairs: [],
@@ -383,7 +384,7 @@ describe('BookCreatorTaskPrepController', () => {
     await prep.analyse();
     expect(prep.error).toEqual({ key: 'creatorAiPagesNotPdf', params: { page: 1 }, detail: '' });
 
-    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [1], images: [new Blob(['1'])] }));
+    creator.renderAiPages = vi.fn(async () => ({ ok: true, pages: [1], indexes: [0], images: [new Blob(['1'])] }));
     creator.aiTopic.prepareTasks = vi.fn(async () => { throw new AiTopicError('Quota exceeded'); });
     await prep.analyse();
     expect(prep.error).toEqual({ key: 'taskPrepFailed', params: {}, detail: 'Quota exceeded' });

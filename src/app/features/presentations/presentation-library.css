@@ -1,0 +1,463 @@
+:host {
+  display: block;
+}
+
+/* ---------- The add card ---------- */
+.pres-new-card {
+  position: relative;
+  display: flex;
+  min-height: 236px;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 2px dashed rgb(var(--np-accent) / 0.45);
+  background:
+    radial-gradient(circle at 50% 40%, rgb(234 88 12 / 0.1), transparent 60%),
+    rgb(var(--np-surface) / var(--np-surface-alpha, 1));
+  box-shadow: none;
+  transition: border-color 0.2s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.pres-new-card:hover {
+  border-color: rgb(234 88 12 / 0.75);
+  transform: translateY(-4px);
+  box-shadow: var(--np-card-shadow-hover);
+}
+
+.pres-new-card.busy {
+  cursor: progress;
+}
+
+.pres-new-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  padding: 1.5rem 1rem 3.6rem;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* A slide with a + : PowerPoint orange, so the tab reads as "presentations" at a glance. */
+.pres-new-icon {
+  position: relative;
+  width: 5.2rem;
+  height: 3.6rem;
+}
+
+.pres-new-sheet {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.6rem;
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+  box-shadow: 0 10px 22px -8px rgb(234 88 12 / 0.7);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pres-new-sheet::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 22%;
+  height: 0.3rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.7);
+  box-shadow: 0 -0.6rem 0 rgb(255 255 255 / 0.45);
+}
+
+.pres-new-plus {
+  position: absolute;
+  right: -0.7rem;
+  top: -0.7rem;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid #fff;
+  border-radius: 9999px;
+  background: var(--np-primary);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 900;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pres-new-card:hover .pres-new-sheet {
+  transform: rotate(-4deg) scale(1.05);
+}
+
+.pres-new-card:hover .pres-new-plus {
+  transform: rotate(90deg) scale(1.1);
+}
+
+.library-new-label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: rgb(var(--np-ink));
+}
+
+.pres-new-hint {
+  color: rgb(var(--np-ink-faint));
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pres-new-blank {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 9999px;
+  background: rgb(var(--np-surface));
+  box-shadow: 0 4px 12px -4px rgb(15 23 42 / 0.3);
+  color: rgb(var(--np-ink));
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.pres-new-blank:hover {
+  transform: scale(1.05);
+  background: rgb(254 215 170);
+}
+
+/* "New on Canva / Google Slides": the corner buttons of the link card, side by side. */
+.pres-new-sites {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pres-new-sites .pres-new-site {
+  position: static;
+  max-width: 100%;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+/* The two buttons already name the sites. */
+.pres-link-new .pres-new-hint {
+  display: none;
+}
+
+.pres-link-new .pres-new-main {
+  padding-bottom: 6rem;
+}
+
+.pres-new-sites .pres-new-site:hover {
+  background: rgb(221 214 254);
+}
+
+.pres-link-made {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.6rem;
+  background: rgb(125 42 232 / 0.08);
+  color: rgb(var(--np-ink));
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+/* ---------- A presentation ---------- */
+.pres-card {
+  position: relative;
+  border-radius: 1rem;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.pres-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  overflow: hidden;
+}
+
+.pres-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #fff;
+}
+
+.pres-thumb-empty {
+  font-size: 2.6rem;
+  opacity: 0.5;
+}
+
+.pres-play {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  padding-left: 0.25rem;
+  border-radius: 9999px;
+  background: rgb(234 88 12 / 0.92);
+  color: #fff;
+  font-size: 1.4rem;
+  box-shadow: 0 10px 22px -6px rgb(234 88 12 / 0.8);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.pres-card:hover .pres-play,
+.pres-card:focus-visible .pres-play {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pres-type {
+  position: absolute;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.4rem;
+  background: #c2410c;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.pres-editing-badge {
+  position: absolute;
+  inset: auto 0.6rem 0.6rem auto;
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  background: #fde68a;
+  color: #78350f;
+  font-size: 0.8rem;
+  font-weight: 800;
+  box-shadow: 0 4px 10px -4px rgb(120 53 15 / 0.5);
+}
+
+.pres-card.is-editing .pres-thumb img {
+  filter: saturate(0.6);
+}
+
+.pres-tools {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  gap: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+.pres-card:hover .pres-tools,
+.pres-card:focus-within .pres-tools {
+  opacity: 1;
+}
+
+.library-card-body {
+  padding: 0.95rem 1.15rem 1.1rem;
+}
+
+.library-card-title {
+  margin: 0 0 0.55rem;
+  color: rgb(var(--np-ink));
+  font-size: 1.2rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.pres-rename {
+  width: 100%;
+  margin: 0 0 0.55rem;
+  padding: 0.2rem 0.5rem;
+  border: 2px solid rgb(var(--np-accent));
+  border-radius: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.library-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: rgb(var(--np-ink-faint));
+  font-size: 0.8rem;
+}
+
+.library-card-count {
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  background: rgb(234 88 12 / 0.1);
+  color: #c2410c;
+  font-weight: 700;
+}
+
+/* ---------- Messages ---------- */
+.pres-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 4rem 1rem;
+  color: rgb(var(--np-ink-soft));
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.pres-message-icon {
+  font-size: 3.4rem;
+}
+
+.pres-hint {
+  margin: 1.4rem auto 0;
+  max-width: 34rem;
+  color: rgb(var(--np-ink-muted));
+  text-align: center;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pres-new-sheet,
+  .pres-new-plus,
+  .pres-play {
+    transition: none;
+  }
+}
+
+/* ---------- Canva / Google Slides links ---------- */
+.pres-note {
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 0.9rem;
+  background: rgb(var(--np-surface) / 0.75);
+  color: rgb(var(--np-ink-soft));
+  font-weight: 700;
+}
+
+.pres-link-icon .pres-new-sheet {
+  background: linear-gradient(135deg, #00c4cc, #7d2ae8);
+  box-shadow: 0 10px 22px -8px rgb(125 42 232 / 0.6);
+}
+
+.pres-link-icon .pres-new-plus {
+  font-size: 0.95rem;
+}
+
+.pres-link-new.is-open {
+  transform: none;
+  border-style: solid;
+}
+
+.pres-link-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1rem;
+}
+
+.pres-link-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: rgb(var(--np-ink-soft));
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.pres-link-form input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 2px solid rgb(var(--np-ink) / 0.12);
+  border-radius: 0.6rem;
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pres-link-form input:focus {
+  outline: none;
+  border-color: #7d2ae8;
+}
+
+.pres-link-status {
+  margin-top: -0.3rem;
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.pres-link-status.is-bad {
+  color: #b91c1c;
+}
+
+.pres-link-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.pres-link-cancel,
+.pres-link-add {
+  padding: 0.5rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pres-link-cancel {
+  background: rgb(var(--np-ink) / 0.06);
+  color: rgb(var(--np-ink));
+}
+
+.pres-link-add {
+  background: #7d2ae8;
+  color: #fff;
+}
+
+.pres-link-add:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pres-link-thumb {
+  background: linear-gradient(135deg, #00c4cc, #7d2ae8);
+}
+
+.pres-link-thumb.is-google {
+  background: linear-gradient(135deg, #fde68a, #f59e0b);
+}
+
+.pres-link-mark {
+  font-size: 3rem;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.25));
+}
+
+.pres-link-type {
+  background: #5b21b6;
+}
+
+.pres-link-thumb.is-google .pres-link-type {
+  background: #b45309;
+}

@@ -196,7 +196,7 @@ export class BookCreatorPageImportController {
     this.creator.selectedPageIndex = firstPdfPageIndex >= 0 ? firstPdfPageIndex : 0;
     this.creator.selectedWorkbookPageIndex = 0;
     this.creator.linkingMainPageId = null;
-    this.creator.pageJumpValue = String(this.creator.selectedPageIndex + 1);
+    this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.selectedPageIndex);
     this.creator.markBookClean();
     this.creator.clearHistory();
     this.creator.refreshSelectedPageRender();
@@ -287,13 +287,13 @@ export class BookCreatorPageImportController {
       this.creator.activePageSource = 'workbook';
       this.creator.activeWorkbookId = workbook?.id ?? null;
       this.creator.selectedWorkbookPageIndex = index >= 0 ? index : 0;
-      this.creator.pageJumpValue = String(this.creator.selectedWorkbookPageIndex + 1);
+      this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.selectedWorkbookPageIndex);
     } else {
       const index = this.creator.book.pages.findIndex((page: { id: string }) => page.id === firstInsertedId);
       this.creator.activePageSource = 'main';
       this.creator.activeWorkbookId = null;
       this.creator.selectedPageIndex = index >= 0 ? index : 0;
-      this.creator.pageJumpValue = String(this.creator.selectedPageIndex + 1);
+      this.creator.pageJumpValue = this.creator.pageNumberText(this.creator.selectedPageIndex);
     }
 
     this.creator.linkingMainPageId = null;
