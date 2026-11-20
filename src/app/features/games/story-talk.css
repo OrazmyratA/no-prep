@@ -1,0 +1,436 @@
+:host {
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.st-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  padding: 3.9rem 0.75rem 0.75rem;
+  background: linear-gradient(135deg, #0f766e 0%, #1e3a8a 100%);
+  color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.st-loading {
+  display: grid;
+  place-items: center;
+  height: 60vh;
+}
+
+.st-spinner {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 3px solid rgb(255 255 255 / 0.25);
+  border-top-color: #ffffff;
+  animation: stSpin 0.9s linear infinite;
+}
+
+.st-adjust-btn {
+  font-size: 1.25rem;
+}
+
+.st-adjust-btn.st-adjust-on {
+  background: #fbbf24;
+  color: #422006;
+}
+
+.st-shape-btn svg {
+  width: 2.1rem;
+  height: 1.5rem;
+  overflow: visible;
+}
+
+.st-shape-btn rect,
+.st-shape-btn ellipse,
+.st-shape-btn path {
+  fill: #ffffff;
+  stroke: #1e293b;
+  stroke-width: 5;
+}
+
+/* ---------- the pictures, all on one screen ---------- */
+.st-board {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  /* Scrolls only when zoomed in: at 100 % or less everything fits, and no stray scrollbar shows. */
+  overflow: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.4) transparent;
+}
+
+.st-board.st-zoomed {
+  overflow: auto;
+}
+
+/* "safe" centring: once zoomed in past the screen, the top-left stays reachable by scrolling. */
+.st-grid {
+  display: grid;
+  gap: 12px;
+  justify-content: safe center;
+  align-content: safe center;
+  width: max-content;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+/* ---------- zoom ---------- */
+.st-zoom {
+  gap: 0.2rem;
+  padding: 0 0.3rem;
+}
+
+.st-zoom-btn,
+.st-zoom-level {
+  display: grid;
+  place-items: center;
+  height: 34px;
+  border-radius: 9999px;
+  color: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.st-zoom-btn {
+  width: 34px;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.st-zoom-level {
+  min-width: 3.4rem;
+  padding: 0 0.3rem;
+  font-size: 0.95rem;
+}
+
+.st-zoom-btn:hover:not(:disabled),
+.st-zoom-level:hover {
+  background: rgb(255 255 255 / 0.15);
+}
+
+.st-zoom-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.st-scene {
+  position: relative;
+  align-self: center;
+  justify-self: center;
+  border-radius: 0.6rem;
+  box-shadow: 0 12px 30px -10px rgb(0 0 0 / 0.55);
+  background: #ffffff;
+}
+
+.st-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0.6rem;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+/* ---------- our bubbles, on top of the book's ---------- */
+.st-bubble {
+  position: absolute;
+  z-index: 1;
+  cursor: pointer;
+  touch-action: none;
+  color: #1e293b;
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.st-rect,
+.st-oval {
+  background: #ffffff;
+  border: 2.5px solid #1e293b;
+}
+
+.st-rect {
+  border-radius: min(22px, 22%);
+}
+
+.st-oval {
+  border-radius: 50%;
+}
+
+.st-cloud {
+  background: transparent;
+}
+
+.st-cloud-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.st-cloud-shape path {
+  fill: #ffffff;
+  stroke: #1e293b;
+  stroke-width: 2.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.st-bubble:hover:not(.st-done) {
+  transform: scale(1.02);
+}
+
+.st-bubble.st-active {
+  z-index: 3;
+  box-shadow: 0 0 0 4px #fbbf24, 0 0 26px rgb(251 191 36 / 0.8);
+}
+
+.st-cloud.st-active,
+.st-cloud.st-done {
+  box-shadow: none;
+}
+
+.st-cloud.st-active .st-cloud-shape {
+  filter: drop-shadow(0 0 4px #fbbf24) drop-shadow(0 0 10px #f59e0b);
+}
+
+.st-bubble.st-done {
+  box-shadow: 0 0 0 3px #22c55e, 0 0 18px rgb(34 197 94 / 0.6);
+}
+
+.st-cloud.st-done .st-cloud-shape {
+  filter: drop-shadow(0 0 3px #22c55e) drop-shadow(0 0 8px #22c55e);
+}
+
+.st-words,
+.st-measure {
+  font-family: inherit;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.st-words {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.st-dots {
+  color: #94a3b8;
+  font-size: max(14px, 0.6em);
+  letter-spacing: 0.1em;
+}
+
+.st-measure {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  visibility: hidden;
+  text-align: center;
+  pointer-events: none;
+}
+
+.st-replay {
+  position: absolute;
+  top: -0.95rem;
+  right: -0.95rem;
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  background: #22c55e;
+  font-size: 0.7rem;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.3);
+  pointer-events: none;
+}
+
+/* ---------- adjust mode ---------- */
+.st-adjusting .st-bubble {
+  cursor: move;
+  outline: 2px dashed #f59e0b;
+  outline-offset: 3px;
+}
+
+.st-adjusting .st-bubble:hover {
+  transform: none;
+}
+
+.st-bubble.st-dragging {
+  z-index: 4;
+  opacity: 0.92;
+}
+
+.st-bubble.st-too-small {
+  outline-color: #ef4444;
+}
+
+.st-handle {
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #ffffff;
+  border-radius: 9999px;
+  background: #f59e0b;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.st-warn {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+/* In the top band, right side (the corner buttons are on the left), so it never covers a bubble. */
+.st-adjust-hint {
+  position: fixed;
+  top: 0.95rem;
+  right: 1rem;
+  z-index: 20;
+  max-width: min(32vw, 30rem);
+  margin: 0;
+  padding: 0.35rem 0.9rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 0.82);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+}
+
+@media (max-width: 1100px) {
+  .st-adjust-hint {
+    display: none;
+  }
+}
+
+/* ---------- the jumbled words ---------- */
+.st-chips {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  width: max-content;
+  max-width: min(94vw, 60rem);
+  padding: 0.8rem 3.4rem 0.8rem 1rem;
+  border-radius: 1.4rem;
+  background: rgb(15 23 42 / 0.88);
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+  animation: stRise 0.2s ease-out;
+}
+
+.st-chips.st-chips-top {
+  top: 4rem;
+  bottom: auto;
+}
+
+.st-chip {
+  min-height: 3rem;
+  padding: 0.35rem 1.1rem;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+  font-weight: 800;
+  box-shadow: 0 4px 0 #cbd5e1;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+
+.st-chip:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.st-chip.st-used {
+  opacity: 0.18;
+  cursor: default;
+  box-shadow: none;
+}
+
+.st-chip.st-wrong {
+  background: #fecaca;
+  animation: stShake 0.45s ease;
+}
+
+.st-chips-close {
+  position: absolute;
+  top: 50%;
+  right: 0.7rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.15);
+  color: #ffffff;
+  font-weight: 900;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+@keyframes stSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes stShake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -8px 0; }
+  50% { translate: 8px 0; }
+  75% { translate: -4px 0; }
+}
+
+@keyframes stRise {
+  from { opacity: 0; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .st-bubble,
+  .st-chip,
+  .st-chip.st-wrong,
+  .st-chips {
+    animation: none;
+    transition: none;
+  }
+}

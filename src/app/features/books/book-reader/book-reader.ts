@@ -1874,7 +1874,12 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
   // Page turns re-rasterize the target page with pdf.js, which is what makes them feel slow on
   // weaker screens (smart boards). Once the current page has settled, quietly render the next
   // and previous pages into a small cache so the turn becomes a single drawImage.
-  private schedulePdfPrefetch(): void {
+  /** Focus was switched on: start drawing this page's focus-size picture now. */
+  prefetchForFocus(): void {
+    this.schedulePdfPrefetch(0);
+  }
+
+  private schedulePdfPrefetch(delayMs = 300): void {
     if (this.pdfPrefetchTimer !== null) window.clearTimeout(this.pdfPrefetchTimer);
     this.zone.runOutsideAngular(() => {
       this.pdfPrefetchTimer = window.setTimeout(() => {
@@ -1882,7 +1887,7 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.destroyed || this.expandedFocusElement) return;
         const requests = this.getPdfPrefetchRequests();
         if (requests.length) PdfPageCanvasComponent.prefetch(requests);
-      }, 300);
+      }, delayMs);
     });
   }
 
@@ -1898,6 +1903,11 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
     const primary = BookReaderPageFrameComponent.PRIMARY_RENDER_SCALE;
     const companion = BookReaderPageFrameComponent.COMPANION_RENDER_SCALE;
     const current = this.currentPageIndex;
+    // Focus is on and this page has focus areas: the sharper picture a focus area opens with
+    // comes first, so clicking one shows it straight away instead of redrawing the page then.
+    if (this.focusMode && this.currentPage?.elements.some((element) => element.type === 'focus')) {
+      add(current, BookReaderPageFrameComponent.FOCUS_CROP_RENDER_SCALE);
+    }
     // Forward turns are far more common than backward ones, so next goes first. In two-page
     // mode a turn also changes which page sits in the smaller companion slot.
     add(current + 1, primary);

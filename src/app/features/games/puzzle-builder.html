@@ -1,0 +1,148 @@
+<div class="pb-page" [class.pb-is-dragging]="drag?.moved">
+  <div class="np-game-corner">
+    <app-game-keyboard-help [shortcuts]="keyboardShortcuts" title="Keyboard shortcuts"></app-game-keyboard-help>
+    @if (!loading && !gameFinished && puzzles.length) {
+      <span class="np-game-pill">{{ page + 1 }} / {{ pageCount }}</span>
+      <app-star-pill [count]="stars" [label]="'gameStars' | translate"></app-star-pill>
+    }
+  </div>
+  <h1 class="sr-only">{{ 'gamePuzzleBuilderName' | translate }}</h1>
+
+  @if (loading) {
+    <div class="pb-loading"><span class="pb-spinner" aria-hidden="true"></span></div>
+  } @else if (puzzles.length) {
+    <div class="pb-layout">
+      <!-- Left: the pieces, scattered like a puzzle box. -->
+      <section class="pb-tray-wrap" [attr.aria-label]="'puzzleBuilderPieces' | translate">
+        <div #tray class="pb-tray">
+          <div class="pb-tray-inner" [style.height.px]="trayInnerHeight">
+            @for (piece of trayPieces; track piece.id) {
+              <div class="pb-piece"
+                   [attr.data-piece]="piece.id"
+                   [class.pb-lifted]="drag?.piece === piece && drag?.moved"
+                   [class.pb-selected]="selectedPieceId === piece.id"
+                   [class.pb-glow]="hintPieceId === piece.id"
+                   [class.pb-wrong]="wrongPieceId === piece.id"
+                   [style.left.px]="trayPlace(piece).x"
+                   [style.top.px]="trayPlace(piece).y"
+                   [style.width.px]="piece.boxW * scale"
+                   [style.height.px]="piece.boxH * scale"
+                   [style.--pb-rotate]="trayPlace(piece).rotate + 'deg'"
+                   (pointerdown)="onPiecePointerDown($event, piece)">
+                <ng-container *ngTemplateOutlet="pieceArt; context: { $implicit: piece, prefix: 't' }"></ng-container>
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: the tasks. -->
+      <section class="pb-tasks-wrap">
+        <div class="pb-tools">
+          <button type="button" class="pb-nav" (click)="previous()" [disabled]="page === 0"
+                  [attr.aria-label]="'previous' | translate" [attr.title]="'previous' | translate">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+          </button>
+          <button type="button" class="pb-hint" (click)="hint()" [disabled]="stars < 1" [class.pb-shake]="hintShake"
+                  [attr.title]="'puzzleBuilderHintCost' | translate">
+            💡 {{ 'puzzleBuilderHint' | translate }} <small>−⭐1</small>
+          </button>
+          <button type="button" class="pb-nav" (click)="next()" [disabled]="page >= pageCount - 1"
+                  [attr.aria-label]="'next' | translate" [attr.title]="'next' | translate">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+          </button>
+        </div>
+
+        <div #tasks class="pb-tasks" [class.pb-tasks-all]="showAll" [class.pb-two]="showAll && boardColumns === 2" [style.--pb-columns]="boardColumns">
+          @for (puzzle of visiblePuzzles; track puzzle.id) {
+            <article class="pb-card" [class.pb-done]="puzzle.done" [class.pb-card-text]="puzzle.kind === 'text'">
+              @if (puzzle.item.audio) {
+                <button type="button" class="pb-audio" (click)="playRecording(puzzle)"
+                        [attr.aria-label]="'puzzleBuilderListen' | translate">🔊</button>
+              }
+
+              @if (puzzle.kind === 'text' && puzzle.clueImageUrl) {
+                <img class="pb-clue-image" [src]="puzzle.clueImageUrl" alt="">
+              }
+
+              <svg class="pb-board" [class.pb-board-picture]="puzzle.kind === 'image'"
+                   [attr.viewBox]="'0 0 ' + puzzle.width + ' ' + puzzle.height"
+                   [style.width.px]="puzzle.width * scale" [style.height.px]="puzzle.height * scale">
+                @if (puzzle.kind === 'image') {
+                  <rect class="pb-frame" x="0" y="0" [attr.width]="puzzle.width" [attr.height]="puzzle.height"></rect>
+                }
+                @for (piece of puzzle.pieces; track piece.id) {
+                  @if (piece.placed) {
+                    @if (puzzle.kind === 'image') {
+                      <defs><clipPath [attr.id]="'pbb' + piece.id"><path [attr.d]="piece.path"></path></clipPath></defs>
+                      <g [attr.clip-path]="'url(#pbb' + piece.id + ')'">
+                        <image [attr.href]="puzzle.imageUrl" x="0" y="0" [attr.width]="puzzle.width" [attr.height]="puzzle.height" preserveAspectRatio="xMidYMid slice"></image>
+                      </g>
+                      <path class="pb-placed-edge" [attr.d]="piece.path"></path>
+                    } @else {
+                      <path class="pb-card-shape" [attr.d]="piece.path" [attr.fill]="piece.color"></path>
+                      <text class="pb-syllable" [attr.x]="piece.x + piece.w / 2" [attr.y]="piece.y + piece.h / 2">{{ piece.label }}</text>
+                    }
+                  } @else {
+                    <path class="pb-slot" [class.pb-glow]="hintPieceId === piece.id"
+                          [attr.data-slot-outline]="slotKey(piece)" [attr.d]="piece.path"></path>
+                  }
+                }
+                <!-- Drop targets: the whole cell, so a piece doesn't have to land exactly. -->
+                @for (piece of puzzle.pieces; track piece.id) {
+                  <rect class="pb-hit" [attr.data-slot]="slotKey(piece)"
+                        [attr.x]="piece.x" [attr.y]="piece.y" [attr.width]="piece.w" [attr.height]="piece.h"
+                        (click)="onSlotClick(piece)"></rect>
+                }
+              </svg>
+
+              @if (puzzle.clueText) {
+                <p class="pb-clue-text">{{ puzzle.clueText }}</p>
+              }
+              @if (puzzle.done) {
+                <span class="pb-done-badge" aria-hidden="true">✓</span>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    </div>
+
+    <!-- The piece being dragged follows the finger above everything. -->
+    @if (drag?.moved) {
+      <div class="pb-piece pb-ghost"
+           [style.left.px]="drag!.left" [style.top.px]="drag!.top"
+           [style.width.px]="drag!.piece.boxW * scale" [style.height.px]="drag!.piece.boxH * scale">
+        <ng-container *ngTemplateOutlet="pieceArt; context: { $implicit: drag!.piece, prefix: 'g' }"></ng-container>
+      </div>
+    }
+  }
+
+  @if (gameFinished) {
+    <app-game-finish-overlay
+      [title]="'puzzleBuilderAllDone' | translate"
+      [message]="'⭐ ' + ('puzzleBuilderResult' | translate: { count: stars, total: puzzles.length })"
+      (playAgain)="restart()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
+  }
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>
+
+<!-- One piece drawn on its own: a part of the picture, or a coloured syllable card. -->
+<ng-template #pieceArt let-piece let-prefix="prefix">
+  <svg class="pb-piece-art" [attr.viewBox]="piece.viewBox" width="100%" height="100%" overflow="visible">
+    @if (puzzleOf(piece).kind === 'image') {
+      <defs><clipPath [attr.id]="'pb' + prefix + piece.id"><path [attr.d]="piece.path"></path></clipPath></defs>
+      <g [attr.clip-path]="'url(#pb' + prefix + piece.id + ')'">
+        <image [attr.href]="puzzleOf(piece).imageUrl" x="0" y="0"
+               [attr.width]="puzzleOf(piece).width" [attr.height]="puzzleOf(piece).height" preserveAspectRatio="xMidYMid slice"></image>
+      </g>
+      <path class="pb-piece-edge" [attr.d]="piece.path"></path>
+    } @else {
+      <path class="pb-card-shape" [attr.d]="piece.path" [attr.fill]="piece.color"></path>
+      <text class="pb-syllable" [attr.x]="piece.x + piece.w / 2" [attr.y]="piece.y + piece.h / 2">{{ piece.label }}</text>
+    }
+  </svg>
+</ng-template>

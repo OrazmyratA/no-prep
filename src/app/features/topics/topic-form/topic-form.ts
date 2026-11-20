@@ -4,9 +4,10 @@ import { FormArray, FormBuilder, FormGroup, Validators, ValidatorFn, AbstractCon
 import { ActivatedRoute, Router } from '@angular/router';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { DbService } from '../../../core/db';
-import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel, normalizeSpeakingExam, SpeakingExam } from '../../../core/db.model'; // import db and Item
+import { db, Item, CEFR_LEVELS, CefrLevel, normalizeCefrLevel, normalizeSpeakingExam, SpeakingExam, StoryBubble } from '../../../core/db.model'; // import db and Item
 import { SPEAKING_EXAM_LIST, SPEAKING_EXAMS } from '../../../core/speaking-exams';
 import { pointAreasToScene } from '../point-areas';
+import { storyBubblesToPicture } from '../story-bubbles';
 import { hasSpeakingParts, itemArea, parseSpeakingHeading, setItemArea, SpArea } from '../../games/speaking-model';
 import { LicenseService } from '../../../core/license';
 import { BookLibraryService } from '../../../core/book-library';
@@ -357,7 +358,8 @@ async loadTopic(id: number) {
       audioPitch: item.audioPitch,
       audioSpeed: item.audioSpeed,
       audioText: item.audioText,
-      imageText: item.imageText
+      imageText: item.imageText,
+      bubble: item.bubble
     }));
     });
   }
@@ -386,7 +388,7 @@ createItemFormGroup(
   text: string = '',
   image: Blob | null = null,
   audio: Blob | null = null,
-  voice: { audioSource?: Blob; audioPitch?: number; audioSpeed?: number; audioText?: string; imageText?: string } = {}
+  voice: { audioSource?: Blob; audioPitch?: number; audioSpeed?: number; audioText?: string; imageText?: string; bubble?: StoryBubble } = {}
 ): FormGroup {
   return this.fb.group({
     id: [id],
@@ -398,7 +400,9 @@ createItemFormGroup(
     audioSpeed: [voice.audioSpeed ?? null],
     audioText: [voice.audioText ?? ''],
     // The words on the picture when it is a word card (AI or 🔤), so the 🔤 tab can edit them.
-    imageText: [voice.imageText ?? '']
+    imageText: [voice.imageText ?? ''],
+    // Story Talk's speech bubble place: not edited here, only kept (it is placed on the game board).
+    bubble: [voice.bubble ?? null]
   }, { validators: (group: AbstractControl) => {
       const g = group as FormGroup;
       return g.get('text')?.value || g.get('image')?.value || g.get('audio')?.value ? null : { atLeastOne: true };
@@ -523,8 +527,9 @@ isAudioPanelOpen(item: AbstractControl): boolean {
     // A prompt-only re-run (no photos this time) shouldn't wipe out pages attached earlier —
     // every item's 📖 "crop from a page" button should keep working on whatever was last attached.
     if (pages.length) this.aiAttachedPages = pages;
-    // Point & place answer areas come on the page photo: move them onto the scene picture.
-    const draft = { ...result.draft, items: pointAreasToScene(result.draft.items) };
+    // Point & place answer areas and Story Talk bubbles come on the page photo: move them onto
+    // the cropped picture.
+    const draft = { ...result.draft, items: storyBubblesToPicture(pointAreasToScene(result.draft.items)) };
     const runId = ++this.aiRunId;
     this.swapResult = null;
     this.aiUndoSnapshot = {
@@ -547,7 +552,7 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         if (!this.itemHasContent(this.items.at(i))) this.items.removeAt(i);
       }
     }
-    const groups = draft.items.map(item => this.createItemFormGroup(null, item.text));
+    const groups = draft.items.map(item => this.createItemFormGroup(null, item.text, null, null, { bubble: item.bubble }));
     groups.forEach(group => this.items.push(group));
     const cardColors = groups.map(group => this.paragraphCardColor(group));
 
@@ -1193,7 +1198,8 @@ isAudioPanelOpen(item: AbstractControl): boolean {
         audioPitch: item.audio ? item.audioPitch ?? undefined : undefined,
         audioSpeed: item.audio ? item.audioSpeed ?? undefined : undefined,
         audioText: item.audio ? item.audioText || undefined : undefined,
-        imageText: item.image ? item.imageText || undefined : undefined
+        imageText: item.image ? item.imageText || undefined : undefined,
+        bubble: item.bubble ?? undefined
       })));
 
       let savedTopicId = this.topicId || 0;

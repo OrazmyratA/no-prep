@@ -5,7 +5,7 @@ import { imageCompressionLibUrl } from '../image-compression';
 import { PixabayImage, PixabaySearchOptions, PixabayService } from '../pixabay';
 import { AudioVoiceService, VOICE_LANGUAGES } from '../audio-voice';
 import { renderTextImage } from '../../shared/text-image';
-import { AiCropBox, AiItemDraft } from './ai-topic-draft';
+import { AiCropBox, AiItemDraft, paddedCropBox } from './ai-topic-draft';
 import { AiTopicProviderId, AiTopicService } from './ai-topic.service';
 import type { AiRunOptions } from './ai-run';
 
@@ -28,15 +28,17 @@ const VECTOR_SEARCH_RESULTS = 3;
 const WORD_CARD_INDEX = -1;
 const PAGE_CROP_INDEX = -2;
 const GENERATED_INDEX = -3;
-// The AI's crop box is approximate, not pixel-perfect — pad it a little so a slightly-off box
-// still captures the whole picture instead of clipping an edge.
-const CROP_PADDING = 0.06;
+// A Story Talk picture fills the board, so it is kept sharper than a flashcard picture.
+const STORY_PAGE_MAX_MB = 0.7;
+const STORY_PAGE_MAX_SIDE = 1800;
 // Below this, cropping from the source photo would upscale a handful of pixels into mush.
 const MIN_CROP_SOURCE_PX = 32;
 
 interface PageCropSource {
   blob: Blob;
   box: AiCropBox;
+  /** A Story Talk picture: kept sharper. */
+  sharp?: boolean;
 }
 
 /** An AI item's picture options: an optional page crop, search results, a generated image, a word card. */
@@ -142,7 +144,7 @@ export class AiMediaResolverService {
     const cardText = item.imageKind === 'wordCard' ? item.imageQuery : item.text;
     const pageCrop: PageCropSource | null =
       item.imageKind === 'pageCrop' && item.imagePage >= 0 && item.imagePage < pages.length
-        ? { blob: pages[item.imagePage], box: item.imageCrop }
+        ? { blob: pages[item.imagePage], box: item.imageCrop, sharp: !!item.storyPage }
         : null;
     const choice: AiImageChoice = {
       query: item.imageKind === 'wordCard' ? cardText : item.imageQuery,
@@ -155,7 +157,7 @@ export class AiMediaResolverService {
       index: WORD_CARD_INDEX
     };
     if (pageCrop) {
-      const cropped = await this.cropPageImage(pageCrop.blob, pageCrop.box);
+      const cropped = await this.cropPageImage(pageCrop.blob, pageCrop.box, pageCrop.sharp);
       if (cropped) {
         choice.index = PAGE_CROP_INDEX;
         return { blob: cropped, choice };
@@ -203,7 +205,7 @@ export class AiMediaResolverService {
   private resolveByIndex(choice: AiImageChoice, index: number): Promise<Blob | null> {
     if (index === WORD_CARD_INDEX) return this.renderWordCard(choice.cardText, choice.cardBackground);
     if (index === PAGE_CROP_INDEX) {
-      return choice.pageCrop ? this.cropPageImage(choice.pageCrop.blob, choice.pageCrop.box) : Promise.resolve(null);
+      return choice.pageCrop ? this.cropPageImage(choice.pageCrop.blob, choice.pageCrop.box, choice.pageCrop.sharp) : Promise.resolve(null);
     }
     if (index === GENERATED_INDEX) return Promise.resolve(choice.generated);
     return this.downloadHit(choice.hits![index]);
@@ -275,7 +277,7 @@ export class AiMediaResolverService {
    * approximate) and compresses it the same way a downloaded picture is. Runs entirely on-device
    * — the photo is already in memory from when the teacher attached it, no network involved.
    */
-  private cropPageImage(pageBlob: Blob, box: AiCropBox): Promise<Blob | null> {
+  private cropPageImage(pageBlob: Blob, box: AiCropBox, sharp = false): Promise<Blob | null> {
     const crop = async () => {
       let bitmap: ImageBitmap;
       try {
@@ -285,16 +287,11 @@ export class AiMediaResolverService {
         return null;
       }
       try {
-        const padX = box.width * CROP_PADDING;
-        const padY = box.height * CROP_PADDING;
-        const x0 = Math.max(0, box.x - padX);
-        const y0 = Math.max(0, box.y - padY);
-        const x1 = Math.min(1, box.x + box.width + padX);
-        const y1 = Math.min(1, box.y + box.height + padY);
-        const sx = Math.round(x0 * bitmap.width);
-        const sy = Math.round(y0 * bitmap.height);
-        const sw = Math.round((x1 - x0) * bitmap.width);
-        const sh = Math.round((y1 - y0) * bitmap.height);
+        const padded = paddedCropBox(box);
+        const sx = Math.round(padded.x * bitmap.width);
+        const sy = Math.round(padded.y * bitmap.height);
+        const sw = Math.round(padded.width * bitmap.width);
+        const sh = Math.round(padded.height * bitmap.height);
         if (sw < MIN_CROP_SOURCE_PX || sh < MIN_CROP_SOURCE_PX) return null;
 
         const canvas = document.createElement('canvas');
@@ -305,7 +302,10 @@ export class AiMediaResolverService {
         ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
 
         const cropped = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-        return cropped ? await this.compressItemImage(cropped, 'page-crop.jpg') : null;
+        if (!cropped) return null;
+        return sharp
+          ? await this.compressItemImage(cropped, 'story-page.jpg', STORY_PAGE_MAX_MB, STORY_PAGE_MAX_SIDE)
+          : await this.compressItemImage(cropped, 'page-crop.jpg');
       } finally {
         bitmap.close?.();
       }
@@ -313,11 +313,11 @@ export class AiMediaResolverService {
     return withTimeout(crop(), MEDIA_TIMEOUT_MS);
   }
 
-  private compressItemImage(blob: Blob, fileName: string): Promise<Blob> {
+  private compressItemImage(blob: Blob, fileName: string, maxSizeMB = ITEM_IMAGE_MAX_MB, maxSide = ITEM_IMAGE_MAX_SIDE): Promise<Blob> {
     const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
     return imageCompression(file, {
-      maxSizeMB: ITEM_IMAGE_MAX_MB,
-      maxWidthOrHeight: ITEM_IMAGE_MAX_SIDE,
+      maxSizeMB,
+      maxWidthOrHeight: maxSide,
       useWebWorker: true,
       libURL: imageCompressionLibUrl(),
       fileType: 'image/jpeg'

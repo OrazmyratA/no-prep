@@ -765,7 +765,8 @@ async combineSelectedTopics() {
       mergedItems.push({
         text: item.text,
         image: item.image ?? undefined,
-        audio: item.audio ?? undefined   
+        audio: item.audio ?? undefined,
+        bubble: item.bubble
       });
     }
   }

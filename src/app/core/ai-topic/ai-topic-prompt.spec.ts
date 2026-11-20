@@ -148,7 +148,7 @@ describe('ai-topic-prompt', () => {
 
   it('puts every chip under one of the four headings', () => {
     const groups = new Set(AI_RECIPE_GROUPS.map(group => group.id));
-    expect(AI_TOPIC_RECIPES.length).toBe(15);
+    expect(AI_TOPIC_RECIPES.length).toBe(16);
     expect(AI_TOPIC_RECIPES.every(recipe => groups.has(recipe.group))).toBe(true);
     expect(AI_TOPIC_RECIPES.filter(recipe => recipe.variants).map(recipe => recipe.id)).toEqual(
       ['definitions', 'translation', 'synonyms', 'verbForms', 'collocations', 'gapFill', 'qa']

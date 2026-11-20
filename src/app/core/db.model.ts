@@ -1,3 +1,4 @@
+import type { SpeakingSession } from './speaking-check/speaking-check-session';
 import Dexie, { Table } from 'dexie';
 import { BookAnnotations, BookLastPosition, BookLessonProgress, BookSpeakingAttempt, BookTaskResponse } from './book.model';
 import { Team } from '../shared/leaderboard-team.model';
@@ -46,8 +47,34 @@ export interface Item {
   audioText?: string;
   /** The words on the picture when it is a word card (AI or 🔤 text-to-image), to edit them later. */
   imageText?: string;
+  /** Story Talk: where this item's speech bubble sits on the story picture before it. Not indexed. */
+  bubble?: StoryBubble;
   order: number;
   createdAt: Date;
+}
+
+export const BUBBLE_SHAPES = ['rect', 'oval', 'cloud'] as const;
+export type BubbleShape = typeof BUBBLE_SHAPES[number];
+
+/** A speech bubble on a story picture: fractions (0-1) of that picture's width and height. */
+export interface StoryBubble {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  shape: BubbleShape;
+}
+
+/** A stored or imported bubble, cleaned up, or undefined when it is not one. */
+export function normalizeStoryBubble(value: unknown): StoryBubble | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const raw = value as Record<string, unknown>;
+  const num = (key: string) => (typeof raw[key] === 'number' && Number.isFinite(raw[key]) ? raw[key] as number : NaN);
+  const clamp = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 10000) / 10000;
+  const [x, y, width, height] = ['x', 'y', 'width', 'height'].map(num);
+  if ([x, y, width, height].some(Number.isNaN) || width <= 0 || height <= 0) return undefined;
+  const shape = (BUBBLE_SHAPES as readonly unknown[]).includes(raw['shape']) ? raw['shape'] as BubbleShape : 'rect';
+  return { x: clamp(x), y: clamp(y), width: clamp(width), height: clamp(height), shape };
 }
 
 export type AppThemeType = 'default' | 'color' | 'image' | 'season';
@@ -160,9 +187,12 @@ export interface PresentationLink {
   title: string;
   /** The link as the teacher pasted it. */
   url: string;
-  /** The address the player shows (Canva's "?embed" view, Google Slides' "/embed"). */
+  /** The address the player shows (Canva's "?embed" view, Google Slides' "/embed", a web page). */
   embedUrl: string;
-  source: 'canva' | 'google';
+  /** 'web': any https page. 'html': an .html file the teacher added (kept in `html`, no url). */
+  source: 'canva' | 'google' | 'web' | 'html';
+  /** The added .html file itself (source 'html' only). Not indexed. */
+  html?: Blob;
   createdAt: string;
   updatedAt: string;
 }
@@ -181,6 +211,8 @@ export class AppDatabase extends Dexie {
   speakingResults!: Table<SpeakingResult, number>;
   leaderboardTeams!: Table<LeaderboardTeamSetup, number>;
   presentationLinks!: Table<PresentationLink, string>;
+  /** Speaking Check sessions (docs/speaking-check.md). */
+  speakingSessions!: Table<SpeakingSession, string>;
 
   constructor() {
     super('NoPrepDB');
@@ -322,6 +354,25 @@ export class AppDatabase extends Dexie {
       speakingResults: '++id, topicId, createdAt, *studentNames',
       leaderboardTeams: 'topicId, updatedAt',
       presentationLinks: 'id, updatedAt'
+    });
+    // Speaking Check: one class, one exam, one day per session.
+    this.version(13).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
+      bookLastPosition: 'key, profileId, bookId, updatedAt',
+      speakingResults: '++id, topicId, createdAt, *studentNames',
+      leaderboardTeams: 'topicId, updatedAt',
+      presentationLinks: 'id, updatedAt',
+      speakingSessions: 'id, classTopicId, updatedAt'
     });
   }
 }

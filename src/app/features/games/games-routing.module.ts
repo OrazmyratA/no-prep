@@ -29,7 +29,9 @@ const routes: Routes = [
   { path: 'line-trace-match', loadComponent: () => import('./line-trace-match').then(m => m.LineTraceMatchComponent) },
   { path: 'flashcard-hunt', loadComponent: () => import('./flashcard-hunt').then(m => m.FlashcardHuntComponent) },
   { path: 'shuffle-cups', loadComponent: () => import('./shuffle-cups').then(m => m.ShuffleCupsComponent) },
-  { path: 'word-trail', loadComponent: () => import('./word-trail').then(m => m.WordTrailComponent) }
+  { path: 'word-trail', loadComponent: () => import('./word-trail').then(m => m.WordTrailComponent) },
+  { path: 'puzzle-builder', loadComponent: () => import('./puzzle-builder').then(m => m.PuzzleBuilderComponent) },
+  { path: 'story-talk', loadComponent: () => import('./story-talk').then(m => m.StoryTalkComponent) }
 ];
 
 @NgModule({

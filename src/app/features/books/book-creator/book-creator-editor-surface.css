@@ -770,6 +770,17 @@
   pointer-events: none;
 }
 
+/* Focus areas: the same order badge as guide dots, in the focus blue and a little larger, inside the
+   top-right corner (focus boxes clip their contents; the resize handle is bottom-right). */
+.guide-dot-number.focus-number {
+  top: 0.2rem;
+  right: 0.2rem;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  background: #2563eb;
+  font-size: 0.8rem;
+}
+
 /* AI lesson plan: a see-through icon waiting for the teacher's "Create" (docs/ai-lesson-planner.md). */
 .creator-element.game-element.plan-draft {
   opacity: 0.75;

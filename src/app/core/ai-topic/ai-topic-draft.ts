@@ -1,6 +1,8 @@
 // What the AI returns for a topic. The AI never returns files, only this JSON; the app then finds
 // pictures and records audio itself (see ai-media-resolver.ts).
 
+import type { StoryBubble } from '../db.model';
+
 export type AiImageKind = 'search' | 'wordCard' | 'pageCrop' | 'none';
 export type AiImageStyle = 'photo' | 'illustration';
 
@@ -20,6 +22,10 @@ export interface AiItemDraft {
   imagePage: number;       // 'pageCrop' only: 0-based index into the attached page photos; -1 = unused
   imageCrop: AiCropBox;    // 'pageCrop' only: box on that photo; zeros when unused
   audioText: string;       // '' = no audio; may differ from `text` (e.g. the full gap-fill sentence)
+  /** Story Talk, set by the app (never by the AI): the bubble on the story picture before it. */
+  bubble?: StoryBubble;
+  /** Story Talk, set by the app: a story picture, kept sharper than a flashcard picture. */
+  storyPage?: boolean;
 }
 
 export interface AiTopicDraft {
@@ -110,6 +116,19 @@ export function normalizeCropBox(value: unknown): AiCropBox {
 }
 
 const EMPTY_CROP: AiCropBox = { x: 0, y: 0, width: 0, height: 0 };
+
+// The AI's crop box is approximate, not pixel-perfect — the picture is cut with a little padding
+// so a slightly-off box still captures the whole picture instead of clipping an edge.
+const CROP_PADDING = 0.06;
+
+/** The part of the page photo a page crop really cuts out: the box plus padding, inside the photo. */
+export function paddedCropBox(box: AiCropBox): AiCropBox {
+  const padX = box.width * CROP_PADDING;
+  const padY = box.height * CROP_PADDING;
+  const x = Math.max(0, box.x - padX);
+  const y = Math.max(0, box.y - padY);
+  return { x, y, width: Math.min(1, box.x + box.width + padX) - x, height: Math.min(1, box.y + box.height + padY) - y };
+}
 
 function normalizeItem(value: unknown): AiItemDraft | null {
   if (!value || typeof value !== 'object') return null;

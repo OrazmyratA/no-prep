@@ -76,7 +76,8 @@ interface HeadingResult {
 }
 
 // Gapped text and Gap fill come first: once the whole text has been read, the gaps would be filled from memory.
-const STAGES: RdStage[] = ['gapped', 'cloze', 'keys', 'questions', 'reading', 'statements', 'choice', 'short', 'match', 'word'];
+// The read-through comes last: after the tasks, the class reads the whole text at the teacher's speed.
+const STAGES: RdStage[] = ['gapped', 'cloze', 'keys', 'questions', 'statements', 'choice', 'short', 'match', 'word', 'reading'];
 export const VERDICTS: Verdict[] = ['yes', 'no', 'ng'];
 const SHAKE_MS = 600;
 const FOUND_NEXT_MS = 750;
@@ -237,8 +238,6 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
       this.topicName = topic?.name ?? '';
       this.setLevel(normalizeCefrLevel(topic?.level) ?? 'A2');
       this.text = buildReadingText(items);
-      // Without headings, this stage has nothing to answer: it stays off when the text has real tasks, and the teacher can still turn it on.
-      if (this.headingCount === 0 && this.availableStages.length > 1) this.enabledStages.delete('reading');
       this.text.clozes.forEach(cloze => cloze.words.forEach(id => this.clozeByWord.set(id, cloze)));
       if (this.text.sentences.length === 0) {
         showAppNotification(this.langService.translate('readingDetectiveNoText'), 'error');

@@ -125,6 +125,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     snapshot: (width) => ipcRenderer.invoke('presentations:snapshot', { width: Number(width) || 1280 }),
     slidePictures: (from, to) => ipcRenderer.invoke('presentations:slide-pictures', { from: Number(from) || 1, to: Number(to) || 1 }),
     stop: () => ipcRenderer.invoke('presentations:stop'),
+    // An added .html file: hands its text to the desktop app, which answers its private address.
+    serveHtml: (id, html) => ipcRenderer.invoke('presentations:serve-html', { id: String(id ?? ''), html: String(html ?? '') }),
     onChanged: (callback) => {
       if (typeof callback !== 'function') return () => {};
       const listener = () => callback();

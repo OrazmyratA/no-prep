@@ -13,6 +13,11 @@
   background: #0f172a;
 }
 
+/* An HTML lesson is a page: without its own background it should look like one, not the dark stage. */
+.pl-frame.pl-html {
+  background: #ffffff;
+}
+
 .pl-loading {
   position: absolute;
   inset: 0;

@@ -1,0 +1,126 @@
+<div class="st-page" [class.st-adjusting]="adjusting" (click)="closeChips()">
+  <div class="np-game-corner">
+    <app-game-keyboard-help [shortcuts]="keyboardShortcuts" title="Keyboard shortcuts"></app-game-keyboard-help>
+    @if (!loading && bubbles.length) {
+      <span class="np-game-pill">{{ doneCount }} / {{ bubbles.length }}</span>
+      <app-star-pill [count]="stars" [label]="'gameStars' | translate"></app-star-pill>
+      <button type="button" class="np-game-pill np-game-pill-btn st-adjust-btn" [class.st-adjust-on]="adjusting"
+              (click)="toggleAdjust(); $event.stopPropagation()"
+              [attr.aria-pressed]="adjusting" [attr.aria-label]="'storyTalkAdjust' | translate"
+              [attr.title]="(adjusting ? 'storyTalkAdjustDone' : 'storyTalkAdjust') | translate">✏️</button>
+      <!-- One click: every bubble takes the next shape (rectangle → oval → cloud). -->
+      <button type="button" class="np-game-pill np-game-pill-btn st-shape-btn"
+              (click)="cycleShape(); $event.stopPropagation()"
+              [attr.aria-label]="'storyTalkShape' | translate" [attr.title]="'storyTalkShape' | translate">
+        <svg viewBox="0 0 100 70" aria-hidden="true">
+          @switch (storyShape) {
+            @case ('rect') { <rect x="6" y="8" width="88" height="54" rx="14"></rect> }
+            @case ('oval') { <ellipse cx="50" cy="35" rx="44" ry="27"></ellipse> }
+            @default { <path transform="scale(1 0.7)" [attr.d]="cloudPath"></path> }
+          }
+        </svg>
+      </button>
+      <div class="np-game-pill st-zoom" (click)="$event.stopPropagation()">
+        <button type="button" class="st-zoom-btn" (click)="zoomOut()" [disabled]="!canZoomOut"
+                [attr.aria-label]="'storyTalkZoomOut' | translate" [attr.title]="'storyTalkZoomOut' | translate">−</button>
+        <button type="button" class="st-zoom-level" (click)="resetZoom()"
+                [attr.aria-label]="'storyTalkZoomReset' | translate" [attr.title]="'storyTalkZoomReset' | translate">{{ zoomPercent }}%</button>
+        <button type="button" class="st-zoom-btn" (click)="zoomIn()" [disabled]="!canZoomIn"
+                [attr.aria-label]="'storyTalkZoomIn' | translate" [attr.title]="'storyTalkZoomIn' | translate">+</button>
+      </div>
+    }
+  </div>
+  <h1 class="sr-only">{{ 'gameStoryTalkName' | translate }}</h1>
+
+  @if (loading) {
+    <div class="st-loading"><span class="st-spinner" aria-hidden="true"></span></div>
+  } @else {
+    <div #board class="st-board" [class.st-zoomed]="zoom > 1" (wheel)="onBoardWheel($event)">
+      @if (layout) {
+        <div class="st-grid"
+             [style.grid-template-columns]="'repeat(' + layout.columns + ', auto)'"
+             [style.grid-template-rows]="'repeat(' + layout.rows + ', auto)'">
+          @for (scene of scenes; track scene.id) {
+            <div class="st-scene" [attr.data-scene]="scene.id" [style.width.px]="sceneSize(scene).width" [style.height.px]="sceneSize(scene).height">
+              <img class="st-picture" [src]="scene.imageUrl" alt="" draggable="false">
+
+              @for (bubble of scene.bubbles; track bubble.id) {
+                <div class="st-bubble"
+                     [attr.data-bubble]="bubble.id"
+                     [class.st-rect]="bubble.box.shape === 'rect'"
+                     [class.st-oval]="bubble.box.shape === 'oval'"
+                     [class.st-cloud]="bubble.box.shape === 'cloud'"
+                     [class.st-active]="active === bubble"
+                     [class.st-done]="bubble.done"
+                     [class.st-dragging]="isDragging(bubble)"
+                     [class.st-too-small]="adjusting && bubble.tooSmall"
+                     [style.left.%]="bubble.box.x * 100"
+                     [style.top.%]="bubble.box.y * 100"
+                     [style.width.%]="bubble.box.width * 100"
+                     [style.height.%]="bubble.box.height * 100"
+                     role="button" tabindex="0"
+                     [attr.aria-label]="bubble.done || adjusting ? bubble.words.join(' ') : ('gameStoryTalkName' | translate) + ' ' + ($index + 1)"
+                     (pointerdown)="onBubblePointerDown($event, bubble, 'move')"
+                     (click)="onBubbleClick(bubble, $event)"
+                     (keydown.enter)="onBubbleClick(bubble, $any($event))"
+                     (keydown.space)="$event.preventDefault(); onBubbleClick(bubble, $any($event))">
+                  @if (bubble.box.shape === 'cloud') {
+                    <svg class="st-cloud-shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                      <path [attr.d]="cloudPath"></path>
+                    </svg>
+                  }
+                  <div class="st-words" [style.inset]="textInset(bubble)" [style.font-size.px]="bubble.font">
+                    @if (adjusting || bubble.done) {
+                      <span>{{ bubble.words.join(' ') }}</span>
+                    } @else if (bubble.built) {
+                      <span>{{ builtText(bubble) }}</span>
+                    } @else {
+                      <span class="st-dots" aria-hidden="true">• • •</span>
+                    }
+                  </div>
+                  @if (bubble.done && !adjusting) {
+                    <span class="st-replay" aria-hidden="true">🔊</span>
+                  }
+                  @if (adjusting) {
+                    <span class="st-handle" (pointerdown)="onBubblePointerDown($event, bubble, 'resize')" aria-hidden="true"></span>
+                    @if (bubble.tooSmall) {
+                      <span class="st-warn" [attr.title]="'storyTalkTooSmall' | translate">!</span>
+                    }
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (adjusting) {
+      <p class="st-adjust-hint">{{ 'storyTalkAdjustHint' | translate }}</p>
+    }
+
+    @if (active) {
+      <div class="st-chips" [class.st-chips-top]="chipsOnTop" (click)="$event.stopPropagation()">
+        @for (chip of active.chips; track chip.id) {
+          <button type="button" class="st-chip" [class.st-used]="chip.used" [class.st-wrong]="wrongChipId === chip.id"
+                  [disabled]="chip.used" (click)="onChipClick(chip)">{{ chip.word }}</button>
+        }
+        <button type="button" class="st-chips-close" (click)="closeChips()" aria-label="Close">✕</button>
+      </div>
+    }
+  }
+
+  <!-- Measures the words to find the font that fits each bubble. -->
+  <div #measure class="st-measure" aria-hidden="true"></div>
+
+  @if (gameFinished) {
+    <app-game-finish-overlay
+      [title]="'storyTalkAllDone' | translate"
+      [message]="'⭐ ' + ('storyTalkResult' | translate: { count: stars, total: bubbles.length })"
+      (playAgain)="restart()"
+      (activities)="onMenuAction('activity')">
+    </app-game-finish-overlay>
+  }
+
+  <app-sandwich-menu (action)="onMenuAction($event)"></app-sandwich-menu>
+</div>

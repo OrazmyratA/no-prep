@@ -272,6 +272,18 @@ Tomorrow I will help my mom.`;
   private historyCaptureActive = false;
   private historyLimitWarningShown = false;
   private assetUrlCache = new Map<string, string>();
+  /**
+   * Cache-busting version on the PDF addresses. It changes only when the PDF itself may have
+   * changed (the book loaded, a PDF replaced, added or inserted), never on a normal save: the
+   * book's updatedAt used to be the version, so every save re-opened the whole PDF and
+   * re-drew every page — the white pages teachers saw right after saving.
+   */
+  pdfVersion = '';
+
+  /** A new PDF may be on disk under the same path: make every page load it afresh. */
+  markPdfChanged(): void {
+    this.pdfVersion = this.book?.updatedAt || String(Date.now());
+  }
   private bypassUnsavedGuard = false;
   private copiedElement: BookElement | null = null;
   private copiedWordBank: BookWordBank | null = null;
@@ -722,6 +734,12 @@ Tomorrow I will help my mom.`;
   // Order of a guide dot on the page (what the reader unlocks first, second, ...); 0 if it is the only one.
   getGuideDotNumber(element: BookElement): number {
     return getGuideDotNumber(getOrderedGuideDots(this.selectedPage?.elements ?? []), element.id);
+  }
+
+  // Order of a focus area on the page: the reader's ←/→ step through them in this (element) order. 0 if it is the only one.
+  getFocusNumber(element: BookElement): number {
+    const focuses = (this.selectedPage?.elements ?? []).filter((item) => item.type === 'focus');
+    return focuses.length < 2 ? 0 : focuses.findIndex((item) => item.id === element.id) + 1;
   }
 
   toggleShortcutHelp(): void {
@@ -2946,8 +2964,10 @@ Tomorrow I will help my mom.`;
     // Replacing a PDF reuses the same on-disk path (assets/source.pdf), so this URL is
     // otherwise identical before and after — Angular's ngOnChanges on <app-pdf-page-canvas>
     // wouldn't even see sourceUrl change, let alone refetch it. The version suffix forces both.
+    // It is pdfVersion (changes only when a PDF may have changed), not updatedAt: that changed
+    // on every save and re-opened the whole PDF — the white page after saving.
     const baseUrl = this.bookLibrary.getAssetUrl(this.book.id, sourcePdf);
-    const version = encodeURIComponent(this.book.updatedAt || '');
+    const version = encodeURIComponent(this.pdfVersion || '');
     this.selectedPdfUrl = version ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${version}` : baseUrl;
     const renderKey = `${this.selectedPdfUrl}|${page.pdfPage || 1}|${this.getPageRotation(page)}`;
     // <app-pdf-page-canvas> only re-renders (and re-reports its measured pageSize) when its

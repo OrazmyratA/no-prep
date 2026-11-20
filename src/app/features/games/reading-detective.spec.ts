@@ -140,7 +140,7 @@ describe('ReadingDetectiveComponent', () => {
       component.chooseShortOption(pick('Monday'));
       vi.advanceTimersByTime(950);
       expect(component.scores.short.got).toBe(1);
-      expect(component.view).toBe('results');
+      expect([component.view, component.nextStage()]).toEqual(['between', 'reading']); // then the read-through
       expect(component.isOtherShortText(component.text.paragraphs[1])).toBe(false);
     });
 
@@ -195,7 +195,7 @@ describe('ReadingDetectiveComponent', () => {
       vi.advanceTimersByTime(950);
       expect(component.scores.match.got).toBe(1);
       expect(component.scores.match.total).toBe(2);
-      expect(component.view).toBe('results');
+      expect([component.view, component.nextStage()]).toEqual(['between', 'reading']); // then the read-through
     });
 
     it('lets a text answer more than one sentence', async () => {
@@ -281,7 +281,7 @@ describe('ReadingDetectiveComponent', () => {
       component.submitClozeAnswer();
       expect(component.clozeFilled.has(1)).toBe(true);
       vi.advanceTimersByTime(950);
-      expect(component.view).toBe('results');
+      expect([component.view, component.nextStage()]).toEqual(['between', 'reading']); // then the read-through
       expect(component.scores.cloze.got).toBe(1);
     });
 
@@ -450,13 +450,12 @@ describe('ReadingDetectiveComponent', () => {
     expect(component.readIndex).toBe(1);
   });
 
-  it('skips the read-through when the text has no headings but has other tasks, unless the teacher turns it on', async () => {
+  it('keeps the read-through on, last, even when the text has no headings; the teacher can turn it off', async () => {
     await create([item(0, 'One two three.', true), item(1, '* Four five.')]);
-    expect(component.availableStages).toContain('reading');
-    expect(component.isStageOn('reading')).toBe(false);
-    expect(component.activeStages).toEqual(['questions']);
-    component.toggleStage('reading');
     expect(component.isStageOn('reading')).toBe(true);
+    expect(component.activeStages).toEqual(['questions', 'reading']);
+    component.toggleStage('reading');
+    expect(component.activeStages).toEqual(['questions']);
   });
 
   it('stage 3 without headings: each paragraph waits for Next', async () => {
@@ -496,7 +495,7 @@ describe('ReadingDetectiveComponent', () => {
 
     it('lists only the stages the topic has, Gapped text first, and lets the teacher switch them off', async () => {
       await create(TASKS);
-      expect(component.availableStages).toEqual(['gapped', 'reading', 'statements', 'choice', 'word']);
+      expect(component.availableStages).toEqual(['gapped', 'statements', 'choice', 'word', 'reading']);
       component.toggleStage('gapped');
       component.toggleStage('reading');
       expect(component.activeStages).toEqual(['statements', 'choice', 'word']);

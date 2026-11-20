@@ -1,0 +1,172 @@
+<div class="sc-page">
+  <header class="sc-bar">
+    <button type="button" class="sc-btn sc-back" (click)="back()"
+            [attr.title]="'speakingCheckBack' | translate" [attr.aria-label]="'speakingCheckBack' | translate">←</button>
+    <div class="sc-title">
+      <span class="sc-title-icon" aria-hidden="true">🎤</span>
+      <div>
+        <strong>{{ 'speakingCheckTitle' | translate }}</strong>
+        <small>{{ className }}</small>
+      </div>
+    </div>
+
+    @if (session) {
+      <label class="sc-session-pick">
+        <span class="sr-only">{{ 'speakingCheckSession' | translate }}</span>
+        <select (change)="openSession($any($event.target).value)">
+          @if (sessionIsNew) {
+            <option [value]="session.id" selected>{{ session.date }} · {{ 'speakingCheckNewSession' | translate }}</option>
+          }
+          @for (item of sessions; track item.id) {
+            <option [value]="item.id" [selected]="item.id === session.id">{{ sessionLabel(item) }}</option>
+          }
+          <option value="__new">＋ {{ 'speakingCheckNewSession' | translate }}</option>
+        </select>
+      </label>
+      <button type="button" class="sc-btn sc-pill" [class.is-open]="detailsOpen" (click)="detailsOpen = !detailsOpen">
+        ⚙ {{ 'speakingCheckDetails' | translate }}
+      </button>
+      <span class="sc-done">{{ 'speakingCheckDone' | translate: { done: doneCount, total: roster.length } }}</span>
+      <button type="button" class="sc-btn sc-pill sc-primary" (click)="copyClass()">📋 {{ 'speakingCheckCopyClass' | translate }}</button>
+    }
+  </header>
+
+  @if (loading) {
+    <p class="sc-note">…</p>
+  } @else if (!classTopicId || !session) {
+    <p class="sc-note">{{ 'speakingCheckNoClass' | translate }}</p>
+  } @else {
+    @if (detailsOpen) {
+      <section class="sc-details" aria-labelledby="sc-details-title">
+        <h2 id="sc-details-title" class="sr-only">{{ 'speakingCheckDetails' | translate }}</h2>
+        <label class="sc-field sc-wide">
+          <span>{{ 'speakingCheckTestName' | translate }}</span>
+          <input type="text" [value]="session.testName" (input)="setDetail('testName', $any($event.target).value)"
+                 placeholder="FINAL TEST - PMP 7.30" autocomplete="off">
+        </label>
+        <label class="sc-field">
+          <span>{{ 'speakingCheckDate' | translate }}</span>
+          <input type="date" [value]="session.date" (change)="setDetail('date', $any($event.target).value)">
+        </label>
+        <label class="sc-field">
+          <span>{{ 'speakingCheckExam' | translate }}</span>
+          <select (change)="setExam($any($event.target).value)">
+            @for (exam of exams; track exam.id) {
+              <option [value]="exam.id" [selected]="exam.id === session.examId">{{ exam.name }}</option>
+            }
+          </select>
+        </label>
+        <label class="sc-field">
+          <span>{{ 'speakingCheckInCharge' | translate }}</span>
+          <input type="text" [value]="session.teachers.inCharge" (input)="setTeacher('inCharge', $any($event.target).value)" autocomplete="off">
+        </label>
+        <label class="sc-field">
+          <span>{{ 'speakingCheckInterlocutor' | translate }}</span>
+          <input type="text" [value]="session.teachers.interlocutor" (input)="setTeacher('interlocutor', $any($event.target).value)" autocomplete="off">
+        </label>
+        <label class="sc-field">
+          <span>{{ 'speakingCheckAssessor' | translate }}</span>
+          <input type="text" [value]="session.teachers.assessor" (input)="setTeacher('assessor', $any($event.target).value)" autocomplete="off">
+        </label>
+        <label class="sc-field">
+          <span>{{ 'speakingCheckPassMark' | translate }}</span>
+          <span class="sc-pass">
+            <input type="number" min="1" max="100" [value]="passPercent" (change)="setPassPercent($any($event.target).value)"
+                   [placeholder]="exam.scoring === 'cambridge' ? 'Cambridge' : '—'">
+            <small>%</small>
+          </span>
+          <small class="sc-hint">{{ (exam.scoring === 'cambridge' ? 'speakingCheckPassHintCambridge' : exam.scoring === 'young' ? 'speakingCheckPassHintYoung' : 'speakingCheckPassHintIelts') | translate }}</small>
+        </label>
+      </section>
+    }
+
+    <div class="sc-body">
+      <aside class="sc-list" [attr.aria-label]="'speakingCheckStudents' | translate">
+        <div class="sc-list-head">
+          <strong>{{ exam.short }}</strong>
+          @if (exam.paired) {
+            <button type="button" class="sc-pair" [class.is-on]="pairMode" (click)="togglePairMode()" [attr.aria-pressed]="pairMode">
+              👥 {{ 'speakingCheckPairs' | translate }}
+            </button>
+          }
+        </div>
+        @for (item of roster; track item.id; let i = $index) {
+          <button type="button" class="sc-student-btn" [class.is-selected]="isSelected(item)" [class.is-done]="isDone(item)" (click)="pick(item)">
+            <span class="sc-num">{{ i + 1 }}</span>
+            <span class="sc-name">{{ item.text }}</span>
+            <span class="sc-status">{{ listStatus(item) }}</span>
+          </button>
+        } @empty {
+          <p class="sc-note">{{ 'speakingCheckEmptyClass' | translate }}</p>
+        }
+      </aside>
+
+      <main class="sc-main" [class.is-pair]="selected.length > 1">
+        @for (itemId of selected; track itemId) {
+          <section class="sc-column" [attr.aria-label]="nameOf(itemId)">
+            <header class="sc-col-head">
+              <h2>{{ nameOf(itemId) }}</h2>
+              <div class="sc-result">
+                <span class="sc-total">{{ totalText(itemId) }}</span>
+                @if (outcomeOf(itemId).official; as official) {
+                  @if (official.complete && exam.scoring === 'cambridge') {
+                    @if (official.scaleScore !== null) {
+                      <span class="sc-scale">{{ official.scaleScore }}
+                        @if (official.grade) { <small>{{ official.grade.grade }} · {{ official.grade.cefr }}</small> }
+                      </span>
+                    } @else {
+                      <span class="sc-scale is-low">{{ 'speakingCheckBelowRange' | translate }}</span>
+                    }
+                  }
+                }
+                @if (outcomeOf(itemId).passed !== null) {
+                  <span class="sc-pass-badge" [class.is-fail]="!outcomeOf(itemId).passed">
+                    {{ (outcomeOf(itemId).passed ? 'speakingCheckPassed' : 'speakingCheckFailed') | translate }}
+                  </span>
+                }
+              </div>
+            </header>
+
+            @for (criterion of exam.criteria; track criterion.id) {
+              <div class="sc-card">
+                <div class="sc-card-head">
+                  <span class="sc-crit">
+                    {{ criterion.name }}
+                    @if (criterion.weight > 1 && exam.scoring === 'cambridge') { <small>×{{ criterion.weight }}</small> }
+                    @if (criterion.interlocutor) { <small class="sc-role">{{ 'speakingCheckInterlocutorMark' | translate }}</small> }
+                  </span>
+                  <span class="sc-mark" [class.is-manual]="isManual(itemId, criterion)">
+                    <button type="button" (click)="stepMark(itemId, criterion, -1)" [attr.aria-label]="'speakingCheckLower' | translate">−</button>
+                    <strong>{{ markText(itemId, criterion) }}</strong><small>/{{ criterion.max }}</small>
+                    <button type="button" (click)="stepMark(itemId, criterion, 1)" [attr.aria-label]="'speakingCheckHigher' | translate">+</button>
+                    @if (isManual(itemId, criterion)) {
+                      <button type="button" class="sc-reset" (click)="resetMark(itemId, criterion)"
+                              [attr.title]="'speakingCheckBackToChips' | translate: { mark: chipMarkText(itemId, criterion) || '–' }">↺</button>
+                    }
+                  </span>
+                </div>
+                <div class="sc-chips">
+                  @for (chip of chipsFor(criterion); track chip.id) {
+                    <button type="button" class="sc-chip" [attr.data-tone]="toneOf(chip, criterion)"
+                            [class.is-on]="isTapped(itemId, criterion, chip)" [attr.aria-pressed]="isTapped(itemId, criterion, chip)"
+                            (click)="toggleChip(itemId, criterion, chip)">{{ chip.text }}</button>
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="sc-actions">
+              <button type="button" class="sc-btn sc-pill" (click)="copyRow(itemId)">📋 {{ 'speakingCheckCopyRow' | translate }}</button>
+              <button type="button" class="sc-btn sc-pill sc-primary" (click)="save(itemId)">💾 {{ 'speakingCheckSave' | translate }}</button>
+            </div>
+          </section>
+        } @empty {
+          <div class="sc-empty">
+            <span aria-hidden="true">👈</span>
+            <p>{{ (exam.paired && pairMode ? 'speakingCheckPickPair' : 'speakingCheckPickStudent') | translate }}</p>
+          </div>
+        }
+      </main>
+    </div>
+  }
+</div>

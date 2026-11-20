@@ -3107,4 +3107,30 @@ export const AI_TOPIC_TRANSLATIONS: TranslationDictionary = {
   vi: 'Một số hình không vẽ được, nên đã dùng hình miễn phí thay thế.',
 },
 
+
+'aiTopicChipStory': {
+  en: 'Story bubbles',
+  tk: 'Gürrüň köpürjikleri',
+  ru: 'Облачка истории',
+  cn: '故事气泡',
+  cde: 'Sprechblasen',
+  es: 'Bocadillos de historia',
+  fr: 'Bulles d\'histoire',
+  kr: '이야기 말풍선',
+  sa: 'فقاعات القصة',
+  vi: 'Bóng thoại câu chuyện',
+},
+
+'aiTopicChipStoryPrompt': {
+  en: 'Make a Story Talk topic from the picture story on these pages: one item per speech bubble.',
+  tk: 'Şu sahypalardaky suratly hekaýadan Hekaýa gürrüňi temasyny düz: her gürrüň köpürjigi üçin bir element.',
+  ru: 'Сделай тему для «Говорим по истории» из истории в картинках на этих страницах: один элемент на каждое облачко.',
+  cn: '用这些页面上的图画故事做一个“故事对话”主题：每个对话气泡一个项目。',
+  cde: 'Erstelle aus der Bildergeschichte auf diesen Seiten ein Geschichten-Talk-Thema: ein Element pro Sprechblase.',
+  es: 'Crea un tema de Habla la historia con la historia ilustrada de estas páginas: un elemento por bocadillo.',
+  fr: 'Crée un sujet Raconte l\'histoire à partir de l\'histoire en images de ces pages : un élément par bulle.',
+  kr: '이 페이지의 그림 이야기로 이야기 말하기 주제를 만들어 주세요: 말풍선 하나에 항목 하나.',
+  sa: 'أنشئ موضوع حوار القصة من القصة المصورة في هذه الصفحات: عنصر واحد لكل فقاعة كلام.',
+  vi: 'Tạo chủ đề Kể chuyện từ truyện tranh trên các trang này: mỗi bóng thoại một mục.',
+},
 };

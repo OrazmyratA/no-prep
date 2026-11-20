@@ -128,6 +128,18 @@ public static class NpShow {
   [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr c);
   [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   public static int ProcessOf(IntPtr h) { uint pid; GetWindowThreadProcessId(h, out pid); return (int)pid; }
+  [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int w, int hh, uint f);
+
+  // Places a window at exact screen pixels (No-Prep sends them already converted for the monitor's
+  // scaling). The thread switches to per-monitor pixels just for this call, so Windows never
+  // rescales the numbers. False when that switch is not available (old Windows 10).
+  public static bool PlaceInPixels(IntPtr h, int x, int y, int w, int hh, uint flags) {
+    IntPtr old = IntPtr.Zero;
+    try { old = SetThreadDpiAwarenessContext(new IntPtr(-4)); } catch { return false; }
+    if (old == IntPtr.Zero) return false;
+    try { return SetWindowPos(h, IntPtr.Zero, x, y, w, hh, flags); }
+    finally { try { SetThreadDpiAwarenessContext(old); } catch {} }
+  }
 
   // A picture of the slideshow exactly as it is on screen (animations as far as they have got),
   // in real pixels, scaled to 'width'. False when the window could not be photographed.
@@ -217,10 +229,18 @@ function Find-Open($path) {
   return $null
 }
 
-function Place($x, $y, $w, $h) {
-  if ($script:hwnd -eq [IntPtr]::Zero) { return }
+# $a: the stage in No-Prep's scaled points (x, y, w, h) and, when No-Prep could convert them, in
+# exact screen pixels (px, py, pw, ph). Pixels are used whenever possible: with Windows scaling
+# (125 %, 150 %) scaled points were read differently once PowerPoint stayed open between shows,
+# and the slideshow came out too small at the top-left with black on the right and bottom.
+function Place($a) {
+  if ($script:hwnd -eq [IntPtr]::Zero -or $null -eq $a) { return }
   # SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED
-  [NpWin]::SetWindowPos($script:hwnd, [IntPtr]::Zero, [int]$x, [int]$y, [int]$w, [int]$h, 0x0004 -bor 0x0010 -bor 0x0020) | Out-Null
+  $flags = [uint32](0x0004 -bor 0x0010 -bor 0x0020)
+  if ($null -ne $a.pw -and [int]$a.pw -gt 0 -and [int]$a.ph -gt 0) {
+    if ([NpShow]::PlaceInPixels($script:hwnd, [int]$a.px, [int]$a.py, [int]$a.pw, [int]$a.ph, $flags)) { return }
+  }
+  [NpWin]::SetWindowPos($script:hwnd, [IntPtr]::Zero, [int]$a.x, [int]$a.y, [int]$a.w, [int]$a.h, $flags) | Out-Null
 }
 
 # After a show ends PowerPoint answers with empty values rather than errors, so check that the
@@ -343,12 +363,12 @@ while ($true) {
         $exStyle = [NpWin]::GetWindowLong($script:hwnd, -20)
         [NpWin]::SetWindowLong($script:hwnd, -20, ($exStyle -bor 0x08000000)) | Out-Null
         [NpWin]::SetWindowLongPtr($script:hwnd, -8, [IntPtr][Int64]$a.owner) | Out-Null
-        Place $a.x $a.y $a.w $a.h
+        Place $a
         if ($a.slide -and [int]$a.slide -gt 1) { try { $script:show.View.GotoSlide([int]$a.slide) } catch {} }
         Reply $id @{ ok = $true; slides = $script:pres.Slides.Count; slide = $script:show.View.CurrentShowPosition }
       }
 
-      'move' { Place $a.x $a.y $a.w $a.h; Reply $id @{ ok = $true } }
+      'move' { Place $a; Reply $id @{ ok = $true } }
       'hide' { if ($script:hwnd -ne [IntPtr]::Zero) { [NpWin]::ShowWindow($script:hwnd, 0) | Out-Null }; Reply $id @{ ok = $true } }
       'show' { if ($script:hwnd -ne [IntPtr]::Zero) { [NpWin]::ShowWindow($script:hwnd, 4) | Out-Null }; Reply $id @{ ok = $true } }
       'next' { if (Show-Running) { $script:show.View.Next() }; Reply $id @{ ok = $true } }

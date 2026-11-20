@@ -87,6 +87,8 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
   private renderToken = 0;
   private observer: IntersectionObserver | null = null;
   private renderTask: { promise: Promise<void>; cancel: () => void } | null = null;
+  /** The page (file + number + rotation) whose picture is on the canvas now, at any scale. */
+  private shownPage: string | null = null;
 
   constructor(private cdr: ChangeDetectorRef) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/pdfjs/pdf.worker.mjs';
@@ -137,10 +139,16 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     const cacheKey = PdfPageCanvasComponent.cacheKeyFor(this.sourceUrl, this.pageNumber, this.renderScale, this.rotation);
     if (cacheKey && this.tryDrawFromCache(cacheKey)) return;
 
-    this.error = '';
-    this.loading = true;
-    this.canvasReady = false;
-    this.cdr.detectChanges();
+    // Only the sharpness changes (same page, e.g. a focus area opening): keep showing the
+    // current picture, stretched, and swap in the sharper one when it is ready. Hiding it made
+    // the page go blank ("Rendering page…") for the whole redraw, which felt like a freeze.
+    const keepShowing = this.canvasReady && this.shownPage === this.pageIdentity();
+    if (!keepShowing) {
+      this.error = '';
+      this.loading = true;
+      this.canvasReady = false;
+      this.cdr.detectChanges();
+    }
 
     // A prefetch of this very page may already be running; waiting for it beats starting a
     // second rasterization of the same page.
@@ -212,7 +220,10 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     const doc = await PdfPageCanvasComponent.getDocument(source, cacheKeyHint ?? `data:${this.sourceUrl}`);
     if (token !== this.renderToken) return;
 
-    const canvas = this.canvasRef.nativeElement;
+    const visible = this.canvasRef.nativeElement;
+    // While the current picture stays up, draw out of sight and copy it over at the end.
+    const offscreen = this.canvasReady && this.shownPage === this.pageIdentity();
+    const canvas = offscreen ? document.createElement('canvas') : visible;
     const size = await PdfPageCanvasComponent.renderPdfPage(
       doc, this.pageNumber, this.renderScale, this.rotation, canvas,
       {
@@ -228,10 +239,19 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
       }
     );
     if (!size || token !== this.renderToken) return;
+    if (canvas !== visible) {
+      const context = visible.getContext('2d');
+      if (context) {
+        visible.width = canvas.width;
+        visible.height = canvas.height;
+        context.drawImage(canvas, 0, 0);
+      }
+    }
 
     const cacheKey = PdfPageCanvasComponent.cacheKeyFor(this.sourceUrl, this.pageNumber, this.renderScale, this.rotation);
-    if (cacheKey) PdfPageCanvasComponent.storeRendered(cacheKey, canvas, size.baseWidth, size.baseHeight);
+    if (cacheKey) PdfPageCanvasComponent.storeRendered(cacheKey, visible, size.baseWidth, size.baseHeight);
 
+    this.shownPage = this.pageIdentity();
     this.canvasReady = true;
     this.pageSize.emit({ width: size.baseWidth, height: size.baseHeight });
     this.cdr.detectChanges();
@@ -253,6 +273,7 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     canvas.height = hit.canvas.height;
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.drawImage(hit.canvas, 0, 0);
+    this.shownPage = this.pageIdentity();
     this.error = '';
     this.loading = false;
     this.canvasReady = true;
@@ -494,7 +515,12 @@ export class PdfPageCanvasComponent implements AfterViewInit, OnChanges, OnDestr
     this.observer.observe(this.canvasRef.nativeElement);
   }
 
+  private pageIdentity(): string {
+    return `${this.sourceUrl}|${this.pageNumber}|${PdfPageCanvasComponent.normalizeRotation(this.rotation)}`;
+  }
+
   private clearCanvas(): void {
+    this.shownPage = null;
     const canvas = this.canvasRef?.nativeElement;
     const context = canvas?.getContext('2d');
     if (!canvas || !context) return;

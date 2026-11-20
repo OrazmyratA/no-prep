@@ -134,6 +134,7 @@ export const LESSON_PLAN_GAMES: { id: string; about: string }[] = [
   { id: 'unjumble', about: 'drag words into the right order to build sentences - grammar and word order' },
   { id: 'team-sentence', about: 'teams race to build correct sentences - grammar, competitive' },
   { id: 'word-trail', about: 'link scattered words in order by tracing lines or clicking - word order, whole class' },
+  { id: 'puzzle-builder', about: 'build a jigsaw of the picture, or put the word\'s syllables in order - young learners' },
   { id: 'reading-detective', about: 'reading lesson: key words, find the answers in the text, match paragraph headings' },
   { id: 'writing-workshop', about: 'writing lesson: rebuild a model text paragraph by paragraph, then write' },
   { id: 'talk-show', about: 'speaking mock exam with examiner lines, timers and a mark sheet' }
@@ -142,7 +143,7 @@ export const LESSON_PLAN_GAMES: { id: string; about: string }[] = [
 const PICTURE_WORD_GAMES = [
   'flip-tiles', 'match-pairs', 'watch-memorize', 'spotlight', 'spin-wheel', 'reveal-game', 'pop-balloon', 'test-abc',
   'anagram', 'tracing', 'word-search', 'line-trace-match', 'spelling-check', 'team-tug', 'cup-clash', 'odd-one-out',
-  'squid-game', 'rock-paper-scissors', 'ball-sort', 'flashcard-hunt', 'shuffle-cups'
+  'squid-game', 'rock-paper-scissors', 'ball-sort', 'flashcard-hunt', 'shuffle-cups', 'puzzle-builder'
 ];
 /** Word on one side, a text card (definition, translation, gapped sentence...) on the other. */
 const WORD_CARD_GAMES = [
@@ -167,6 +168,7 @@ export function gamesForRecipe(recipe: AiRecipeId, variant: AiRecipeVariantId | 
     case 'reading': return ['reading-detective'];
     case 'writing': return ['writing-workshop'];
     case 'speaking': return ['talk-show'];
+    case 'story': return ['story-talk', 'unjumble', 'team-sentence'];
     default: return [];
   }
 }
@@ -303,7 +305,8 @@ const RECIPE_ABOUT: Record<AiRecipeId, string> = {
   sentences: 'whole sentences using the unit\'s grammar, to put back in order.',
   reading: 'the reading text with key words, questions and paragraph headings.',
   writing: 'a model text for the writing task, rebuilt paragraph by paragraph.',
-  speaking: 'a speaking mock exam (interview, pictures, discussion) on the unit\'s theme.'
+  speaking: 'a speaking mock exam (interview, pictures, discussion) on the unit\'s theme.',
+  story: 'the picture story (comic) with its speech bubbles, to build and say each line.'
 };
 
 export function buildLessonPlanUserText(request: LessonPlanRequest): string {

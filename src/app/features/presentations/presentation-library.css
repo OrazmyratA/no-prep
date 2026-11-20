@@ -152,8 +152,9 @@
   display: none;
 }
 
+/* Room under the label for the three buttons: New on Canva, New in Google Slides, HTML file. */
 .pres-link-new .pres-new-main {
-  padding-bottom: 6rem;
+  padding-bottom: 9.5rem;
 }
 
 .pres-new-sites .pres-new-site:hover {
@@ -460,4 +461,21 @@
 
 .pres-link-thumb.is-google .pres-link-type {
   background: #b45309;
+}
+
+/* Any web page: sky blue. An added .html file: green. */
+.pres-link-thumb.is-web {
+  background: linear-gradient(135deg, #7dd3fc, #2563eb);
+}
+
+.pres-link-thumb.is-web .pres-link-type {
+  background: #1d4ed8;
+}
+
+.pres-link-thumb.is-html {
+  background: linear-gradient(135deg, #86efac, #059669);
+}
+
+.pres-link-thumb.is-html .pres-link-type {
+  background: #047857;
 }

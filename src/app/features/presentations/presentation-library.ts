@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { PresentationItem, PresentationService } from '../../core/presentations';
 import { PresentationLink } from '../../core/db.model';
-import { NEW_PRESENTATION_URLS, openInBrowser, PresentationLinkService, toEmbedTarget } from '../../core/presentation-links';
+import { LINK_SOURCES, LinkSource, NEW_PRESENTATION_URLS, openInBrowser, PresentationLinkService, toLinkTarget } from '../../core/presentation-links';
 import { PresentationPickService } from '../../core/presentation-pick';
 import { LanguageService } from '../../core/language';
 import { LicenseService } from '../../core/license';
@@ -48,7 +48,9 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
   linkTitle = '';
   linkError = false;
   /** The site the teacher went to make a new presentation on (shows how to bring its link back). */
-  madeOn: PresentationLink['source'] | null = null;
+  madeOn: 'canva' | 'google' | null = null;
+  /** An .html file is being read and added. */
+  addingHtml = false;
   private subscriptions: Subscription[] = [];
 
   constructor(
@@ -134,7 +136,7 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
    * "New on Canva / Google Slides": the site opens in the browser to make the slides there, and
    * the paste box stays open here for the link once they're ready.
    */
-  createOnSite(source: PresentationLink['source']): void {
+  createOnSite(source: 'canva' | 'google'): void {
     if (this.needsAccess()) return;
     void openInBrowser(NEW_PRESENTATION_URLS[source]);
     this.madeOn = source;
@@ -158,9 +160,41 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
     this.cdr.markForCheck();
   }
 
-  /** The link as typed so far: is it one No-Prep can play (shows Canva / Google while typing)? */
-  get linkSource(): 'canva' | 'google' | null {
-    return toEmbedTarget(this.linkUrl)?.source ?? null;
+  /** The link as typed so far: is it one No-Prep can play (shows Canva / Google / web while typing)? */
+  get linkSource(): LinkSource | null {
+    return toLinkTarget(this.linkUrl)?.source ?? null;
+  }
+
+  /** Icon, name and badge of a link's kind (Canva, Google Slides, web page, HTML file). */
+  sourceInfo(source: LinkSource): { icon: string; name: string; nameKey?: string; badge: string } {
+    return LINK_SOURCES[source] ?? LINK_SOURCES.canva;
+  }
+
+  // ---------- .html files ----------
+
+  chooseHtmlFile(input: HTMLInputElement): void {
+    if (this.needsAccess() || this.addingHtml) return;
+    input.value = '';
+    input.click();
+  }
+
+  async onHtmlChosen(input: HTMLInputElement): Promise<void> {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.addingHtml = true;
+    this.cdr.markForCheck();
+    try {
+      const result = await this.presentationLinks.addHtml(file, file.name);
+      if (result.error === 'TOO_BIG') showAppNotification(this.lang.translate('presentationHtmlTooBig'), 'error');
+      else if (result.error === 'NOT_HTML') showAppNotification(this.lang.translate('presentationHtmlNotHtml'), 'error');
+      else if (result.link) showAppNotification(this.lang.translate('presentationHtmlAdded', { title: result.link.title }), 'success');
+    } catch {
+      showAppNotification(this.lang.translate('presentationHtmlNotHtml'), 'error');
+    } finally {
+      this.addingHtml = false;
+      this.cdr.detectChanges();
+    }
   }
 
   async addLink(): Promise<void> {

@@ -7,7 +7,7 @@ export type AiRecipeId =
   | 'pages' | 'pictures' | 'opposites' | 'definitions' | 'translation' | 'synonyms' | 'verbForms' | 'collocations' | 'listenSpell'
   | 'gapFill' | 'qa' | 'sentences'
   | 'writing' | 'reading'
-  | 'speaking';
+  | 'speaking' | 'story';
 
 /** The chip's heading in the dialog (the same words as the lesson pack boxes). */
 export type AiRecipeGroup = 'vocabulary' | 'sentences' | 'texts' | 'speaking';
@@ -74,6 +74,18 @@ const SPEAKING_TEST_RULES = [
   '- DISCUSS (discussion): one item per deeper, more abstract question related to the earlier part, with a follow-up in braces when natural. imageKind = "none".',
   'Pictures: "pageCrop" when the exact picture is on an attached page, otherwise "search" with a clear imageQuery (imageStyle "illustration" for young learners\' scenes and stories). If the story pictures cannot come from the pages, add a note in the teacher\'s language that the stock pictures may not match each other and the book\'s pictures or "Generate a picture" work better.',
   'audioText = "" for every item: Talk Show reads the examiner\'s lines itself. Use simple, natural examiner English at the given level; for young learners short questions with one clear answer.'
+].join('\n');
+
+// Story Talk (docs/story-talk.md): the book's picture story with our own speech bubbles on top.
+// The bubble's box goes in braces on the PAGE photo; the app moves it onto the story picture and
+// takes it out of the text (features/topics/story-bubbles.ts).
+const STORY_TALK_RULES = [
+  'Story Talk topic: the attached pages have a picture story (a comic) with speech bubbles. Students will see the story pictures with our own empty bubbles on top of the book\'s bubbles, build each sentence from jumbled words and say it.',
+  'For each attached page that has the story, in story order:',
+  '1. One PICTURE item: text = "", imageKind = "pageCrop", imagePage = that page, imageBox = the box around the WHOLE story on that page (all its panels together, with their bubbles), leaving out the page\'s titles, exercises, page numbers and audio icons. imageQuery = 2-3 English words for the scene. audioText = "".',
+  '2. Then one item per speech bubble, thought bubble or narrator box on that picture, in reading order (panel by panel; in a panel left to right, top to bottom): text = the words in the bubble copied EXACTLY (same spelling and punctuation), then a space and "{@ymin,xmin,ymax,xmax}" - the box on that PAGE photo (0-1000, like imageBox) drawn around the whole bubble shape (without its tail). When the bubble has gaps or blanks for students to fill, write the full sentence with the right words in the gaps (use the answers written on the page when there are any). imageKind = "none". audioText = the text without the braces.',
+  'Never merge two bubbles into one item and never split one bubble. Leave out sound effects (Bang!) and words that are part of the picture (signs, labels).',
+  'If no page with a picture story is attached, write a short dialogue on the theme instead (6-10 bubble items, no braces, no picture item) and add a note in the teacher\'s language: Story Talk needs a photo or PDF page of the story, so add the pages and generate again.'
 ].join('\n');
 
 // Most vocabulary chips start from the same word list.
@@ -308,6 +320,14 @@ export const AI_TOPIC_RECIPES: AiTopicRecipe[] = [
     labelKey: 'aiTopicChipSpeaking',
     promptKey: 'aiTopicChipSpeakingPrompt',
     instructions: SPEAKING_TEST_RULES
+  },
+  {
+    id: 'story',
+    group: 'speaking',
+    icon: '💬',
+    labelKey: 'aiTopicChipStory',
+    promptKey: 'aiTopicChipStoryPrompt',
+    instructions: STORY_TALK_RULES
   }
 ];
 

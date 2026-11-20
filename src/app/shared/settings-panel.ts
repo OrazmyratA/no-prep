@@ -508,6 +508,10 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
       case 'word-trail':
         this.settingsForm = this.fb.group({ teamCount: [1] });
         break;
+      case 'puzzle-builder':
+        // First AIT pick = the puzzle (picture jigsaw or syllables), second = the clue (docs/puzzle-builder.md).
+        this.settingsForm = this.fb.group({ ait: [['image']], display: ['one'], pieces: [4] });
+        break;
       default:
         this.settingsForm = this.fb.group({});
     }
@@ -561,6 +565,12 @@ export class SettingsPanelComponent implements OnInit, OnChanges, OnDestroy {
     const giftTopicId = this.settingsForm?.get('giftTopicId')?.value;
     if (giftTopicId == null) return null;
     return this.giftTopics.find(topic => topic.id === giftTopicId)?.name ?? null;
+  }
+
+  /** Puzzle Builder: with Text picked first it is a syllable puzzle, so picture pieces don't apply. */
+  get puzzleTextFirst(): boolean {
+    const ait = this.settingsForm?.get('ait')?.value;
+    return Array.isArray(ait) && ait[0] === 'text';
   }
 
   get customRules(): FormArray {
