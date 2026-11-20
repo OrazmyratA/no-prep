@@ -279,6 +279,16 @@
   white-space: nowrap;
 }
 
+/* Speaking Check: stands out from the scoring buttons (it opens another window). */
+.lb-exam-btn {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #ffffff;
+}
+
+.lb-exam-btn:hover {
+  filter: brightness(1.08);
+}
+
 .lb-header-btn:hover {
   background: var(--np-lb-btn-hover, rgba(99, 102, 241, 0.22));
 }

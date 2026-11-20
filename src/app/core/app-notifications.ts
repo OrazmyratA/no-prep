@@ -32,8 +32,17 @@ const TIPS: TipDefinition[] = [
   { key: 'tipTalkShow', icon: '🎤' },
   { key: 'tipDriveLinks', icon: '🔗' },
   { key: 'tipSeasonalThemes', icon: '🎨' },
-  { key: 'tipAndroidUpdate', icon: '📱' }
+  { key: 'tipAndroidUpdate', icon: '📱' },
+  { key: 'tipStoryTalk', icon: '💬' },
+  { key: 'tipPuzzleBuilder', icon: '🧩' }
 ];
+
+// "What's new" written in the app, in every language, for a version (translation key). It is
+// shown instead of the GitHub release notes, which are English only and cut to one paragraph.
+// Add the next version's entry when releasing, and make sure the key matches the real version.
+const BUILT_IN_WHATS_NEW: Record<string, string> = {
+  '1.25.0': 'whatsNew_1_25_0'
+};
 
 const SEEN_IDS_KEY = 'notificationSeenIds';
 const WHATS_NEW_CACHE_KEY = 'notificationWhatsNewCache';
@@ -143,6 +152,12 @@ export class AppNotificationCenterService implements OnDestroy {
       return;
     }
 
+    const builtIn = BUILT_IN_WHATS_NEW[installedVersion];
+    if (builtIn) {
+      this.setWhatsNewItem(installedVersion, this.lang.translate(builtIn));
+      return;
+    }
+
     const cached = this.readWhatsNewCache();
     if (cached?.version === installedVersion) {
       this.setWhatsNewItem(cached.version, cached.body);
@@ -182,9 +197,11 @@ export class AppNotificationCenterService implements OnDestroy {
       return;
     }
     const version = this.whatsNewItem.id.replace(/^whatsnew-/, '');
+    const builtIn = BUILT_IN_WHATS_NEW[version];
     this.whatsNewItem = {
       ...this.whatsNewItem,
-      title: this.lang.translate('whatsNewTitle', { version })
+      title: this.lang.translate('whatsNewTitle', { version }),
+      ...(builtIn ? { body: this.lang.translate(builtIn) } : {})
     };
   }
 

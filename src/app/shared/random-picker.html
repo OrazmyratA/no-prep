@@ -70,6 +70,15 @@
             [attr.aria-label]="'leaderboardDecrementAllHint' | translate">{{ selectedTopicName }}</h2>
         </div>
         <div class="lb-header-actions">
+          <!-- Speaking Check: this class's speaking test, marked live in its own window. -->
+          <button
+            *ngIf="speakingCheckReady"
+            type="button"
+            class="lb-header-btn lb-exam-btn"
+            (click)="openSpeakingCheck()"
+            [attr.title]="'speakingCheckOpen' | translate">
+            🎤 {{ 'speakingCheckExamButton' | translate }}
+          </button>
           <!-- Group 1: mode — picking Individual/Team first decides everything else below. -->
           <button
             type="button"

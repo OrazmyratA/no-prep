@@ -6,6 +6,8 @@ export interface GameConfig {
   icon: string;
   iconImage?: string;     // optional image path; takes priority over the emoji icon when set
   requiresSettings: boolean;
+  /** Release date (yyyy-mm-dd) of a newly added game: shows "NEW" for a while (core/new-games.ts). */
+  newSince?: string;
   // For backward compatibility, we can keep name/description but they will not be used in template.
   name?: string;
   description?: string;
@@ -59,7 +61,7 @@ export const GAMES: GameConfig[] = [
     id: 'reveal-game',
     nameKey: 'gameRevealGameName',
     descKey: 'gameRevealGameDesc',
-    icon: '\u{1F9E9}',
+    icon: '\u{1F5BC}\u{FE0F}',
     requiresSettings: true,
   },
   {
@@ -126,6 +128,14 @@ export const GAMES: GameConfig[] = [
     requiresSettings: true,
   },  
   {
+    id: 'puzzle-builder',
+    nameKey: 'gamePuzzleBuilderName',
+    descKey: 'gamePuzzleBuilderDesc',
+    icon: '\u{1F9E9}',
+    requiresSettings: true,
+    newSince: '2026-11-20',
+  },
+  {
     id: 'unjumble',
     nameKey: 'gameUnjumbleName',
     descKey: 'gameUnjumbleDesc',
@@ -150,7 +160,7 @@ export const GAMES: GameConfig[] = [
     id: 'spelling-check',
     nameKey: 'gameSpellingCheckName',
     descKey: 'gameSpellingCheckDesc',
-    icon: '\u{1F4DD}',
+    icon: '\u{1F9D0}',
     requiresSettings: true,
   },
   {
@@ -188,6 +198,14 @@ export const GAMES: GameConfig[] = [
     descKey: 'gameTalkShowDesc',
     icon: '\u{1F399}\u{FE0F}',
     requiresSettings: false,
+  },
+  {
+    id: 'story-talk',
+    nameKey: 'gameStoryTalkName',
+    descKey: 'gameStoryTalkDesc',
+    icon: '\u{1F4AC}',
+    requiresSettings: false,
+    newSince: '2026-11-20',
   },
   // Reading Detective and Writing Workshop are structured literacy exercises rather than quick
   // arcade-style games, so they go last — a different kind of activity from everything above.

@@ -125,7 +125,9 @@ body.app-theme-active:not(.app-theme-excluded) .ball-sort-shell,
 body.app-theme-active:not(.app-theme-excluded) app-reveal-game,
 body.app-theme-active:not(.app-theme-excluded) .ws-root,
 body.app-theme-active:not(.app-theme-excluded) .rd-root,
-body.app-theme-active:not(.app-theme-excluded) .ts-root {
+body.app-theme-active:not(.app-theme-excluded) .ts-root,
+body.app-theme-active:not(.app-theme-excluded) .pb-page,
+body.app-theme-active:not(.app-theme-excluded) .st-page {
   background: transparent !important;
 }
 

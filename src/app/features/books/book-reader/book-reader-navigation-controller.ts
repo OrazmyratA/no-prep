@@ -247,6 +247,7 @@ export class BookReaderNavigationController {
       return;
     }
     this.reader.focusMode = !this.reader.focusMode;
+    if (this.reader.focusMode) this.reader.prefetchForFocus();
   }
 
   toggleDrawMode(): void {

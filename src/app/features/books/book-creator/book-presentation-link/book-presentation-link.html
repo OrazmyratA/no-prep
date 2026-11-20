@@ -23,11 +23,11 @@
     </label>
   } @else if (linkedLink; as link) {
     <div class="bpl-linked is-link">
-      <div class="bpl-linked-thumb bpl-link-thumb" [class.is-google]="link.source === 'google'">
-        <span aria-hidden="true">{{ link.source === 'google' ? '🟨' : '🎨' }}</span>
+      <div class="bpl-linked-thumb bpl-link-thumb" [class.is-google]="link.source === 'google'" [class.is-web]="link.source === 'web'" [class.is-html]="link.source === 'html'">
+        <span aria-hidden="true">{{ sourceIcon(link.source) }}</span>
       </div>
       <div class="bpl-linked-text">
-        <span>{{ 'creatorLinkedPresentation' | translate }} · {{ link.source === 'google' ? 'Google Slides' : 'Canva' }}</span>
+        <span>{{ 'creatorLinkedPresentation' | translate }} · {{ sourceName(link.source).nameKey ? (sourceName(link.source).nameKey! | translate) : sourceName(link.source).name }}</span>
         <strong [attr.title]="link.title">{{ link.title }}</strong>
       </div>
       <button type="button" class="bpl-unlink" (click)="unlink()"

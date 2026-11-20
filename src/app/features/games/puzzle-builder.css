@@ -1,0 +1,450 @@
+:host {
+  display: block;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.pb-page {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  padding: 4.2rem 1rem 1rem;
+  background: linear-gradient(135deg, #1e3a8a 0%, #4c1d95 100%);
+  color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pb-page.pb-is-dragging {
+  cursor: grabbing;
+}
+
+.pb-loading {
+  display: grid;
+  place-items: center;
+  height: 60vh;
+}
+
+.pb-spinner {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 3px solid rgb(255 255 255 / 0.25);
+  border-top-color: #ffffff;
+  animation: pbSpin 0.9s linear infinite;
+}
+
+/* ---------- two halves ---------- */
+.pb-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 1rem;
+  height: 100%;
+}
+
+.pb-tray-wrap,
+.pb-tasks-wrap {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.25rem;
+}
+
+.pb-tray-wrap {
+  background:
+    radial-gradient(circle at 20% 10%, rgb(255 255 255 / 0.10), transparent 55%),
+    rgb(15 23 42 / 0.45);
+  box-shadow: inset 0 2px 18px rgb(0 0 0 / 0.35);
+}
+
+.pb-tray {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.pb-tray-inner {
+  position: relative;
+  width: 100%;
+}
+
+/* Dark and see-through on purpose: the app's theme background (it can be bright) shows behind,
+   while white words and dashed outlines stay readable. */
+.pb-tasks-wrap {
+  background: rgb(15 23 42 / 0.38);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.pb-tray-wrap {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.pb-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.7rem;
+}
+
+.pb-nav,
+.pb-hint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  border-radius: 9999px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.pb-nav {
+  width: 2.75rem;
+  background: rgb(255 255 255 / 0.16);
+  color: #ffffff;
+}
+
+.pb-nav svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Quiet scrollbars that suit the dark board. */
+.pb-tray,
+.pb-tasks {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.35) transparent;
+}
+
+.pb-hint {
+  padding: 0 1.2rem;
+  background: #fbbf24;
+  color: #422006;
+  box-shadow: 0 6px 16px -6px rgb(251 191 36 / 0.7);
+}
+
+.pb-hint small {
+  padding: 0.05rem 0.4rem;
+  border-radius: 9999px;
+  background: rgb(66 32 6 / 0.15);
+  font-size: 0.75rem;
+}
+
+.pb-nav:hover:not(:disabled),
+.pb-hint:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.pb-nav:disabled,
+.pb-hint:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pb-shake {
+  animation: pbShake 0.45s ease;
+}
+
+.pb-tasks {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: repeat(var(--pb-columns, 1), minmax(0, 1fr));
+  align-content: start;
+  justify-items: center;
+  gap: 1.25rem;
+  padding: 0.5rem 1rem 1.5rem;
+}
+
+.pb-tasks:not(.pb-tasks-all) {
+  align-content: center;
+}
+
+/* All: four cards, 2 × 2, each filling its quarter (sizes match allFrameScale in the .ts). */
+.pb-tasks.pb-tasks-all.pb-two {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-content: stretch;
+}
+
+.pb-tasks.pb-tasks-all {
+  justify-items: stretch;
+  gap: 14px;
+  padding: 12px;
+}
+
+.pb-tasks-all .pb-card {
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 10px;
+  min-height: 0;
+}
+
+.pb-tasks-all .pb-clue-text {
+  font-size: clamp(1.1rem, 1.8vw, 1.6rem);
+  line-height: 1.2;
+}
+
+/* ---------- one task ---------- */
+.pb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  max-width: 100%;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  background: rgb(255 255 255 / 0.1);
+  transition: box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.pb-card.pb-done {
+  background: rgb(34 197 94 / 0.18);
+  box-shadow: 0 0 0 3px rgb(74 222 128 / 0.75), 0 0 32px rgb(74 222 128 / 0.45);
+}
+
+.pb-audio {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 2;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  font-size: 1.3rem;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+  cursor: pointer;
+}
+
+.pb-clue-image {
+  max-width: min(100%, 22rem);
+  max-height: 34vh;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  object-fit: contain;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.3);
+}
+
+.pb-board {
+  display: block;
+  overflow: visible;
+  max-width: none;
+}
+
+.pb-frame {
+  fill: rgb(255 255 255 / 0.06);
+  stroke: rgb(255 255 255 / 0.35);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.pb-slot {
+  fill: rgb(255 255 255 / 0.05);
+  stroke: rgb(255 255 255 / 0.7);
+  stroke-width: 2;
+  stroke-dasharray: 7 6;
+  vector-effect: non-scaling-stroke;
+  transition: fill 0.2s ease;
+}
+
+.pb-card-text .pb-slot {
+  fill: rgb(255 255 255 / 0.08);
+}
+
+.pb-slot.pb-glow {
+  fill: rgb(251 191 36 / 0.45);
+  stroke: #fbbf24;
+  stroke-dasharray: none;
+  stroke-width: 4;
+  animation: pbPulse 0.8s ease-in-out infinite alternate;
+}
+
+.pb-hit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.pb-placed-edge {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.55);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  transition: stroke 0.6s ease;
+}
+
+.pb-done .pb-placed-edge {
+  stroke: transparent;
+}
+
+.pb-clue-text {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 0.35);
+}
+
+.pb-done-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 9999px;
+  background: #22c55e;
+  font-size: 1.2rem;
+  font-weight: 900;
+  animation: pbPop 0.4s ease-out;
+}
+
+/* ---------- pieces ---------- */
+.pb-piece {
+  position: absolute;
+  transform: rotate(var(--pb-rotate, 0deg));
+  touch-action: none;
+  cursor: grab;
+  filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.45));
+  /* left/top: the pieces slide up when the tray re-packs after a piece is used. */
+  transition: transform 0.15s ease, filter 0.15s ease, left 0.35s ease, top 0.35s ease;
+}
+
+.pb-piece:hover {
+  transform: rotate(var(--pb-rotate, 0deg)) scale(1.04);
+}
+
+.pb-piece.pb-lifted {
+  visibility: hidden;
+}
+
+.pb-piece.pb-selected {
+  transform: rotate(0deg) scale(1.08);
+  filter: drop-shadow(0 0 6px #ffffff) drop-shadow(0 0 14px #60a5fa);
+}
+
+.pb-piece.pb-glow {
+  filter: drop-shadow(0 0 8px #fbbf24) drop-shadow(0 0 18px #f59e0b);
+  animation: pbBob 0.8s ease-in-out infinite alternate;
+}
+
+.pb-piece.pb-wrong {
+  animation: pbShake 0.45s ease;
+}
+
+.pb-ghost {
+  position: fixed;
+  z-index: 60;
+  transform: scale(1.06);
+  pointer-events: none;
+  cursor: grabbing;
+  filter: drop-shadow(0 14px 18px rgb(0 0 0 / 0.5));
+  transition: none;
+}
+
+.pb-piece-art {
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pb-piece-edge {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.85);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.pb-card-shape {
+  stroke: rgb(255 255 255 / 0.9);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.pb-syllable {
+  fill: #ffffff;
+  font-family: inherit;
+  font-size: 44px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 0.25);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+/* ---------- narrow screens: tasks on top, pieces below ---------- */
+@media (max-width: 760px) {
+  .pb-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  .pb-tray-wrap {
+    order: 2;
+  }
+}
+
+@keyframes pbSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pbShake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -8px 0; }
+  50% { translate: 8px 0; }
+  75% { translate: -4px 0; }
+}
+
+@keyframes pbPulse {
+  from { fill-opacity: 0.35; }
+  to { fill-opacity: 1; }
+}
+
+@keyframes pbBob {
+  from { translate: 0 0; }
+  to { translate: 0 -6px; }
+}
+
+@keyframes pbPop {
+  from { transform: scale(0.3); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-piece,
+  .pb-piece.pb-glow,
+  .pb-slot.pb-glow,
+  .pb-done-badge,
+  .pb-shake,
+  .pb-piece.pb-wrong {
+    animation: none;
+    transition: none;
+  }
+}

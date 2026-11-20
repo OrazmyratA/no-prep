@@ -14,6 +14,7 @@ export class BookCreatorLoadingController {
     normalizeBookGuideTimelines(book);
     normalizeBookTracingElements(book);
     this.creator.book = book;
+    this.creator.markPdfChanged();
     this.creator.assetUrlCache.clear();
     this.creator.selectedPageIndex = 0;
     this.creator.selectedElementId = null;

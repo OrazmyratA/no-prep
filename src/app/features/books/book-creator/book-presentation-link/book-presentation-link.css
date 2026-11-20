@@ -120,6 +120,14 @@
   background: linear-gradient(135deg, #fde68a, #f59e0b) !important;
 }
 
+.bpl-link-thumb.is-web {
+  background: linear-gradient(135deg, #7dd3fc, #2563eb) !important;
+}
+
+.bpl-link-thumb.is-html {
+  background: linear-gradient(135deg, #86efac, #059669) !important;
+}
+
 .bpl-linked.is-link {
   border-color: #7d2ae8;
   background: rgb(125 42 232 / 0.08);

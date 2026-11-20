@@ -1,18 +1,24 @@
 import {
   AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnDestroy, ViewChild
 } from '@angular/core';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BookReturn, bookReturnFromQuery, goBackToBook } from '../../core/book-return';
 import { PresentationLink } from '../../core/db.model';
 import { LeaderboardStateService } from '../../core/leaderboard-state';
-import { openPresentationPage, PresentationLinkService, toEmbedTarget } from '../../core/presentation-links';
+import { LINK_SOURCES, openPresentationPage, PresentationLinkService, toLinkTarget } from '../../core/presentation-links';
 import { TranslatePipe } from '../../shared/translate-pipe';
 
 /**
  * Plays a Canva or Google Slides presentation from its link, inside No-Prep: the service's own
  * viewer (its arrows, animations, full screen) fills the stage under No-Prep's bar. It is part of
  * the page, so the class leaderboard simply opens on top of it. Needs the internet.
+ *
+ * Also plays any web page (a sandboxed frame, so it can never move No-Prep away) and an added
+ * .html file. The file runs walled off from No-Prep: in the desktop app from its own private
+ * address (noprep-html://, served by the main process, so it may load its own fonts and scripts
+ * from the internet), elsewhere as an inline document without No-Prep's origin. Either way it can
+ * never read No-Prep's data.
  */
 @Component({
   selector: 'app-presentation-link-player',
@@ -28,6 +34,10 @@ export class PresentationLinkPlayerComponent implements AfterViewInit, OnDestroy
 
   link: PresentationLink | null = null;
   src: SafeResourceUrl | null = null;
+  /** How the frame is shown: the service's viewer, a web page, or an added .html file. */
+  frameKind: 'embed' | 'web' | 'html-app' | 'html-inline' = 'embed';
+  /** The .html file's text, when it is shown inline (web / Android). */
+  srcdoc: SafeHtml | null = null;
   state: 'loading' | 'ready' | 'missing' | 'offline' = 'loading';
   showHelp = false;
   bookReturn: BookReturn | null = null;
@@ -51,11 +61,17 @@ export class PresentationLinkPlayerComponent implements AfterViewInit, OnDestroy
     const id = this.route.snapshot.paramMap.get('id') ?? '';
     const link = await this.links.get(id);
     if (this.destroyed) return;
-    // Only addresses made by toEmbedTarget (Canva / Google Slides) are ever shown.
-    const target = link ? toEmbedTarget(link.embedUrl) ?? toEmbedTarget(link.url) : null;
+    if (link?.source === 'html') {
+      await this.showHtml(link);
+      this.cdr.markForCheck();
+      return;
+    }
+    // Only addresses made by toLinkTarget (Canva / Google Slides embeds, https pages) are shown.
+    const target = link ? toLinkTarget(link.embedUrl) ?? toLinkTarget(link.url) : null;
     if (!link || !target) {
       this.state = 'missing';
     } else {
+      this.frameKind = target.source === 'web' ? 'web' : 'embed';
       this.link = link;
       this.src = this.sanitizer.bypassSecurityTrustResourceUrl(target.embedUrl);
       this.state = navigator.onLine === false ? 'offline' : 'loading';
@@ -71,21 +87,69 @@ export class PresentationLinkPlayerComponent implements AfterViewInit, OnDestroy
   }
 
   retry(): void {
-    if (!this.link) return;
+    if (!this.link || this.link.source === 'html') return;
     this.state = 'loading';
     // A fresh address makes the frame load again.
-    const target = toEmbedTarget(this.link.embedUrl);
-    if (target) this.src = this.sanitizer.bypassSecurityTrustResourceUrl(`${target.embedUrl}&t=${Date.now()}`);
+    const target = toLinkTarget(this.link.embedUrl);
+    if (target) {
+      const url = new URL(target.embedUrl);
+      url.searchParams.set('t', String(Date.now()));
+      this.src = this.sanitizer.bypassSecurityTrustResourceUrl(url.href);
+    }
     this.cdr.markForCheck();
   }
 
+  private async showHtml(link: PresentationLink): Promise<void> {
+    const html = await this.links.htmlOf(link);
+    if (this.destroyed) return;
+    if (!html) {
+      this.state = 'missing';
+      return;
+    }
+    this.link = link;
+    const api = (window as any)?.electronAPI?.presentations;
+    if (typeof api?.serveHtml === 'function') {
+      const served = await api.serveHtml(link.id, html);
+      if (this.destroyed) return;
+      // Only the app's own private address for this file is ever put in the frame.
+      if (served?.ok && typeof served.result === 'string' && served.result.startsWith('noprep-html://')) {
+        this.frameKind = 'html-app';
+        this.src = this.sanitizer.bypassSecurityTrustResourceUrl(served.result);
+        this.state = 'loading';
+        return;
+      }
+    }
+    this.frameKind = 'html-inline';
+    this.srcdoc = this.sanitizer.bypassSecurityTrustHtml(html);
+    this.state = 'loading';
+  }
+
+  get sourceIcon(): string {
+    return LINK_SOURCES[this.link?.source ?? 'canva'].icon;
+  }
+
+  /** The ↗ button: Canva / Google Slides / web pages open in the browser; a file has no page. */
+  get canOpenSite(): boolean {
+    return !!this.link && this.link.source !== 'html';
+  }
+
+  get helpKey(): string {
+    switch (this.link?.source) {
+      case 'google': return 'presentationLinkHelpGoogle';
+      case 'web': return 'presentationLinkHelpWeb';
+      case 'html': return 'presentationLinkHelpHtml';
+      default: return 'presentationLinkHelpCanva';
+    }
+  }
+
   get siteName(): string {
-    return this.link?.source === 'google' ? 'Google Slides' : 'Canva';
+    const source = this.link?.source ?? 'canva';
+    return source === 'web' && this.link ? new URL(this.link.embedUrl).hostname.replace(/^www\./, '') : LINK_SOURCES[source].name;
   }
 
   /** Opens the design on Canva / Google Slides itself (e.g. a private design the teacher is signed in to). */
   openSite(): void {
-    if (this.link) void openPresentationPage(this.link.url);
+    if (this.link && this.link.source !== 'html') void openPresentationPage(this.link.url);
   }
 
   toggleHelp(): void {

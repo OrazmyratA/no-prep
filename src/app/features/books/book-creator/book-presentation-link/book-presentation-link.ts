@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnDestroy
 import { Subscription } from 'rxjs';
 import { BookElement } from '../../../../core/book.model';
 import { PresentationLink } from '../../../../core/db.model';
-import { PresentationLinkService, toEmbedTarget } from '../../../../core/presentation-links';
+import { LINK_SOURCES, LinkSource, PresentationLinkService, toLinkTarget } from '../../../../core/presentation-links';
 import { PresentationItem, PresentationService } from '../../../../core/presentations';
 import { TranslatePipe } from '../../../../shared/translate-pipe';
 
@@ -72,13 +72,24 @@ export class BookPresentationLinkComponent implements OnInit, OnDestroy {
     return this.items.find((item) => item.id === this.linkedId) ?? null;
   }
 
-  /** The linked Canva / Google Slides link (from this device's list, else from the book itself). */
-  get linkedLink(): { title: string; source: 'canva' | 'google' } | null {
+  /**
+   * The linked Canva / Google Slides / web link or .html file (from this device's list, else a
+   * link from the book itself; an .html file lives only on the device it was added on).
+   */
+  get linkedLink(): { title: string; source: LinkSource } | null {
     if (!this.isLinkKind || !this.linkedId) return null;
     const local = this.links.find((link) => link.id === this.linkedId);
     if (local) return local;
-    const target = toEmbedTarget(String(this.element.data['presentationUrl'] || ''));
+    const target = toLinkTarget(String(this.element.data['presentationUrl'] || ''));
     return target ? { title: String(this.element.data['presentationTitle'] || ''), source: target.source } : null;
+  }
+
+  sourceIcon(source: LinkSource): string {
+    return LINK_SOURCES[source]?.icon ?? '🔗';
+  }
+
+  sourceName(source: LinkSource): { name: string; nameKey?: string } {
+    return LINK_SOURCES[source] ?? LINK_SOURCES.canva;
   }
 
   /** The chosen PowerPoint's first slide (loaded once per picture version). */

@@ -20,6 +20,7 @@
       <div *ngFor="let game of games; let i = index"
            (click)="onGameClick(game)"
            class="game-card np-card np-card-lift relative rounded-2xl overflow-hidden"
+           [class.game-card-new]="isNew(game)"
            [style.--game-tint]="gameTint(i)"
            [class.opacity-40.2]="selectedGame && selectedGame !== game"
            [class.np-ring-selected]="selectedGame === game"
@@ -29,6 +30,9 @@
           <img *ngIf="game.iconImage" [src]="game.iconImage" alt="" class="game-card-icon">
           <span *ngIf="!game.iconImage" class="game-card-emoji">{{ game.icon }}</span>
         </div>
+
+        <!-- Newly added game, not started yet on this device (core/new-games.ts). -->
+        <span *ngIf="isNew(game)" class="game-card-new-badge">✨ {{ 'newGameBadge' | translate }}</span>
 
         <!-- Game Info -->
         <div class="game-card-body">

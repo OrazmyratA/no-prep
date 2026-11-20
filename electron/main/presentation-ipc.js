@@ -22,12 +22,22 @@ function registerPresentationIpc({ ipcMain, dialog, fsp, path, app, getMainWindo
     if (!win || win.isDestroyed() || !stageRect) return null;
     const content = win.getContentBounds();
     const zoom = win.webContents.getZoomFactor() || 1;
-    return {
+    const rect = {
       x: Math.round(content.x + stageRect.x * zoom),
       y: Math.round(content.y + stageRect.y * zoom),
       w: Math.max(1, Math.round(stageRect.width * zoom)),
       h: Math.max(1, Math.round(stageRect.height * zoom))
     };
+    // The same box in exact screen pixels for the monitor No-Prep is on (Windows scaling such as
+    // 125 % or 150 % applied). The helper places the slideshow with these.
+    try {
+      const { screen } = require('electron');
+      const px = screen.dipToScreenRect(win, { x: rect.x, y: rect.y, width: rect.w, height: rect.h });
+      if (px && px.width > 0 && px.height > 0) Object.assign(rect, { px: px.x, py: px.y, pw: px.width, ph: px.height });
+    } catch {
+      // Not available: the helper uses the scaled points above.
+    }
+    return rect;
   }
 
   const follow = () => {

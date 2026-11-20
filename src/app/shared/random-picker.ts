@@ -753,6 +753,20 @@ export class RandomPickerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  /**
+   * Speaking Check is not finished (docs/speaking-check.md, steps 3–6): its Exam button stays
+   * hidden until it is. Set to true to show it.
+   */
+  readonly speakingCheckReady = false;
+
+  /** The Exam button: this class's speaking test, marked in the Speaking Check window. */
+  openSpeakingCheck(): void {
+    if (this.selectedTopicId == null) return;
+    const classId = this.selectedTopicId;
+    this.closeOverlay();
+    void this.router.navigate(['/speaking-check'], { queryParams: { classId } });
+  }
+
   @HostListener('window:keydown.escape')
   onEscape() {
     if (this.overlayOpen) this.closeOverlay();

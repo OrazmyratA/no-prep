@@ -510,9 +510,10 @@ export class BookCreatorMediaController {
     if (!baseUrl) return '';
     // Replacing a PDF reuses the same on-disk path (assets/source.pdf), so the URL
     // string never changes on its own — Chromium's network cache and pdf.js would
-    // both keep serving the old bytes for it. Tying a cache-busting query param to
-    // updatedAt forces a real refetch whenever the book (and thus the PDF) changes.
-    const version = encodeURIComponent(this.creator.book.updatedAt || '');
+    // both keep serving the old bytes for it. The cache-busting param changes only when
+    // a PDF may have changed (creator.pdfVersion), NOT on every save: with updatedAt,
+    // each save re-opened the whole PDF and the next page turn showed a white page.
+    const version = encodeURIComponent(this.creator.pdfVersion || '');
     return version ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}v=${version}` : baseUrl;
   }
 

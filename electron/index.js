@@ -25,6 +25,15 @@ if (!isPrimaryInstance) {
 Menu.setApplicationMenu(null);
 protocol.registerSchemesAsPrivileged([
   {
+    // HTML presentations: each added .html file plays from its own origin (html-presentation-host).
+    scheme: 'noprep-html',
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true
+    }
+  },
+  {
     scheme: 'noprep-book',
     privileges: {
       standard: true,
@@ -65,6 +74,7 @@ const {
 } = require('./main/fs-utils');
 const { createArchiveUtils } = require('./main/archive-utils');
 const { createBookAssetProtocol } = require('./main/book-asset-protocol');
+const { createHtmlPresentationHost } = require('./main/html-presentation-host');
 const { createBookRegistryService } = require('./main/book-registry-service');
 const { createBookService } = require('./main/book-service');
 const { createBookStorageService } = require('./main/book-storage-service');
@@ -444,12 +454,18 @@ function createWindow() {
     }
   );
 
-  // Canva / Google Slides presentations play in a frame (presentation-link-player). Their pages
-  // keep their own rules (No-Prep's would break them); only the "may not be shown inside another
-  // page" parts are dropped, because the app itself is a file:// page that those rules don't name.
-  const EMBED_HOSTS = /^https:\/\/([a-z0-9-]+\.)*(canva\.com|docs\.google\.com)\//i;
+  // Web pages shown in a frame (Canva, Google Slides, Wordwall or any site a teacher added as a
+  // presentation, YouTube) keep their own rules: No-Prep's would break their scripts. Only the
+  // "may not be shown inside another page" parts are dropped, because the app itself is a
+  // file:// page those rules don't name. The frame stays sandboxed on the site's own origin,
+  // so the page still cannot reach the app.
+  const FRAMED_PAGE = /^https:\/\//i;
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    if (details.resourceType === 'subFrame' && EMBED_HOSTS.test(details.url)) {
+    if (details.url.startsWith('noprep-html:')) {
+      callback({ responseHeaders: details.responseHeaders });
+      return;
+    }
+    if (details.resourceType === 'subFrame' && FRAMED_PAGE.test(details.url)) {
       const responseHeaders = {};
       for (const [name, value] of Object.entries(details.responseHeaders || {})) {
         const lower = name.toLowerCase();
@@ -476,7 +492,9 @@ function createWindow() {
           "style-src 'self' 'unsafe-inline'; " +
           "img-src 'self' noprep-book: data: blob: https://i.ytimg.com https://*.ytimg.com https://pixabay.com https://cdn.pixabay.com; " +
           "media-src 'self' noprep-book: blob: data:; " +
-          "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://www.canva.com https://docs.google.com; " +
+          // https: covers YouTube, Canva, Google Slides and any web page a teacher added as a
+          // presentation (shown in a sandboxed frame); noprep-html: their added .html files.
+          "frame-src https: noprep-html:; " +
           // Pixabay: image search (API + downloads) for the image uploader and AI topics.
           // GitHub API: release notes for the notification bell's "What's new" (app-notifications.ts).
           // Hugging Face: the speech model for video subtitles (downloaded once, then kept).
@@ -514,6 +532,7 @@ function createWindow() {
 app.whenReady().then(() => {
   if (!isPrimaryInstance) return;
   registerBookAssetProtocol();
+  createHtmlPresentationHost({ app, fsp, path }).register(protocol, ipcMain, { operationResult, operationError });
   createWindow();
 
   // Running from source has no packaged update metadata, so skip the check there entirely

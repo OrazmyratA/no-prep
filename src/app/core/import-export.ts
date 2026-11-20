@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { db, Topic, Item, normalizeCefrLevel, normalizeSpeakingExam } from './db.model';
+import { db, Topic, Item, normalizeCefrLevel, normalizeSpeakingExam, normalizeStoryBubble, StoryBubble } from './db.model';
 import { showAppNotification } from './notification';
 import { DbService } from './db';
 import { PlatformFileService } from './platform-file';
@@ -16,6 +16,8 @@ export interface ExportTopic {
     audio?: string;   
     /** The words on a word-card picture. */
     imageText?: string;
+    /** Story Talk: the item's speech bubble on the story picture. */
+    bubble?: StoryBubble;
     order: number;
   }[];
 }
@@ -143,6 +145,7 @@ const exportItems = await Promise.all(items.map(async item => ({
       image: item.image ? await this.blobToBase64(item.image) : undefined,
       audio: item.audio ? await this.blobToBase64(item.audio) : undefined,  
       ...(item.image && item.imageText ? { imageText: item.imageText } : {}),
+      ...(item.bubble ? { bubble: item.bubble } : {}),
       order: item.order
     })));
     return {
@@ -263,6 +266,7 @@ const exportItems = await Promise.all(items.map(async item => ({
           image,
           audio,          // <-- new
           imageText: image && typeof expItem.imageText === 'string' ? expItem.imageText.slice(0, 500) : undefined,
+          bubble: normalizeStoryBubble(expItem.bubble),
           order: expItem.order ?? idx,
           createdAt: new Date()
         };

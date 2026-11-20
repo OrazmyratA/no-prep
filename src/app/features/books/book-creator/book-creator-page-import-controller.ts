@@ -172,6 +172,7 @@ export class BookCreatorPageImportController {
     const updated = await this.creator.bookLibrary.addWorkbookFromPdf(this.creator.book.id);
     if (!updated) return;
     this.creator.book = updated;
+    this.creator.markPdfChanged();
     const addedWorkbook = this.creator.book.workbooks?.[this.creator.book.workbooks.length - 1] ?? null;
     this.creator.activePageSource = addedWorkbook ? 'workbook' : 'main';
     this.creator.activeWorkbookId = addedWorkbook?.id ?? null;
@@ -188,6 +189,7 @@ export class BookCreatorPageImportController {
     const updated = await this.creator.bookLibrary.replaceMainPdf(this.creator.book.id);
     if (!updated) return;
     this.creator.book = updated;
+    this.creator.markPdfChanged();
     this.creator.activePageSource = 'main';
     this.creator.activeWorkbookId = null;
     // Uploading always puts the book's progress-map page first, so landing on index 0
@@ -210,6 +212,7 @@ export class BookCreatorPageImportController {
       : await this.creator.bookLibrary.replaceWorkbookPdf(this.creator.book.id, null);
     if (!updated) return;
     this.creator.book = updated;
+    this.creator.markPdfChanged();
     const workbook = this.creator.primaryWorkbook;
     this.creator.activePageSource = 'workbook';
     this.creator.activeWorkbookId = workbook?.id ?? null;
@@ -268,6 +271,7 @@ export class BookCreatorPageImportController {
     const result = await this.creator.bookLibrary.insertPdfPages(this.creator.book.id, target, afterPageId, workbookId);
     if (!result) return;
     this.creator.book = result.book;
+    this.creator.markPdfChanged();
 
     if (removeAnchorIfBlank) {
       const pages: Array<{ id: string; type: string; elements?: unknown[] }> = target === 'workbook'

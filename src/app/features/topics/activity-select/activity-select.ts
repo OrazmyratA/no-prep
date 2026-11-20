@@ -2,6 +2,7 @@ import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit } from '
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { GAMES, GameConfig } from '../games.config';
+import { isNewGame, markGamePlayed } from '../../../core/new-games';
 
 const GAME_TINTS = [
   'linear-gradient(160deg, #e0e7ff, #c7d2fe)',
@@ -179,6 +180,8 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
 
   startGame() {
     if (!this.selectedGame || !this.games.some((game) => game.id === this.selectedGame?.id)) return;
+    markGamePlayed(this.selectedGame.id);
+    this.newGameIds.delete(this.selectedGame.id);
     this.router.navigate(['/topics', this.topicId, 'play', this.selectedGame.id], {
       queryParams: {
         ...this.settings,
@@ -186,6 +189,13 @@ export class ActivitySelectComponent implements OnInit, AfterViewInit, OnDestroy
       }
     });
   }
+
+  /** Newly added games the teacher hasn't started yet on this device get a "NEW" badge. */
+  isNew(game: GameConfig): boolean {
+    return this.newGameIds.has(game.id);
+  }
+
+  private readonly newGameIds = new Set(GAMES.filter(game => isNewGame(game)).map(game => game.id));
 
   cancelSelection() {
     this.selectedGame = null;
