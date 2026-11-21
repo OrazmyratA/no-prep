@@ -20,7 +20,11 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # onnxruntime-node (offline subtitle engine, not packed into the app) would download a CUDA
+      # GPU build on Linux, and that download now answers 404 and fails the whole install.
       - run: npm ci
+        env:
+          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
 
       - name: Encrypt premium features
         run: node scripts/encrypt-features.js

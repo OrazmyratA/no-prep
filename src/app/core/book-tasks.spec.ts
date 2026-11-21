@@ -30,6 +30,12 @@ describe('text task answer matching', () => {
     expect(isTextTaskAnswerCorrect(task, 'USA')).toBe(false);
     expect(isTextTaskAnswerCorrect(task, 'U.S.A.')).toBe(true);
   });
+
+  it('counts any written answer as correct on a free-answer task, but not an empty one', () => {
+    const free: BookElement = { ...task, data: { acceptedAnswers: [''], freeAnswer: true } };
+    expect(isTextTaskAnswerCorrect(free, 'My favourite food is plov.')).toBe(true);
+    expect(isTextTaskAnswerCorrect(free, '   ')).toBe(false);
+  });
 });
 
 describe('matching task pairs', () => {

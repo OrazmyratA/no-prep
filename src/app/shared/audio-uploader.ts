@@ -27,6 +27,7 @@ import { LanguageService } from '../core/language';
 import { showAppNotification } from '../core/notification';
 import { SpeechProvider, speechErrorMessageKey } from '../core/speech-error';
 import { AiChoicesService, voiceSourceNameKey } from '../core/ai-topic/ai-choices';
+import { DecodedAudio, audioPeaks, cutToWav, decodeAudioMono } from '../core/audio-wav';
 
 interface NativeAudioRecorderPlugin {
   start(): Promise<void>;
@@ -45,6 +46,26 @@ export interface AudioVoiceChange {
 }
 
 const RENDER_DEBOUNCE_MS = 300;
+/** A recording parts are cut from (e.g. a book's listening track). */
+interface CutTrack {
+  blob: Blob;
+  name: string;
+  /** The item's own clip, as opposed to a separate track file. */
+  isClip: boolean;
+}
+
+/**
+ * The last track a teacher cut from, so the next item can cut from it again without choosing the
+ * file again. Memory only: it is never saved into a topic or a book.
+ */
+let recentTrack: CutTrack | null = null;
+/** An uploaded file this long is a whole track: the cut tool opens instead of saving all of it. */
+const LONG_TRACK_SECONDS = 20;
+const CUT_NUDGE_SECONDS = 0.1;
+const CUT_MIN_SECONDS = 0.2;
+// Few enough to stay visible in the narrow audio column of the topic form.
+const CUT_PEAK_BARS = 90;
+
 // Stays comfortably under the 25 MB per-item ceiling import/export already enforces.
 const MAX_AUDIO_FILE_BYTES = 20 * 1024 * 1024;
 
@@ -102,7 +123,21 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   recordingPermission = false;
   private activeMediaStream: MediaStream | null = null;
 
+  // ✂️ Cut a part: only the part between the flags is saved, never the whole track.
+  cutPanelOpen = false;
+  cutLoading = false;
+  cut: { track: CutTrack; audio: DecodedAudio; peaks: number[]; start: number; end: number } | null = null;
+  cutPlaying = false;
+  cutPlayhead = 0;
+  private cutDrag: 'start' | 'end' | null = null;
+  private cutPlayer: HTMLAudioElement | null = null;
+  private cutPlayerUrl: string | null = null;
+  private cutStopAt: number | null = null;
+  private cutFrame: number | null = null;
+
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('cutFileInput') cutFileInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('cutBar') cutBar?: ElementRef<HTMLElement>;
   @ViewChild('player') player?: ElementRef<HTMLAudioElement>;
 
   constructor(
@@ -149,6 +184,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.closeCut();
     this.clearRenderTimer();
     this.renderSeq++;
     if (this.audioUrl) {
@@ -175,8 +211,274 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
         alert('Please select an audio file (MP3, WAV, OGG, WebM)');
         return;
       }
+      if (this.enableVoiceTools) {
+        // A long file is a whole track (a book's listening): cut the part instead of saving it all.
+        void this.applyOrCut(file);
+        return;
+      }
       this.applyNewSource(file);
     }
+  }
+
+  private async applyOrCut(file: File) {
+    let audio: DecodedAudio | null = null;
+    try {
+      audio = await decodeAudioMono(file);
+    } catch (error) {
+      console.debug('Could not decode the audio file:', error);
+    }
+    this.zone.run(() => {
+      if (audio && audio.duration > LONG_TRACK_SECONDS) {
+        const track: CutTrack = { blob: file, name: file.name, isClip: false };
+        recentTrack = track;
+        this.cutPanelOpen = true;
+        this.showCut(track, audio);
+      } else {
+        this.applyNewSource(file);
+      }
+      if (this.fileInput) this.fileInput.nativeElement.value = '';
+      this.cdr.detectChanges();
+    });
+  }
+
+  // ---- ✂️ Cut a part ----
+
+  get recentTrackName(): string {
+    return recentTrack?.name ?? '';
+  }
+
+  get hasClip(): boolean {
+    return !!(this.sourceBlob || this.audioBlob);
+  }
+
+  /** The ✂️ button: opens on the last track cut from (making many items from one track), else this clip. */
+  toggleCut() {
+    if (this.cutPanelOpen) {
+      this.closeCut();
+      return;
+    }
+    this.cutPanelOpen = true;
+    if (recentTrack) this.cutFromRecent();
+    else if (this.hasClip) this.cutFromClip();
+  }
+
+  cutFromClip() {
+    const blob = this.sourceBlob ?? this.audioBlob;
+    if (!blob) return;
+    void this.loadCut({ blob, name: this.languageService.translate('audioCutThisClip'), isClip: true });
+  }
+
+  cutFromRecent() {
+    if (recentTrack) void this.loadCut(recentTrack);
+  }
+
+  chooseCutFile() {
+    this.cutFileInput?.nativeElement.click();
+  }
+
+  onCutFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (file.size > MAX_AUDIO_FILE_BYTES) {
+      alert('Audio file too large (max 20 MB)');
+      return;
+    }
+    const track: CutTrack = { blob: file, name: file.name, isClip: false };
+    recentTrack = track;
+    void this.loadCut(track);
+  }
+
+  private async loadCut(track: CutTrack) {
+    this.stopCutPreview();
+    this.cutLoading = true;
+    this.cdr.detectChanges();
+    let audio: DecodedAudio | null = null;
+    try {
+      audio = await decodeAudioMono(track.blob);
+    } catch (error) {
+      console.debug('Could not decode the audio to cut:', error);
+    }
+    this.zone.run(() => {
+      this.cutLoading = false;
+      if (audio && audio.duration > 0) {
+        this.showCut(track, audio);
+      } else {
+        showAppNotification(this.languageService.translate('audioCutFailed'), 'error');
+      }
+      this.cdr.detectChanges();
+    });
+  }
+
+  private showCut(track: CutTrack, audio: DecodedAudio) {
+    this.stopCutPreview();
+    this.cut = { track, audio, peaks: audioPeaks(audio.samples, CUT_PEAK_BARS), start: 0, end: audio.duration };
+    this.cutPlayhead = 0;
+    if (this.cutPlayerUrl) URL.revokeObjectURL(this.cutPlayerUrl);
+    this.cutPlayerUrl = URL.createObjectURL(track.blob);
+    const player = new Audio(this.cutPlayerUrl);
+    // Paused at the end flag, by Stop, or at the end of the track: the button says ▶ again.
+    const stopped = () => this.zone.run(() => {
+      this.cutPlaying = false;
+      this.cdr.detectChanges();
+    });
+    player.onpause = stopped;
+    player.onended = stopped;
+    this.cutPlayer = player;
+  }
+
+  closeCut() {
+    this.stopCutPreview();
+    if (this.cutPlayer) {
+      this.cutPlayer.onpause = null;
+      this.cutPlayer.onended = null;
+    }
+    this.cutPanelOpen = false;
+    this.cut = null;
+    this.cutDrag = null;
+    this.cutPlayer = null;
+    if (this.cutPlayerUrl) {
+      URL.revokeObjectURL(this.cutPlayerUrl);
+      this.cutPlayerUrl = null;
+    }
+  }
+
+  isCutPeakInside(index: number): boolean {
+    const cut = this.cut;
+    if (!cut) return false;
+    const time = ((index + 0.5) / cut.peaks.length) * cut.audio.duration;
+    return time >= cut.start && time <= cut.end;
+  }
+
+  cutPercent(seconds: number): number {
+    const duration = this.cut?.audio.duration || 1;
+    return Math.max(0, Math.min(100, (seconds / duration) * 100));
+  }
+
+  formatCutTime(seconds: number): string {
+    const safe = Math.max(0, seconds);
+    const minutes = Math.floor(safe / 60);
+    const rest = safe - minutes * 60;
+    return `${minutes}:${rest < 10 ? '0' : ''}${rest.toFixed(1)}`;
+  }
+
+  /** Click on the recording: listen from there, to find where the words are. */
+  onCutBarPointerDown(event: PointerEvent) {
+    if (!this.cut || this.cutDrag) return;
+    this.playCutFrom(this.timeAt(event.clientX), null);
+  }
+
+  startCutDrag(event: PointerEvent, flag: 'start' | 'end') {
+    event.preventDefault();
+    event.stopPropagation();
+    this.cutDrag = flag;
+    try {
+      (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
+    } catch {
+      // No capture (rare): the drag still follows the pointer while it stays on the flag.
+    }
+  }
+
+  onCutDragMove(event: PointerEvent) {
+    if (!this.cutDrag || !this.cut) return;
+    this.setCutFlag(this.cutDrag, this.timeAt(event.clientX));
+  }
+
+  endCutDrag() {
+    this.cutDrag = null;
+  }
+
+  /** The ◀ ▶ buttons: move a flag by a tenth of a second. */
+  nudgeCut(flag: 'start' | 'end', direction: -1 | 1) {
+    if (!this.cut) return;
+    this.setCutFlag(flag, (flag === 'start' ? this.cut.start : this.cut.end) + direction * CUT_NUDGE_SECONDS);
+  }
+
+  /** "Start here" / "End here": a flag where the listening is now. */
+  setCutFlagAtPlayhead(flag: 'start' | 'end') {
+    this.setCutFlag(flag, this.cutPlayhead);
+  }
+
+  private setCutFlag(flag: 'start' | 'end', seconds: number) {
+    const cut = this.cut;
+    if (!cut) return;
+    const duration = cut.audio.duration;
+    if (flag === 'start') {
+      cut.start = Math.max(0, Math.min(seconds, cut.end - CUT_MIN_SECONDS));
+    } else {
+      cut.end = Math.min(duration, Math.max(seconds, cut.start + CUT_MIN_SECONDS));
+    }
+  }
+
+  private timeAt(clientX: number): number {
+    const bar = this.cutBar?.nativeElement.getBoundingClientRect();
+    const duration = this.cut?.audio.duration ?? 0;
+    if (!bar || !bar.width) return 0;
+    return Math.max(0, Math.min(1, (clientX - bar.left) / bar.width)) * duration;
+  }
+
+  /** ▶ Play the part / ■ Stop. */
+  toggleCutPart() {
+    if (this.cutPlaying) {
+      this.stopCutPreview();
+      return;
+    }
+    if (this.cut) this.playCutFrom(this.cut.start, this.cut.end);
+  }
+
+  private playCutFrom(from: number, stopAt: number | null) {
+    const player = this.cutPlayer;
+    if (!player) return;
+    this.player?.nativeElement.pause();
+    player.currentTime = from;
+    this.cutPlayhead = from;
+    this.cutStopAt = stopAt;
+    player.play().then(() => {
+      this.zone.run(() => { this.cutPlaying = true; });
+      this.followCutPlayhead();
+    }).catch(error => console.debug('Cut preview error:', error));
+  }
+
+  /** Moves the playhead each frame (outside Angular's zone) and stops at the end flag. */
+  private followCutPlayhead() {
+    if (this.cutFrame !== null) cancelAnimationFrame(this.cutFrame);
+    this.zone.runOutsideAngular(() => {
+      const tick = () => {
+        const player = this.cutPlayer;
+        if (!player || player.paused) {
+          this.cutFrame = null;
+          this.zone.run(() => { this.cutPlaying = false; });
+          return;
+        }
+        this.cutPlayhead = player.currentTime;
+        if (this.cutStopAt !== null && player.currentTime >= this.cutStopAt) {
+          player.pause();
+          this.cutPlayhead = this.cutStopAt;
+        }
+        this.cdr.detectChanges();
+        this.cutFrame = requestAnimationFrame(tick);
+      };
+      this.cutFrame = requestAnimationFrame(tick);
+    });
+  }
+
+  private stopCutPreview() {
+    if (this.cutFrame !== null) {
+      cancelAnimationFrame(this.cutFrame);
+      this.cutFrame = null;
+    }
+    this.cutPlayer?.pause();
+    this.cutPlaying = false;
+  }
+
+  /** ✓ Keep this part: it becomes the item's clip, and only it is saved. */
+  keepCut() {
+    const cut = this.cut;
+    if (!cut) return;
+    const blob = cutToWav(cut.audio, cut.start, cut.end);
+    this.closeCut();
+    this.applyNewSource(blob);
   }
 
   async startRecording() {
@@ -313,6 +615,7 @@ export class AudioUploaderComponent implements OnChanges, OnDestroy {
   }
 
   private resetPreview() {
+    this.closeCut();
     if (this.isRecording) {
       if (this.platform.isAndroid()) {
         NativeAudioRecorder.cancel().catch(() => undefined);

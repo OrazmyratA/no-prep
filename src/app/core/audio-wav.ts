@@ -92,3 +92,76 @@ export async function decodeAudioBlobToMonoWav(blob: Blob): Promise<Blob> {
     void audioContext.close();
   }
 }
+
+/** Saved cut clips: mono at this rate is clear for speech and small (about 44 KB a second). */
+export const CUT_SAMPLE_RATE = 22050;
+/** A very short fade at both ends, so a cut in the middle of a sound never clicks. */
+const CUT_FADE_SECONDS = 0.012;
+
+/**
+ * The part [start, end) seconds of mono samples, resampled to `targetRate` (linear, fine for
+ * speech) with short fades at both ends. Pure, so it can be tested without an AudioContext.
+ */
+export function cutSamples(samples: Float32Array, sampleRate: number, start: number, end: number, targetRate = CUT_SAMPLE_RATE): Float32Array {
+  const duration = samples.length / sampleRate;
+  const from = Math.max(0, Math.min(duration, Math.min(start, end)));
+  const to = Math.max(0, Math.min(duration, Math.max(start, end)));
+  const length = Math.max(0, Math.round((to - from) * targetRate));
+  const out = new Float32Array(length);
+  const step = sampleRate / targetRate;
+  const first = from * sampleRate;
+  for (let index = 0; index < length; index++) {
+    const position = first + index * step;
+    const left = Math.floor(position);
+    const right = Math.min(samples.length - 1, left + 1);
+    const weight = position - left;
+    out[index] = (samples[left] ?? 0) * (1 - weight) + (samples[right] ?? 0) * weight;
+  }
+  const fade = Math.min(Math.floor(length / 2), Math.round(CUT_FADE_SECONDS * targetRate));
+  for (let index = 0; index < fade; index++) {
+    const gain = index / fade;
+    out[index] *= gain;
+    out[length - 1 - index] *= gain;
+  }
+  return out;
+}
+
+/** A decoded recording, mono: enough to draw it and cut parts of it. */
+export interface DecodedAudio {
+  samples: Float32Array;
+  sampleRate: number;
+  duration: number;
+}
+
+export async function decodeAudioMono(blob: Blob): Promise<DecodedAudio> {
+  const audioContext = new AudioContext();
+  try {
+    const decoded = await audioContext.decodeAudioData(await blob.arrayBuffer());
+    return { samples: audioBufferToMono(decoded), sampleRate: decoded.sampleRate, duration: decoded.duration };
+  } finally {
+    void audioContext.close();
+  }
+}
+
+/** The part [start, end) seconds as its own small WAV file. */
+export function cutToWav(audio: DecodedAudio, start: number, end: number): Blob {
+  return encodeWavBlob(cutSamples(audio.samples, audio.sampleRate, start, end), CUT_SAMPLE_RATE);
+}
+
+/** Loudness peaks of `bars` equal slices (0-1), to draw the recording so speech is easy to find. */
+export function audioPeaks(samples: Float32Array, bars: number): number[] {
+  const peaks: number[] = [];
+  const size = Math.max(1, Math.floor(samples.length / Math.max(1, bars)));
+  let loudest = 0;
+  for (let bar = 0; bar < bars; bar++) {
+    let peak = 0;
+    const end = Math.min(samples.length, (bar + 1) * size);
+    for (let index = bar * size; index < end; index++) {
+      const value = Math.abs(samples[index]);
+      if (value > peak) peak = value;
+    }
+    peaks.push(peak);
+    if (peak > loudest) loudest = peak;
+  }
+  return loudest > 0 ? peaks.map(peak => peak / loudest) : peaks;
+}

@@ -12,9 +12,16 @@ export function getAcceptedTextTaskAnswers(element: BookElement): string[] {
     .filter(Boolean);
 }
 
+/** A free-answer text task: answers vary, so anything the student writes counts as correct. */
+export function isTextTaskFreeAnswer(element: BookElement): boolean {
+  return element.type === 'textTask' && element.data?.['freeAnswer'] === true;
+}
+
 export function isTextTaskAnswerCorrect(element: BookElement, response: string): boolean {
   const value = comparableAnswer(response);
-  return !!value && getAcceptedTextTaskAnswers(element).some((answer) => comparableAnswer(answer) === value);
+  if (!value) return false;
+  if (isTextTaskFreeAnswer(element)) return true;
+  return getAcceptedTextTaskAnswers(element).some((answer) => comparableAnswer(answer) === value);
 }
 
 /**

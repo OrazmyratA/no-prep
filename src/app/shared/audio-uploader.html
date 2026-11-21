@@ -1,5 +1,6 @@
 <div class="border-2 border-gray-300 rounded-lg overflow-hidden">
   <input type="file" accept="audio/*" #fileInput (change)="onFileSelected($event)" class="hidden">
+  <input type="file" accept="audio/*" #cutFileInput (change)="onCutFileSelected($event)" class="hidden">
   <div class="flex border-b border-gray-300">
     <button type="button" (click)="triggerFileInput()"
             [attr.aria-label]="'upload' | translate"
@@ -37,6 +38,70 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5L6 9H3v6h3l5 4V5zm4.5 3.5a5 5 0 010 7m2.5-9.5a9 9 0 010 12"></path>
       </svg>
     </button>
+    <button type="button" *ngIf="enableVoiceTools" (click)="toggleCut()"
+            [attr.aria-label]="'audioCutButton' | translate"
+            [attr.title]="'audioCutButton' | translate"
+            [attr.aria-pressed]="cutPanelOpen"
+            [class.bg-blue-100]="cutPanelOpen"
+            class="flex-1 flex items-center justify-center py-2 text-base bg-gray-100 hover:bg-gray-200 border-l border-gray-300">✂️</button>
+  </div>
+
+  <!-- ✂️ Cut a part: only the part between the flags is saved, never the whole track. -->
+  <div *ngIf="enableVoiceTools && cutPanelOpen" class="audio-cut p-3 border-b border-gray-300">
+    <div class="audio-cut-sources">
+      <button type="button" *ngIf="hasClip" (click)="cutFromClip()"
+              class="audio-cut-source" [class.on]="cut?.track?.isClip">{{ 'audioCutThisClip' | translate }}</button>
+      <button type="button" *ngIf="recentTrackName" (click)="cutFromRecent()"
+              class="audio-cut-source" [class.on]="cut && !cut.track.isClip" [attr.title]="recentTrackName">🎧 {{ recentTrackName }}</button>
+      <button type="button" (click)="chooseCutFile()" class="audio-cut-source">📂 {{ 'audioCutChooseFile' | translate }}</button>
+    </div>
+
+    <div *ngIf="cutLoading" class="flex justify-center py-3"><span class="audio-spinner" aria-hidden="true"></span></div>
+
+    <ng-container *ngIf="cut && !cutLoading">
+      <div #cutBar class="audio-cut-bar" (pointerdown)="onCutBarPointerDown($event)"
+           [attr.title]="'audioCutHint' | translate">
+        <span *ngFor="let peak of cut.peaks; let i = index" class="audio-cut-peak"
+              [class.inside]="isCutPeakInside(i)" [style.height.%]="6 + peak * 94"></span>
+        <span class="audio-cut-shade" [style.left.%]="0" [style.width.%]="cutPercent(cut.start)"></span>
+        <span class="audio-cut-shade" [style.left.%]="cutPercent(cut.end)" [style.right.%]="0"></span>
+        <span *ngIf="cutPlaying || cutPlayhead > 0" class="audio-cut-playhead" [style.left.%]="cutPercent(cutPlayhead)"></span>
+        <button type="button" class="audio-cut-flag audio-cut-flag-start" [style.left.%]="cutPercent(cut.start)"
+                (pointerdown)="startCutDrag($event, 'start')" (pointermove)="onCutDragMove($event)"
+                (pointerup)="endCutDrag()" (pointercancel)="endCutDrag()"
+                [attr.aria-label]="'audioCutStart' | translate"></button>
+        <button type="button" class="audio-cut-flag audio-cut-flag-end" [style.left.%]="cutPercent(cut.end)"
+                (pointerdown)="startCutDrag($event, 'end')" (pointermove)="onCutDragMove($event)"
+                (pointerup)="endCutDrag()" (pointercancel)="endCutDrag()"
+                [attr.aria-label]="'audioCutEnd' | translate"></button>
+      </div>
+
+      <div class="audio-cut-times tabular-nums">
+        {{ formatCutTime(cut.start) }} → {{ formatCutTime(cut.end) }} · <strong>{{ (cut.end - cut.start) | number:'1.1-1' }} s</strong>
+      </div>
+
+      <div class="audio-cut-edges">
+        <div class="audio-cut-edge">
+          <button type="button" (click)="nudgeCut('start', -1)" [attr.aria-label]="('audioCutStart' | translate) + ' −0.1 s'">‹</button>
+          <button type="button" (click)="nudgeCut('start', 1)" [attr.aria-label]="('audioCutStart' | translate) + ' +0.1 s'">›</button>
+          <button type="button" class="audio-cut-here" (click)="setCutFlagAtPlayhead('start')">⟦ {{ 'audioCutStartHere' | translate }}</button>
+        </div>
+        <div class="audio-cut-edge">
+          <button type="button" class="audio-cut-here" (click)="setCutFlagAtPlayhead('end')">{{ 'audioCutEndHere' | translate }} ⟧</button>
+          <button type="button" (click)="nudgeCut('end', -1)" [attr.aria-label]="('audioCutEnd' | translate) + ' −0.1 s'">‹</button>
+          <button type="button" (click)="nudgeCut('end', 1)" [attr.aria-label]="('audioCutEnd' | translate) + ' +0.1 s'">›</button>
+        </div>
+      </div>
+
+      <div class="audio-cut-actions">
+        <button type="button" (click)="toggleCutPart()" class="audio-cut-play">
+          {{ cutPlaying ? '■ ' + ('audioCutStop' | translate) : '&#x25B6;&#xFE0E; ' + ('audioCutPlayPart' | translate) }}
+        </button>
+        <button type="button" (click)="keepCut()" class="audio-cut-keep">✓ {{ 'audioCutKeep' | translate }}</button>
+        <button type="button" (click)="closeCut()" class="audio-cut-cancel">{{ 'cancel' | translate }}</button>
+      </div>
+      <p class="audio-cut-hint">{{ 'audioCutHint' | translate }}</p>
+    </ng-container>
   </div>
   <div *ngIf="enableVoiceTools && !canGenerateVoice && textPanelOpen"
        class="p-3 border-b border-gray-300 text-sm text-gray-600 text-center">

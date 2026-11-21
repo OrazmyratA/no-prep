@@ -43,11 +43,12 @@ export function storyBubblesToPicture(items: readonly AiItemDraft[]): AiItemDraf
   const result = items.map(item => ({ ...item }));
   let picture: AiItemDraft | null = null;
   for (const item of result) {
-    if (!item.text.trim() && item.imageKind !== 'none') {
+    const area = itemArea(item.text);
+    // A picture item (the first one may carry the story's name as its text); bubbles have no picture.
+    if (!area && item.imageKind !== 'none') {
       picture = item;
       continue;
     }
-    const area = itemArea(item.text);
     if (!area) continue;
     item.text = setItemArea(item.text, null);
     item.audioText = setItemArea(item.audioText, null);
