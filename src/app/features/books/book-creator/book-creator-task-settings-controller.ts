@@ -43,6 +43,13 @@ export class BookCreatorTaskSettingsController {
     element.data['acceptedAnswers'] = answers;
   }
 
+  setTextTaskFreeAnswer(element: BookElement, free: boolean): void {
+    if (element.type !== 'textTask' || (element.data['freeAnswer'] === true) === free) return;
+    this.creator.captureHistory();
+    if (free) element.data['freeAnswer'] = true;
+    else delete element.data['freeAnswer'];
+  }
+
   getChoiceTaskBanks(): BookWordBank[] {
     return this.creator.selectedPage?.wordBanks || [];
   }

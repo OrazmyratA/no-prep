@@ -41,7 +41,8 @@ const TIPS: TipDefinition[] = [
 // shown instead of the GitHub release notes, which are English only and cut to one paragraph.
 // Add the next version's entry when releasing, and make sure the key matches the real version.
 const BUILT_IN_WHATS_NEW: Record<string, string> = {
-  '1.25.0': 'whatsNew_1_25_0'
+  '1.25.0': 'whatsNew_1_25_0',
+  '1.26.0': 'whatsNew_1_26_0'
 };
 
 const SEEN_IDS_KEY = 'notificationSeenIds';

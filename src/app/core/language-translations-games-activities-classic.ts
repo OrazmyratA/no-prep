@@ -1965,4 +1965,30 @@ export const GAME_CLASSIC_ACTIVITY_TRANSLATIONS: TranslationDictionary = {
   sa: 'جديد',
   vi: 'Mới',
 },
+
+'storyTalkPlayStory': {
+  en: 'Listen to the story',
+  tk: 'Hekaýany diňle',
+  ru: 'Слушать историю',
+  cn: '听故事',
+  cde: 'Geschichte anhören',
+  es: 'Escuchar la historia',
+  fr: 'Écouter l\'histoire',
+  kr: '이야기 듣기',
+  sa: 'استمع إلى القصة',
+  vi: 'Nghe câu chuyện',
+},
+
+'storyTalkPauseStory': {
+  en: 'Pause the story',
+  tk: 'Hekaýany saklat',
+  ru: 'Остановить историю',
+  cn: '暂停故事',
+  cde: 'Geschichte anhalten',
+  es: 'Pausar la historia',
+  fr: 'Mettre l\'histoire en pause',
+  kr: '이야기 일시 정지',
+  sa: 'إيقاف القصة مؤقتًا',
+  vi: 'Tạm dừng câu chuyện',
+},
 };

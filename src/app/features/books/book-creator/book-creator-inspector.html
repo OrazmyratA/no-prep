@@ -401,6 +401,15 @@
       </label>
     </div>
     <div class="text-task-settings" *ngIf="element.type === 'textTask'">
+      <label class="circle-correct-toggle">
+        <input
+          type="checkbox"
+          [ngModel]="element.data['freeAnswer'] === true"
+          (ngModelChange)="creator.setTextTaskFreeAnswer(element, $event)">
+        <span>{{ 'creatorFreeAnswer' | translate }}</span>
+      </label>
+      <p class="text-task-free-hint" *ngIf="element.data['freeAnswer'] === true">{{ 'creatorFreeAnswerHint' | translate }}</p>
+      <ng-container *ngIf="element.data['freeAnswer'] !== true">
       <div
         class="text-task-answer-row"
         [class.pending]="last && !answer"
@@ -422,6 +431,7 @@
           <img src="assets/images/book/delete.png" alt="">
         </button>
       </div>
+      </ng-container>
     </div>
     <div class="choice-task-settings" *ngIf="element.type === 'choiceTask'">
       <div class="choice-bank-picker">
@@ -893,7 +903,18 @@
             (pointerdown)="creator.startGuideTrackSeekDrag($event, element, track)"
             (click)="$event.stopPropagation()"
             (dragstart)="$event.preventDefault()">
-            <div class="guide-track-scrubber">
+            <div class="guide-track-scrubber" [class.has-wave]="!!creator.getGuideTrackWave(track)">
+              <div
+                class="guide-track-wave"
+                *ngIf="creator.getGuideTrackWave(track) as wave"
+                [style.width.%]="creator.getGuideWaveWidth(track, wave)"
+                aria-hidden="true">
+                <span
+                  *ngFor="let peak of wave.peaks; let j = index"
+                  class="guide-wave-bar"
+                  [ngClass]="creator.getGuideWaveBarState(track, wave, j)"
+                  [style.height.%]="6 + peak * 94"></span>
+              </div>
               <div
                 class="guide-trim-range"
                 [style.left.%]="creator.getGuideTrackTrimRange(track).start / creator.getGuideTrackDuration(track) * 100"

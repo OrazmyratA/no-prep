@@ -28,6 +28,20 @@
         <button type="button" class="st-zoom-btn" (click)="zoomIn()" [disabled]="!canZoomIn"
                 [attr.aria-label]="'storyTalkZoomIn' | translate" [attr.title]="'storyTalkZoomIn' | translate">+</button>
       </div>
+      <!-- The story's name and its whole recording: the first picture item's text and audio. -->
+      @if (storyTitle || storyAudio) {
+        <div class="np-game-pill st-story" [class.st-story-playing]="storyPlaying" (click)="$event.stopPropagation()">
+          @if (storyAudio) {
+            <button type="button" class="st-story-play" (click)="toggleStory()"
+                    [attr.aria-pressed]="storyPlaying"
+                    [attr.aria-label]="(storyPlaying ? 'storyTalkPauseStory' : 'storyTalkPlayStory') | translate"
+                    [attr.title]="(storyPlaying ? 'storyTalkPauseStory' : 'storyTalkPlayStory') | translate">{{ storyPlaying ? '⏸' : '🔊' }}</button>
+          }
+          @if (storyTitle) {
+            <span class="st-story-title" [attr.title]="storyTitle">{{ storyTitle }}</span>
+          }
+        </div>
+      }
     }
   </div>
   <h1 class="sr-only">{{ 'gameStoryTalkName' | translate }}</h1>

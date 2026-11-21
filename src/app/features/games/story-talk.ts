@@ -92,6 +92,11 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
   adjusting = false;
   /** 1 = all pictures fit the screen. */
   zoom = 1;
+  /** The story's name: the first picture item's text ('' = none shown). */
+  storyTitle = '';
+  /** The whole story's recording: the first picture item's audio. */
+  storyAudio: HTMLAudioElement | null = null;
+  storyPlaying = false;
 
   scenes: Scene[] = [];
   bubbles: Bubble[] = [];
@@ -104,6 +109,7 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
   chipsOnTop = false;
 
   keyboardShortcuts: GameKeyboardShortcut[] = [
+    { key: 'L', action: 'Play or pause the story' },
     { key: 'Esc', action: 'Close the words' },
     { key: '+ / −', action: 'Zoom in or out' },
     { key: '0', action: 'Fit the screen' },
@@ -159,6 +165,11 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
         const imageUrl = this.urlFor(scene.picture.image!);
         return { id: index, picture: scene.picture, imageUrl, aspect: await this.aspectOf(imageUrl), bubbles: [] as Bubble[] };
       }));
+      // The first picture item is the story's cover: its text is the story's name, its audio the
+      // whole story's recording (both optional).
+      const cover = found[0].picture;
+      this.storyTitle = cover.text?.trim() ?? '';
+      if (cover.audio) this.storyAudio = this.makeStoryAudio(cover.audio);
       this.bubbles = found.flatMap((scene, sceneIndex) => scene.bubbles.map((item, index) => {
         const bubble = this.makeBubble(item, sceneIndex, item.bubble ?? defaultBubble(index));
         this.scenes[sceneIndex].bubbles.push(bubble);
@@ -183,6 +194,7 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
     this.timers.clear();
     this.resizeObserver?.disconnect();
     this.trackedAudio.stop();
+    this.storyAudio?.pause();
     window.speechSynthesis?.cancel();
     this.objectUrls.forEach(url => URL.revokeObjectURL(url));
     Object.values(this.sounds).forEach(sound => sound?.pause());
@@ -406,6 +418,7 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
 
   async say(bubble: Bubble) {
     const item = bubble.item;
+    this.pauseStory();
     this.trackedAudio.stop();
     window.speechSynthesis?.cancel();
     if (item.audio) {
@@ -584,6 +597,8 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
 
   restart() {
     this.timers.clear();
+    this.pauseStory();
+    if (this.storyAudio) this.storyAudio.currentTime = 0;
     this.trackedAudio.stop();
     window.speechSynthesis?.cancel();
     this.stars = 0;
@@ -595,7 +610,38 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
     this.relayout();
   }
 
+  // ---- The whole story's recording (the top 🔊) ----
+
+  private makeStoryAudio(blob: Blob): HTMLAudioElement {
+    const audio = new Audio(this.urlFor(blob));
+    audio.preload = 'auto';
+    // The element's events fire outside Angular's zone.
+    audio.onended = () => this.zone.run(() => { this.storyPlaying = false; });
+    audio.onpause = () => this.zone.run(() => { this.storyPlaying = false; });
+    audio.onplay = () => this.zone.run(() => { this.storyPlaying = true; });
+    return audio;
+  }
+
+  /** Plays the story from where it was paused (from the start once it ended), or pauses it. */
+  toggleStory() {
+    const audio = this.storyAudio;
+    if (!audio) return;
+    if (!audio.paused) {
+      audio.pause();
+      return;
+    }
+    this.trackedAudio.stop();
+    window.speechSynthesis?.cancel();
+    if (audio.ended) audio.currentTime = 0;
+    audio.play().catch(error => console.debug('Story audio error:', error));
+  }
+
+  private pauseStory() {
+    if (this.storyAudio && !this.storyAudio.paused) this.storyAudio.pause();
+  }
+
   onMenuAction(action: string) {
+    this.pauseStory();
     this.trackedAudio.stop();
     if (action === 'activity') this.router.navigate(['/topics', this.topicId, 'activities']);
     else if (action === 'startover') this.restart();
@@ -614,6 +660,9 @@ export class StoryTalkComponent implements OnInit, OnDestroy {
     } else if ((key === '-' || key === '_') && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       this.zoomOut();
+    } else if (key === 'l' && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      this.toggleStory();
     } else if (key === '0' && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       this.resetZoom();

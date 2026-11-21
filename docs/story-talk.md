@@ -12,6 +12,7 @@ It is a normal topic, made in the topic form.
 | Item | What it is |
 |---|---|
 | Picture item (picture, no text) | One story page (or the story part of a page). |
+| The FIRST picture item's text and audio (both optional) | The story's name and the whole story's recording, shown in the top bar as 🔊 + name. |
 | Sentence items after it (text, no picture) | One speech bubble each, in reading order. |
 
 - **✨ AI → Story bubbles** (speaking chips): attach the story pages (photos, PDF pages, or book pages).
@@ -34,6 +35,9 @@ If the teacher crops a picture later, its bubbles must be adjusted again on the 
 ## The game board
 
 - **All pictures on one screen**: the grid with the number of columns that shows them biggest.
+- **Story name and recording** (top bar, last pill): 🔊 plays the whole story (the first picture
+  item's audio), ⏸ pauses it, the next click continues; a bubble's reading pauses it. Key L.
+  The name is the first picture item's text. With neither, the pill isn't shown.
 - **Zoom** (top bar: − 100 % +): everything scales together (pictures, bubbles, words). 50 % to 300 %.
   Bigger than the screen = the board scrolls; the middle stays in view while zooming. Clicking the
   percentage fits the screen again. Keys: + / −, 0; Ctrl + mouse wheel. Not saved: each game opens fitted.

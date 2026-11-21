@@ -408,6 +408,13 @@
   gap: 0.45rem;
 }
 
+.text-task-free-hint {
+  margin: 0;
+  color: #475569;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .mark-settings {
   display: grid;
   gap: 0.65rem;
@@ -1716,6 +1723,58 @@
   pointer-events: none;
   z-index: 3;
   will-change: left;
+}
+
+/* Loudness bars (like the ✂️ cut panel): where the voice starts and ends is easy to see. */
+.guide-track-scrubber.has-wave {
+  min-height: 3rem;
+  border-radius: 0.4rem;
+  background: #e2e8f0;
+}
+
+.guide-track-wave {
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.guide-wave-bar {
+  flex: 1 1 0;
+  min-width: 0;
+  border-right: 1px solid transparent;
+  background-clip: padding-box;
+  background-color: #94a3b8;
+}
+
+.guide-wave-bar.inside {
+  background-color: #60a5fa;
+}
+
+.guide-wave-bar.played {
+  background-color: #2563eb;
+}
+
+/* With bars, the range input and the trim strip would only cover them; the bars show both. */
+.guide-track-scrubber.has-wave input[type='range'],
+.guide-track-scrubber.has-wave .guide-trim-range {
+  opacity: 0;
+}
+
+.guide-track-scrubber.has-wave .guide-track-playhead {
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  height: auto;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 1px;
+  background: #0f172a;
+  box-shadow: none;
 }
 
 .guide-track-footer {

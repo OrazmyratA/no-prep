@@ -30,6 +30,17 @@ describe('storyBubblesToPicture', () => {
     expect(items[2].bubble).toBeTruthy();
   });
 
+  it('keeps the story title on the first picture and still places its bubbles', () => {
+    const items = storyBubblesToPicture([
+      draft('At the party', { imageKind: 'pageCrop', imagePage: 0, imageCrop: { x: 0, y: 0, width: 1, height: 1 } }),
+      draft('Sorry. {@500,500,560,600}')
+    ]);
+    expect(items[0].text).toBe('At the party');
+    expect(items[0].storyPage).toBe(true);
+    expect(items[1].text).toBe('Sorry.');
+    expect(items[1].bubble).toBeTruthy();
+  });
+
   it('uses the padded crop the picture is really cut with', () => {
     const crop = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
     const padded = paddedCropBox(crop);

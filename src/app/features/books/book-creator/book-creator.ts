@@ -14,6 +14,7 @@ import { BookLibraryService } from '../../../core/book-library';
 import { PlatformFileService } from '../../../core/platform-file';
 import { GuidePitchService } from '../../../core/guide-pitch';
 import { AudioVoiceChange } from '../../../shared/audio-uploader';
+import { audioPeaks, decodeAudioMono } from '../../../core/audio-wav';
 import {
   AudioVoiceService,
   VOICE_LANGUAGES,
@@ -96,6 +97,14 @@ import { BookCreatorLoadingController } from './book-creator-loading-controller'
 import { AiPagesError } from './book-creator-game-controller';
 import { AiTopicService } from '../../../core/ai-topic/ai-topic.service';
 import { AiPageHandoffService } from '../../../core/ai-topic/ai-page-handoff.service';
+
+/** Bars in a guide-dot track's loudness picture. */
+const GUIDE_WAVE_BARS = 70;
+
+interface GuideTrackWave {
+  peaks: number[];
+  duration: number;
+}
 
 @Component({
   selector: 'app-book-creator',
@@ -294,6 +303,8 @@ Tomorrow I will help my mom.`;
   private previewPitchRestartTimer: number | null = null;
   private previewToken = 0;
   private guideTrackSeekTimes: Record<string, number> = {};
+  /** Loudness bars per recording file; null while reading or when the file can't be read. */
+  private readonly guideTrackWaves = new Map<string, GuideTrackWave | null>();
   previewGuideTrackId: string | null = null;
   private timelinePinDragState: {
     elementId: string;
@@ -2378,6 +2389,10 @@ Tomorrow I will help my mom.`;
     this.taskSettingsController.removeTextTaskAnswer(element, index);
   }
 
+  setTextTaskFreeAnswer(element: BookElement, free: boolean): void {
+    this.taskSettingsController.setTextTaskFreeAnswer(element, free);
+  }
+
   getChoiceTaskBanks(): BookWordBank[] {
     return this.taskSettingsController.getChoiceTaskBanks();
   }
@@ -2484,6 +2499,48 @@ Tomorrow I will help my mom.`;
     const duration = Number(track.duration || (this.previewGuideTrackId === track.id ? this.previewGuideDuration : 0));
     const lastPinTime = Math.max(0, ...(track.pins || []).map((pin) => Number(pin.time) || 0));
     return Math.max(1, Number.isFinite(duration) ? duration : 0, lastPinTime);
+  }
+
+  /**
+   * Loudness bars for a guide-dot recording, like the ✂️ cut panel, so the teacher can see where
+   * speech starts and ends. Read once per file (copies of a dot share one file) and kept in memory.
+   */
+  getGuideTrackWave(track: GuideAudioTrack): GuideTrackWave | null {
+    const src = track.src;
+    if (!src || !this.book) return null;
+    const cached = this.guideTrackWaves.get(src);
+    if (cached !== undefined) return cached || null;
+    this.guideTrackWaves.set(src, null);
+    const url = this.bookLibrary.getAssetUrl(this.book.id, src);
+    if (!url) return null;
+    void (async () => {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) return;
+        const audio = await decodeAudioMono(await response.blob());
+        if (!audio.duration) return;
+        this.guideTrackWaves.set(src, {
+          peaks: audioPeaks(audio.samples, GUIDE_WAVE_BARS),
+          duration: audio.duration
+        });
+        this.cdr.markForCheck();
+      } catch {
+        // No bars for a file the browser can't read; the plain line stays.
+      }
+    })();
+    return null;
+  }
+
+  /** Width of the bars as a share of the timeline (the timeline can run past the file for a late pin). */
+  getGuideWaveWidth(track: GuideAudioTrack, wave: GuideTrackWave): number {
+    return Math.min(100, (wave.duration / this.getGuideTrackDuration(track)) * 100);
+  }
+
+  getGuideWaveBarState(track: GuideAudioTrack, wave: GuideTrackWave, index: number): 'outside' | 'played' | 'inside' {
+    const time = ((index + 0.5) / wave.peaks.length) * wave.duration;
+    const range = this.getGuideTrackTrimRange(track);
+    if (time < range.start || time > range.end) return 'outside';
+    return time <= this.getGuideTrackCurrentTime(track) ? 'played' : 'inside';
   }
 
   formatGuideTime(value: number): string {

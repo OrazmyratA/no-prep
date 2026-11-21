@@ -4290,4 +4290,30 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     sa: '{n} كلمات',
     vi: '{n} từ',
   },
+
+'creatorFreeAnswer': {
+  en: 'Any answer is correct',
+  tk: 'Islendik jogap dogry',
+  ru: 'Любой ответ верный',
+  cn: '任何答案都正确',
+  cde: 'Jede Antwort ist richtig',
+  es: 'Cualquier respuesta es correcta',
+  fr: 'Toute réponse est correcte',
+  kr: '어떤 답이든 정답',
+  sa: 'أي إجابة صحيحة',
+  vi: 'Mọi câu trả lời đều đúng',
+},
+
+'creatorFreeAnswerHint': {
+  en: 'Answers vary here, so anything the student writes counts as correct.',
+  tk: 'Bu ýerde jogaplar dürli bolýar, şonuň üçin okuwçynyň ýazan islendik zady dogry hasaplanýar.',
+  ru: 'Ответы здесь бывают разными, поэтому всё, что напишет ученик, считается верным.',
+  cn: '这里的答案各不相同，所以学生写的任何内容都算正确。',
+  cde: 'Die Antworten sind hier verschieden, darum zählt alles, was das Kind schreibt, als richtig.',
+  es: 'Aquí las respuestas varían, así que todo lo que escriba el alumno cuenta como correcto.',
+  fr: 'Les réponses varient ici, donc tout ce que l\'élève écrit compte comme correct.',
+  kr: '여기는 답이 다양해서 학생이 쓴 것은 모두 정답으로 처리돼요.',
+  sa: 'تختلف الإجابات هنا، لذا يُحتسب أي شيء يكتبه الطالب صحيحًا.',
+  vi: 'Ở đây câu trả lời có thể khác nhau, nên học sinh viết gì cũng được tính là đúng.',
+},
 };

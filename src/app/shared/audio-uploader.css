@@ -22,3 +22,206 @@
     transform: rotate(360deg);
   }
 }
+
+/* ---------- ✂️ Cut a part ---------- */
+.audio-cut {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: #f8fafc;
+}
+
+.audio-cut-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.audio-cut-source {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.audio-cut-source.on {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+/* The recording drawn as loudness bars; the part between the flags is blue. */
+.audio-cut-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 3.6rem;
+  /* No padding: the flags and the sound bars must share the same left and right edge. */
+  padding: 0;
+  border-radius: 0.5rem;
+  background: #e2e8f0;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+.audio-cut-peak {
+  flex: 1 1 0;
+  min-width: 0;
+  /* A see-through edge keeps the bars apart without a gap that could squeeze them to nothing. */
+  border-right: 1px solid transparent;
+  background-clip: padding-box;
+  background-color: #94a3b8;
+  pointer-events: none;
+}
+
+.audio-cut-peak.inside {
+  background-color: #2563eb;
+}
+
+.audio-cut-shade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgb(15 23 42 / 0.12);
+  pointer-events: none;
+}
+
+.audio-cut-playhead {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: #ef4444;
+  pointer-events: none;
+}
+
+.audio-cut-flag {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 16px;
+  margin-left: -8px;
+  border: 0;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.audio-cut-flag::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 3px;
+  border-radius: 2px;
+  background: #f59e0b;
+}
+
+.audio-cut-flag::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: #f59e0b;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.audio-cut-times {
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.audio-cut-times strong {
+  color: #1e3a8a;
+}
+
+.audio-cut-edges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.audio-cut-edge {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.audio-cut-edge > button {
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.35rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.audio-cut-edge > .audio-cut-here {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.audio-cut-length {
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
+.audio-cut-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.audio-cut-actions > button {
+  flex: 1 1 auto;
+  padding: 0.4rem 0.7rem;
+  border-radius: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audio-cut-play {
+  border: 1px solid #2563eb;
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+.audio-cut-keep {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.audio-cut-cancel {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+}
+
+.audio-cut-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
