@@ -96,7 +96,8 @@
                 class="check-btn" [class.checked]="isCurrentChecked">
           <img src="assets/images/check-mark.png" alt="" class="check-icon">
         </button>
-        <button (click)="nextItem()" [disabled]="currentIndex === items.length - 1 || revealing"
+        <button (click)="nextItem()" [disabled]="(currentIndex === items.length - 1 && !nextReady) || revealing"
+                [class.np-next-ready]="nextReady && !revealing"
                 aria-label="Next"
                 title="Next"
                 class="circle-btn np-action np-action--blue">

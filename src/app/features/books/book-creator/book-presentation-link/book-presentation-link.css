@@ -156,3 +156,95 @@
   border-color: #ea580c;
   background: rgb(234 88 12 / 0.08);
 }
+
+/* The deck's slides, two per row, under the start-slide number: click one to start there. */
+.bpl-slides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 0.45rem;
+  max-height: 17rem;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border-radius: 0.7rem;
+  background: rgb(var(--np-ink) / 0.04);
+  overscroll-behavior: contain;
+}
+
+.bpl-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.bpl-slide-pic {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: var(--bpl-ratio, 1.7778);
+  border-radius: 0.35rem;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgb(var(--np-ink) / 0.16);
+  transition: box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease;
+}
+
+.bpl-slide-pic img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.bpl-slide:hover .bpl-slide-pic {
+  box-shadow: 0 0 0 2px #fb923c;
+  transform: translateY(-1px);
+}
+
+/* The start slide: a bold frame in the PPT icon's orange. */
+.bpl-slide.is-start .bpl-slide-pic {
+  box-shadow: 0 0 0 3px #ea580c, 0 4px 10px rgb(234 88 12 / 0.35);
+}
+
+/* Slides before the start are lightly faded: the book opens the deck later on. */
+.bpl-slide.is-before .bpl-slide-pic {
+  opacity: 0.5;
+}
+
+.bpl-slide.is-before:hover .bpl-slide-pic {
+  opacity: 0.85;
+}
+
+.bpl-slide-num {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  color: rgb(var(--np-ink-faint));
+}
+
+.bpl-slide.is-start .bpl-slide-num {
+  color: #ea580c;
+}
+
+/* Not made yet: a soft shimmer until PowerPoint's picture arrives. */
+.bpl-slide-wait {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgb(var(--np-ink) / 0.05) 30%, rgb(var(--np-ink) / 0.12) 50%, rgb(var(--np-ink) / 0.05) 70%);
+  background-size: 200% 100%;
+  animation: bpl-wait 1.4s linear infinite;
+}
+
+@keyframes bpl-wait {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bpl-slide-wait { animation: none; }
+}

@@ -1,4 +1,5 @@
 import { AfterViewInit, ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
+import { skip } from 'rxjs/operators';
 import { clearBookReturn } from '../../../core/book-return';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable, Subscription, combineLatest } from 'rxjs';
@@ -21,6 +22,7 @@ import { PresentationPickService } from '../../../core/presentation-pick';
 import { DriveLink, DriveLinksService, isValidDriveLinkUrl } from '../../../core/drive-links';
 import { WebTopicSafetyService } from '../../../core/web-topic-safety';
 import { DriveBackupService, DriveBackupStatus } from '../../../core/drive-backup';
+import { FolderService } from '../../../core/folders';
 
 type LibraryCategory = 'topics' | 'books' | 'presentations';
 type PendingBookStorageAction = 'create' | 'import' | null;
@@ -74,8 +76,11 @@ export class TopicsListComponent implements OnInit, AfterViewInit, OnDestroy {
   private topicCoverSubscription?: Subscription;
   private booksSubscription?: Subscription;
   private topicCountSubscription?: Subscription;
+  private topicFolderSubscription?: Subscription;
+  private shownTopicsSubscription?: Subscription;
+  private folderChangeSubscription?: Subscription;
   topicCardLimit = TOPIC_CARD_BATCH;
-  private topicCount = 0;
+  topicCount = 0;
   private cancelMoreTopicCards?: () => void;
   private viewRefreshHandle?: ReturnType<typeof setTimeout>;
 
@@ -134,7 +139,9 @@ onClickOutside(event: MouseEvent) {
     private topicSafety: WebTopicSafetyService,
     public driveBackup: DriveBackupService,
     /** Set while a book's PPT icon is choosing a presentation (see the Presentations tab). */
-    public presentationPick: PresentationPickService
+    public presentationPick: PresentationPickService,
+    /** Library folders shared by the Topics, Books and PowerPoint tabs (core/folders.ts). */
+    public folders: FolderService
   ) {
     this.fullAccess$ = this.licenseService.fullAccess$;
     this.bookProgress$ = this.bookLibrary.progress$;
@@ -161,6 +168,8 @@ onClickOutside(event: MouseEvent) {
   }
 
   setLibraryCategory(category: LibraryCategory): void {
+    this.clearSelection();
+    queueMicrotask(() => { this.refreshIndex(); this.cdr.detectChanges(); });
     if (this.activeLibraryCategory === category) return;
     this.activeLibraryCategory = category;
     this.activeTopicId = null;
@@ -175,34 +184,60 @@ onClickOutside(event: MouseEvent) {
     const topics$ = this.db.topics$ as unknown as Observable<Topic[]>;
     this.topics$ = topics$;
     this.books$ = this.bookLibrary.books$;
+    const search$ = this.searchControl.valueChanges.pipe(startWith(this.searchControl.value ?? ''));
     this.filteredBooks$ = combineLatest([
       this.books$,
-      this.searchControl.valueChanges.pipe(startWith(''))
+      search$,
+      this.folders.current$,
+      this.folders.folders$,
+      this.folders.placements$,
+      this.folders.sort$
     ]).pipe(
-      map(([books, term]) => {
+      map(([books, term, current, , , sort]) => {
+        this.bookFolderIds = books.map((book) => this.folders.placementOf('book', book.id));
         const filter = (term ?? '').trim().toLowerCase();
-        if (!filter) {
-          return books;
-        }
-        return books.filter(book => book.title.toLowerCase().includes(filter));
+        const shown = filter
+          ? books.filter(book => book.title.toLowerCase().includes(filter))
+          : books.filter(book => this.folders.placementOf('book', book.id) === current);
+        return sort === 'name'
+          ? [...shown].sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' }))
+          : shown;
       })
     );
     this.booksSubscription = this.filteredBooks$.subscribe((books) => {
       this.visibleBooks = books;
+      this.refreshIndex();
       this.scheduleViewRefresh();
     });
     this.filteredTopics$ = combineLatest([
       topics$,
-      this.searchControl.valueChanges.pipe(startWith(''))
+      search$,
+      this.folders.current$,
+      this.folders.folders$,
+      this.folders.sort$
     ]).pipe(
-      map(([topics, term]) => {
+      map(([topics, term, current, , sort]) => {
         const filter = (term ?? '').trim().toLowerCase();
-        if (!filter) {
-          return topics;
-        }
-        return topics.filter(topic => topic.name.toLowerCase().includes(filter));
+        // Searching looks in every folder; otherwise only the folder being looked at.
+        const shown = filter
+          ? topics.filter(topic => topic.name.toLowerCase().includes(filter))
+          : topics.filter(topic => this.folders.topicFolder(topic) === current);
+        return sort === 'name'
+          ? [...shown].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }))
+          : shown;
       })
     );
+    // The folder of every topic, for the counts on folder cards (not inside the list's async
+    // pipe: changing an input while the view is being checked is not allowed).
+    this.topicFolderSubscription = combineLatest([topics$, this.folders.folders$]).subscribe(([topics]) => {
+      this.topicFolderIds = topics.map((topic) => this.folders.topicFolder(topic));
+      this.scheduleViewRefresh();
+    });
+    this.shownTopicsSubscription = this.filteredTopics$.subscribe((topics) => {
+      this.shownTopics = topics;
+      this.refreshIndex();
+    });
+    this.folderChangeSubscription = this.folders.current$.pipe(skip(1)).subscribe(() => this.clearSelection());
     // DbService owns the cover URLs (kept across visits), so nothing to revoke here.
     this.topicCoverSubscription = this.db.topicCoverUrls$.subscribe((urls) => {
       this.topicCoverUrls = urls;
@@ -219,6 +254,208 @@ onClickOutside(event: MouseEvent) {
       this.scheduleViewRefresh();
     });
     void this.driveBackup.load();
+  }
+
+  // ---- Folders (core/folders.ts) ----
+
+  /** The folder of every topic / book (for the counts on folder cards). */
+  topicFolderIds: (string | null)[] = [];
+  bookFolderIds: (string | null)[] = [];
+
+  get isSearching(): boolean {
+    return !!(this.searchControl.value ?? '').trim();
+  }
+
+  /** "Grade 3 › Unit 1" under a search result ('' at the top). */
+  topicFolderLabel(topic: Topic): string {
+    return this.isSearching ? this.folders.pathLabel(this.folders.topicFolder(topic)) : '';
+  }
+
+  bookFolderLabel(book: BookRegistryItem): string {
+    return this.isSearching ? this.folders.pathLabel(this.folders.placementOf('book', book.id)) : '';
+  }
+
+  moveTopic(id: number): void {
+    this.folders.requestMove('topic', [id]);
+  }
+
+  moveBook(id: string): void {
+    this.folders.requestMove('book', [id]);
+  }
+
+  /** "Move to…" for the ticked topics or books. */
+  moveSelected(): void {
+    if (this.isBooksCategory) this.folders.requestMove('book', Array.from(this.selectedBookIds));
+    else this.folders.requestMove('topic', Array.from(this.selectedTopicIds));
+  }
+
+  /** Something moved: clear the ticks; moved topics go up with the next Drive backup. */
+  onFoldersMoved(): void {
+    this.selectedTopicIds = new Set();
+    this.selectedBookIds = new Set();
+    if (this.isTopicsCategory) this.driveBackup.libraryChanged();
+    this.scheduleViewRefresh();
+  }
+
+  // ---- Ticked topics / books: the selection bar ----
+
+  /** The topics shown now (this folder, or every search match), in their order. */
+  shownTopics: Topic[] = [];
+
+  get allShownSelected(): boolean {
+    if (this.isBooksCategory) return this.visibleBooks.length > 0 && this.visibleBooks.every((book) => this.selectedBookIds.has(book.id));
+    return this.shownTopics.length > 0 && this.shownTopics.every((topic) => this.selectedTopicIds.has(topic.id!));
+  }
+
+  selectAllShown(): void {
+    if (this.isBooksCategory) this.selectedBookIds = new Set(this.visibleBooks.map((book) => book.id));
+    else this.selectedTopicIds = new Set(this.shownTopics.map((topic) => topic.id!));
+    this.cdr.detectChanges();
+  }
+
+  clearSelection(): void {
+    if (!this.selectedTopicIds.size && !this.selectedBookIds.size) return;
+    this.selectedTopicIds = new Set();
+    this.selectedBookIds = new Set();
+    this.cdr.detectChanges();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    // Not while a dialog is open over the page (it closes first).
+    if (document.querySelector('.lf-overlay, .book-storage-backdrop, [role=dialog][aria-modal=true]')) return;
+    this.clearSelection();
+  }
+
+  /** Deletes every ticked topic or book, after one question. */
+  async deleteSelected(): Promise<void> {
+    const books = this.isBooksCategory;
+    const ids = books ? Array.from(this.selectedBookIds) : Array.from(this.selectedTopicIds);
+    if (!ids.length) return;
+    const key = books
+      ? (ids.length === 1 ? 'libraryDeleteBookConfirmOne' : 'libraryDeleteBooksConfirm')
+      : (ids.length === 1 ? 'libraryDeleteTopicConfirmOne' : 'libraryDeleteTopicsConfirm');
+    if (!(await this.confirmationService.confirm(this.langService.translate(key, { n: ids.length })))) return;
+    let done = 0;
+    if (books) {
+      for (const id of ids as string[]) {
+        if (await this.bookLibrary.deleteBook(id)) {
+          done++;
+          void this.folders.forget('book', id);
+        }
+      }
+      await this.bookLibrary.refresh();
+    } else {
+      for (const id of ids as number[]) {
+        await this.db.deleteTopic(id);
+        done++;
+      }
+      if (done) this.driveBackup.libraryChanged();
+    }
+    this.selectedTopicIds = new Set();
+    this.selectedBookIds = new Set();
+    if (done) showAppNotification(this.langService.translate('libraryDeleted', { n: done }), 'success');
+    this.cdr.detectChanges();
+  }
+
+  // ---- A–Z index: jump to the topics/books starting with a letter ----
+
+  indexLetters: { letter: string; active: boolean }[] = [];
+  /** The letter last jumped to (lit on the index). */
+  indexCurrent = '';
+  /** The big letter shown while scrubbing along the index. */
+  indexBubble = '';
+  private indexScrubbing = false;
+  private indexFlashTimer?: ReturnType<typeof setTimeout>;
+  private static readonly INDEX_MIN_ITEMS = 8;
+  private static readonly LATIN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  /** The index letter of a name: its first letter, capital; '#' for a number or a sign. */
+  indexLetter(name: string): string {
+    const first = Array.from(String(name ?? '').trim())[0] ?? '';
+    if (!first || !/\p{L}/u.test(first)) return '#';
+    return first.toLocaleUpperCase();
+  }
+
+  /** A–Z always, plus any other first letters in use (Ç, Ş, Ж…), and # for numbers. */
+  private refreshIndex(): void {
+    const names = this.isBooksCategory ? this.visibleBooks.map((book) => book.title)
+      : this.isTopicsCategory ? this.shownTopics.map((topic) => topic.name) : [];
+    if (names.length < TopicsListComponent.INDEX_MIN_ITEMS) {
+      this.indexLetters = [];
+      return;
+    }
+    const used = new Set(names.map((name) => this.indexLetter(name)));
+    const extra = [...used].filter((letter) => letter !== '#' && !TopicsListComponent.LATIN.includes(letter))
+      .sort((a, b) => a.localeCompare(b));
+    const letters = [...TopicsListComponent.LATIN, ...extra, ...(used.has('#') ? ['#'] : [])];
+    this.indexLetters = letters.map((letter) => ({ letter, active: used.has(letter) }));
+  }
+
+  trackByIndexLetter(_index: number, entry: { letter: string }): string {
+    return entry.letter;
+  }
+
+  /** Jumps to the first card of that letter (A–Z order, every card drawn), and lights them up. */
+  jumpToLetter(letter: string, smooth = true): void {
+    if (!this.indexLetters.some((entry) => entry.letter === letter && entry.active)) return;
+    this.indexCurrent = letter;
+    if (this.folders.sort$.value !== 'name') this.folders.setSort('name');
+    if (this.isTopicsCategory && this.topicCardLimit < this.shownTopics.length) {
+      this.cancelMoreTopicCards?.();
+      this.topicCardLimit = this.shownTopics.length;
+    }
+    this.cdr.detectChanges();
+    requestAnimationFrame(() => {
+      const cards = Array.from(document.querySelectorAll<HTMLElement>(`.library-grid [data-index-letter="${CSS.escape(letter)}"]`));
+      if (!cards.length) return;
+      cards[0].scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+      document.querySelectorAll('.library-grid .az-flash').forEach((card) => card.classList.remove('az-flash'));
+      cards.forEach((card) => {
+        void card.offsetWidth;
+        card.classList.add('az-flash');
+      });
+      if (this.indexFlashTimer) clearTimeout(this.indexFlashTimer);
+      this.indexFlashTimer = setTimeout(() => cards.forEach((card) => card.classList.remove('az-flash')), 1400);
+    });
+  }
+
+  // Dragging a finger or the mouse along the index scrubs through the letters.
+  onIndexPointerDown(event: PointerEvent): void {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    this.indexScrubbing = true;
+    try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* old browsers */ }
+    this.scrubTo(event);
+  }
+
+  onIndexPointerMove(event: PointerEvent): void {
+    if (this.indexScrubbing) this.scrubTo(event);
+  }
+
+  onIndexPointerEnd(): void {
+    if (!this.indexScrubbing) return;
+    this.indexScrubbing = false;
+    this.indexBubble = '';
+    this.cdr.detectChanges();
+  }
+
+  private scrubTo(event: PointerEvent): void {
+    const rail = event.currentTarget as HTMLElement;
+    const buttons = Array.from(rail.querySelectorAll<HTMLElement>('.az-letter'));
+    const hit = buttons.find((button) => {
+      const box = button.getBoundingClientRect();
+      return event.clientY >= box.top && event.clientY < box.bottom;
+    });
+    const letter = hit?.dataset['letter'];
+    if (!letter || hit!.hasAttribute('disabled') || letter === this.indexBubble) return;
+    this.indexBubble = letter;
+    this.jumpToLetter(letter, false);
+  }
+
+  /** One of a few cover colours for a topic without a picture, by its first letter. */
+  coverTint(name: string): number {
+    const letter = this.indexLetter(name);
+    return (letter.codePointAt(0) ?? 0) % 6;
   }
 
   // ---- Google Drive backup: a signal on Quick Links and a row inside it ----
@@ -317,6 +554,10 @@ onClickOutside(event: MouseEvent) {
     this.topicCoverSubscription?.unsubscribe();
     this.booksSubscription?.unsubscribe();
     this.topicCountSubscription?.unsubscribe();
+    this.topicFolderSubscription?.unsubscribe();
+    this.shownTopicsSubscription?.unsubscribe();
+    this.folderChangeSubscription?.unsubscribe();
+    if (this.indexFlashTimer) clearTimeout(this.indexFlashTimer);
     this.driveBackupSubscription?.unsubscribe();
     this.cancelMoreTopicCards?.();
   }
@@ -353,6 +594,7 @@ onClickOutside(event: MouseEvent) {
   private async runCreateBook(): Promise<void> {
     const created = await this.bookLibrary.createEmptyBook();
     if (created) {
+      await this.folders.placeNew('book', [created.id]);
       await this.ngZone.run(() => this.router.navigate(['/books', created.id, 'edit']));
     }
   }
@@ -429,6 +671,7 @@ async deleteTopic(id: number) {
     if (confirmed) {
       const deleted = await this.bookLibrary.deleteBook(id);
       if (!deleted) return;
+      void this.folders.forget('book', id);
       this.selectedBookIds.delete(id);
       this.selectedBookIds = new Set(this.selectedBookIds);
       this.visibleBooks = this.visibleBooks.filter((book) => book.id !== id);
@@ -530,7 +773,8 @@ async deleteTopic(id: number) {
   }
 
   async copyBook(id: string) {
-    await this.bookLibrary.copyBook(id);
+    const copy = await this.bookLibrary.copyBook(id);
+    if (copy) await this.folders.placeNew('book', [copy.id], this.folders.placementOf('book', id));
   }
 
   async exportBook(id: string) {
@@ -541,7 +785,8 @@ async deleteTopic(id: number) {
     if (!(await this.ensureBookStorageReady('import'))) {
       return;
     }
-    await this.bookLibrary.importBookFolder();
+    const imported = await this.bookLibrary.importBookFolder();
+    if (imported) await this.folders.placeNew('book', [imported.id]);
   }
 
   async importLibrary() {
@@ -556,7 +801,8 @@ async deleteTopic(id: number) {
     if (!(await this.ensureBookStorageReady('import'))) {
       return;
     }
-    await this.bookLibrary.importBookFolder();
+    const imported = await this.bookLibrary.importBookFolder();
+    if (imported) await this.folders.placeNew('book', [imported.id]);
   }
 
   async openBookStorageDialog(action: PendingBookStorageAction = null): Promise<void> {
@@ -693,6 +939,7 @@ async deleteTopic(id: number) {
       this.selectedTopicIds.delete(topicId);
     }
     this.selectedTopicIds = new Set(this.selectedTopicIds);
+    this.cdr.detectChanges();
   }
 
   toggleBookSelection(bookId: string, checked: boolean) {
@@ -702,6 +949,8 @@ async deleteTopic(id: number) {
       this.selectedBookIds.delete(bookId);
     }
     this.selectedBookIds = new Set(this.selectedBookIds);
+    // The selection bar appears/updates at once (this page draws on demand in places).
+    this.cdr.detectChanges();
   }
 
   async combineSelectedBooks() {
@@ -798,6 +1047,8 @@ async combineSelectedTopics() {
       // One topic: in at once, as before. Several (Export all, a colleague's topics): choose.
       if (data.topics.length === 1) {
         if ((await this.importExport.importTopics(data, [0])) > 0) this.driveBackup.libraryChanged();
+        // An imported topic may have brought its folder along.
+        await this.folders.load(true);
         return;
       }
       const choices = await this.importExport.describeImport(data);
@@ -838,6 +1089,7 @@ async combineSelectedTopics() {
     this.importing = true;
     try {
       const done = await this.importExport.importTopics(picker.data, picker.choices.map((c) => c.index).filter((i) => picker.picked.has(i)));
+      await this.folders.load(true);
       if (done >= 0) this.importPicker = null;
       if (done > 0) this.driveBackup.libraryChanged();
     } finally {

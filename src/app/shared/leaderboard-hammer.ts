@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
 
 type HammerTargetKind = 'student' | 'team' | 'all';
 
@@ -15,6 +15,8 @@ export class LeaderboardHammerComponent implements OnDestroy {
   // updateHoveredRow()'s target-kind detection below. Team/class hits are the same confirmed
   // bulk actions the equivalent header/title click already triggers (random-picker.ts's
   // decrementTeamScores/decrementAllScores), not a separate code path.
+  /** 'hammer' takes a point; 'star' is the same drag tool that gives one (student, team or whole class). */
+  @Input() tool: 'hammer' | 'star' = 'hammer';
   @Output() hit = new EventEmitter<number>();
   @Output() hitTeam = new EventEmitter<number>();
   @Output() hitAll = new EventEmitter<void>();
@@ -24,11 +26,15 @@ export class LeaderboardHammerComponent implements OnDestroy {
   dragTop: number | null = null;
 
   private readonly dragThreshold = 4;
-  private readonly hoverClass = 'lb-row-hammer-hover';
+  private get hoverClass(): string {
+    return this.tool === 'star' ? 'lb-row-star-hover' : 'lb-row-hammer-hover';
+  }
   // Team headers and the class title aren't student rows, so they get their own generic
   // "about to be smashed" look instead of .lb-row-hammer-hover (see random-picker.css and
   // leaderboard-ranking-list.css for the two places this class is styled).
-  private readonly hoverTargetClass = 'lb-hammer-hover-target';
+  private get hoverTargetClass(): string {
+    return this.tool === 'star' ? 'lb-star-hover-target' : 'lb-hammer-hover-target';
+  }
   private dragPointerId: number | null = null;
   private dragStartClientX = 0;
   private dragStartClientY = 0;

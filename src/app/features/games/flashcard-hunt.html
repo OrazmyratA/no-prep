@@ -228,6 +228,12 @@
           </div>
         </button>
       </div>
+
+      <div *ngIf="quizWaitingNext" class="flex justify-center mt-3">
+        <button type="button" class="hunt-quiz-next np-next-ready" (click)="quizNext()" aria-label="Next" title="Next (N)">
+          <span aria-hidden="true">&#9654;&#xFE0E;</span>
+        </button>
+      </div>
     </div>
   </div>
 

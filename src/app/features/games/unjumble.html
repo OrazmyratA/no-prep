@@ -93,6 +93,7 @@
           {{ 'shuffle' | translate }}
         </button>
         <button (click)="nextItem()"
+                [class.np-next-ready]="isCurrentSolved"
                 aria-label="Next"
                 title="Next"
                 class="w-12 h-12 np-action np-action--blue font-bold rounded-full shadow-lg transition flex items-center justify-center text-xl">

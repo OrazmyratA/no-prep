@@ -162,7 +162,8 @@ export class RandomPickerComponent implements OnInit, AfterViewInit, OnDestroy {
   // several accidental taps in a row rather than just the very last one. Each undo() call pops
   // exactly one entry. Cleared on topic switch — undo history belongs to the current class list.
   private readonly maxUndoDepth = 5;
-  undoStack: Array<{ itemId: number; scoreDelta: number; prevAbsent?: boolean }> = [];
+  /** groupItemIds: one Undo for a whole-class or whole-team star (every listed student got scoreDelta). */
+  undoStack: Array<{ itemId: number; scoreDelta: number; prevAbsent?: boolean; groupItemIds?: number[] }> = [];
 
   // Roster ids in teacher-entry order (roster is already `order`-sorted by db.ts), captured once
   // per loadTopic — the list's default/reset state, and what toggleRanking() restores on a second tap.
@@ -655,7 +656,13 @@ export class RandomPickerComponent implements OnInit, AfterViewInit, OnDestroy {
   async undoLastAction() {
     const entry = this.undoStack.pop();
     if (!entry) return;
-    if (entry.scoreDelta !== 0 && this.selectedTopicId != null) {
+    if (entry.groupItemIds && this.selectedTopicId != null) {
+      for (const itemId of entry.groupItemIds) {
+        const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, -entry.scoreDelta);
+        if (this.destroyed) return;
+        this.scores.set(itemId, total);
+      }
+    } else if (entry.scoreDelta !== 0 && this.selectedTopicId != null) {
       const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, entry.itemId, -entry.scoreDelta);
       if (this.destroyed) return;
       this.scores.set(entry.itemId, total);
@@ -667,7 +674,7 @@ export class RandomPickerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  private pushUndo(entry: { itemId: number; scoreDelta: number; prevAbsent?: boolean }) {
+  private pushUndo(entry: { itemId: number; scoreDelta: number; prevAbsent?: boolean; groupItemIds?: number[] }) {
     this.undoStack.push(entry);
     if (this.undoStack.length > this.maxUndoDepth) this.undoStack.shift();
   }
@@ -1193,6 +1200,34 @@ export class RandomPickerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.scores.set(itemId, total);
     this.pushUndo({ itemId, scoreDelta: 1 });
     this.finishAward(beforePoints, total);
+  }
+
+  // The star dropped on the class name (everyone present) or on a team header (that team's
+  // present students). No question asked: giving is harmless, and one Undo takes it all back.
+  async awardAllPoints() {
+    const itemIds = this.roster.filter(i => i.id != null && !this.absentItemIds.has(i.id!)).map(i => i.id!);
+    await this.awardGroupPoints(itemIds);
+  }
+
+  async awardTeamPoints(teamId: number) {
+    const team = this.teams.find(t => t.id === teamId);
+    if (!team) return;
+    await this.awardGroupPoints(team.memberItemIds.filter(id => !this.absentItemIds.has(id)));
+  }
+
+  private async awardGroupPoints(itemIds: number[]) {
+    if (this.selectedTopicId == null || !itemIds.length) return;
+    let filledStar = false;
+    for (const itemId of itemIds) {
+      const before = this.scores.get(itemId) ?? 0;
+      const total = await this.dbService.adjustLeaderboardScore(this.selectedTopicId, itemId, 1);
+      if (this.destroyed) return;
+      this.scores.set(itemId, total);
+      if (before < 6 && total >= 6) filledStar = true;
+    }
+    this.pushUndo({ itemId: itemIds[0], scoreDelta: 1, groupItemIds: itemIds });
+    this.playSound(filledStar ? this.achieveSound : this.collectSound);
+    this.cdr.detectChanges();
   }
 
   private finishAward(beforePoints: number, total: number) {

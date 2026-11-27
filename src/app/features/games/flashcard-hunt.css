@@ -951,3 +951,18 @@
     animation: none;
   }
 }
+
+/* Next card: shown once a card is answered (the game never moves on by itself). */
+.hunt-quiz-next {
+  width: 3.4rem;
+  height: 3.4rem;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

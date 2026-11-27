@@ -148,7 +148,8 @@ export const TASK_PREP_SCHEMA = {
                 answers: { type: 'array', items: { type: 'string' } },
                 box: { type: 'array', items: { type: 'number' } }
               },
-              required: ['before', 'answers', 'box']
+              required: ['before', 'answers', 'box'],
+              additionalProperties: false
             }
           },
           bank: { type: 'array', items: { type: 'string' } },
@@ -161,7 +162,8 @@ export const TASK_PREP_SCHEMA = {
                 correct: { type: 'boolean' },
                 box: { type: 'array', items: { type: 'number' } }
               },
-              required: ['text', 'correct', 'box']
+              required: ['text', 'correct', 'box'],
+              additionalProperties: false
             }
           },
           pairs: {
@@ -174,7 +176,8 @@ export const TASK_PREP_SCHEMA = {
                 leftBox: { type: 'array', items: { type: 'number' } },
                 rightBox: { type: 'array', items: { type: 'number' } }
               },
-              required: ['left', 'right', 'leftBox', 'rightBox']
+              required: ['left', 'right', 'leftBox', 'rightBox'],
+              additionalProperties: false
             }
           },
           grid: {
@@ -195,15 +198,18 @@ export const TASK_PREP_SCHEMA = {
                     across: { type: 'boolean' },
                     given: { type: 'boolean' }
                   },
-                  required: ['number', 'answer', 'row', 'col', 'across', 'given']
+                  required: ['number', 'answer', 'row', 'col', 'across', 'given'],
+                  additionalProperties: false
                 }
               }
             },
-            required: ['box', 'rows', 'cols', 'words']
+            required: ['box', 'rows', 'cols', 'words'],
+            additionalProperties: false
           },
           gameIdea: { type: 'string' }
         },
-        required: ['page', 'box', 'number', 'title', 'instruction', 'instructionBox', 'kind', 'gaps', 'bank', 'options', 'pairs', 'grid', 'gameIdea']
+        required: ['page', 'box', 'number', 'title', 'instruction', 'instructionBox', 'kind', 'gaps', 'bank', 'options', 'pairs', 'grid', 'gameIdea'],
+        additionalProperties: false
       }
     },
     videos: {
@@ -215,12 +221,14 @@ export const TASK_PREP_SCHEMA = {
           text: { type: 'string' },
           box: { type: 'array', items: { type: 'number' } }
         },
-        required: ['page', 'text', 'box']
+        required: ['page', 'text', 'box'],
+        additionalProperties: false
       }
     },
     notes: { type: 'array', items: { type: 'string' } }
   },
-  required: ['exercises', 'videos', 'notes']
+  required: ['exercises', 'videos', 'notes'],
+  additionalProperties: false
 };
 
 export function buildTaskPrepSystemPrompt(): string {

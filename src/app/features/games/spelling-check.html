@@ -89,10 +89,10 @@
     </div>
 
     <div class="controls">
-      <button class="nav-btn" type="button" (click)="previousQuestion()" [disabled]="currentIndex === 0 || answerLocked" aria-label="Previous" title="Previous">
+      <button class="nav-btn" type="button" (click)="previousQuestion()" [disabled]="currentIndex === 0 || (answerLocked && !awaitingNext)" aria-label="Previous" title="Previous">
         <span aria-hidden="true">&#9664;</span>
       </button>
-      <button class="nav-btn" type="button" (click)="nextQuestion()" [disabled]="answerLocked || (currentIndex === questions.length - 1 && answeredQuestions.size >= questions.length)" aria-label="Next" title="Next">
+      <button class="nav-btn" type="button" (click)="nextQuestion()" [class.np-next-ready]="awaitingNext" [disabled]="(answerLocked && !awaitingNext) || (currentIndex === questions.length - 1 && answeredQuestions.size >= questions.length)" aria-label="Next" title="Next">
         <span aria-hidden="true">&#9654;</span>
       </button>
     </div>

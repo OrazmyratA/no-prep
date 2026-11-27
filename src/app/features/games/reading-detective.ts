@@ -80,11 +80,6 @@ interface HeadingResult {
 const STAGES: RdStage[] = ['gapped', 'cloze', 'keys', 'questions', 'statements', 'choice', 'short', 'match', 'word', 'reading'];
 export const VERDICTS: Verdict[] = ['yes', 'no', 'ng'];
 const SHAKE_MS = 600;
-const FOUND_NEXT_MS = 750;
-const ANSWER_NEXT_MS = 950;
-const MATCHED_NEXT_MS = 1700;
-const MISSED_NEXT_MS = 2600;
-const NOT_GIVEN_NOTE_MS = 2600;
 const READ_LEAD_IN_MS = 700;
 const TIMER_TICK_MS = 100;
 const HINT_AFTER_MISTAKES = 3;
@@ -258,9 +253,29 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * An answer (or a skip) is done and shown: the teacher presses Next to go on. Games never move
+   * on by themselves.
+   */
+  pendingNext: (() => void) | null = null;
+
+  private waitForNext(next: () => void) {
+    this.pendingNext = next;
+    this.cdr.detectChanges();
+  }
+
+  goNext() {
+    const next = this.pendingNext;
+    if (!next) return;
+    this.pendingNext = null;
+    next();
+    this.cdr.detectChanges();
+  }
+
   ngOnDestroy() {
     this.destroyed = true;
     this.timers.clear();
+    this.pendingNext = null;
     this.readTimers.clear();
     this.confetti?.reset();
     this.imageUrls.forEach(url => URL.revokeObjectURL(url));
@@ -371,6 +386,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
 
   skipStage() {
     this.timers.clear();
+    this.pendingNext = null;
     this.readTimers.clear();
     this.scores[this.stage].played = false;
     const next = this.nextStage();
@@ -384,6 +400,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
 
   private beginStage(stage: RdStage) {
     this.timers.clear();
+    this.pendingNext = null;
     this.readTimers.clear();
     this.stage = stage;
     this.view = 'play';
@@ -458,6 +475,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
 
   private finishStage() {
     this.timers.clear();
+    this.pendingNext = null;
     this.readTimers.clear();
     this.busy = false;
     if (this.nextStage()) {
@@ -471,6 +489,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
 
   private showResults() {
     this.timers.clear();
+    this.pendingNext = null;
     this.readTimers.clear();
     this.view = 'results';
     this.playSound(this.rewardSound, 0.75);
@@ -480,6 +499,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
 
   resetGame() {
     this.timers.clear();
+    this.pendingNext = null;
     this.readTimers.clear();
     this.confetti?.reset();
     this.scores = this.emptyScores();
@@ -559,7 +579,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     match.forEach(id => hits.add(id));
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => findingWord ? this.nextTask() : this.nextKey(), FOUND_NEXT_MS);
+    this.waitForNext(() => findingWord ? this.nextTask() : this.nextKey());
   }
 
   private nextKey() {
@@ -601,7 +621,6 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.clearFlashes();
     this.ruleTipShown = false;
     let next: () => void;
-    let delay = ANSWER_NEXT_MS;
     switch (this.stage) {
       case 'gapped': {
         const gap = this.currentGap;
@@ -647,7 +666,6 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
         ids.forEach(id => hits.add(id));
         this.freshWords = new Set(ids);
         next = this.stage === 'word' ? () => this.nextTask() : () => this.nextKey();
-        delay = FOUND_NEXT_MS;
         break;
       }
       case 'questions': {
@@ -673,14 +691,13 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
         }
         this.taskPhase = 'done';
         next = () => this.nextTask();
-        delay = MATCHED_NEXT_MS;
       }
     }
     this.busy = true;
     this.skipping = true;
     this.playSound(this.flipSound, 0.3);
     this.cdr.detectChanges();
-    this.timers.set(next, delay);
+    this.waitForNext(next);
   }
 
   /** Read & head: the paragraph's heading is shown as missed, then the next paragraph. */
@@ -704,7 +721,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.headingResults.set(paragraph.id, { heading: paragraph.heading, firstTry: false, missed: true });
     this.phase = 'missed';
     this.cdr.detectChanges();
-    this.readTimers.set(() => this.nextParagraph(), MISSED_NEXT_MS);
+    this.waitForNext(() => this.nextParagraph());
   }
 
   // ---- Gapped text ----
@@ -736,7 +753,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.justAnswered = gap.id;
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextGap(), ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextGap());
   }
 
   private nextGap() {
@@ -783,7 +800,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.taskPhase = 'done';
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextTask());
   }
 
   // ---- Matching ----
@@ -811,7 +828,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.taskPhase = 'done';
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextTask());
   }
 
   // ---- Gap fill ----
@@ -888,7 +905,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.freshWords = new Set(cloze.words);
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextTask());
   }
 
   /** Keeps the current gap on screen and, for an open gap, the cursor in its box. */
@@ -964,7 +981,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.taskPhase = 'done';
     this.busy = true;
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextTask(), notGiven ? NOT_GIVEN_NOTE_MS : ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextTask());
   }
 
   private proveTap(sentence: RdSentence<Item>) {
@@ -981,7 +998,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.busy = true;
     this.playSound(this.collectSound, 0.55);
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextTask(), ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextTask());
   }
 
   private nextTask() {
@@ -1037,7 +1054,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.justAnswered = sentence.id;
     this.playSound(this.collectSound, 0.5);
     this.cdr.detectChanges();
-    this.timers.set(() => this.nextQuestion(), ANSWER_NEXT_MS);
+    this.waitForNext(() => this.nextQuestion());
   }
 
   private nextQuestion() {
@@ -1163,7 +1180,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.phase = 'matched';
     this.playSound(this.collectSound, 0.55);
     this.cdr.detectChanges();
-    this.readTimers.set(() => this.nextParagraph(), MATCHED_NEXT_MS);
+    this.waitForNext(() => this.nextParagraph());
   }
 
   private timeUp() {
@@ -1175,7 +1192,7 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     this.phase = 'missed';
     this.playSound(this.buzzSound, 0.3);
     this.cdr.detectChanges();
-    this.readTimers.set(() => this.nextParagraph(), MISSED_NEXT_MS);
+    this.waitForNext(() => this.nextParagraph());
   }
 
   nextParagraph() {
@@ -1337,6 +1354,11 @@ export class ReadingDetectiveComponent implements OnInit, OnDestroy {
     if (key === 'r' && (event.shiftKey || this.view === 'results')) {
       event.preventDefault();
       this.resetGame();
+      return;
+    }
+    if (this.pendingNext && (event.key === 'Enter' || key === 'n')) {
+      event.preventDefault();
+      this.goNext();
       return;
     }
     if (event.key === 'Enter') {

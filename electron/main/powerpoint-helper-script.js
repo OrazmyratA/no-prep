@@ -447,6 +447,31 @@ while ($true) {
         }
       }
 
+      'deckslides' {
+        # Small pictures of a presentation's slides (from..to) for the book creator's start-slide
+        # grid, without a slideshow and without showing PowerPoint. Same folder and size as the
+        # player's 'slides', so each picture is made once. A deck the teacher has open for
+        # editing is read as it is and never closed.
+        $step = 'open'
+        $ppt = Get-PowerPoint
+        $p = Find-Open ([string]$a.path)
+        $own = $false
+        if (-not $p) { $p = $ppt.Presentations.Open([string]$a.path, -1, 0, 0); $own = $true }
+        try {
+          $count = $p.Slides.Count
+          [IO.Directory]::CreateDirectory([string]$a.dir) | Out-Null
+          $from = [Math]::Max(1, [int]$a.from)
+          $to = if ([int]$a.to -gt 0) { [Math]::Min($count, [int]$a.to) } else { $count }
+          for ($i = $from; $i -le $to; $i++) {
+            $out = [IO.Path]::Combine([string]$a.dir, "$i.png")
+            if (-not [IO.File]::Exists($out)) { Export-Slide $p $i $out ([int]$a.width) }
+          }
+          Reply $id @{ ok = $true; slides = $count }
+        } finally {
+          if ($own) { try { $p.Saved = -1; $p.Close() } catch {} }
+        }
+      }
+
       'new' {
         $ppt = Get-PowerPoint
         $ppt.Visible = -1

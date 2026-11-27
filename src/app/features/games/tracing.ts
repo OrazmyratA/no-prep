@@ -235,9 +235,19 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   nextItem() {
-    if (this.revealing || this.currentIndex >= this.items.length - 1) return;
-    this.currentIndex++;
-    this.loadItem(this.currentIndex);
+    if (this.revealing) return;
+    if (this.currentIndex < this.items.length - 1) {
+      this.currentIndex++;
+      this.loadItem(this.currentIndex);
+    } else if (this.nextReady) {
+      // At the end with some skipped: Next goes back to the first one left.
+      this.jumpToNextSkippedItem();
+    }
+  }
+
+  /** This one is checked and others are left: Next glows. */
+  get nextReady(): boolean {
+    return this.isCurrentChecked && this.checkedIndices.size < this.items.length;
   }
 
   resetCurrentItem() {
@@ -283,12 +293,9 @@ export class TracingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.revealing = false;
     this.cdr.detectChanges();
 
+    // Only the last check leads on to the win screen; otherwise Next glows for the teacher.
     if (this.checkedIndices.size === this.items.length) {
       this.scheduleFinish();
-    } else if (index === this.items.length - 1) {
-      await this.delay(900);
-      if (this.destroyed || token !== this.revealToken) return;
-      this.jumpToNextSkippedItem();
     }
   }
 

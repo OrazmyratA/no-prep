@@ -323,6 +323,8 @@ export class TopicFormComponent implements OnInit, AfterViewInit {
     const bookPages = this.aiPageHandoff.take();
     if (bookPages.length) {
       this.aiInitialPages = bookPages;
+      // Ready for every item's 📖 crop window straight away: no waiting for the AI (or if it fails).
+      this.aiAttachedPages = bookPages;
       this.setAiPanelOpen(true);
     } else if (!id && this.route.snapshot.queryParamMap.get('ai') === '1') {
       // The ✨ on the "New topic" card: the teacher came here for the AI.

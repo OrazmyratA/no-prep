@@ -479,3 +479,14 @@
 .pres-link-thumb.is-html .pres-link-type {
   background: #047857;
 }
+
+/* Where a search result is (folders, core/folders.ts). */
+.pres-card-folder {
+  margin: 0.1rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgb(var(--np-ink-muted));
+}

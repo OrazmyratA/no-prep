@@ -92,12 +92,12 @@ describe('ReadingDetectiveComponent', () => {
 
     component.onWordClick(component.text.words[wordId('grandmother.')]);
     expect(component.foundWords.has(wordId('grandmother.'))).toBe(true);
-    vi.advanceTimersByTime(750);
+    vi.advanceTimersByTime(750); component.goNext();
     expect(component.currentKey?.text).toBe('river');
     expect(component.scores.keys.got).toBe(0); // the first key needed two tries
 
     component.onWordClick(component.text.words[wordId('river')]);
-    vi.advanceTimersByTime(750);
+    vi.advanceTimersByTime(750); component.goNext();
     expect(component.scores.keys).toEqual({ got: 1, total: 2, played: true, proofGot: 0, proofTotal: 0 });
     expect(component.view).toBe('between');
   });
@@ -133,12 +133,12 @@ describe('ReadingDetectiveComponent', () => {
       vi.advanceTimersByTime(600);
       component.chooseShortOption(pick('Tom'));
       expect(component.scores.short.got).toBe(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.isOtherShortText(component.text.paragraphs[0])).toBe(false);
       expect(component.isOtherShortText(component.text.paragraphs[1])).toBe(true);
 
       component.chooseShortOption(pick('Monday'));
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.scores.short.got).toBe(1);
       expect([component.view, component.nextStage()]).toEqual(['between', 'reading']); // then the read-through
       expect(component.isOtherShortText(component.text.paragraphs[1])).toBe(false);
@@ -150,7 +150,7 @@ describe('ReadingDetectiveComponent', () => {
       component.skipQuestion();
       expect(component.currentShortOptions[component.chosenOption].text).toBe('Tom');
       expect(component.scores.short.got).toBe(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.taskIndex).toBe(1);
     });
 
@@ -187,12 +187,12 @@ describe('ReadingDetectiveComponent', () => {
       component.chooseMatch(1);
       expect(component.justMatched).toBe(1);
       expect(component.scores.match.got).toBe(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.justMatched).toBe(-1);
       expect(component.currentMatch?.prompt).toBe('Who lives in Italy?');
 
       component.chooseMatch(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.scores.match.got).toBe(1);
       expect(component.scores.match.total).toBe(2);
       expect([component.view, component.nextStage()]).toEqual(['between', 'reading']); // then the read-through
@@ -202,9 +202,9 @@ describe('ReadingDetectiveComponent', () => {
       await create([...TEXTS.slice(0, 3), item(3, '? MATCH Who lives in Norway? {B}'), item(4, '? MATCH Whose city is Oslo? {B}')]);
       component.start();
       component.chooseMatch(1);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       component.chooseMatch(1);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.scores.match.got).toBe(2);
     });
 
@@ -224,7 +224,7 @@ describe('ReadingDetectiveComponent', () => {
       component.skipQuestion();
       expect(component.justMatched).toBe(1);
       expect(component.scores.match.got).toBe(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.taskIndex).toBe(1);
     });
 
@@ -233,7 +233,7 @@ describe('ReadingDetectiveComponent', () => {
       component.start();
       component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'b' }));
       expect(component.justMatched).toBe(1);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       component.onWindowKeyDown(new KeyboardEvent('keydown', { key: '1' }));
       expect(component.justMatched).toBe(0);
     });
@@ -263,7 +263,7 @@ describe('ReadingDetectiveComponent', () => {
       expect(component.clozeAt(wordOf('walked'))).toBeNull();
       expect(component.isClozeWordFilled(wordOf('walked'))).toBe(true);
       expect(component.scores.cloze.got).toBe(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.taskIndex).toBe(1);
     });
 
@@ -271,7 +271,7 @@ describe('ReadingDetectiveComponent', () => {
       await create(GAPS);
       component.start();
       component.chooseClozeOption(pick('walked'));
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
 
       component.clozeInput = 'in';
       component.submitClozeAnswer();
@@ -280,7 +280,7 @@ describe('ReadingDetectiveComponent', () => {
       component.clozeInput = ' DURING ';
       component.submitClozeAnswer();
       expect(component.clozeFilled.has(1)).toBe(true);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect([component.view, component.nextStage()]).toEqual(['between', 'reading']); // then the read-through
       expect(component.scores.cloze.got).toBe(1);
     });
@@ -303,7 +303,7 @@ describe('ReadingDetectiveComponent', () => {
       component.skipQuestion();
       expect(component.clozeFilled.has(0)).toBe(true);
       expect(component.scores.cloze.got).toBe(0);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.taskIndex).toBe(1);
     });
 
@@ -352,12 +352,12 @@ describe('ReadingDetectiveComponent', () => {
 
     component.onSentenceClick(answer);
     expect(component.answered.get(answer.id)).toBe(1);
-    vi.advanceTimersByTime(950);
+    vi.advanceTimersByTime(950); component.goNext();
     expect(component.questionIndex).toBe(1);
 
     for (let i = 1; i < 3; i++) {
       component.onSentenceClick(component.currentQuestion!);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
     }
     expect(component.scores.questions.got).toBe(2);
     expect(component.view).toBe('between');
@@ -414,14 +414,14 @@ describe('ReadingDetectiveComponent', () => {
     expect(component.usedHeadings.has(first.id)).toBe(true);
     expect(component.headingResult(component.text.paragraphs[0])).toEqual({ heading: first.id, firstTry: false, missed: false });
 
-    vi.advanceTimersByTime(1700);
+    vi.advanceTimersByTime(1700); component.goNext();
     expect(component.readIndex).toBe(1);
     component.revealAll();
     vi.advanceTimersByTime(15000);
     expect(component.phase).toBe('missed');
     expect(component.usedHeadings.has(second.id)).toBe(true);
 
-    vi.advanceTimersByTime(2600);
+    vi.advanceTimersByTime(2600); component.goNext();
     expect(component.view).toBe('results');
     expect(component.scores.reading).toEqual({ got: 0, total: 2, played: true, proofGot: 0, proofTotal: 0 });
   });
@@ -431,14 +431,14 @@ describe('ReadingDetectiveComponent', () => {
     component.start();
     component.skipQuestion();
     expect(component.foundWords.has(wordId('grandmother.'))).toBe(true);
-    vi.advanceTimersByTime(750);
+    vi.advanceTimersByTime(750); component.goNext();
     expect(component.currentKey?.text).toBe('river');
 
     component.skipStage();
     const first = component.currentQuestion!;
     component.skipQuestion();
     expect(component.answered.get(first.id)).toBe(1);
-    vi.advanceTimersByTime(950);
+    vi.advanceTimersByTime(950); component.goNext();
     expect([component.questionIndex, component.scores.questions.got]).toEqual([1, 0]);
 
     component.skipStage();
@@ -446,7 +446,7 @@ describe('ReadingDetectiveComponent', () => {
     component.skipQuestion(); // mid-paragraph: its heading shows as missed
     expect(component.phase).toBe('missed');
     expect(component.headingResult(component.text.paragraphs[0])?.missed).toBe(true);
-    vi.advanceTimersByTime(2600);
+    vi.advanceTimersByTime(2600); component.goNext();
     expect(component.readIndex).toBe(1);
   });
 
@@ -518,9 +518,9 @@ describe('ReadingDetectiveComponent', () => {
 
       component.chooseGapCard(component.gapCards.find(card => card.sentence === 1)!);
       expect(component.filledGaps.has(1)).toBe(true);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       component.chooseGapCard(component.gapCards.find(card => card.sentence === 2)!);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect([component.scores.gapped.got, component.scores.gapped.total]).toEqual([1, 2]);
       expect(component.view).toBe('between');
     });
@@ -541,13 +541,13 @@ describe('ReadingDetectiveComponent', () => {
       vi.advanceTimersByTime(600);
       component.onSentenceClick(component.text.sentences[0]);
       expect(component.proved.has(0)).toBe(true);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
 
       // Not given: no proof step, a note, then the stage ends.
       expect(component.currentStatement?.answer).toBe('ng');
       component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 'g' }));
       expect(component.taskPhase).toBe('done');
-      vi.advanceTimersByTime(2600);
+      vi.advanceTimersByTime(2600); component.goNext();
       expect(component.view).toBe('results');
       expect(component.scores.statements).toEqual({ got: 1, total: 2, played: true, proofGot: 0, proofTotal: 1 });
     });
@@ -562,7 +562,7 @@ describe('ReadingDetectiveComponent', () => {
       component.chooseOption(component.currentOptions.findIndex(option => option.correct));
       expect(component.taskPhase).toBe('prove');
       component.onSentenceClick(component.text.sentences[0]);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.scores.choice).toEqual({ got: 0, total: 1, played: true, proofGot: 1, proofTotal: 1 });
     });
 
@@ -573,10 +573,10 @@ describe('ReadingDetectiveComponent', () => {
       // The right answer and its proof sentence are shown, without a point.
       expect([component.chosenOption, component.taskPhase, component.proved.has(0), component.skipping]).toEqual([1, 'done', true, true]);
       component.skipQuestion(); // ignored while the answer shows
-      vi.advanceTimersByTime(1700);
+      vi.advanceTimersByTime(1700); component.goNext();
       expect([component.stage, component.taskIndex, component.skipping]).toEqual(['statements', 1, false]);
       component.answerStatement('ng');
-      vi.advanceTimersByTime(2600);
+      vi.advanceTimersByTime(2600); component.goNext();
       expect(component.scores.statements).toEqual({ got: 1, total: 2, played: true, proofGot: 0, proofTotal: 1 });
 
       TestBed.resetTestingModule();
@@ -585,7 +585,7 @@ describe('ReadingDetectiveComponent', () => {
       component.onWindowKeyDown(new KeyboardEvent('keydown', { key: 's' }));
       expect(component.filledGaps.has(1)).toBe(true);
       expect(component.usedCards.has(component.gapCards.find(card => card.sentence === 1)!.id)).toBe(true);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
       expect(component.currentGap?.id).toBe(2);
     });
 
@@ -594,7 +594,7 @@ describe('ReadingDetectiveComponent', () => {
       only('word');
       component.skipQuestion();
       expect(component.wordHits.has(wordId('quiet.'))).toBe(true);
-      vi.advanceTimersByTime(750);
+      vi.advanceTimersByTime(750); component.goNext();
       expect([component.view, component.scores.word.got]).toEqual(['results', 0]);
     });
 
@@ -607,7 +607,7 @@ describe('ReadingDetectiveComponent', () => {
       vi.advanceTimersByTime(600);
       component.onWordClick(component.text.words[wordId('quiet.')]);
       expect(component.wordHits.has(wordId('quiet.'))).toBe(true);
-      vi.advanceTimersByTime(750);
+      vi.advanceTimersByTime(750); component.goNext();
       expect(component.view).toBe('results');
       expect(component.scores.word.got).toBe(0);
     });
@@ -617,19 +617,19 @@ describe('ReadingDetectiveComponent', () => {
     await create(STORY);
     component.start();
     component.onWordClick(component.text.words[wordId('grandmother.')]);
-    vi.advanceTimersByTime(750);
+    vi.advanceTimersByTime(750); component.goNext();
     component.onWordClick(component.text.words[wordId('river')]);
-    vi.advanceTimersByTime(750);
+    vi.advanceTimersByTime(750); component.goNext();
     component.continueToNext();
     for (let i = 0; i < 3; i++) {
       component.onSentenceClick(component.currentQuestion!);
-      vi.advanceTimersByTime(950);
+      vi.advanceTimersByTime(950); component.goNext();
     }
     component.continueToNext();
     for (const paragraph of component.text.paragraphs) {
       component.revealAll();
       component.chooseHeading(component.text.headings[paragraph.heading]);
-      vi.advanceTimersByTime(1700);
+      vi.advanceTimersByTime(1700); component.goNext();
     }
     expect(component.view).toBe('results');
     expect(component.totalScore).toEqual({ got: 7, total: 7 });

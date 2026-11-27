@@ -213,7 +213,8 @@ export class DriveBackupService {
     let error = '';
     try {
       const topics = await db.topics.toArray();
-      const metas = topics.filter((t) => t.id).map((t) => ({ id: t.id!, updatedAt: new Date(t.updatedAt).toISOString() }));
+      // A topic that changed folder counts as changed too (its saved copy carries the folder path).
+      const metas = topics.filter((t) => t.id).map((t) => ({ id: t.id!, updatedAt: backupStamp(t) }));
       const plan = await bridge.driveBackupPlan({ topics: metas });
       if (!plan.ok || !plan.result) {
         error = plan.error || 'FAILED';
@@ -225,7 +226,7 @@ export class DriveBackupService {
           const step = await bridge.driveBackupUploadTopic({
             id: topic.id!,
             name: topic.name,
-            updatedAt: new Date(topic.updatedAt).toISOString(),
+            updatedAt: backupStamp(topic),
             json: JSON.stringify(data)
           });
           if (!step.ok) { error = step.error || 'FAILED'; break; }
@@ -297,4 +298,11 @@ export class DriveBackupService {
   private write(key: string, value: string): void {
     try { localStorage.setItem(key, value); } catch { /* private window */ }
   }
+}
+
+/** When a topic last changed for the backup: an edit, or a move to another folder. */
+function backupStamp(topic: { updatedAt: Date; folderMovedAt?: Date }): string {
+  const edited = new Date(topic.updatedAt).getTime();
+  const moved = topic.folderMovedAt ? new Date(topic.folderMovedAt).getTime() : 0;
+  return new Date(Math.max(edited, moved)).toISOString();
 }

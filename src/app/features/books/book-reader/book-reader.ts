@@ -2060,7 +2060,8 @@ export class BookReaderComponent implements OnInit, AfterViewInit, OnDestroy {
       if (Number.isFinite(topicId) && topicId > 0 && await this.doesTopicMatchSnapshot(topicId, name, snapshotItems)) {
         return topicId;
       }
-      const newTopicId = await this.db.createTopic(name, normalizeCefrLevel(snapshot?.topic?.level), normalizeSpeakingExam(snapshot?.topic?.exam));
+      // Made while reading a book: at the top of the library, not in whatever folder was open last.
+      const newTopicId = await this.db.createTopic(name, normalizeCefrLevel(snapshot?.topic?.level), normalizeSpeakingExam(snapshot?.topic?.exam), null);
       const items = snapshotItems
         ? await Promise.all(snapshotItems.map(async (item: any) => ({
             text: String(item?.text || ''),

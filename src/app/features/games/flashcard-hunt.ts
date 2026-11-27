@@ -151,6 +151,8 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   selectedItem: Item | null = null;
   quizOptions: Item[] = [];
   quizAnswerLocked = false;
+  /** The card is answered: Next glows until the teacher presses it (games never move on by themselves). */
+  quizWaitingNext = false;
   fadeOutOptionIds = new Set<number>();
   simpleConfirmMode = false;
   isFlipped = false;
@@ -950,7 +952,23 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     this.nextQuizCard();
   }
 
+  /** The last card leads on to the win screen; any other waits for the teacher's Next. */
+  private afterQuizCard(lastDelay: number) {
+    if (this.quizQueues.every(queue => !queue.length)) {
+      this.setGameTimeout(() => this.nextQuizCard(), lastDelay);
+      return;
+    }
+    this.quizWaitingNext = true;
+    this.cdr.detectChanges();
+  }
+
+  quizNext() {
+    if (!this.quizWaitingNext) return;
+    this.nextQuizCard();
+  }
+
   private nextQuizCard() {
+    this.quizWaitingNext = false;
     let owner = this.quizTurnTeam;
     if (!this.quizQueues[owner]?.length) {
       owner = this.quizQueues.findIndex(queue => queue.length > 0);
@@ -1050,7 +1068,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
       this.animateScoreGain(team);
     }
     this.cdr.detectChanges();
-    this.setGameTimeout(() => this.nextQuizCard(), 1500);
+    this.afterQuizCard(1500);
   }
 
   // A "+1 ⭐" rises from the answer area into the team's scoreboard pill; the number
@@ -1101,7 +1119,7 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
     // The steal missed too - nobody scores this card.
     this.quizAnswerLocked = true;
     this.cdr.detectChanges();
-    this.setGameTimeout(() => this.nextQuizCard(), 1300);
+    this.afterQuizCard(1300);
   }
 
   private firstAvailableOptionIndex(): number {
@@ -1225,6 +1243,13 @@ export class FlashcardHuntComponent implements OnInit, AfterViewInit, OnDestroy 
   }
 
   private handleQuizKey(event: KeyboardEvent) {
+    if (this.quizWaitingNext) {
+      if (event.key.toLowerCase() === 'n' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        this.quizNext();
+      }
+      return;
+    }
     if (this.simpleConfirmMode) {
       const key = event.key.toLowerCase();
       if (event.key === 'Enter' || key === 'o' || key === '1') {

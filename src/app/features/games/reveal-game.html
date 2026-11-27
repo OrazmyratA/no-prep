@@ -52,6 +52,7 @@
     <!-- Skip button -->
     <button (click)="skipToNext()"
             [disabled]="isPaused"
+            [class.np-next-ready]="waitingForNext"
             aria-label="Skip"
             title="Skip"
             class="mt-4 np-action np-action--yellow font-bold w-12 h-12 rounded-full shadow-lg transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">

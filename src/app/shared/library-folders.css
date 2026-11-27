@@ -1,0 +1,423 @@
+:host {
+  display: block;
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Breadcrumb, sort, New folder ---- */
+.lf-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.lf-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.lf-crumb {
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: rgb(var(--np-ink-soft));
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lf-crumb:hover {
+  background: rgb(var(--np-ink) / 0.07);
+  color: rgb(var(--np-ink));
+}
+
+.lf-crumb.is-here {
+  color: rgb(var(--np-ink));
+  font-weight: 800;
+  cursor: default;
+}
+
+.lf-crumb-search {
+  cursor: default;
+}
+
+.lf-crumb-sep {
+  color: rgb(var(--np-ink-muted));
+  font-weight: 700;
+}
+
+.lf-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lf-sort {
+  display: inline-flex;
+  padding: 0.2rem;
+  border-radius: 9999px;
+  background: rgb(var(--np-ink) / 0.07);
+}
+
+.lf-sort button {
+  padding: 0.3rem 0.75rem;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgb(var(--np-ink-soft));
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.lf-sort button.is-on {
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.15);
+}
+
+.lf-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.95rem;
+  border: 2px solid rgb(var(--np-ink) / 0.14);
+  border-radius: 9999px;
+  background: rgb(var(--np-surface));
+  color: rgb(var(--np-ink));
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.lf-new:hover {
+  border-color: #2563eb;
+}
+
+/* ---- Folder cards ---- */
+.lf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.lf-card {
+  --lf-color: #64748b;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 1rem;
+  background: rgb(var(--np-surface));
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.12), inset 0 0 0 1px rgb(var(--np-ink) / 0.06);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.lf-card:hover,
+.lf-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(15 23 42 / 0.16), inset 0 0 0 2px var(--lf-color);
+  outline: none;
+}
+
+/* A folder with nothing of this tab's kind in it (e.g. no PowerPoints yet). */
+.lf-card.is-empty {
+  opacity: 0.6;
+}
+
+.lf-icon {
+  position: relative;
+  flex: none;
+  width: 2.9rem;
+  height: 2.4rem;
+}
+
+.lf-icon-shape {
+  width: 100%;
+  height: 100%;
+  fill: var(--lf-color);
+}
+
+.lf-emoji {
+  position: absolute;
+  inset: 0.45rem 0 0;
+  display: grid;
+  place-items: center;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.lf-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.lf-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(var(--np-ink));
+  font-size: 1rem;
+}
+
+.lf-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(var(--np-ink-muted));
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+/* Over the card's right end, so the name keeps the whole width when the tools are hidden. */
+.lf-tools {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border-radius: 9999px;
+  background: rgb(var(--np-surface) / 0.95);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.12);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.lf-card:hover .lf-tools,
+.lf-card:focus-within .lf-tools {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Touch screens have no hover: the tools stay visible. */
+@media (hover: none) {
+  .lf-tools {
+    position: static;
+    opacity: 1;
+    transform: none;
+    box-shadow: none;
+    pointer-events: auto;
+  }
+}
+
+.lf-tool {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgb(var(--np-ink-soft));
+  cursor: pointer;
+}
+
+.lf-tool svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lf-tool:hover {
+  background: rgb(var(--np-ink) / 0.08);
+  color: rgb(var(--np-ink));
+}
+
+.lf-tool-danger:hover {
+  background: rgb(220 38 38 / 0.12);
+  color: #dc2626;
+}
+
+/* ---- Dialogs ---- */
+.lf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.55);
+}
+
+.lf-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(26rem, 100%);
+  max-height: 90vh;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgb(15 23 42 / 0.35);
+}
+
+.lf-dialog h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.lf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lf-field > span {
+  font-size: 0.8rem;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.lf-field input[type='text'] {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--np-dialog-line, #d1d5db);
+  border-radius: 0.6rem;
+  background: var(--np-dialog-well, #f9fafb);
+  color: inherit;
+  font-size: 1rem;
+}
+
+.lf-swatches,
+.lf-emojis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.lf-swatch {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 3px solid transparent;
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.6);
+}
+
+.lf-swatch.is-on {
+  border-color: var(--np-dialog-ink, #1f2937);
+  transform: scale(1.15);
+}
+
+.lf-emoji-pick {
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 2px solid transparent;
+  border-radius: 0.6rem;
+  background: var(--np-dialog-well, #f9fafb);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+
+.lf-emoji-pick.is-on {
+  border-color: #2563eb;
+}
+
+.lf-emojis .lf-emoji-input {
+  width: 3.4rem;
+  text-align: center;
+}
+
+.lf-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.lf-btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lf-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.lf-move-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow-y: auto;
+  max-height: 55vh;
+}
+
+.lf-move-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lf-move-row:hover:not(:disabled) {
+  background: var(--np-dialog-chip-hover, #f3f4f6);
+}
+
+.lf-move-row:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.lf-move-icon {
+  font-size: 1.15rem;
+}
+
+.lf-move-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Where they are now: greyed (but readable) when all of them are already here. */
+.lf-move-row.is-all-here:disabled {
+  opacity: 1;
+  background: rgb(37 99 235 / 0.08);
+}
+
+.lf-move-row.is-all-here .lf-move-name,
+.lf-move-row.is-all-here .lf-move-icon {
+  opacity: 0.55;
+}
+
+.lf-here-badge {
+  flex: none;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  background: rgb(37 99 235 / 0.12);
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}

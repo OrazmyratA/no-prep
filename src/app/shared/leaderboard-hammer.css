@@ -44,3 +44,17 @@
      pointer capture (set on pointerdown) still routes move/up events to this element regardless. */
   pointer-events: none;
 }
+
+/* The star: the same drag tool, giving a point instead of taking one. */
+.lb-hammer.lb-star-tool {
+  background: linear-gradient(135deg, #facc15, #f59e0b);
+  box-shadow: 0 8px 16px rgba(245, 158, 11, 0.4);
+}
+
+.lb-hammer.lb-star-tool.lb-hammer-floating {
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.lb-hammer.lb-star-tool.lb-hammer-dragging {
+  box-shadow: 0 14px 26px rgba(245, 158, 11, 0.55);
+}

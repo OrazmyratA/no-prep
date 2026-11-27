@@ -22,6 +22,15 @@
         <p class="label">{{ 'score' | translate }}</p>
         <strong><app-star-pill [plain]="true" [count]="score" [total]="totalRounds" [label]="'gameStars' | translate"></app-star-pill></strong>
       </div>
+      <button
+        *ngIf="waitingForNext"
+        type="button"
+        class="odd-next-btn np-next-ready"
+        (click)="goNext()"
+        aria-label="Next"
+        title="Next (N)">
+        <span aria-hidden="true">&#9654;&#xFE0E;</span>
+      </button>
       <div class="timer-card" [class.urgent]="timerRemaining <= 5">
         <p class="label">{{ 'oddOneOutTimeLeft' | translate }}</p>
         <strong>⏱ {{ timerRemaining }}s</strong>

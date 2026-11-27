@@ -272,6 +272,47 @@ function registerPresentationIpc({ ipcMain, dialog, fsp, path, app, getMainWindo
     return operationResult({ slides: result.slides, pictures });
   }));
 
+  // The book creator's start-slide grid: a few pictures of one presentation at a time, made by
+  // PowerPoint in the background the first time and then read from disk. While a slideshow is
+  // playing, PowerPoint is left alone and only pictures already made are returned.
+  ipcMain.handle('presentations:deck-slide-pictures', guard(async ({ id, from, to }) => {
+    const item = await presentations.get(id);
+    const filePath = item ? await presentations.filePath(id) : null;
+    if (!item || !filePath) return operationError('PRESENTATION_MISSING', 'Not found.');
+    const dir = presentations.slidesDir(id);
+    const first = Math.max(1, Number(from) || 1);
+    let slides = Number(item.slideCount) || 0;
+    let last = Math.max(first, Number(to) || first);
+    if (slides) last = Math.min(last, slides);
+    const read = async (i) => {
+      try {
+        const bytes = await fsp.readFile(path.join(dir, `${i}.png`));
+        return `data:image/png;base64,${bytes.toString('base64')}`;
+      } catch {
+        return null;
+      }
+    };
+    let pictures = [];
+    for (let i = first; i <= last; i++) pictures.push(await read(i));
+    let busy = false;
+    if (pictures.some((picture) => !picture)) {
+      if (playing) {
+        busy = true;
+      } else {
+        const result = await powerPoint.send('deckslides', { path: filePath, dir, width: 320, from: first, to: last });
+        if (result.ok) {
+          slides = result.slides;
+          last = Math.min(last, slides);
+          pictures = [];
+          for (let i = first; i <= last; i++) pictures.push(await read(i));
+        } else {
+          busy = true;
+        }
+      }
+    }
+    return operationResult({ slides, pictures, busy });
+  }));
+
   ipcMain.handle('presentations:stop', guard(async () => {
     await stop();
     return operationResult(true);

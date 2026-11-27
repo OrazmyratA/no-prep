@@ -107,6 +107,11 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   /** Book pages to start with (from a book's game marker). */
   @Input() initialPages: Blob[] = [];
   @Output() generated = new EventEmitter<AiTopicPanelResult>();
+  /**
+   * The attached page photos, every time they change: the topic form hands them to each item's
+   * 📖 crop window at once, so a teacher can crop by hand without waiting for (or without) the AI.
+   */
+  @Output() pagesChange = new EventEmitter<Blob[]>();
 
   @ViewChild('promptInput') promptInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('pagesInput') pagesInput?: ElementRef<HTMLInputElement>;
@@ -617,6 +622,13 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
   removePage(index: number): void {
     const [page] = this.pages.splice(index, 1);
     if (page) URL.revokeObjectURL(page.url);
+    this.emitPages();
+  }
+
+  /** After the change is drawn (the form's crop windows read it as an input). */
+  private emitPages(): void {
+    const blobs = this.pages.map(page => page.blob);
+    queueMicrotask(() => this.pagesChange.emit(blobs));
   }
 
   setItemCount(value: string): void {
@@ -684,7 +696,10 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
       statusAt: 0
     };
     // The Text AI may have changed since the pages were added; Groq reads fewer of them.
-    this.pages.splice(this.maxPages).forEach(page => URL.revokeObjectURL(page.url));
+    if (this.pages.length > this.maxPages) {
+      this.pages.splice(this.maxPages).forEach(page => URL.revokeObjectURL(page.url));
+      this.emitPages();
+    }
     const chip = this.currentRecipe();
     try {
       const draft = await this.ai.generateDraft(provider, {
@@ -753,6 +768,7 @@ export class AiTopicPanelComponent implements OnInit, OnDestroy {
     images.slice(0, Math.max(room, 0)).forEach(blob => {
       this.pages.push({ blob, url: URL.createObjectURL(blob) });
     });
+    if (images.length && room > 0) this.emitPages();
     if (images.length > room) {
       this.errorKey = 'aiTopicTooManyPages';
       this.errorDetail = '';

@@ -47,7 +47,8 @@
                   [attr.title]="'puzzleBuilderHintCost' | translate">
             💡 {{ 'puzzleBuilderHint' | translate }} <small>−⭐1</small>
           </button>
-          <button type="button" class="pb-nav" (click)="next()" [disabled]="page >= pageCount - 1"
+          <button type="button" class="pb-nav" (click)="next()" [disabled]="page >= pageCount - 1 && !nextReady"
+                  [class.np-next-ready]="nextReady"
                   [attr.aria-label]="'next' | translate" [attr.title]="'next' | translate">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
           </button>

@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { PresentationLibraryComponent } from '../presentations/presentation-library';
+import { LibraryFoldersComponent } from '../../shared/library-folders';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { DragDropModule } from '@angular/cdk/drag-drop';
@@ -17,6 +18,7 @@ import { TranslatePipe } from "../../shared/translate-pipe";
   declarations: [TopicsListComponent, TopicFormComponent, ActivitySelectComponent, AiTopicPanelComponent, PointAreaEditorComponent, TopicSignsGuideComponent],
   imports: [
     PresentationLibraryComponent,
+    LibraryFoldersComponent,
     CommonModule,
     FormsModule,
     ReactiveFormsModule,

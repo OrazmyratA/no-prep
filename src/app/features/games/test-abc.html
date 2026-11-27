@@ -88,7 +88,7 @@
       <button class="nav-btn prev" (click)="previousQuestion()" [disabled]="currentIndex === 0" aria-label="Previous" title="Previous">
         <span aria-hidden="true">&#9664;</span>
       </button>
-      <button class="nav-btn next" (click)="nextQuestion()" [disabled]="currentIndex === questions.length - 1" aria-label="Next" title="Next">
+      <button class="nav-btn next" (click)="nextQuestion()" [class.np-next-ready]="nextReady" [disabled]="currentIndex === questions.length - 1 && !nextReady" aria-label="Next" title="Next">
         <span aria-hidden="true">&#9654;</span>
       </button>
     </div>

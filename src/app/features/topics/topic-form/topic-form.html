@@ -39,7 +39,8 @@
                         [existingItemTexts]="aiExistingItemTexts"
                         [hasExistingItems]="hasFilledItems"
                         [initialPages]="aiInitialPages"
-                        (generated)="onAiDraft($event)">
+                        (generated)="onAiDraft($event)"
+                        (pagesChange)="aiAttachedPages = $event">
     </app-ai-topic-panel>
   </div>
   <!-- CEFR level: Reading Detective's reading speed and timer. Shown for reading/writing texts. -->

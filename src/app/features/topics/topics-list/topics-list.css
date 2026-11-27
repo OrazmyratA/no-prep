@@ -567,8 +567,10 @@ button.library-new-card {
   transition: width 0.2s ease;
 }
 
+/* The buttons keep their own room: with too little space they go to a second line, never over the tabs. */
 .topics-actions {
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .topics-actions.books-mode .library-import-action {
@@ -1504,4 +1506,327 @@ button.library-new-card {
 /* The logo keeps its shape when the toolbar is tight. */
 .topics-header-left app-logo-bell {
   flex-shrink: 0;
+}
+
+/* Folders: where a search result is, and a folder with nothing of this kind yet. */
+.library-card-folder {
+  margin: 0.1rem 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgb(var(--np-ink-muted));
+}
+
+.folder-empty-note {
+  margin: 1.5rem 0 1rem;
+  text-align: center;
+  font-weight: 700;
+  color: rgb(var(--np-ink-muted));
+}
+
+/* ================= Library polish: tick boxes, selection, A–Z index ================= */
+
+/* Tick boxes stay out of the way until a card is hovered, or something is ticked. */
+.card-check {
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.library-grid:not(.selecting) .card-check {
+  opacity: 0;
+  transform: scale(0.85);
+}
+
+.library-grid:not(.selecting) .topics-card:hover .card-check,
+.library-grid:not(.selecting) .card-check:focus-within {
+  opacity: 1;
+  transform: none;
+}
+
+/* Touch screens have no hover: tick boxes always show. */
+@media (hover: none) {
+  .library-grid:not(.selecting) .card-check {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.topics-card.is-selected {
+  box-shadow: 0 0 0 3px rgb(var(--np-accent)), 0 14px 30px -12px rgb(var(--np-accent) / 0.55) !important;
+  transform: translateY(-2px);
+}
+
+.topics-card.is-selected .card-check {
+  background: rgb(var(--np-accent)) !important;
+}
+
+/* Jumped to from the A–Z index: a short glow. */
+.topics-card.az-flash {
+  animation: az-flash 1.2s ease-out;
+}
+
+@keyframes az-flash {
+  0% { box-shadow: 0 0 0 0 rgb(var(--np-accent) / 0.7); }
+  35% { box-shadow: 0 0 0 6px rgb(var(--np-accent) / 0.45); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--np-accent) / 0); }
+}
+
+.topics-card {
+  scroll-margin-top: 1.25rem;
+}
+
+/* A topic without a picture: one of six colour families by its first letter (theme colours turned). */
+.topic-cover[data-tint='1'] { filter: hue-rotate(-38deg) saturate(1.05); }
+.topic-cover[data-tint='2'] { filter: hue-rotate(150deg) saturate(0.95); }
+.topic-cover[data-tint='3'] { filter: hue-rotate(205deg) saturate(1.1); }
+.topic-cover[data-tint='4'] { filter: hue-rotate(95deg) saturate(0.9); }
+.topic-cover[data-tint='5'] { filter: hue-rotate(-75deg) saturate(1.05); }
+
+/* ---- The selection bar ---- */
+.selection-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.45rem 0.55rem 0.45rem 0.45rem;
+  border-radius: 9999px;
+  background: rgb(15 23 42 / 0.94);
+  color: #f8fafc;
+  box-shadow: 0 18px 40px -12px rgb(15 23 42 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(10px);
+  transform: translateX(-50%);
+  animation: sel-bar-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes sel-bar-in {
+  from { opacity: 0; transform: translate(-50%, 18px) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+.selection-bar svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.sel-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sel-icon-btn:hover {
+  background: rgb(255 255 255 / 0.12);
+}
+
+.sel-count {
+  padding: 0 0.35rem 0 0.1rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sel-link {
+  border: 0;
+  background: transparent;
+  color: #93c5fd;
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.5rem;
+}
+
+.sel-link:hover {
+  color: #bfdbfe;
+  text-decoration: underline;
+}
+
+.sel-divider {
+  width: 1px;
+  height: 1.4rem;
+  margin: 0 0.25rem;
+  background: rgb(255 255 255 / 0.18);
+}
+
+.sel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.08);
+  color: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.sel-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.18);
+}
+
+.sel-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.sel-danger {
+  color: #fca5a5;
+}
+
+.sel-danger:hover:not(:disabled) {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .selection-bar {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    transform: none;
+    animation: none;
+    justify-content: space-between;
+  }
+
+  .sel-btn span,
+  .sel-link {
+    display: none;
+  }
+
+  .sel-btn {
+    padding: 0.55rem;
+  }
+}
+
+/* ---- A–Z index ---- */
+.az-rail {
+  position: fixed;
+  top: 50%;
+  /* Just outside the 1280px content on wide screens, at the edge on narrower ones. */
+  /* Inside the page's right edge (clear of the leaderboard button), below the header. */
+  right: calc(max(1.5rem, (100vw - 1280px) / 2) + 0.35rem);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  max-height: calc(100vh - 7rem);
+  padding: 0.4rem 0.2rem;
+  border-radius: 9999px;
+  background: rgb(var(--np-surface) / 0.72);
+  box-shadow: 0 8px 22px -10px rgb(15 23 42 / 0.35), inset 0 0 0 1px rgb(var(--np-ink) / 0.06);
+  backdrop-filter: blur(8px);
+  transform: translateY(-50%);
+  touch-action: none;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Narrow screens: room for the index so it never covers a card. */
+.topics-shell.has-index {
+  padding-right: 2.5rem;
+}
+
+.az-letter {
+  flex: 0 1 1.15rem;
+  min-height: 0.75rem;
+  width: 1.55rem;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgb(var(--np-ink-faint) / 0.55);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: default;
+  transition: color 120ms ease, background 120ms ease, transform 120ms ease;
+}
+
+.az-letter.has {
+  color: rgb(var(--np-ink-soft));
+  cursor: pointer;
+}
+
+.az-letter.has:hover {
+  color: rgb(var(--np-accent));
+  transform: scale(1.35);
+}
+
+.az-letter.is-current {
+  background: rgb(var(--np-accent));
+  color: rgb(var(--np-accent-ink));
+}
+
+.az-letter.is-current:hover {
+  color: rgb(var(--np-accent-ink));
+}
+
+/* The big letter while scrubbing along the index. */
+.az-bubble {
+  position: fixed;
+  top: 50%;
+  right: calc(max(1.5rem, (100vw - 1280px) / 2) + 2.9rem);
+  z-index: 41;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 1.2rem;
+  background: rgb(var(--np-accent));
+  color: rgb(var(--np-accent-ink));
+  font-size: 2.2rem;
+  font-weight: 900;
+  box-shadow: 0 14px 30px -10px rgb(var(--np-accent) / 0.7);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-bar,
+  .topics-card.az-flash {
+    animation: none;
+  }
+}
+
+/* A narrower window: the action buttons show only their icons (names on hover), so the header
+   stays on one line instead of covering the tabs. */
+.topics-header {
+  container-type: inline-size;
+}
+
+@container (max-width: 1240px) {
+  .topics-action-btn .action-label {
+    display: none;
+  }
+
+  .topics-action-btn {
+    padding: 0.75rem !important;
+  }
+
+  .topics-action-btn svg {
+    margin-right: 0 !important;
+  }
 }
