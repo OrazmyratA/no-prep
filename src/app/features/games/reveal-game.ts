@@ -707,7 +707,11 @@ private updateTeamButtonHintVisibility() {
     return entry.team.id;
   }
 
+  /** The picture is done; the Next (skip) button glows until the teacher presses it. */
+  waitingForNext = false;
+
   startNextItem(playCorrectAudio = false) {
+    this.waitingForNext = false;
     this.clearPendingTimers();
     this.transitionLock = false;
 
@@ -843,7 +847,7 @@ if (this.currentIndex >= this.items.length) {
   }
 
   private startRevealLoop() {
-    if (this.revealInterval || !this.gameActive || this.gameFinished || this.isPaused) return;
+    if (this.revealInterval || !this.gameActive || this.gameFinished || this.isPaused || this.waitingForNext) return;
     if (this.revealedCount >= this.totalCells) {
       this.completeCurrentItem();
       return;
@@ -869,6 +873,14 @@ if (this.currentIndex >= this.items.length) {
     if (this.fastRevealInterval) clearInterval(this.fastRevealInterval);
     this.clearTimers();
     this.captureSound?.play();
+    // No moving on by itself: the picture stays and the Next button glows for the teacher.
+    // Only the last picture leads on to the win screen.
+    if (this.currentIndex + 1 < this.items.length) {
+      this.waitingForNext = true;
+      this.transitionLock = true;
+      this.cdr.detectChanges();
+      return;
+    }
     this.timer = this.setGameTimeout(() => {
       this.currentIndex++;
       this.startNextItem(true);

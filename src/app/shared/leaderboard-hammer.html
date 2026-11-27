@@ -1,12 +1,13 @@
 <button
   type="button"
   class="lb-hammer"
+  [class.lb-star-tool]="tool === 'star'"
   [class.lb-hammer-floating]="dragLeft !== null"
   [class.lb-hammer-dragging]="dragging"
   [style.left.px]="dragLeft"
   [style.top.px]="dragTop"
   (pointerdown)="onPointerDown($event)"
-  [attr.title]="'leaderboardHammerHint' | translate"
-  [attr.aria-label]="'leaderboardHammerHint' | translate">
-  <span aria-hidden="true">🔨</span>
+  [attr.title]="(tool === 'star' ? 'leaderboardStarToolHint' : 'leaderboardHammerHint') | translate"
+  [attr.aria-label]="(tool === 'star' ? 'leaderboardStarToolHint' : 'leaderboardHammerHint') | translate">
+  <span aria-hidden="true">{{ tool === 'star' ? '⭐' : '🔨' }}</span>
 </button>

@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges, OnDestroy, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { combineLatest } from 'rxjs';
+import { FolderService } from '../../core/folders';
+import { LibraryFoldersComponent } from '../../shared/library-folders';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -20,7 +23,7 @@ import { TranslatePipe } from '../../shared/translate-pipe';
 @Component({
   selector: 'app-presentation-library',
   standalone: true,
-  imports: [DatePipe, FormsModule, TranslatePipe],
+  imports: [DatePipe, FormsModule, TranslatePipe, LibraryFoldersComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './presentation-library.html',
   styleUrls: ['./presentation-library.css']
@@ -61,8 +64,43 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
     private lang: LanguageService,
     private license: LicenseService,
     private confirmation: ConfirmationService,
-    public pick: PresentationPickService
+    public pick: PresentationPickService,
+    /** Library folders shared with the Topics and Books tabs (core/folders.ts). */
+    public folders: FolderService
   ) {}
+
+  /** The folder of every presentation and link (for the counts on folder cards). */
+  pptFolderIds: (string | null)[] = [];
+  /** Ids already in the list: one that appears while this tab is open goes into the open folder. */
+  private knownIds: Set<string> | null = null;
+
+  get searching(): boolean {
+    return !!(this.search ?? '').trim();
+  }
+
+  /** "Grade 3 › Unit 1" under a search result. */
+  folderLabel(id: string): string {
+    return this.searching ? this.folders.pathLabel(this.folders.placementOf('ppt', id)) : '';
+  }
+
+  move(id: string, event?: Event): void {
+    event?.stopPropagation();
+    if (this.needsAccess()) return;
+    this.folders.requestMove('ppt', [id]);
+  }
+
+  /** Added on this tab (a file, a blank one, a link, an .html file): into the folder being looked at. */
+  private placeNewOnes(): void {
+    const ids = [...this.items.map((item) => item.id), ...this.links.map((link) => link.id)];
+    if (this.loading) return;
+    if (!this.knownIds) {
+      this.knownIds = new Set(ids);
+      return;
+    }
+    const fresh = ids.filter((id) => !this.knownIds!.has(id));
+    ids.forEach((id) => this.knownIds!.add(id));
+    if (fresh.length) void this.folders.placeNew('ppt', fresh);
+  }
 
   get desktop(): boolean {
     return this.presentations.isDesktop;
@@ -90,6 +128,10 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
         this.links = links;
         this.applySearch();
         this.cdr.markForCheck();
+      }),
+      combineLatest([this.folders.current$, this.folders.folders$, this.folders.placements$, this.folders.sort$]).subscribe(() => {
+        this.applySearch();
+        this.cdr.markForCheck();
       })
     );
     await this.presentationLinks.refresh();
@@ -98,6 +140,7 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
       await this.presentations.refresh();
     }
     this.loading = false;
+    this.placeNewOnes();
     this.cdr.markForCheck();
   }
 
@@ -110,9 +153,18 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
   }
 
   private applySearch(): void {
+    this.placeNewOnes();
     const term = (this.search ?? '').trim().toLowerCase();
-    this.visible = term ? this.items.filter((item) => item.title.toLowerCase().includes(term)) : this.items;
-    this.visibleLinks = term ? this.links.filter((link) => link.title.toLowerCase().includes(term)) : this.links;
+    const current = this.folders.currentId;
+    const here = (id: string) => this.folders.placementOf('ppt', id) === current;
+    // Searching looks in every folder; otherwise only the folder being looked at.
+    const items = term ? this.items.filter((item) => item.title.toLowerCase().includes(term)) : this.items.filter((item) => here(item.id));
+    const links = term ? this.links.filter((link) => link.title.toLowerCase().includes(term)) : this.links.filter((link) => here(link.id));
+    const byName = (a: { title: string }, b: { title: string }) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+    const byName$ = this.folders.sort$.value === 'name';
+    this.visible = byName$ ? [...items].sort(byName) : items;
+    this.visibleLinks = byName$ ? [...links].sort(byName) : links;
+    this.pptFolderIds = [...this.items.map((item) => this.folders.placementOf('ppt', item.id)), ...this.links.map((link) => this.folders.placementOf('ppt', link.id))];
   }
 
   private async loadThumbs(): Promise<void> {
@@ -241,6 +293,7 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
     const message = this.lang.translate('presentationLinkDeleteConfirm', { title: link.title });
     if (!(await this.confirmation.confirm(message))) return;
     await this.presentationLinks.remove(link.id);
+    void this.folders.forget('ppt', link.id);
   }
 
   thumbKey(item: PresentationItem): string {
@@ -347,6 +400,7 @@ export class PresentationLibraryComponent implements OnInit, OnChanges, OnDestro
     const message = this.lang.translate('presentationDeleteConfirm', { title: item.title });
     if (!(await this.confirmation.confirm(message))) return;
     await this.presentations.remove(item.id);
+    void this.folders.forget('ppt', item.id);
   }
 
   trackById(_index: number, item: PresentationItem): string {

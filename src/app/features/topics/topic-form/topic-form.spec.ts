@@ -111,6 +111,8 @@ describe('TopicForm', () => {
     component.ngOnInit();
     expect(component.aiPanelOpen).toBe(true);
     expect(component.aiInitialPages).toEqual([page]);
+    // Every item's 📖 crop window has them at once, before (or without) the AI.
+    expect(component.aiAttachedPages).toEqual([page]);
     expect(handoff.take()).toEqual([]);
   });
 

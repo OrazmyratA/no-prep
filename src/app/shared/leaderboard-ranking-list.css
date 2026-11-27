@@ -94,6 +94,12 @@
 
 /* The hammer can be dragged onto a team's header too (see leaderboard-hammer.ts), docking the
    same confirmed whole-team point as tapping it. */
+.lb-column-header.lb-star-hover-target {
+  outline: 2px dashed #f59e0b;
+  background: rgba(250, 204, 21, 0.22);
+  transform: translateY(-1px) scale(1.02);
+}
+
 .lb-column-header.lb-hammer-hover-target {
   outline: 2px dashed #ef4444;
   background: rgba(239, 68, 68, 0.18);

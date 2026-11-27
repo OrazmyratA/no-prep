@@ -314,6 +314,18 @@ export const RANDOM_PICKER_TRANSLATIONS: TranslationDictionary = {
   vi: 'Danh sách lớp này chưa có học sinh.',
 },
 
+'leaderboardStarToolHint': {
+  en: 'Drag onto a student to give a point. Drop it on a team or the class name to give everyone a point',
+  tk: 'Bal bermek üçin okuwçynyň üstüne süýräň. Hemmä bal bermek üçin topara ýa-da synpyň adyna taşlaň',
+  ru: 'Перетащите на ученика, чтобы дать балл. Бросьте на команду или название класса, чтобы дать балл всем',
+  cn: '拖到学生身上加一分。拖到小组或班级名称上，所有人各加一分',
+  cde: 'Auf einen Schüler ziehen, um einen Punkt zu geben. Auf ein Team oder den Klassennamen ziehen, um allen einen Punkt zu geben',
+  es: 'Arrastra sobre un alumno para darle un punto. Suéltala sobre un equipo o el nombre de la clase para dar un punto a todos',
+  fr: 'Faites glisser sur un élève pour donner un point. Déposez-la sur une équipe ou le nom de la classe pour donner un point à tous',
+  kr: '학생에게 끌어다 놓으면 1점을 줍니다. 팀이나 반 이름에 놓으면 모두에게 1점을 줍니다',
+  sa: 'اسحبها إلى طالب لمنحه نقطة. أفلتها على فريق أو اسم الصف لمنح الجميع نقطة',
+  vi: 'Kéo thả lên một học sinh để cộng một điểm. Thả lên một đội hoặc tên lớp để cộng điểm cho mọi người',
+},
 'leaderboardHammerHint': {
   en: 'Drag onto a student to remove a point',
   tk: 'Bal aýyrmak üçin okuwçynyň üstüne süýräň',

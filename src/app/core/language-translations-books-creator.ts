@@ -922,6 +922,18 @@ export const BOOK_CREATOR_TRANSLATIONS: TranslationDictionary = {
     vi: 'Xong',
   },
 
+  'creatorPresentationStartHere': {
+    en: 'Start here: slide',
+    tk: 'Şu ýerden başla: slaýd',
+    ru: 'Начать отсюда: слайд',
+    cn: '从这里开始：幻灯片',
+    cde: 'Hier beginnen: Folie',
+    es: 'Empezar aquí: diapositiva',
+    fr: 'Commencer ici : diapositive',
+    kr: '여기서 시작: 슬라이드',
+    sa: 'ابدأ من هنا: الشريحة',
+    vi: 'Bắt đầu ở đây: trang chiếu',
+  },
   'creatorPresentationStartSlide': {
     en: 'Start on slide',
     tk: 'Başlanýan slaýd',

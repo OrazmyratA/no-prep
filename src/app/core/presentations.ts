@@ -164,6 +164,17 @@ export class PresentationService {
     return response.ok ? response.result : { slides: 0, pictures: [] };
   }
 
+  /**
+   * Pictures of slides from..to of any presentation (for the book creator's start-slide grid).
+   * The first time PowerPoint makes them in the background; then they come from disk. `busy`:
+   * PowerPoint couldn't make the missing ones now (a slideshow is playing, or it's busy).
+   */
+  async deckSlidePictures(id: string, from: number, to: number): Promise<{ slides: number; pictures: (string | null)[]; busy: boolean }> {
+    if (!this.api?.deckSlidePictures) return { slides: 0, pictures: [], busy: true };
+    const response: Result<{ slides: number; pictures: (string | null)[]; busy: boolean }> = await this.api.deckSlidePictures(id, from, to);
+    return response.ok ? response.result : { slides: 0, pictures: [], busy: true };
+  }
+
   /** The teacher's drawing tool on the slide ('clear' wipes this slide's drawings). */
   pointer(tool: PointerTool | 'clear'): Promise<unknown> {
     return this.api.command('pointer', 0, tool);

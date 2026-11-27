@@ -41,9 +41,13 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     { key: '1-9 / 0', action: 'Choose numbered item' },
     { key: '← ↑ ↓ →', action: 'Move item highlight' },
     { key: 'Enter', action: 'Choose highlighted item' },
+    { key: 'N', action: 'Next round (after an answer)' },
     { key: 'P', action: 'Pause or resume timer' },
     { key: 'Shift + R', action: 'Start over' }
   ];
+
+  /** A round is over (found or time ran out): the teacher presses Next. Games never move on by themselves. */
+  waitingForNext = false;
 
   // Settings
   itemAmount = 2; // smaller set count
@@ -137,13 +141,31 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
     this.gameActive = true;
     this.gameFinished = false;
     this.isRevealingOdd = false;
+    this.waitingForNext = false;
     this.isPaused = false;
     this.manuallyPaused = false;
     this.keyboardSelectedItemIndex = 0;
     this.nextRound();
   }
 
+  goNext() {
+    if (!this.waitingForNext) return;
+    this.waitingForNext = false;
+    this.nextRound();
+    this.cdr.detectChanges();
+  }
+
+  /** The round is over: the last one leads on to the win screen, any other waits for Next. */
+  private finishRound(lastDelay: number) {
+    if (this.remainingItems.length === 0) {
+      this.setGameTimeout(() => this.nextRound(), lastDelay);
+      return;
+    }
+    this.waitingForNext = true;
+  }
+
   private nextRound() {
+    this.waitingForNext = false;
     this.isRevealingOdd = false;
     this.keyboardSelectedItemIndex = 0;
     if (this.remainingItems.length === 0) {
@@ -229,7 +251,8 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
         this.roundActive = false;
         this.clearTimer();
         this.highlightCorrectItem();
-        this.setGameTimeout(() => this.nextRound(), 1500);
+        this.isRevealingOdd = true;
+        this.finishRound(1500);
       }
       this.cdr.detectChanges();
     }, 1000);
@@ -255,8 +278,8 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
       this.roundActive = false;
       this.clearTimer();
       this.isRevealingOdd = true;   // non-odd items start fading out
+      this.finishRound(3000);
       this.cdr.detectChanges();
-      this.setGameTimeout(() => this.nextRound(), 3000);
     } else {
       this.playSound(this.buzzSound);
       // The same item can appear on both sides, so the side is part of the lookup.
@@ -349,6 +372,14 @@ export class OddOneOutComponent implements OnInit, OnDestroy {
       if (key === 'r' || event.key === 'Enter') {
         event.preventDefault();
         this.resetGame();
+      }
+      return;
+    }
+
+    if (this.waitingForNext) {
+      if (key === 'n' || event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        this.goNext();
       }
       return;
     }

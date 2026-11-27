@@ -246,6 +246,14 @@
 /* The hammer can be dragged onto the class name too (see leaderboard-hammer.ts), docking the
    same confirmed whole-class point as tapping it — this is the "about to be smashed" highlight
    while it's hovering, dropped the instant the pointer is released elsewhere. */
+/* The star dropped on the class name gives everyone a point. */
+.lb-header-title-clickable.lb-star-hover-target {
+  background: rgba(250, 204, 21, 0.22);
+  outline: 2px dashed #f59e0b;
+  outline-offset: 2px;
+  transform: scale(1.02);
+}
+
 .lb-header-title-clickable.lb-hammer-hover-target {
   background: rgba(239, 68, 68, 0.16);
   outline: 2px dashed #ef4444;

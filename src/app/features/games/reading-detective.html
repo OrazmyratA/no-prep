@@ -382,6 +382,10 @@
 
       <p *ngIf="hintParagraph >= 0" class="rd-hint">💡 {{ 'readingDetectiveHint' | translate }}</p>
 
+      <button *ngIf="pendingNext" type="button" class="rd-next-btn np-next-ready" (click)="goNext()" title="Next (N / Enter)">
+        {{ 'next' | translate }} <span aria-hidden="true">&#9654;&#xFE0E;</span>
+      </button>
+
       <div class="rd-skip">
         <button type="button" class="rd-link" [disabled]="busy" (click)="skipQuestion()">{{ 'readingDetectiveSkipQuestion' | translate }} ⏭</button>
         <button type="button" class="rd-link" (click)="skipStage()">{{ 'readingDetectiveSkip' | translate }} ⏭⏭</button>
@@ -430,6 +434,10 @@
           </button>
         </div>
       </div>
+
+      <button *ngIf="pendingNext" type="button" class="rd-next-btn np-next-ready" (click)="goNext()" title="Next (N / Enter)">
+        {{ 'next' | translate }} <span aria-hidden="true">&#9654;&#xFE0E;</span>
+      </button>
 
       <div class="rd-skip">
         <button type="button" class="rd-link" (click)="skipQuestion()">{{ 'readingDetectiveSkipQuestion' | translate }} ⏭</button>

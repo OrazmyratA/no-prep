@@ -146,7 +146,14 @@
 
           <span class="lb-header-divider" aria-hidden="true"></span>
 
-          <!-- Group 3: scoring actions. -->
+          <!-- Group 3: scoring actions. The star gives a point, the hammer takes one: drop either on
+               a student, a team header or the class name. -->
+          <app-leaderboard-hammer
+            tool="star"
+            (hit)="onStarClick($event)"
+            (hitTeam)="awardTeamPoints($event)"
+            (hitAll)="awardAllPoints()">
+          </app-leaderboard-hammer>
           <app-leaderboard-hammer
             (hit)="onHammerHit($event)"
             (hitTeam)="decrementTeamScores($event)"

@@ -1753,3 +1753,17 @@
   .rd-stage-card { padding: 0.7rem; }
   .rd-stage-card-desc { display: none; }
 }
+
+/* Next: shown once an answer (or a skip) is done; the game never moves on by itself. */
+.rd-next-btn {
+  align-self: center;
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.6rem;
+  border: 0;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+}

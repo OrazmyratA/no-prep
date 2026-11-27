@@ -547,15 +547,17 @@ export class PuzzleBuilderComponent implements OnInit, OnDestroy {
     this.play('reward', 0.45);
     const screenDone = this.visiblePuzzles.every(shown => shown.done);
     if (!screenDone) return;
+    // Only the last puzzle leads on to the win screen; otherwise Next glows for the teacher.
+    if (this.nextOpenPosition() !== null) return;
     this.timers.set(() => {
-      const next = this.nextOpenPosition();
-      if (next === null) {
-        this.gameFinished = true;
-        this.cdr.detectChanges();
-        return;
-      }
-      this.goTo(next);
+      this.gameFinished = true;
+      this.cdr.detectChanges();
     }, NEXT_PUZZLE_MS);
+  }
+
+  /** Everything on this screen is built and some puzzles are left: Next glows. */
+  get nextReady(): boolean {
+    return !this.gameFinished && this.visiblePuzzles.length > 0 && this.visiblePuzzles.every(shown => shown.done) && this.nextOpenPosition() !== null;
   }
 
   /** The next screen with an unbuilt puzzle, after this one and then from the start. */
@@ -586,6 +588,12 @@ export class PuzzleBuilderComponent implements OnInit, OnDestroy {
   }
 
   next() {
+    // On the last screen with puzzles left earlier, Next goes back to the first one left.
+    if (this.page >= this.pageCount - 1) {
+      const open = this.nextReady ? this.nextOpenPosition() : null;
+      if (open !== null) this.goTo(open);
+      return;
+    }
     this.goTo(this.position + (this.showAll ? ALL_BATCH_SIZE : 1));
   }
 

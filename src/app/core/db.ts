@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { db, Topic, Item, LeaderboardScore, CefrLevel, SpeakingExam } from './db.model';
 import { Team } from '../shared/leaderboard-team.model';
 import { unwrapDoubleWav } from './audio-wav';
+import { currentFolderId, FolderService } from './folders';
 
 @Injectable({ providedIn: 'root' })
 export class DbService {
@@ -18,8 +19,10 @@ export class DbService {
   topicCoverUrls$: Observable<ReadonlyMap<number, string>> = this.coverUrlsSubject.asObservable();
   private coverRun = 0;
 
-  constructor(private zone: NgZone) {
+  constructor(private zone: NgZone, folders: FolderService) {
     this.refreshTopics();
+    // Topics moved between folders (or a folder was deleted): the lists read them again.
+    folders.topicsMoved$.subscribe(() => void this.refreshTopics());
     void this.zone.runOutsideAngular(() => this.repairGeminiVoices());
   }
 
@@ -127,9 +130,17 @@ export class DbService {
     await this.refreshTopics();
   }
 
-  async createTopic(name: string, level?: CefrLevel, exam?: SpeakingExam): Promise<number> {
+  /**
+   * folderId: the library folder for it; left out = the folder the teacher is looking at
+   * (core/folders.ts), null = at the top.
+   */
+  async createTopic(name: string, level?: CefrLevel, exam?: SpeakingExam, folderId?: string | null): Promise<number> {
     const now = new Date();
-    const id = await db.topics.add({ name, createdAt: now, updatedAt: now, ...(level ? { level } : {}), ...(exam ? { exam } : {}) });
+    const folder = folderId === undefined ? currentFolderId() : folderId;
+    const id = await db.topics.add({
+      name, createdAt: now, updatedAt: now,
+      ...(level ? { level } : {}), ...(exam ? { exam } : {}), ...(folder ? { folderId: folder } : {})
+    });
     await this.refreshTopics();
     return id;
   }
@@ -218,7 +229,8 @@ async duplicateTopic(topicId: number): Promise<number | null> {
   if (!topic) return null;
   const items = await db.items.where('topicId').equals(topicId).sortBy('order');
   const copyName = `${topic.name} (Copy)`;
-  const newTopicId = await this.createTopic(copyName, topic.level, topic.exam);
+  // The copy goes next to the original, in the same folder.
+  const newTopicId = await this.createTopic(copyName, topic.level, topic.exam, topic.folderId ?? null);
   await this.addItems(newTopicId, items.map(item => ({
     text: item.text,
     image: item.image ?? undefined,

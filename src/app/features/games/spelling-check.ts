@@ -64,6 +64,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
   currentMissingPart = '';
   currentCorrectAnswer = '';
   answerLocked = false;
+  /** Answered right and waiting for the teacher to press Next (games never move on by themselves). */
+  awaitingNext = false;
   answeredQuestions = new Set<number>();
   private missedQuestions = new Set<number>();
   isMediaFlipped = false;
@@ -168,6 +170,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.showPopup = false;
     this.penPlaced = false;
     this.answerLocked = false;
+    this.awaitingNext = false;
     this.isMediaFlipped = false;
     this.keyboardSelectedOptionIndex = 0;
     this.answeredQuestions.clear();
@@ -808,7 +811,8 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
           this.playSound(this.winSound);
           this.cdr.detectChanges();
         } else {
-          this.goToNextAfterAnswer();
+          this.awaitingNext = true;
+          this.cdr.detectChanges();
         }
       }, 1600);
     } else {
@@ -848,30 +852,13 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     }
   }
 
-  private goToNextAfterAnswer() {
-    if (this.currentIndex + 1 < this.questions.length) {
-      this.goToQuestion(this.currentIndex + 1);
-      return;
-    }
-
-    const firstUnanswered = this.findFirstUnansweredQuestion();
-    if (firstUnanswered !== -1) {
-      this.goToQuestion(firstUnanswered);
-      return;
-    }
-
-    this.gameFinished = true;
-    this.playSound(this.winSound);
-    this.cdr.detectChanges();
-  }
-
   previousQuestion() {
-    if (this.currentIndex === 0 || this.answerLocked) return;
+    if (this.currentIndex === 0 || (this.answerLocked && !this.awaitingNext)) return;
     this.goToQuestion(this.currentIndex - 1);
   }
 
   nextQuestion() {
-    if (this.answerLocked) return;
+    if (this.answerLocked && !this.awaitingNext) return;
     if (this.currentIndex + 1 < this.questions.length) {
       this.goToQuestion(this.currentIndex + 1);
       return;
@@ -885,6 +872,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
 
   private goToQuestion(index: number) {
     this.clearAdvanceTimer();
+    this.awaitingNext = false;
     this.stopActiveAudio();
     this.showPopup = false;
     this.answerLocked = false;
@@ -1168,6 +1156,7 @@ export class SpellingCheckComponent implements OnInit, OnDestroy {
     this.buildQuestions();
     this.showPopup = false;
     this.answerLocked = false;
+    this.awaitingNext = false;
     this.penDragging = false;
     this.penShake = false;
     this.penPlaced = false;

@@ -2,7 +2,7 @@
   @if (linked; as item) {
     <div class="bpl-linked">
       <div class="bpl-linked-thumb">
-        @if (thumb; as src) {
+        @if (cardPicture; as src) {
           <img [src]="src" alt="">
         } @else {
           <span aria-hidden="true">📽️</span>
@@ -21,6 +21,27 @@
              (change)="setStartSlide($any($event.target).value)">
       <small>/ {{ item.slideCount }}</small>
     </label>
+    @if (slideNumbers.length) {
+      <!-- The deck's slides, two per row: click one to start the book's PPT there. -->
+      <div #slideGrid class="bpl-slides" [style.--bpl-ratio]="slideRatio">
+        @for (n of slideNumbers; track n) {
+          <button type="button" class="bpl-slide" [attr.data-slide]="n"
+                  [class.is-start]="n === startSlide" [class.is-before]="n < startSlide"
+                  [attr.aria-pressed]="n === startSlide"
+                  [attr.title]="('creatorPresentationStartHere' | translate) + ' ' + n"
+                  (click)="setStartSlide('' + n)">
+            <span class="bpl-slide-pic">
+              @if (slidePictures[n - 1]; as src) {
+                <img [src]="src" alt="" draggable="false">
+              } @else {
+                <span class="bpl-slide-wait" aria-hidden="true"></span>
+              }
+            </span>
+            <span class="bpl-slide-num">{{ n }}</span>
+          </button>
+        }
+      </div>
+    }
   } @else if (linkedLink; as link) {
     <div class="bpl-linked is-link">
       <div class="bpl-linked-thumb bpl-link-thumb" [class.is-google]="link.source === 'google'" [class.is-web]="link.source === 'web'" [class.is-html]="link.source === 'html'">

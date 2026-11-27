@@ -3,6 +3,8 @@
 } @else if (!loading && !powerPointAvailable) {
   <p class="pres-note">{{ 'presentationsNeedPowerPoint' | translate }}</p>
 }
+<app-library-folders kind="ppt" [itemFolders]="pptFolderIds" [searching]="searching"
+                     [canEdit]="fullAccess" [picking]="selecting || pick.isPicking"></app-library-folders>
 <section class="pres-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
   @if (!selecting) {
     @if (powerPointHere) {
@@ -101,6 +103,12 @@
         </div>
 
         <div class="pres-tools" (click)="$event.stopPropagation()">
+          <button type="button" class="np-card-tool np-action--blue" (click)="move(link.id, $event)"
+                  [attr.title]="'folderMoveTo' | translate" [attr.aria-label]="'folderMoveTo' | translate">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M10 13h6m-2.5-2.5L16 13l-2.5 2.5"/>
+            </svg>
+          </button>
           <button type="button" class="np-card-tool np-action--violet" (click)="startRenameLink(link)"
                   [attr.title]="'presentationRename' | translate" [attr.aria-label]="'presentationRename' | translate">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
@@ -120,6 +128,7 @@
                    (blur)="finishRenameLink(link, $any($event.target).value)">
           } @else {
             <h3 class="library-card-title">{{ link.title }}</h3>
+            @if (folderLabel(link.id); as where) { <p class="pres-card-folder">📁 {{ where }}</p> }
           }
           <div class="library-card-meta">
             <span class="library-card-count">{{ link.source === 'html' ? '📄' : '🔗' }} {{ sourceInfo(link.source).nameKey ? (sourceInfo(link.source).nameKey! | translate) : sourceInfo(link.source).name }}</span>
@@ -151,6 +160,12 @@
                     [attr.title]="'presentationEdit' | translate" [attr.aria-label]="'presentationEdit' | translate">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
             </button>
+            <button type="button" class="np-card-tool np-action--blue" (click)="move(item.id, $event)"
+                    [attr.title]="'folderMoveTo' | translate" [attr.aria-label]="'folderMoveTo' | translate">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M10 13h6m-2.5-2.5L16 13l-2.5 2.5"/>
+              </svg>
+            </button>
             <button type="button" class="np-card-tool np-action--violet" (click)="startRename(item)"
                     [attr.title]="'presentationRename' | translate" [attr.aria-label]="'presentationRename' | translate">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7V5h16v2M9 19h6M12 5v14"/></svg>
@@ -170,6 +185,7 @@
                      (blur)="finishRename(item, $any($event.target).value)">
             } @else {
               <h3 class="library-card-title">{{ item.title }}</h3>
+              @if (folderLabel(item.id); as where) { <p class="pres-card-folder">📁 {{ where }}</p> }
             }
             <div class="library-card-meta">
               <span class="library-card-count">{{ item.slideCount === 1 ? ('presentationOneSlide' | translate) : ('presentationSlides' | translate: { count: item.slideCount }) }}</span>

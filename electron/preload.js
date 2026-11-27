@@ -123,6 +123,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     warm: () => ipcRenderer.invoke('presentations:warm'),
     state: () => ipcRenderer.invoke('presentations:state'),
     snapshot: (width) => ipcRenderer.invoke('presentations:snapshot', { width: Number(width) || 1280 }),
+    deckSlidePictures: (id, from, to) => ipcRenderer.invoke('presentations:deck-slide-pictures', { id: String(id ?? ''), from: Number(from) || 1, to: Number(to) || 1 }),
     slidePictures: (from, to) => ipcRenderer.invoke('presentations:slide-pictures', { from: Number(from) || 1, to: Number(to) || 1 }),
     stop: () => ipcRenderer.invoke('presentations:stop'),
     // An added .html file: hands its text to the desktop app, which answers its private address.

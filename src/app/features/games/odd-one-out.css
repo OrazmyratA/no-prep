@@ -446,3 +446,19 @@
     margin-top: 2px;
   }
 }
+
+/* Next round: shown once a round is over (the game never moves on by itself). */
+.odd-next-btn {
+  width: 3.4rem;
+  height: 3.4rem;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #ffffff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -13,6 +13,27 @@ export interface Topic {
   level?: CefrLevel;
   /** The speaking exam the topic is a mock test for (Talk Show). Not indexed. */
   exam?: SpeakingExam;
+  /** The library folder it is in (core/folders.ts); none = at the top. Not indexed. */
+  folderId?: string;
+  /** When it last changed folder (or its folder was renamed/moved): the Drive backup sends it again. */
+  folderMovedAt?: Date;
+}
+
+/** A library folder (core/folders.ts), shared by the Topics, Books and PowerPoint tabs. */
+export interface LibraryFolder {
+  id: string;
+  name: string;
+  /** '' = at the top (an index can't hold null). */
+  parentId: string;
+  color?: string;
+  emoji?: string;
+  createdAt: string;
+}
+
+/** Where a book or presentation is: key 'book:<id>' or 'ppt:<id>'. No row = at the top. */
+export interface FolderPlacement {
+  key: string;
+  folderId: string;
 }
 
 export const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
@@ -213,6 +234,9 @@ export class AppDatabase extends Dexie {
   presentationLinks!: Table<PresentationLink, string>;
   /** Speaking Check sessions (docs/speaking-check.md). */
   speakingSessions!: Table<SpeakingSession, string>;
+  /** Library folders and where books/presentations are in them (core/folders.ts). */
+  folders!: Table<LibraryFolder, string>;
+  folderPlacements!: Table<FolderPlacement, string>;
 
   constructor() {
     super('NoPrepDB');
@@ -373,6 +397,26 @@ export class AppDatabase extends Dexie {
       leaderboardTeams: 'topicId, updatedAt',
       presentationLinks: 'id, updatedAt',
       speakingSessions: 'id, classTopicId, updatedAt'
+    });
+    this.version(14).stores({
+      topics: '++id, name, updatedAt',
+      items: '++id, topicId, order',
+      themeBackgrounds: '++id, createdAt',
+      themeSettings: 'id',
+      books: null,
+      bookAnnotations: 'bookId, updatedAt',
+      bookAssets: null,
+      bookTaskResponses: 'key, profileId, bookId, pageId, taskId, updatedAt',
+      bookSpeakingAttempts: 'key, profileId, bookId, pageId, elementId, updatedAt',
+      leaderboardScores: '++id, topicId, itemId, &[topicId+itemId]',
+      bookLessonProgress: 'key, profileId, bookId, pageId, updatedAt',
+      bookLastPosition: 'key, profileId, bookId, updatedAt',
+      speakingResults: '++id, topicId, createdAt, *studentNames',
+      leaderboardTeams: 'topicId, updatedAt',
+      presentationLinks: 'id, updatedAt',
+      speakingSessions: 'id, classTopicId, updatedAt',
+      folders: 'id, parentId',
+      folderPlacements: 'key, folderId'
     });
   }
 }

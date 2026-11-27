@@ -216,7 +216,7 @@ describe('SpellingCheckComponent', () => {
     expect(component.penShake).toBe(true);
   });
 
-  it('returns to unfinished questions after the last item is completed', () => {
+  it('waits for Next after the last item, then returns to unfinished questions', () => {
     vi.useFakeTimers();
     const component = makeComponent();
     const first = makeItem('The cat is on the mat.');
@@ -249,6 +249,11 @@ describe('SpellingCheckComponent', () => {
     component.onQuizAnswer('on');
     vi.runOnlyPendingTimers();
 
+    // The game never moves on by itself: it stays, with Next ready.
+    expect(component.currentIndex).toBe(1);
+    expect(component.awaitingNext).toBe(true);
+
+    component.nextQuestion();
     expect(component.currentIndex).toBe(0);
     expect(component.gameFinished).toBe(false);
     expect(component.answeredQuestions.has(1)).toBe(true);

@@ -3,11 +3,14 @@ import { db, Topic, Item, normalizeCefrLevel, normalizeSpeakingExam, normalizeSt
 import { showAppNotification } from './notification';
 import { DbService } from './db';
 import { PlatformFileService } from './platform-file';
+import { currentFolderId, ensureFolderPath, folderPathOf, FolderPathStep } from './folders';
 
 export interface ExportTopic {
   name: string;
   level?: string;
   exam?: string;
+  /** The library folder it was in, from the top down (core/folders.ts); left out = at the top. */
+  folder?: FolderPathStep[];
   createdAt: string;
   updatedAt: string;
   items: {
@@ -148,10 +151,12 @@ const exportItems = await Promise.all(items.map(async item => ({
       ...(item.bubble ? { bubble: item.bubble } : {}),
       order: item.order
     })));
+    const folder = await folderPathOf(topic.folderId);
     return {
       name: topic.name,
       ...(topic.level ? { level: topic.level } : {}),
       ...(topic.exam ? { exam: topic.exam } : {}),
+      ...(folder.length ? { folder } : {}),
       createdAt: topic.createdAt.toISOString(),
       updatedAt: topic.updatedAt.toISOString(),
       items: exportItems
@@ -243,10 +248,16 @@ const exportItems = await Promise.all(items.map(async item => ({
         // Create new topic with fresh timestamps (use current time)
         const level = normalizeCefrLevel(expTopic.level);
         const exam = normalizeSpeakingExam(expTopic.exam);
+        // Back into its folder (made again by name where missing); a topic without one goes
+        // into the folder the teacher is looking at.
+        const folderId = Array.isArray(expTopic.folder) && expTopic.folder.length
+          ? await ensureFolderPath(expTopic.folder)
+          : currentFolderId();
         const topicId = await db.topics.add({
           name: expTopic.name,
           ...(level ? { level } : {}),
           ...(exam ? { exam } : {}),
+          ...(folderId ? { folderId } : {}),
           createdAt: new Date(),   // fresh timestamp
           updatedAt: new Date()
         });

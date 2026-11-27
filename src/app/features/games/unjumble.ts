@@ -244,7 +244,19 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
       this.clearAdvanceTimer();
       this.currentIndex++;
       this.loadItem(this.currentIndex);
+    } else if (this.isCurrentSolved) {
+      // At the end with some left unsolved: Next goes back to the first one left.
+      const nextUnsolvedIndex = this.findNextUnsolvedIndex(this.currentIndex);
+      if (nextUnsolvedIndex !== null) {
+        this.currentIndex = nextUnsolvedIndex;
+        this.loadItem(this.currentIndex);
+      }
     }
+  }
+
+  /** The current one is solved and others are left: Next glows. */
+  get isCurrentSolved(): boolean {
+    return this.solvedIndexes.has(this.currentIndex) && this.solvedIndexes.size < this.items.length;
   }
 
   previousItem() {
@@ -517,6 +529,12 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
     this.playSound(this.collectSound, 0.5);
     this.clearAdvanceTimer();
 
+    // No moving on by itself: the teacher presses Next (it glows). Only the last solve leads on
+    // to the win screen.
+    if (this.solvedIndexes.size < this.items.length) {
+      this.cdr.detectChanges();
+      return;
+    }
     this.advanceTimer = window.setTimeout(() => {
       this.advanceTimer = null;
 
@@ -528,12 +546,6 @@ export class UnjumbleComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const nextUnsolvedIndex = this.findNextUnsolvedIndex(this.currentIndex);
-      if (nextUnsolvedIndex !== null) {
-        this.currentIndex = nextUnsolvedIndex;
-        this.loadItem(this.currentIndex);
-      }
-      this.cdr.detectChanges();
     }, 2000);
   }
 

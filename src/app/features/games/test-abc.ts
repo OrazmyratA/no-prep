@@ -238,17 +238,15 @@ private getDistinctDistractors(correct: Item): Item[] {
       }
       this.cdr.detectChanges();
 
-      this.setFeedbackTimeout(() => {
-        if (this.answeredQuestions.size >= this.questions.length) {
+      // No moving on by itself: the answer stays shown and Next glows for the teacher. Only the
+      // last answer leads on to the win screen.
+      if (this.answeredQuestions.size >= this.questions.length) {
+        this.setFeedbackTimeout(() => {
           this.gameFinished = true;
           this.playSound(this.winSound);
-        } else {
-          this.selectedCorrect = false;
-          this.fadeOutOptionIds.clear();
-          this.nextQuestion();
-        }
-        this.cdr.detectChanges();
-      }, 2000);
+          this.cdr.detectChanges();
+        }, 2000);
+      }
     } else {
       this.missedQuestions.add(this.currentIndex);
       this.playSound(this.buzzSound);
@@ -257,6 +255,11 @@ private getDistinctDistractors(correct: Item): Item[] {
       this.setFeedbackTimeout(() => el?.classList.remove('shake'), 500);
     }
     this.cdr.detectChanges();
+  }
+
+  /** This one is answered and others are left: Next glows (and works even on the last one). */
+  get nextReady(): boolean {
+    return this.answeredQuestions.has(this.currentIndex) && this.answeredQuestions.size < this.questions.length;
   }
 
   nextQuestion() {
